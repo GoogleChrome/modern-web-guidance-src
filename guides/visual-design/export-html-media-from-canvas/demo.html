@@ -29,7 +29,7 @@
     <canvas id="canvas" style="width: 400px; height: 200px;" content="drawable">
         <input id="export_element" class="export-content" type="text" placeholder="type anything to capture media" drawable>
     </canvas>
-    
+
     <br><br>
     <button id="export_btn">Export to Image Element</button>
     <button id="download_btn" disabled>Download Image</button>
@@ -76,8 +76,8 @@
                 canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
                 canvas.requestPaint();
             });
-            const supportsDevicePixelContentBox = 
-                typeof ResizeObserverEntry !== 'undefined' && 
+            const supportsDevicePixelContentBox =
+                typeof ResizeObserverEntry !== 'undefined' &&
                 'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
             const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
             observer.observe(canvas, options);

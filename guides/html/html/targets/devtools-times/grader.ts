@@ -39,41 +39,61 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind, type JsxOpeningElement, type JsxSelfClosingElement } from 'ts-morph';
+} from "../../../../test-fixture.ts";
+import {
+  SyntaxKind,
+  type JsxOpeningElement,
+  type JsxSelfClosingElement,
+} from "ts-morph";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('devtools-times Target Grader', () => {
-
+test.describe("devtools-times Target Grader", () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
-  test('Expectation 3: Sequential heading hierarchy in Footer or Article sections (h2)', () => {
+  test("Expectation 3: Sequential heading hierarchy in Footer or Article sections (h2)", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const footerDoc = docs.find(d => d.file.endsWith('Footer.astro'))?.document;
-    const articleDoc = docs.find(d => d.file.endsWith('[slug].astro'))?.document;
+    const footerDoc = docs.find((d) =>
+      d.file.endsWith("Footer.astro"),
+    )?.document;
+    const articleDoc = docs.find((d) =>
+      d.file.endsWith("[slug].astro"),
+    )?.document;
     const hasH2 = Boolean(
-      (footerDoc && footerDoc.querySelectorAll('h2').length > 0) ||
-      (articleDoc && articleDoc.querySelectorAll('h2').length > 0)
+      (footerDoc && footerDoc.querySelectorAll("h2").length > 0) ||
+      (articleDoc && articleDoc.querySelectorAll("h2").length > 0),
     );
     expect(hasH2).toBe(true);
   });
 
-  test('Expectation 5: Native <search> element wraps search controls', () => {
+  test("Expectation 5: Native <search> element wraps search controls", () => {
     const project = getJsProject(targetFiles);
-    const hasSearchElement = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement).some(el => el.getTagNameNode().getText() === 'search') ||
-      sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).some(el => el.getTagNameNode().getText() === 'search')
-    );
+    const hasSearchElement = project
+      .getSourceFiles()
+      .some(
+        (sf) =>
+          sf
+            .getDescendantsOfKind(SyntaxKind.JsxOpeningElement)
+            .some((el) => el.getTagNameNode().getText() === "search") ||
+          sf
+            .getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement)
+            .some((el) => el.getTagNameNode().getText() === "search"),
+      );
     expect(hasSearchElement).toBe(true);
   });
 
   test('Expectation 6: Triggered actions use <button> instead of <a> with href="#"', () => {
     const project = getJsProject(targetFiles);
-    const bottomNavFile = project.getSourceFiles().find(sf => sf.getFilePath().endsWith('BottomNav.tsx'));
+    const bottomNavFile = project
+      .getSourceFiles()
+      .find((sf) => sf.getFilePath().endsWith("BottomNav.tsx"));
     const hasNavButton = Boolean(
-      bottomNavFile?.getDescendantsOfKind(SyntaxKind.JsxOpeningElement).some(el => el.getTagNameNode().getText() === 'button') ||
-      bottomNavFile?.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement).some(el => el.getTagNameNode().getText() === 'button')
+      bottomNavFile
+        ?.getDescendantsOfKind(SyntaxKind.JsxOpeningElement)
+        .some((el) => el.getTagNameNode().getText() === "button") ||
+      bottomNavFile
+        ?.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement)
+        .some((el) => el.getTagNameNode().getText() === "button"),
     );
     expect(hasNavButton).toBe(true);
   });
@@ -84,46 +104,71 @@ test.describe('devtools-times Target Grader', () => {
 
     const getJsxAttrText = (
       el: JsxOpeningElement | JsxSelfClosingElement,
-      name: string
+      name: string,
     ): string => {
-      const attr = el.getDescendantsOfKind(SyntaxKind.JsxAttribute).find(a => a.getNameNode().getText() === name);
-      if (!attr) return '';
+      const attr = el
+        .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+        .find((a) => a.getNameNode().getText() === name);
+      if (!attr) return "";
       const init = attr.getInitializer();
-      if (!init) return '';
-      return init.getText().replace(/^['"{]+|['"}]+$/g, '').trim();
+      if (!init) return "";
+      return init
+        .getText()
+        .replace(/^['"{]+|['"}]+$/g, "")
+        .trim();
     };
 
-    const jsxDecorativeSvgs = project.getSourceFiles().flatMap(sf => [
-      ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
-      ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
-    ]).filter(el => {
-      if (el.getTagNameNode().getText() !== 'svg') return false;
-      const hasAriaLabel = getJsxAttrText(el, 'aria-label').length > 0;
-      const hasAriaLabelledBy = getJsxAttrText(el, 'aria-labelledby').length > 0;
-      const parentJsx = el.getParentIfKind(SyntaxKind.JsxElement);
-      const hasTitleChild = Boolean(
-        parentJsx?.getDescendantsOfKind(SyntaxKind.JsxElement).some(
-          child =>
-            child.getOpeningElement().getTagNameNode().getText() === 'title' &&
-            child.getJsxChildren().some(ch => ch.getText().trim().length > 0)
-        )
-      );
-      return !hasAriaLabel && !hasAriaLabelledBy && !hasTitleChild;
-    });
-
-    const jsxAllHidden = jsxDecorativeSvgs.every(el => getJsxAttrText(el, 'aria-hidden') === 'true');
-
-    const htmlDecorativeSvgs = docs.flatMap(d =>
-      Array.from(d.document.querySelectorAll('svg') as unknown as Element[]).filter(svg => {
-        const hasAriaLabel = (svg.getAttribute('aria-label')?.trim().length ?? 0) > 0;
-        const hasAriaLabelledBy = (svg.getAttribute('aria-labelledby')?.trim().length ?? 0) > 0;
-        const hasTitleChild = Boolean(svg.querySelector('title')?.textContent?.trim());
+    const jsxDecorativeSvgs = project
+      .getSourceFiles()
+      .flatMap((sf) => [
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
+        ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+      ])
+      .filter((el) => {
+        if (el.getTagNameNode().getText() !== "svg") return false;
+        const hasAriaLabel = getJsxAttrText(el, "aria-label").length > 0;
+        const hasAriaLabelledBy =
+          getJsxAttrText(el, "aria-labelledby").length > 0;
+        const parentJsx = el.getParentIfKind(SyntaxKind.JsxElement);
+        const hasTitleChild = Boolean(
+          parentJsx
+            ?.getDescendantsOfKind(SyntaxKind.JsxElement)
+            .some(
+              (child) =>
+                child.getOpeningElement().getTagNameNode().getText() ===
+                  "title" &&
+                child
+                  .getJsxChildren()
+                  .some((ch) => ch.getText().trim().length > 0),
+            ),
+        );
         return !hasAriaLabel && !hasAriaLabelledBy && !hasTitleChild;
-      })
+      });
+
+    const jsxAllHidden = jsxDecorativeSvgs.every(
+      (el) => getJsxAttrText(el, "aria-hidden") === "true",
     );
 
-    const htmlAllHidden = htmlDecorativeSvgs.every(svg => svg.getAttribute('aria-hidden') === 'true');
-    const totalDecorativeSvgs = jsxDecorativeSvgs.length + htmlDecorativeSvgs.length;
+    const htmlDecorativeSvgs = docs.flatMap((d) =>
+      Array.from(
+        d.document.querySelectorAll("svg") as unknown as Element[],
+      ).filter((svg) => {
+        const hasAriaLabel =
+          (svg.getAttribute("aria-label")?.trim().length ?? 0) > 0;
+        const hasAriaLabelledBy =
+          (svg.getAttribute("aria-labelledby")?.trim().length ?? 0) > 0;
+        const hasTitleChild = Boolean(
+          svg.querySelector("title")?.textContent?.trim(),
+        );
+        return !hasAriaLabel && !hasAriaLabelledBy && !hasTitleChild;
+      }),
+    );
+
+    const htmlAllHidden = htmlDecorativeSvgs.every(
+      (svg) => svg.getAttribute("aria-hidden") === "true",
+    );
+    const totalDecorativeSvgs =
+      jsxDecorativeSvgs.length + htmlDecorativeSvgs.length;
 
     expect(totalDecorativeSvgs).toBeGreaterThan(0);
     expect(jsxAllHidden && htmlAllHidden).toBe(true);
@@ -131,132 +176,187 @@ test.describe('devtools-times Target Grader', () => {
 
   test('Expectation 14: LCP hero image has fetchpriority="high" and no loading="lazy"', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasHeroFetchPriority = docs.some(d => {
-      const images = Array.from(d.document.querySelectorAll('Image, img') as unknown as Element[]);
-      return images.some(img => img.getAttribute('fetchpriority') === 'high' && img.getAttribute('loading') !== 'lazy');
+    const hasHeroFetchPriority = docs.some((d) => {
+      const images = Array.from(
+        d.document.querySelectorAll("Image, img") as unknown as Element[],
+      );
+      return images.some(
+        (img) =>
+          img.getAttribute("fetchpriority") === "high" &&
+          img.getAttribute("loading") !== "lazy",
+      );
     });
     expect(hasHeroFetchPriority).toBe(true);
   });
 
-  test('Expectation 15: Explicit width and height attributes on images to prevent CLS', () => {
+  test("Expectation 15: Explicit width and height attributes on images to prevent CLS", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const headerDoc = docs.find(d => d.file.endsWith('Header.astro'))?.document;
+    const headerDoc = docs.find((d) =>
+      d.file.endsWith("Header.astro"),
+    )?.document;
     const logoImg = headerDoc?.querySelector('img[src*="logo.svg"]');
     const hasExplicitDimensions = Boolean(
-      logoImg?.hasAttribute('width') &&
-      logoImg?.hasAttribute('height')
+      logoImg?.hasAttribute("width") && logoImg?.hasAttribute("height"),
     );
     expect(hasExplicitDimensions).toBe(true);
   });
 
   test('Expectation 16: Below-the-fold images apply loading="lazy"', () => {
     const docs = getHtmlDocuments(targetFiles);
-    const teaserDocs = docs.filter(d =>
-      d.file.endsWith('ArticleTeaser.astro') || d.file.endsWith('TopStoryTeaserGrid.astro')
+    const teaserDocs = docs.filter(
+      (d) =>
+        d.file.endsWith("ArticleTeaser.astro") ||
+        d.file.endsWith("TopStoryTeaserGrid.astro"),
     );
-    const hasLazyImage = teaserDocs.some(d => {
-      const images = Array.from(d.document.querySelectorAll('Image, img') as unknown as Element[]);
-      return images.some(img => {
-        const loading = img.getAttribute('loading') ?? '';
+    const hasLazyImage = teaserDocs.some((d) => {
+      const images = Array.from(
+        d.document.querySelectorAll("Image, img") as unknown as Element[],
+      );
+      return images.some((img) => {
+        const loading = img.getAttribute("loading") ?? "";
         // Accept a static "lazy" or a dynamic expression that can resolve to "lazy",
         // e.g. loading={priority ? "eager" : "lazy"}
-        return loading === 'lazy' || /\blazy\b/.test(loading);
+        return loading === "lazy" || /\blazy\b/.test(loading);
       });
     });
     expect(hasLazyImage).toBe(true);
   });
 
-  test('Expectation 17: Responsive image delivery using sizes attribute', () => {
+  test("Expectation 17: Responsive image delivery using sizes attribute", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const teaserDoc = docs.find(d => d.file.endsWith('ArticleTeaser.astro'))?.document;
+    const teaserDoc = docs.find((d) =>
+      d.file.endsWith("ArticleTeaser.astro"),
+    )?.document;
     const hasResponsiveImage = Boolean(
-      teaserDoc?.querySelectorAll('Image[sizes], Image[widths], Image[srcset], img[sizes], img[srcset], picture').length
+      teaserDoc?.querySelectorAll(
+        "Image[sizes], Image[widths], Image[srcset], img[sizes], img[srcset], picture",
+      ).length,
     );
     expect(hasResponsiveImage).toBe(true);
   });
 
-  test('Expectation 18: Native <dialog> opened via .showModal() for modal overlays', () => {
+  test("Expectation 18: Native <dialog> opened via .showModal() for modal overlays", () => {
     const project = getJsProject(targetFiles);
-    const hasShowModal = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some(call => {
+    const hasShowModal = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
         const expr = call.getExpression();
-        return expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'showModal';
-      })
+        return (
+          expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+          expr.getName() === "showModal"
+        );
+      }),
     );
     expect(hasShowModal).toBe(true);
   });
 
   test('Expectation 19: Dismiss modal dialogs natively using form method="dialog"', () => {
     const project = getJsProject(targetFiles);
-    const hasDialogDismiss = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement).some(el => {
+    const hasDialogDismiss = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement).some((el) => {
         const tagName = el.getTagNameNode().getText();
-        if (tagName === 'form') {
-          return el.getAttributes().some(attr =>
-            attr.isKind(SyntaxKind.JsxAttribute) &&
-            attr.getNameNode().getText().toLowerCase() === 'method' &&
-            attr.getInitializer()?.getText().replace(/['"{}]/g, '').toLowerCase() === 'dialog'
+        if (tagName === "form") {
+          return el.getAttributes().some(
+            (attr) =>
+              attr.isKind(SyntaxKind.JsxAttribute) &&
+              attr.getNameNode().getText().toLowerCase() === "method" &&
+              attr
+                .getInitializer()
+                ?.getText()
+                .replace(/['"{}]/g, "")
+                .toLowerCase() === "dialog",
           );
         }
-        if (tagName === 'button') {
-          return el.getAttributes().some(attr =>
-            attr.isKind(SyntaxKind.JsxAttribute) &&
-            attr.getNameNode().getText().toLowerCase() === 'formmethod' &&
-            attr.getInitializer()?.getText().replace(/['"{}]/g, '').toLowerCase() === 'dialog'
+        if (tagName === "button") {
+          return el.getAttributes().some(
+            (attr) =>
+              attr.isKind(SyntaxKind.JsxAttribute) &&
+              attr.getNameNode().getText().toLowerCase() === "formmethod" &&
+              attr
+                .getInitializer()
+                ?.getText()
+                .replace(/['"{}]/g, "")
+                .toLowerCase() === "dialog",
           );
         }
         return false;
-      })
+      }),
     );
     expect(hasDialogDismiss).toBe(true);
   });
 
-  test('Expectation 20: Native Popover API (popover or popovertarget) for non-modal menus', () => {
+  test("Expectation 20: Native Popover API (popover or popovertarget) for non-modal menus", () => {
     const project = getJsProject(targetFiles);
-    const hasPopover = project.getSourceFiles().some(sf => {
-      const hasAttr = sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr => {
-        const name = attr.getNameNode().getText().toLowerCase();
-        return name === 'popover' || name === 'popovertarget';
-      });
-      const hasSpread = sf.getDescendantsOfKind(SyntaxKind.JsxSpreadAttribute).some(spread =>
-        spread.getText().toLowerCase().includes('popover')
-      );
+    const hasPopover = project.getSourceFiles().some((sf) => {
+      const hasAttr = sf
+        .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+        .some((attr) => {
+          const name = attr.getNameNode().getText().toLowerCase();
+          return name === "popover" || name === "popovertarget";
+        });
+      const hasSpread = sf
+        .getDescendantsOfKind(SyntaxKind.JsxSpreadAttribute)
+        .some((spread) => spread.getText().toLowerCase().includes("popover"));
       return hasAttr || hasSpread;
     });
     expect(hasPopover).toBe(true);
   });
 
-  test('Expectation 26: Credential inputs specify current-password or new-password tokens', () => {
+  test("Expectation 26: Credential inputs specify current-password or new-password tokens", () => {
     const project = getJsProject(targetFiles);
-    const hasPasswordAutocomplete = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-        attr.getNameNode().getText().toLowerCase() === 'autocomplete' &&
-        /\b(current-password|new-password)\b/.test(attr.getInitializer()?.getText() ?? '')
-      )
-    );
+    const hasPasswordAutocomplete = project
+      .getSourceFiles()
+      .some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+          .some(
+            (attr) =>
+              attr.getNameNode().getText().toLowerCase() === "autocomplete" &&
+              /\b(current-password|new-password)\b/.test(
+                attr.getInitializer()?.getText() ?? "",
+              ),
+          ),
+      );
     expect(hasPasswordAutocomplete).toBe(true);
   });
 
-  test('Expectation 27: Form inputs pair autocomplete tokens with matching type and inputmode attributes', () => {
+  test("Expectation 27: Form inputs pair autocomplete tokens with matching type and inputmode attributes", () => {
     const project = getJsProject(targetFiles);
-    const hasInputMode = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-        attr.getNameNode().getText().toLowerCase() === 'inputmode'
-      )
+    const hasInputMode = project
+      .getSourceFiles()
+      .some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+          .some(
+            (attr) =>
+              attr.getNameNode().getText().toLowerCase() === "inputmode",
+          ),
+      );
+    const hasSearchType = project.getSourceFiles().some((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(
+        (attr) =>
+          attr.getNameNode().getText().toLowerCase() === "type" &&
+          attr
+            .getInitializer()
+            ?.getText()
+            .replace(/['"{}]/g, "")
+            .toLowerCase() === "search",
+      ),
     );
-    const hasSearchType = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-        attr.getNameNode().getText().toLowerCase() === 'type' &&
-        attr.getInitializer()?.getText().replace(/['"{}]/g, '').toLowerCase() === 'search'
-      )
+    const hasUsernameAutocomplete = project
+      .getSourceFiles()
+      .some((sf) =>
+        sf
+          .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+          .some(
+            (attr) =>
+              attr.getNameNode().getText().toLowerCase() === "autocomplete" &&
+              /\b(username|email)\b/.test(
+                attr.getInitializer()?.getText() ?? "",
+              ),
+          ),
+      );
+    expect(hasInputMode || (hasSearchType && hasUsernameAutocomplete)).toBe(
+      true,
     );
-    const hasUsernameAutocomplete = project.getSourceFiles().some(sf =>
-      sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-        attr.getNameNode().getText().toLowerCase() === 'autocomplete' &&
-        /\b(username|email)\b/.test(attr.getInitializer()?.getText() ?? '')
-      )
-    );
-    expect(hasInputMode || (hasSearchType && hasUsernameAutocomplete)).toBe(true);
   });
-
 });

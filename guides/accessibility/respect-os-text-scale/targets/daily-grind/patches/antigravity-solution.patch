@@ -28,7 +28,7 @@ index 66c9173..b24e144 100644
 -      letter-spacing: 1px;
 +      letter-spacing: 0.0625em;
      }
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: wrap;
@@ -36,7 +36,7 @@ index 66c9173..b24e144 100644
 +      gap: 1.25rem;
        list-style: none;
      }
- 
+
 -    nav ul li {
 -      margin-left: 20px;
 -    }
@@ -46,7 +46,7 @@ index 66c9173..b24e144 100644
        text-decoration: none;
 @@ -67,14 +69,15 @@
      }
- 
+
      .logout-link {
 +      display: inline-block;
        border: 1px solid var(--accent);
@@ -54,7 +54,7 @@ index 66c9173..b24e144 100644
 +      padding: 0.3125rem 0.75rem;
        border-radius: 4px;
      }
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -69,13 +69,13 @@ index 66c9173..b24e144 100644
 -      padding: 0 20px;
 +      padding: 2rem 1.25rem;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: clamp(2rem, 1.25rem + 2vw, 3rem);
        margin-bottom: 1rem;
      }
- 
+
 +    .hero p {
 +      font-size: 1.125rem;
 +    }
@@ -95,7 +95,7 @@ index 66c9173..b24e144 100644
 +      text-align: center;
 +      margin-bottom: 1.25rem;
      }
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -105,7 +105,7 @@ index 66c9173..b24e144 100644
 +      gap: 1.25rem;
 +      margin-top: 1.25rem;
      }
- 
+
      .card {
        background: white;
 -      padding: 20px;
@@ -119,14 +119,14 @@ index 66c9173..b24e144 100644
 +      justify-content: space-between;
 +      align-items: center;
      }
- 
+
      .card h3 {
 -      margin-bottom: 10px;
 +      font-size: 1.25rem;
 +      margin-bottom: 0.625rem;
        color: var(--primary);
      }
- 
+
 +    .card p {
 +      font-size: 1rem;
 +    }
@@ -144,7 +144,7 @@ index 66c9173..b24e144 100644
 +      margin-top: 1rem;
        transition: background 0.3s;
      }
- 
+
 @@ -138,20 +162,36 @@
      footer {
        background: var(--secondary);
@@ -154,7 +154,7 @@ index 66c9173..b24e144 100644
 +      padding: 2.5rem 1.25rem;
 +      margin-top: 2.5rem;
      }
- 
+
      .footer-links {
 -      margin-bottom: 20px;
 +      display: flex;
@@ -163,7 +163,7 @@ index 66c9173..b24e144 100644
 +      gap: 0.625rem;
 +      margin-bottom: 1.25rem;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      margin: 0 0.625rem;
@@ -185,9 +185,9 @@ index 66c9173..b24e144 100644
 +    }
    </style>
  </head>
- 
+
 @@ -176,7 +216,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

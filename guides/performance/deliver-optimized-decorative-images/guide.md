@@ -1,7 +1,7 @@
 ---
 name: deliver-optimized-decorative-images
 description: Deliver optimized decorative images (such as backgrounds, UI icons, or complex masks) by simultaneously providing next-generation image formats (like AVIF or WebP) alongside multiple pixel densities (like 1x and 2x) so the browser can dynamically negotiate the best combination of file size and visual quality for the user's device capabilities.
-web-feature-ids: 
+web-feature-ids:
   - image-set
 ---
 
@@ -13,12 +13,12 @@ Delivering optimized decorative images via CSS improves perceived performance wi
 
 ### Implementation
 
-The `image-set()` function is used anywhere CSS expects an `<image>` value, most commonly in `background-image`, `content`, or `mask-image`. Note that while providing both the image format via `type()` and the resolution (like `1x` or `2x`) yields the best results, both of these arguments are optional. 
+The `image-set()` function is used anywhere CSS expects an `<image>` value, most commonly in `background-image`, `content`, or `mask-image`. Note that while providing both the image format via `type()` and the resolution (like `1x` or `2x`) yields the best results, both of these arguments are optional.
 
 ```css
 .gallery-item {
   /* Provide multiple resolutions and formats using image-set() */
-  /* MANDATORY: Always order your formats from most optimized (AVIF) to least optimized (JPEG/PNG). 
+  /* MANDATORY: Always order your formats from most optimized (AVIF) to least optimized (JPEG/PNG).
      The browser will stop at the first supported format. */
   background-image: image-set(
     url("gallery.avif") type("image/avif") 1x,
@@ -28,7 +28,7 @@ The `image-set()` function is used anywhere CSS expects an `<image>` value, most
     url("gallery.jpg") type("image/jpeg") 1x,
     url("gallery-2x.jpg") type("image/jpeg") 2x
   );
-  
+
   /* Standard decorative properties */
   background-size: cover;
   background-position: center;
@@ -39,13 +39,13 @@ The `image-set()` function is used anywhere CSS expects an `<image>` value, most
 
 {{ BASELINE_STATUS("image-set") }}
 
-For older browsers that do not support the `image-set()` function, you **MUST** provide a standard image declaration *before* the `image-set()` rule. This progressive enhancement strategy relies on CSS's cascading nature: unsupported rules are ignored.
+For older browsers that do not support the `image-set()` function, you **MUST** provide a standard image declaration _before_ the `image-set()` rule. This progressive enhancement strategy relies on CSS's cascading nature: unsupported rules are ignored.
 
 ```css
 .gallery-item {
   /* MANDATORY: Fallback for browsers that do not support image-set() */
   background-image: url("gallery.jpg");
-  
+
   /* Modern browsers will apply this and override the fallback */
   background-image: image-set(
     url("gallery.avif") type("image/avif") 1x,

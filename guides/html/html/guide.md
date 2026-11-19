@@ -38,7 +38,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DON'T** use generic `<div>` or `<span>` when semantic elements exist, for instance for interactive elements, headings, or independently reusable self-contained content.
 - **DON'T** use boolean attributes with redundant values (e.g., use `disabled`, not `disabled="disabled"`).
 - **DON'T** use generic elements with added ARIA roles or states when native elements with built-in semantics and behavior exist.
-- **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement. 
+- **DON'T** change the native semantics of elements with ARIA unless it is a critical requirement.
 - **DON'T** use `role="presentation"` or `aria-hidden="true"` on focusable elements or their parents and ancestors.
 - **DON'T** disable page zooming capabilities.
 - **DON'T** use more than one `banner`, `main`, or `contentinfo` landmark per page
@@ -48,37 +48,35 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard | Platform</title>
-</head>
-<body>
-  <header>
-    <nav>
-      <ul>
-        <li><a href="#">About</a></li>
-        <li><a href="#">Contact</a></li>
-      </ul>
-    </nav>
-  </header>
-  <main>
-     <h1>Analytics</h1>
-    <search>
-      <form action="/filter" method="GET">
-        <label for="search-input">Scan items:</label>
-        <input type="search" id="search-input" name="q">
-        <button type="submit">Search</button>
-      </form>
-    </search>
-    <article>
-      <h2>First post</h2>
-    </article>
-  </main>
-  <footer>
-    Platform - Policies and legal information
-  </footer>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Platform</title>
+  </head>
+  <body>
+    <header>
+      <nav>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main>
+      <h1>Analytics</h1>
+      <search>
+        <form action="/filter" method="GET">
+          <label for="search-input">Scan items:</label>
+          <input type="search" id="search-input" name="q" />
+          <button type="submit">Search</button>
+        </form>
+      </search>
+      <article>
+        <h2>First post</h2>
+      </article>
+    </main>
+    <footer>Platform - Policies and legal information</footer>
+  </body>
 </html>
 ```
 
@@ -105,29 +103,38 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 <!-- Quote with attribution using Figure -->
 <figure>
   <blockquote cite="https://html.spec.whatwg.org/">
-    <p>The figure element represents some flow content, optionally with a caption, that is self-contained and is typically referenced as a single unit from the main flow of the document.</p>
+    <p>
+      The figure element represents some flow content, optionally with a
+      caption, that is self-contained and is typically referenced as a single
+      unit from the main flow of the document.
+    </p>
   </blockquote>
   <figcaption>
-    Definition of the &lt;figure&gt; element from the <cite>HTML Living Standard</cite>
+    Definition of the &lt;figure&gt; element from the
+    <cite>HTML Living Standard</cite>
   </figcaption>
 </figure>
 
 <!-- Image with caption -->
 <figure>
-  <img 
-    src="architecture-diagram.webp" 
+  <img
+    src="architecture-diagram.webp"
     alt="Diagram showing the flow between Client, API Gateway, and Microservices"
     width="800"
     height="450"
     loading="lazy"
-  >
+  />
   <figcaption>Figure 1: High-level system architecture overview.</figcaption>
 </figure>
 
 <!-- Code block with accessibility and language hint -->
 <figure>
   <figcaption id="code-block-caption">Example configuration:</figcaption>
-  <pre role="region" aria-labelledby="code-block-caption" tabindex="0"><code class="language-json">
+  <pre
+    role="region"
+    aria-labelledby="code-block-caption"
+    tabindex="0"
+  ><code class="language-json">
 {
   "name": "gemini-cli",
   "version": "1.0.0",
@@ -149,7 +156,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 - **DO** apply `loading="lazy"` to off-screen images and iframes to defer bandwidth.
 - **DO** specify `width` and `height` on all `<img>` tags to preserve aspect ratio and prevent Layout Shifts (CLS).
 - **DO** use the `srcset` attribute on `<img>`s for adding multiple versions of the same image at different sizes.
-- **DO** use the `<picture>` element with a fallback `<img>` for more fine-grained image control like switching between image formats, image sizes, and cropping images at different device sizes. 
+- **DO** use the `<picture>` element with a fallback `<img>` for more fine-grained image control like switching between image formats, image sizes, and cropping images at different device sizes.
 
 - **DON'T** apply `loading="lazy"` to above-the-fold or hero images. This delays LCP.
 - **DON'T** overuse `fetchpriority="high"`; prioritization is a zero-sum mechanism. Use `fetchpriority="low"` to demote non-critical trackers or later carousel items.
@@ -158,54 +165,48 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ```html
 <!-- High-priority hero image with responsive sizes -->
-<img 
-  src="hero-large.webp" 
+<img
+  src="hero-large.webp"
   srcset="hero-small.webp 480w, hero-medium.webp 800w, hero-large.webp 1200w"
   sizes="(max-width: 600px) 100vw, (max-width: 1200px) 80vw, 70vw"
-  alt="Main product view" 
-  fetchpriority="high" 
-  width="1200" 
+  alt="Main product view"
+  fetchpriority="high"
+  width="1200"
   height="600"
->
+/>
 
 <!-- Art direction and format switching with <picture> -->
 <picture>
   <!-- Mobile Art Direction: Different aspect ratio (square) and format (AVIF) -->
-  <source 
-    media="(max-width: 600px)" 
-    srcset="hero-mobile.avif 1x, hero-mobile-2x.avif 2x" 
+  <source
+    media="(max-width: 600px)"
+    srcset="hero-mobile.avif 1x, hero-mobile-2x.avif 2x"
     type="image/avif"
-    width="600" 
+    width="600"
     height="600"
-  >
-  <source 
-    media="(max-width: 600px)" 
+  />
+  <source
+    media="(max-width: 600px)"
     srcset="hero-mobile.webp 1x, hero-mobile-2x.webp 2x"
-    width="600" 
+    width="600"
     height="600"
-  >
-  
+  />
+
   <!-- Desktop: Modern format for primary layout -->
-  <source srcset="hero-desktop.avif" type="image/avif">
+  <source srcset="hero-desktop.avif" type="image/avif" />
 
   <!-- Fallback img defines the default aspect ratio (2:1) -->
-  <img 
-    src="hero-desktop.webp" 
-    alt="Platform dashboard overview" 
-    width="1200" 
+  <img
+    src="hero-desktop.webp"
+    alt="Platform dashboard overview"
+    width="1200"
     height="600"
     loading="lazy"
-  >
+  />
 </picture>
 
 <!-- Low-priority decorative footer image -->
-<img 
-  src="footer-art.png" 
-  alt="" 
-  loading="lazy" 
-  width="200" 
-  height="100"
->
+<img src="footer-art.png" alt="" loading="lazy" width="200" height="100" />
 ```
 
 ## 4. Native Overlays: Dialogs and Popovers
@@ -213,6 +214,7 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 ### Guidelines
 
 See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
+
 - **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
 - **DO** provide a visible control for closing modal overlays, so that people using voice control software can easily determine how to dismiss the modal dialog.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
@@ -245,12 +247,12 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 <script>
   const dialog = document.getElementById("fav-modal");
   const openModal = document.getElementById("show-dialog");
-  
+
   // Show modal dialog
-  openModal.addEventListener('click', () => dialog.showModal());
-  
+  openModal.addEventListener("click", () => dialog.showModal());
+
   // Listen for the 'close' event to retrieve the user's choice (returnValue)
-  dialog.addEventListener('close', () => {
+  dialog.addEventListener("close", () => {
     console.log(dialog.returnValue); // "confirm" or "cancel"
   });
 </script>
@@ -258,11 +260,11 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 ### Native UI Overlay & Disclosure Matrix
 
-| Feature | Modality | Focus | Dismiss Mechanism | Use Case |
-| :--- | :--- | :--- | :--- | :--- |
-| **`<dialog>`** | Modal / Non-modal | Automatic trap (Modal) | Esc / Form / `closedby` | Critical Actions, Settings |
-| **`[popover]`** | Non-modal | Standard Tab flow | Light-dismiss (Click outside) | Menus, Tooltips, Toasts |
-| **`<details>`** | Inline Disclosure | Standard Tab flow | Toggle summary | Accordions, FAQs |
+| Feature         | Modality          | Focus                  | Dismiss Mechanism             | Use Case                   |
+| :-------------- | :---------------- | :--------------------- | :---------------------------- | :------------------------- |
+| **`<dialog>`**  | Modal / Non-modal | Automatic trap (Modal) | Esc / Form / `closedby`       | Critical Actions, Settings |
+| **`[popover]`** | Non-modal         | Standard Tab flow      | Light-dismiss (Click outside) | Menus, Tooltips, Toasts    |
+| **`<details>`** | Inline Disclosure | Standard Tab flow      | Toggle summary                | Accordions, FAQs           |
 
 **Heuristic Rule**: Use `<dialog>` for interruptions requiring user action, `popover` for transient info, and `<details>` for inline content expansion.
 
@@ -272,7 +274,7 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 
 - **DO** use `<details>` and `<summary>` for a native disclosure pattern without JS.
 - **DO** use `<details>` and `<summary>` for native accordion patterns without JS. For exclusive accordions, use the `name` attribute on the `<details>` elements. Wrap the entire accordion in a `<section>` element with an accessible name provided using either `aria-labelledby` (referencing the `id` attribute of the element that names this accordion) or `aria-label`
-- **DO** place `<summary>` as the *first* child of `<details>`.
+- **DO** place `<summary>` as the _first_ child of `<details>`.
 - If headings must be used within a `<summary>`, consider if the heading is essential for understanding or navigating the document structure. If it is, use a more robust disclosure approach that allows wrapping the disclosure trigger with the heading (e.g. `<h2><button type="button" aria-expanded="false" aria-controls="significant-section-content">Significant section</button></h2>`). This ensures the heading semantics aren’t lost, and the button and its state are announced.
 - **DO** use `details[open]` attribute for styling expanded states.
 - **DO** use `details::details-content` for styling the contents of the `<details>` element.
@@ -326,7 +328,8 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 ```
 
 ```css
-[inert], [inert] * {
+[inert],
+[inert] * {
   opacity: 0.5;
   cursor: default;
   user-select: none;
@@ -355,10 +358,10 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
   <fieldset>
     <legend>Address Information</legend>
     <label for="city">City:</label>
-    <input type="text" id="city" list="cities" autocomplete="address-level2">
+    <input type="text" id="city" list="cities" autocomplete="address-level2" />
     <datalist id="cities">
-      <option value="New York">
-      <option value="London">
+      <option value="New York"></option>
+      <option value="London"></option>
     </datalist>
   </fieldset>
 </form>
@@ -371,7 +374,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 - **DO** set `width` and `height` to prevent layout shifts (CLS) on `<video>` elements.
 - **DO** provide a `poster` image fallback for videos.
 - **DO** include subtitles and captions with `<track>`.
-- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted to make sure the video is not focusable.  
+- **DO** ensure background videos are `muted`, provide users with full control over playback, and use `role="none"` or `aria-hidden="true"`. The `controls` attribute must also be omitted to make sure the video is not focusable.
 
 - **DON'T** rely on JS for basic video controls if native `controls` attribute is sufficient.
 - **DON'T** apply `role="none"` or `aria-hidden="true"` to focusable elements (such as embedded interactive `<iframe>` components). Hiding elements from the assistive technology tree while leaving them accessible to sequential keyboard navigation violates core accessibility heuristics. The background video exception holds solely because omitting the `controls` attribute renders the `<video>` element fully non-focusable.
@@ -380,15 +383,10 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 ### Code Example
 
 ```html
-<video 
-  controls 
-  width="800" 
-  height="450" 
-  poster="poster.webp"
->
-  <source src="intro.webm" type="video/webm">
-  <source src="intro.mp4" type="video/mp4">
-  <track src="caps.vtt" kind="captions" srclang="en" label="English">
+<video controls width="800" height="450" poster="poster.webp">
+  <source src="intro.webm" type="video/webm" />
+  <source src="intro.mp4" type="video/mp4" />
+  <track src="caps.vtt" kind="captions" srclang="en" label="English" />
 </video>
 ```
 
@@ -409,15 +407,21 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
 <body>
   <!-- Progress with style-driven color data -->
   <label for="upload-progress">Upload status:</label>
-  <progress id="upload-progress" class="loading-bar" value="0" max="100" style="--brand-hue: 200;"></progress>
+  <progress
+    id="upload-progress"
+    class="loading-bar"
+    value="0"
+    max="100"
+    style="--brand-hue: 200;"
+  ></progress>
 
   <script>
     const updateProgress = (percent, hue) => {
-      const bar = document.querySelector('.loading-bar');
+      const bar = document.querySelector(".loading-bar");
       bar.value = percent;
-      
-      // Update dynamic style variable 
-      if (hue) bar.style.setProperty('--brand-hue', hue);
+
+      // Update dynamic style variable
+      if (hue) bar.style.setProperty("--brand-hue", hue);
     };
 
     // Example: Move to 85% and shift color to green (120)
@@ -425,6 +429,7 @@ See {{ GUIDE_REF("forms") }} for more details on creating modern web forms.
   </script>
 </body>
 ```
+
 ```css
 .loading-bar {
   accent-color: hsl(var(--brand-hue, 200) 80% 50%);

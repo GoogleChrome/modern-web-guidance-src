@@ -1,9 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import { DatabaseSync } from 'node:sqlite';
-import { findSecretLeaks, getHostSecrets, sanitizeTextSecrets } from './secret-guard.ts';
+import fs from "fs";
+import path from "path";
+import { DatabaseSync } from "node:sqlite";
+import {
+  findSecretLeaks,
+  getHostSecrets,
+  sanitizeTextSecrets,
+} from "./secret-guard.ts";
 
-const DEFAULT_PROD_BASE = 'https://trajectory-dev.corp.goog/';
+const DEFAULT_PROD_BASE = "https://trajectory-dev.corp.goog/";
 
 function vacuumSqliteCopy(srcFile: string, destFile: string): void {
   const tmpDest = `${destFile}.tmp`;
@@ -41,8 +45,8 @@ export function exportTrajectories(
 
     try {
       let fileBuffer: Buffer;
-      const isSqlite = fileName.endsWith('.db') || fileName.endsWith('.sqlite');
-      if (isSqlite || fileName.endsWith('.pb')) {
+      const isSqlite = fileName.endsWith(".db") || fileName.endsWith(".sqlite");
+      if (isSqlite || fileName.endsWith(".pb")) {
         if (isSqlite) vacuumSqliteCopy(srcFile, destFile);
         else fs.copyFileSync(srcFile, destFile);
 
@@ -50,21 +54,33 @@ export function exportTrajectories(
         const leaks = findSecretLeaks(fileBuffer, extraSecrets);
         if (leaks.length > 0) {
           fs.rmSync(destFile, { force: true });
-          firstSecurityError ??= new Error(`Refused to export trajectory ${fileName}: detected ${leaks.join(', ')}`);
-          console.error(`❌ Refused to export ${fileName}: detected ${leaks.join(', ')}`);
+          firstSecurityError ??= new Error(
+            `Refused to export trajectory ${fileName}: detected ${leaks.join(", ")}`,
+          );
+          console.error(
+            `❌ Refused to export ${fileName}: detected ${leaks.join(", ")}`,
+          );
           continue;
         }
       } else {
-        const sanitized = sanitizeTextSecrets(fs.readFileSync(srcFile, 'utf8'), extraSecrets);
-        fs.writeFileSync(destFile, sanitized, 'utf8');
-        fileBuffer = Buffer.from(sanitized, 'utf8');
+        const sanitized = sanitizeTextSecrets(
+          fs.readFileSync(srcFile, "utf8"),
+          extraSecrets,
+        );
+        fs.writeFileSync(destFile, sanitized, "utf8");
+        fileBuffer = Buffer.from(sanitized, "utf8");
       }
       console.log(`Copied trajectory: ${fileName} to ${targetDir}`);
 
-      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db|sqlite)$/, '');
-      const htmlContent = generateExportHtml(new Uint8Array(fileBuffer), fileName);
-      const htmlFileName = trajectoryId.startsWith('session-') ? `${trajectoryId}.html` : `session-${trajectoryId}.html`;
-      fs.writeFileSync(path.join(targetDir, htmlFileName), htmlContent, 'utf8');
+      const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db|sqlite)$/, "");
+      const htmlContent = generateExportHtml(
+        new Uint8Array(fileBuffer),
+        fileName,
+      );
+      const htmlFileName = trajectoryId.startsWith("session-")
+        ? `${trajectoryId}.html`
+        : `session-${trajectoryId}.html`;
+      fs.writeFileSync(path.join(targetDir, htmlFileName), htmlContent, "utf8");
       console.log(`Generated HTML export: ${htmlFileName}`);
     } catch (e) {
       console.error(`Failed to export trajectory ${fileName}:`, e);
@@ -76,10 +92,14 @@ export function exportTrajectories(
   }
 }
 
-export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, prodBase = DEFAULT_PROD_BASE): string {
-  const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db|sqlite)$/, '');
+export function generateExportHtml(
+  fileBuffer: Uint8Array,
+  fileName: string,
+  prodBase = DEFAULT_PROD_BASE,
+): string {
+  const trajectoryId = fileName.replace(/\.(json|jsonl|pb|db|sqlite)$/, "");
   const title = `Trajectory - ${trajectoryId}`;
-  const base64String = Buffer.from(fileBuffer).toString('base64');
+  const base64String = Buffer.from(fileBuffer).toString("base64");
 
   return `<!DOCTYPE html>
 <html lang="en">

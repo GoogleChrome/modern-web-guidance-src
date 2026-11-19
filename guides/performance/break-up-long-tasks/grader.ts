@@ -1,13 +1,18 @@
-import { test, expect, type Page } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect, type Page } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
-const targetFile = path.resolve(process.env.TARGET_FILE || path.join(import.meta.dirname, 'demo.html'));
+const targetFile = path.resolve(
+  process.env.TARGET_FILE || path.join(import.meta.dirname, "demo.html"),
+);
 const targetDir = path.dirname(targetFile);
 const targetFileName = path.basename(targetFile);
 const targetUrl = `http://localhost/${targetFileName}`;
 
-async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolean }) {
+async function installYieldHarness(
+  page: Page,
+  opts?: { deleteScheduler?: boolean },
+) {
   await page.addInitScript((deleteScheduler: boolean) => {
     const w = window as any;
     if (deleteScheduler && w.scheduler) {
@@ -66,7 +71,9 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
         recordYield();
         const pause = pauseForInterleaving();
         if (pause) await pause;
-        return origYield ? origYield.apply(this) : new Promise((r) => origSetTimeout(r, 0));
+        return origYield
+          ? origYield.apply(this)
+          : new Promise((r) => origSetTimeout(r, 0));
       };
     }
 
@@ -76,13 +83,10 @@ async function installYieldHarness(page: Page, opts?: { deleteScheduler?: boolea
         recordYield();
         if (w.__simActive && w.__yieldCount <= 6) {
           const pauseStart = origPerfNow();
-          return origSetTimeout(
-            () => {
-              virtualOffset -= origPerfNow() - pauseStart;
-              if (typeof cb === 'function') cb(...args);
-            },
-            25,
-          );
+          return origSetTimeout(() => {
+            virtualOffset -= origPerfNow() - pauseStart;
+            if (typeof cb === "function") cb(...args);
+          }, 25);
         }
       }
       return origSetTimeout(cb, delay, ...args);
@@ -103,22 +107,26 @@ async function startSimulation(page: Page) {
     w.__simActive = true;
     w.__btnWasDisabled = false;
 
-    const byId = document.getElementById('start-btn') as HTMLButtonElement | null;
+    const byId = document.getElementById(
+      "start-btn",
+    ) as HTMLButtonElement | null;
     const btn =
       byId ||
-      Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
+      Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(
         (b) => {
           if (
-            b.classList.contains('nav-cta') ||
-            b.classList.contains('btn-primary') ||
-            b.classList.contains('btn-ghost') ||
-            b.classList.contains('card-btn') ||
-            b.closest('dialog')
+            b.classList.contains("nav-cta") ||
+            b.classList.contains("btn-primary") ||
+            b.classList.contains("btn-ghost") ||
+            b.classList.contains("card-btn") ||
+            b.closest("dialog")
           ) {
             return false;
           }
-          const desc = `${b.id} ${b.className} ${b.textContent || ''}`;
-          return /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(desc);
+          const desc = `${b.id} ${b.className} ${b.textContent || ""}`;
+          return /start|simulat|run|process|calculat|analyz|blend|batch|recipe|heavy/i.test(
+            desc,
+          );
         },
       );
     w.__simBtn = btn;
@@ -135,12 +143,14 @@ async function startSimulation(page: Page) {
           w.__simActive = false;
         }
       });
-      btnObs.observe(btn, { attributes: true, attributeFilter: ['disabled'] });
+      btnObs.observe(btn, { attributes: true, attributeFilter: ["disabled"] });
     }
 
-    const output = document.getElementById('output');
+    const output = document.getElementById("output");
     const isCompleteText = (text: string | null | undefined) =>
-      Boolean(text && /done|complete|finished|all\s+\w*\s*processed/i.test(text));
+      Boolean(
+        text && /done|complete|finished|all\s+\w*\s*processed/i.test(text),
+      );
 
     const candidateEls = Array.from(
       document.querySelectorAll<HTMLElement>(
@@ -159,7 +169,11 @@ async function startSimulation(page: Page) {
         }
       });
       for (const el of candidateEls) {
-        textObs.observe(el, { childList: true, characterData: true, subtree: true });
+        textObs.observe(el, {
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
       }
     }
 
@@ -179,9 +193,11 @@ async function startSimulation(page: Page) {
 
     btn?.click();
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener("click", (e) => {
       if (btn && (e.target === btn || btn.contains(e.target as Node))) return;
-      const isDone = w.__hasFinished || (output && /done|complete|finished/i.test(output.textContent || ''));
+      const isDone =
+        w.__hasFinished ||
+        (output && /done|complete|finished/i.test(output.textContent || ""));
       if (w.__simActive && !isDone) {
         w.clickedWhileRunning = true;
       }
@@ -204,7 +220,11 @@ async function waitForSimulationDone(page: Page) {
         const w = window as any;
         if (w.__hasFinished) return true;
 
-        if (w.__yieldCount > 0 && w.__lastRealYieldTime && w.__origPerfNow() - w.__lastRealYieldTime > 150) {
+        if (
+          w.__yieldCount > 0 &&
+          w.__lastRealYieldTime &&
+          w.__origPerfNow() - w.__lastRealYieldTime > 150
+        ) {
           w.__hasFinished = true;
           w.__simActive = false;
           return true;
@@ -220,7 +240,7 @@ async function waitForSimulationDone(page: Page) {
           '#output, [role="status"], [aria-live], #status, .status, #simulation-status, #result-summary, #results, #simulation-results, #table-container',
         );
         for (const el of outputEls) {
-          const text = el.textContent || '';
+          const text = el.textContent || "";
           if (/done|complete|finished|all\s+\w*\s*processed/i.test(text)) {
             w.__hasFinished = true;
             w.__simActive = false;
@@ -237,20 +257,25 @@ async function waitForSimulationDone(page: Page) {
   }
 }
 
-test.describe('Scheduler Yield Tests', () => {
+test.describe("Scheduler Yield Tests", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/**', async (route) => {
-      const reqPath = decodeURIComponent(new URL(route.request().url()).pathname);
-      const resolved = path.join(targetDir, reqPath === '/' ? targetFileName : reqPath.replace(/^\//, ''));
+    await page.route("http://localhost/**", async (route) => {
+      const reqPath = decodeURIComponent(
+        new URL(route.request().url()).pathname,
+      );
+      const resolved = path.join(
+        targetDir,
+        reqPath === "/" ? targetFileName : reqPath.replace(/^\//, ""),
+      );
       if (fs.existsSync(resolved) && fs.statSync(resolved).isFile()) {
         const ext = path.extname(resolved).toLowerCase();
         const contentType =
-          ext === '.html'
-            ? 'text/html'
-            : ext === '.css'
-              ? 'text/css'
-              : ext === '.js' || ext === '.mjs'
-                ? 'application/javascript'
+          ext === ".html"
+            ? "text/html"
+            : ext === ".css"
+              ? "text/css"
+              : ext === ".js" || ext === ".mjs"
+                ? "application/javascript"
                 : undefined;
         await route.fulfill({ path: resolved, contentType });
       } else {
@@ -259,36 +284,48 @@ test.describe('Scheduler Yield Tests', () => {
     });
   });
 
-  test('The application processes heavy computation asynchronously', async ({ page }) => {
+  test("The application processes heavy computation asynchronously", async ({
+    page,
+  }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const rafTicksWhileRunning = await page.evaluate(() => (window as any).rafTicksWhileRunning);
+    const rafTicksWhileRunning = await page.evaluate(
+      () => (window as any).rafTicksWhileRunning,
+    );
     expect(rafTicksWhileRunning).toBeGreaterThan(0);
   });
 
-  test('The application yields control back to the main thread periodically during processing', async ({ page }) => {
+  test("The application yields control back to the main thread periodically during processing", async ({
+    page,
+  }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const ticks = await page.evaluate(() => (window as any).rafTicksWhileRunning);
+    const ticks = await page.evaluate(
+      () => (window as any).rafTicksWhileRunning,
+    );
     expect(ticks).toBeGreaterThan(0);
 
     const yieldCount = await page.evaluate(() => (window as any).__yieldCount);
     expect(yieldCount).toBeGreaterThan(1);
   });
 
-  test('The application uses a time-based deadline of around 50ms to determine when to yield', async ({ page }) => {
+  test("The application uses a time-based deadline of around 50ms to determine when to yield", async ({
+    page,
+  }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const timestamps: number[] = await page.evaluate(() => (window as any).yieldTimestamps);
+    const timestamps: number[] = await page.evaluate(
+      () => (window as any).yieldTimestamps,
+    );
     expect(timestamps.length).toBeGreaterThan(1);
 
     const intervals: number[] = [];
@@ -296,39 +333,52 @@ test.describe('Scheduler Yield Tests', () => {
       intervals.push(timestamps[i] - timestamps[i - 1]);
     }
 
-    const avgInterval = intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
+    const avgInterval =
+      intervals.reduce((sum, val) => sum + val, 0) / intervals.length;
     expect(avgInterval).toBeGreaterThanOrEqual(25);
     expect(avgInterval).toBeLessThanOrEqual(110);
   });
 
-  test('The application uses scheduler.yield if available', async ({ page }) => {
+  test("The application uses scheduler.yield if available", async ({
+    page,
+  }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const schedulerYieldCalled = await page.evaluate(() => (window as any).schedulerYieldCalled);
+    const schedulerYieldCalled = await page.evaluate(
+      () => (window as any).schedulerYieldCalled,
+    );
     expect(schedulerYieldCalled).toBe(true);
   });
 
-  test('The application falls back to setTimeout when scheduler.yield is not supported', async ({ page }) => {
+  test("The application falls back to setTimeout when scheduler.yield is not supported", async ({
+    page,
+  }) => {
     await installYieldHarness(page, { deleteScheduler: true });
     await page.goto(targetUrl);
     await startSimulation(page);
     await waitForSimulationDone(page);
 
-    const setTimeoutFallbackCalled = await page.evaluate(() => (window as any).setTimeoutFallbackCalled);
+    const setTimeoutFallbackCalled = await page.evaluate(
+      () => (window as any).setTimeoutFallbackCalled,
+    );
     expect(setTimeoutFallbackCalled).toBe(true);
   });
 
-  test('The application remains responsive to user interaction while processing', async ({ page }) => {
+  test("The application remains responsive to user interaction while processing", async ({
+    page,
+  }) => {
     await installYieldHarness(page);
     await page.goto(targetUrl);
     await startSimulation(page);
     await page.mouse.click(1, 1);
     await waitForSimulationDone(page);
 
-    const clickedWhileRunning = await page.evaluate(() => (window as any).clickedWhileRunning);
+    const clickedWhileRunning = await page.evaluate(
+      () => (window as any).clickedWhileRunning,
+    );
     expect(clickedWhileRunning).toBe(true);
   });
 });

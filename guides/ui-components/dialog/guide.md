@@ -74,8 +74,10 @@ Use `<dialog popover>` for a top-layer panel with popover dismissal (`auto` ligh
 <button type="button" popovertarget="find">Find</button>
 <dialog id="find" popover="manual" aria-labelledby="find-title">
   <h2 id="find-title">Find</h2>
-  <input type="search" aria-label="Search">
-  <button type="button" popovertarget="find" popovertargetaction="hide">Close</button>
+  <input type="search" aria-label="Search" />
+  <button type="button" popovertarget="find" popovertargetaction="hide">
+    Close
+  </button>
 </dialog>
 ```
 
@@ -162,18 +164,27 @@ The default depends on how the dialog is opened. If `closedby` is absent or inva
 Without `closedby`, a modal still closes with `Esc` and the back gesture; only click-outside is lost, so this is graceful degradation. `closedby="none"` is ignored the same way: `Esc` fires `cancel` and then closes the dialog. Keep the unsaved-changes guard in a `cancel` handler, not in `closedby="none"` alone, so it also protects where `closedby` is missing. If your Baseline target requires light dismiss, add this where `closedby` is missing:
 
 ```js
-if (!('closedBy' in HTMLDialogElement.prototype)) {
+if (!("closedBy" in HTMLDialogElement.prototype)) {
   // Test the pointer position, not event.target: the <dialog> is also the target for its own
   // padding and the gaps between its children, so a target check would close on those clicks
   const outside = (e, dialog) => {
     const r = dialog.getBoundingClientRect();
-    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    return (
+      e.clientX < r.left ||
+      e.clientX > r.right ||
+      e.clientY < r.top ||
+      e.clientY > r.bottom
+    );
   };
   for (const dialog of document.querySelectorAll('dialog[closedby="any"]')) {
     let pressedOutside = false;
-    dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
+    dialog.addEventListener("pointerdown", (e) => {
+      pressedOutside = outside(e, dialog);
+    });
     // Require the press and the release outside, so a text-selection drag that ends on the backdrop does not dismiss
-    dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
+    dialog.addEventListener("pointerup", (e) => {
+      if (pressedOutside && outside(e, dialog)) dialog.close();
+    });
   }
 }
 ```
@@ -192,8 +203,8 @@ If your Baseline target does not include Invoker Commands, keep the same markup 
 
 ```js
 // MANDATORY: feature detect on HTMLButtonElement.prototype and load only when native support is missing
-if (!('commandForElement' in HTMLButtonElement.prototype)) {
-  import('invokers-polyfill'); // npm install invokers-polyfill
+if (!("commandForElement" in HTMLButtonElement.prototype)) {
+  import("invokers-polyfill"); // npm install invokers-polyfill
 }
 ```
 

@@ -1,4 +1,10 @@
-import { isGrade, isQueryScope, isRecord, type GuideGrade, type QueryScope } from "./dataset.ts";
+import {
+  isGrade,
+  isQueryScope,
+  isRecord,
+  type GuideGrade,
+  type QueryScope,
+} from "./dataset.ts";
 
 export const RUBRIC_VERSION = "v1";
 export const DEFAULT_JUDGE_MODEL = "gemini-3.8-flash";
@@ -21,7 +27,11 @@ export function formatGuideCard(card: GuideCard): string {
   return `### ${card.id}\nTitle: ${card.title}\nDescription: ${card.description}\nSections: ${card.headings.join(" | ")}`;
 }
 
-export function buildJudgePrompt(query: string, candidates: GuideCard[], referenceGrades?: GuideGrade[]): string {
+export function buildJudgePrompt(
+  query: string,
+  candidates: GuideCard[],
+  referenceGrades?: GuideGrade[],
+): string {
   const refRelevant = (referenceGrades ?? []).filter((g) => g.grade >= 1);
   const refBlock =
     refRelevant.length > 0
@@ -68,9 +78,17 @@ export const JUDGE_RESPONSE_SCHEMA = {
   required: ["scope", "needs", "grades"],
 } as const;
 
-export function buildGenerateContentRequest(query: string, candidates: GuideCard[], referenceGrades?: GuideGrade[]) {
+export function buildGenerateContentRequest(
+  query: string,
+  candidates: GuideCard[],
+  referenceGrades?: GuideGrade[],
+) {
   return {
-    contents: [{ parts: [{ text: buildJudgePrompt(query, candidates, referenceGrades) }] }],
+    contents: [
+      {
+        parts: [{ text: buildJudgePrompt(query, candidates, referenceGrades) }],
+      },
+    ],
     generationConfig: {
       temperature: 0,
       responseMimeType: "application/json",
@@ -86,18 +104,25 @@ export function buildGenerateContentRequest(query: string, candidates: GuideCard
 export function parseJudgeResponse(
   responseBody: unknown,
   query: string,
-  candidateIds: ReadonlySet<string>
+  candidateIds: ReadonlySet<string>,
 ): ParsedJudgment {
   if (!isRecord(responseBody) || !Array.isArray(responseBody.candidates)) {
-    throw new Error(`Malformed judge response for "${query}": ${JSON.stringify(responseBody).slice(0, 400)}`);
+    throw new Error(
+      `Malformed judge response for "${query}": ${JSON.stringify(responseBody).slice(0, 400)}`,
+    );
   }
   const firstCand: unknown = responseBody.candidates[0];
-  const parts = isRecord(firstCand) && isRecord(firstCand.content) && Array.isArray(firstCand.content.parts)
-    ? firstCand.content.parts
-    : [];
+  const parts =
+    isRecord(firstCand) &&
+    isRecord(firstCand.content) &&
+    Array.isArray(firstCand.content.parts)
+      ? firstCand.content.parts
+      : [];
 
   const text = parts
-    .filter((p: unknown): p is Record<string, unknown> => isRecord(p) && !p.thought)
+    .filter(
+      (p: unknown): p is Record<string, unknown> => isRecord(p) && !p.thought,
+    )
     .map((p) => (typeof p.text === "string" ? p.text : ""))
     .join("");
 
@@ -112,24 +137,33 @@ export function parseJudgeResponse(
     !Array.isArray(parsed.needs) ||
     !Array.isArray(parsed.grades)
   ) {
-    throw new Error(`Judge JSON does not match schema for "${query}": ${text.slice(0, 400)}`);
+    throw new Error(
+      `Judge JSON does not match schema for "${query}": ${text.slice(0, 400)}`,
+    );
   }
 
   const needs = parsed.needs.map((n: unknown) => {
-    if (typeof n !== "string") throw new Error(`Invalid need in judge output for "${query}"`);
+    if (typeof n !== "string")
+      throw new Error(`Invalid need in judge output for "${query}"`);
     return n;
   });
 
   const seenIds = new Set<string>();
   const grades: GuideGrade[] = parsed.grades.map((g: unknown) => {
     if (!isRecord(g) || typeof g.id !== "string" || !isGrade(g.grade)) {
-      throw new Error(`Invalid grade entry in judge output for "${query}": ${JSON.stringify(g)}`);
+      throw new Error(
+        `Invalid grade entry in judge output for "${query}": ${JSON.stringify(g)}`,
+      );
     }
     if (!candidateIds.has(g.id)) {
-      throw new Error(`Judge returned unknown candidate "${g.id}" for "${query}"`);
+      throw new Error(
+        `Judge returned unknown candidate "${g.id}" for "${query}"`,
+      );
     }
     if (seenIds.has(g.id)) {
-      throw new Error(`Judge returned duplicate candidate "${g.id}" for "${query}"`);
+      throw new Error(
+        `Judge returned duplicate candidate "${g.id}" for "${query}"`,
+      );
     }
     seenIds.add(g.id);
     return {

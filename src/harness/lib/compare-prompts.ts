@@ -1,4 +1,4 @@
-import type { GuideContext, RunContext, TaggedStep } from './compare-evals.ts';
+import type { GuideContext, RunContext, TaggedStep } from "./compare-evals.ts";
 
 export const MAX_GUIDE_PROMPT_CHARS = 8000;
 export const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
@@ -12,17 +12,18 @@ const MAX_FAILED_TRACES_CHARS = 2500;
 function truncateAtLineBoundary(text: string, limit: number): string {
   if (!text || text.length <= limit) return text;
   const truncated = text.slice(0, limit);
-  const lastNewline = truncated.lastIndexOf('\n');
-  const safeCut = lastNewline > limit * 0.8 ? truncated.slice(0, lastNewline) : truncated;
+  const lastNewline = truncated.lastIndexOf("\n");
+  const safeCut =
+    lastNewline > limit * 0.8 ? truncated.slice(0, lastNewline) : truncated;
   return `${safeCut}\n\n[... Truncated for prompt length budget (${text.length - safeCut.length} characters omitted; full text in comparison_context.md) ...]`;
 }
 
 export function formatCappedStepsOverview(
   steps: TaggedStep[],
-  maxSteps = MAX_INLINE_STEPS_PER_RUN
+  maxSteps = MAX_INLINE_STEPS_PER_RUN,
 ): string {
-  const nonNoise = steps.filter(s => s.category !== 'incidental_noise');
-  const noise = steps.filter(s => s.category === 'incidental_noise');
+  const nonNoise = steps.filter((s) => s.category !== "incidental_noise");
+  const noise = steps.filter((s) => s.category === "incidental_noise");
 
   let selected: TaggedStep[];
   let omittedNoiseCount = 0;
@@ -36,18 +37,23 @@ export function formatCappedStepsOverview(
     const allowedNoiseCount = maxSteps - nonNoise.length;
     const selectedNoise = noise.slice(0, allowedNoiseCount);
     omittedNoiseCount = noise.length - selectedNoise.length;
-    selected = [...nonNoise, ...selectedNoise].sort((a, b) => a.stepNumber - b.stepNumber);
+    selected = [...nonNoise, ...selectedNoise].sort(
+      (a, b) => a.stepNumber - b.stepNumber,
+    );
   }
 
   const omittedTotal = steps.length - selected.length;
   const lines = selected.map(
-    s => `- Step ${s.stepNumber} [${s.category}] ${(s.detail || s.actionName || 'action').replace(/\s+/g, ' ').slice(0, 100)}: ${(s.thought || '').replace(/\s+/g, ' ').slice(0, 65)}`
+    (s) =>
+      `- Step ${s.stepNumber} [${s.category}] ${(s.detail || s.actionName || "action").replace(/\s+/g, " ").slice(0, 100)}: ${(s.thought || "").replace(/\s+/g, " ").slice(0, 65)}`,
   );
 
   if (omittedTotal > 0) {
-    lines.push(`[... ${omittedTotal} steps omitted from inline overview (${omittedNoiseCount} incidental_noise steps); see full trajectory in comparison_context.md ...]`);
+    lines.push(
+      `[... ${omittedTotal} steps omitted from inline overview (${omittedNoiseCount} incidental_noise steps); see full trajectory in comparison_context.md ...]`,
+    );
   }
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 export function getComparisonPrompts(
@@ -58,7 +64,7 @@ export function getComparisonPrompts(
   diffBaseVsB: string,
   diffAvsB: string,
   statusA: string,
-  statusB: string
+  statusB: string,
 ): { systemInstruction: string; prompt: string } {
   const systemInstruction = `You are an expert Lead Diagnostic Engineer performing a variance diagnosis between two AI agent evaluation runs (Run A vs Run B).
 
@@ -121,17 +127,21 @@ Provide a Markdown table summarizing key milestones:
 | **Mandatory Rule Adoption** | ... | ... | ... |
 | **Context Noise / Retries** | ... | ... | ... |`;
 
-  const failedTracesA = (ctxA.resultsJson || []).filter((c) => !c.passed).map((c) => ({
-    assertion: c.message,
-    location: c.location ? `Line ${c.location.line}` : 'Unknown',
-    errors: c.errors || ['Unknown error']
-  }));
+  const failedTracesA = (ctxA.resultsJson || [])
+    .filter((c) => !c.passed)
+    .map((c) => ({
+      assertion: c.message,
+      location: c.location ? `Line ${c.location.line}` : "Unknown",
+      errors: c.errors || ["Unknown error"],
+    }));
 
-  const failedTracesB = (ctxB.resultsJson || []).filter((c) => !c.passed).map((c) => ({
-    assertion: c.message,
-    location: c.location ? `Line ${c.location.line}` : 'Unknown',
-    errors: c.errors || ['Unknown error']
-  }));
+  const failedTracesB = (ctxB.resultsJson || [])
+    .filter((c) => !c.passed)
+    .map((c) => ({
+      assertion: c.message,
+      location: c.location ? `Line ${c.location.line}` : "Unknown",
+      errors: c.errors || ["Unknown error"],
+    }));
 
   const prompt = `### Guide & Task Metadata
 - Guide Name: ${guideCtx.guideName}
@@ -203,12 +213,20 @@ ${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
 """
 `;
 
-  const maxPromptBytes = MAX_TOTAL_COMBINED_PROMPT_BYTES - Buffer.byteLength(systemInstruction, 'utf8') - 1024;
+  const maxPromptBytes =
+    MAX_TOTAL_COMBINED_PROMPT_BYTES -
+    Buffer.byteLength(systemInstruction, "utf8") -
+    1024;
   const boundedPrompt =
-    Buffer.byteLength(prompt, 'utf8') > maxPromptBytes
-      ? truncateAtLineBoundary(prompt, Math.floor((maxPromptBytes * prompt.length) / Buffer.byteLength(prompt, 'utf8')))
+    Buffer.byteLength(prompt, "utf8") > maxPromptBytes
+      ? truncateAtLineBoundary(
+          prompt,
+          Math.floor(
+            (maxPromptBytes * prompt.length) /
+              Buffer.byteLength(prompt, "utf8"),
+          ),
+        )
       : prompt;
 
   return { systemInstruction, prompt: boundedPrompt };
 }
-

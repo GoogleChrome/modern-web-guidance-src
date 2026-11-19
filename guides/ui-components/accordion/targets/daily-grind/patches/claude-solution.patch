@@ -5,7 +5,7 @@ index 66c9173..a726d32 100644
 @@ -135,6 +135,97 @@
        background: #3e2723;
      }
- 
+
 +    /* FAQ Accordion */
 +    .accordion {
 +      margin-top: 60px;
@@ -133,7 +133,7 @@ index 66c9173..a726d32 100644
 +      </details>
 +    </section>
    </main>
- 
+
 +  <script>
 +    // Fallback for browsers without support for the details name attribute
 +    if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {

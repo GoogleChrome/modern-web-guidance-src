@@ -58,7 +58,7 @@
     <h1>Browser Features and Accessibility for Canvas Content</h1>
     <p>This demo shows how HTML-in-Canvas enables integration with browser features like assistive technologies, translation services, reader mode and autofill, and compares it with opaque manual rendering.</p>
     <p id="fallback_message" hidden>HTML-in-Canvas isn't supported in this browser, so the HTML content of Canvas 1 is shown in place of the canvas.</p>
-    
+
     <div class="container">
         <!-- Accessible canvas: DO this to expose canvas content to browser features -->
         <div class="canvas-wrapper">
@@ -94,8 +94,8 @@
                         canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
                         canvas.requestPaint();
                     });
-                    const supportsDevicePixelContentBox = 
-                        typeof ResizeObserverEntry !== 'undefined' && 
+                    const supportsDevicePixelContentBox =
+                        typeof ResizeObserverEntry !== 'undefined' &&
                         'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
                     const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
                     observer.observe(canvas, options);
@@ -121,28 +121,28 @@
 
                 function drawManual() {
                     ctx_manual.clearRect(0, 0, canvas_manual.width, canvas_manual.height);
-                    
+
                     const dpr = window.devicePixelRatio || 1;
                     ctx_manual.save();
                     ctx_manual.scale(dpr, dpr);
-                    
+
                     // Draw background for content
                     ctx_manual.fillStyle = '#f8f9fa';
                     ctx_manual.fillRect(10, 10, 300, 250);
-                    
+
                     // Draw text
                     ctx_manual.fillStyle = '#333';
                     ctx_manual.font = '16px sans-serif';
-                    
+
                     const text = "This text is not real HTML, it's a canvas and is not present in the DOM tree. Browser features won't work with it. The elements in this canvas are not interactive.";
-                    
+
                     // Simple word wrap
                     const words = text.split(' ');
                     let line = '';
                     let y = 40;
                     const maxWidth = 280;
                     const lineHeight = 24;
-                    
+
                     for (let i = 0; i < words.length; i++) {
                         const testLine = line + words[i] + ' ';
                         const metrics = ctx_manual.measureText(testLine);
@@ -156,25 +156,25 @@
                         }
                     }
                     ctx_manual.fillText(line, 20, y);
-                    
+
                     // Draw Input Box (simulated)
                     y += 20;
                     ctx_manual.fillStyle = '#fff';
                     ctx_manual.strokeStyle = '#ccc';
                     ctx_manual.fillRect(20, y, 200, 30);
                     ctx_manual.strokeRect(20, y, 200, 30);
-                    
+
                     ctx_manual.fillStyle = '#999';
                     ctx_manual.fillText('enter your email', 30, y + 20);
-                    
+
                     // Draw Button (simulated)
                     y += 50;
                     ctx_manual.fillStyle = '#007bff';
                     ctx_manual.fillRect(20, y, 70, 30);
-                    
+
                     ctx_manual.fillStyle = '#fff';
                     ctx_manual.fillText('Submit', 30, y + 20);
-                    
+
                     ctx_manual.restore();
                 }
 
@@ -184,7 +184,7 @@
                     canvas_manual.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
                     drawManual();
                 });
-                
+
                 const supportsDevicePixelContentBoxManual = typeof ResizeObserverEntry !== 'undefined' &&  'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
                 const optionsManual = supportsDevicePixelContentBoxManual ? { box: 'device-pixel-content-box' } : {};
                 observer_manual.observe(canvas_manual, optionsManual);

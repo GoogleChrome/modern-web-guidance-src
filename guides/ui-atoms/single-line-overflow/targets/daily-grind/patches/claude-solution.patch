@@ -4,7 +4,7 @@ index 66c9173..119a287 100644
 +++ b/index.html
 @@ -28,6 +28,14 @@
      }
- 
+
      /* Navigation */
 +    /* Truncation flag set by the scroll-driven animation below.
 +       Registered so it does not inherit into nested elements. */
@@ -26,7 +26,7 @@ index 66c9173..119a287 100644
        top: 0;
        z-index: 1000;
      }
- 
+
      .logo {
 +      flex: none;
 +      white-space: nowrap;
@@ -34,7 +34,7 @@ index 66c9173..119a287 100644
        font-weight: bold;
        letter-spacing: 1px;
 @@ -48,24 +59,86 @@
- 
+
      nav ul {
        display: flex;
 +      justify-content: flex-end;
@@ -43,13 +43,13 @@ index 66c9173..119a287 100644
 +      /* Let the list shrink below its content so the items can truncate */
 +      min-inline-size: 0;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      /* The truncated element is the link inside, so the flex item must be allowed to shrink */
 +      min-inline-size: 0;
      }
- 
+
      nav a {
 +      display: block;
 +      white-space: nowrap;
@@ -63,13 +63,13 @@ index 66c9173..119a287 100644
 +      animation: truncated linear both;
 +      animation-timeline: scroll(self inline);
      }
- 
+
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
        color: var(--accent);
      }
- 
+
 +    @keyframes truncated {
 +      from,
 +      to {
@@ -138,11 +138,11 @@ index 66c9173..119a287 100644
 +      <li><a href="/logout" class="logout-link"><span>Logout</span></a></li>
      </ul>
    </nav>
- 
+
 @@ -207,6 +280,23 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // Flags truncated navigation links with a class. This drives the reveal in browsers
 +    // without container style queries (which cannot be feature-detected) and stands in
@@ -161,5 +161,5 @@ index 66c9173..119a287 100644
 +  </script>
 +
  </body>
- 
+
  </html>

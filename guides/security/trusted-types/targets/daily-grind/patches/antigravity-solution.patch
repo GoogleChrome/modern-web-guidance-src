@@ -4,7 +4,7 @@ index 66c9173..f8270ae 100644
 +++ b/index.html
 @@ -2,9 +2,20 @@
  <html lang="en">
- 
+
  <head>
 +  <meta
 +    http-equiv="Content-Security-Policy"
@@ -47,11 +47,11 @@ index 66c9173..f8270ae 100644
 +      <div class="grid" id="seasonal-favorites"></div>
      </section>
    </main>
- 
+
 @@ -207,6 +202,61 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    import DOMPurify from 'dompurify';
 +
@@ -108,7 +108,7 @@ index 66c9173..f8270ae 100644
 +  </script>
 +
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..9c203d2 100644

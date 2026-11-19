@@ -20,7 +20,7 @@
  * - Expectation 18: SKIPPED - The base application already satisfies this expectation and does not perform browser fingerprinting.
  */
 
-import * as fs from 'node:fs';
+import * as fs from "node:fs";
 import {
   SyntaxKind,
   type JsxElement,
@@ -30,22 +30,29 @@ import {
   type NoSubstitutionTemplateLiteral,
   type Project,
   type StringLiteral,
-} from 'ts-morph';
+} from "ts-morph";
 import {
   test,
   expect,
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from "../../../../test-fixture.ts";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function getLoadedProject(files: string[]): Project {
   const project: Project = getJsProject(files);
   for (const file of files) {
-    if (/\.mjs$/i.test(file) && !project.getSourceFile(file) && fs.existsSync(file) && !fs.statSync(file).isDirectory()) {
-      project.createSourceFile(file, fs.readFileSync(file, 'utf8'), { overwrite: true });
+    if (
+      /\.mjs$/i.test(file) &&
+      !project.getSourceFile(file) &&
+      fs.existsSync(file) &&
+      !fs.statSync(file).isDirectory()
+    ) {
+      project.createSourceFile(file, fs.readFileSync(file, "utf8"), {
+        overwrite: true,
+      });
     }
   }
   return project;
@@ -62,11 +69,27 @@ function getLoadedProject(files: string[]): Project {
 
 /** Input types that never carry user-entered data and need no explanation. */
 const NON_DATA_INPUT_TYPES = new Set([
-  'checkbox', 'radio', 'submit', 'button', 'hidden', 'reset', 'file', 'range', 'color', 'image',
+  "checkbox",
+  "radio",
+  "submit",
+  "button",
+  "hidden",
+  "reset",
+  "file",
+  "range",
+  "color",
+  "image",
 ]);
 
 /** Interactive controls whose labels are not explanatory copy (e.g. a "Why?" toggle). */
-const INTERACTIVE_TAGS = new Set(['button', 'a', 'select', 'option', 'textarea', 'input']);
+const INTERACTIVE_TAGS = new Set([
+  "button",
+  "a",
+  "select",
+  "option",
+  "textarea",
+  "input",
+]);
 
 /** Copy that reads as a purpose/transparency explanation rather than a format hint. */
 const PURPOSE_TEXT_RE = new RegExp(
@@ -80,9 +103,9 @@ const PURPOSE_TEXT_RE = new RegExp(
       String.raw`(?:needed|required|necessary) (?:to|for|so)\b`,
       String.raw`purpose`,
       String.raw`never (?:shared|sold|linked|stored|tracked)\b`,
-    ].join('|') +
-    ')',
-  'i',
+    ].join("|") +
+    ")",
+  "i",
 );
 
 function jsxTagOf(el: JsxElement): string {
@@ -90,10 +113,16 @@ function jsxTagOf(el: JsxElement): string {
 }
 
 /** True unless the input has a static `type` that cannot carry user data. */
-function isDataInputJsx(input: JsxSelfClosingElement | JsxOpeningElement): boolean {
-  const typeAttr = input.getAttributes().find(
-    attr => attr.isKind(SyntaxKind.JsxAttribute) && attr.getNameNode().getText() === 'type',
-  );
+function isDataInputJsx(
+  input: JsxSelfClosingElement | JsxOpeningElement,
+): boolean {
+  const typeAttr = input
+    .getAttributes()
+    .find(
+      (attr) =>
+        attr.isKind(SyntaxKind.JsxAttribute) &&
+        attr.getNameNode().getText() === "type",
+    );
   if (!typeAttr || !typeAttr.isKind(SyntaxKind.JsxAttribute)) return true;
   const init = typeAttr.getInitializer();
   if (!init || !init.isKind(SyntaxKind.StringLiteral)) return true; // dynamic type: cannot rule out
@@ -105,13 +134,17 @@ function isDataInputJsx(input: JsxSelfClosingElement | JsxOpeningElement): boole
  * For `<label>Email <input/></label>` the wrapper is the label's parent.
  * A whole `<form>` is never treated as a field container.
  */
-function fieldContainerJsx(input: JsxSelfClosingElement | JsxOpeningElement): JsxElement | undefined {
-  const start = input.isKind(SyntaxKind.JsxOpeningElement) ? input.getParent() : input;
+function fieldContainerJsx(
+  input: JsxSelfClosingElement | JsxOpeningElement,
+): JsxElement | undefined {
+  const start = input.isKind(SyntaxKind.JsxOpeningElement)
+    ? input.getParent()
+    : input;
   let container = start.getFirstAncestorByKind(SyntaxKind.JsxElement);
-  if (container && jsxTagOf(container) === 'label') {
+  if (container && jsxTagOf(container) === "label") {
     container = container.getFirstAncestorByKind(SyntaxKind.JsxElement);
   }
-  if (!container || jsxTagOf(container) === 'form') return undefined;
+  if (!container || jsxTagOf(container) === "form") return undefined;
   return container;
 }
 
@@ -123,7 +156,8 @@ function staticTextJsx(container: JsxElement): string {
     if (node.isKind(SyntaxKind.JsxText)) {
       text = node.getText();
     } else if (
-      (node.isKind(SyntaxKind.StringLiteral) || node.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) &&
+      (node.isKind(SyntaxKind.StringLiteral) ||
+        node.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) &&
       node.getParentIfKind(SyntaxKind.JsxExpression)
     ) {
       text = node.getLiteralText();
@@ -131,11 +165,14 @@ function staticTextJsx(container: JsxElement): string {
     if (!text) continue;
     const insideInteractive = node
       .getAncestors()
-      .some(a => a.isKind(SyntaxKind.JsxElement) && INTERACTIVE_TAGS.has(jsxTagOf(a)));
+      .some(
+        (a) =>
+          a.isKind(SyntaxKind.JsxElement) && INTERACTIVE_TAGS.has(jsxTagOf(a)),
+      );
     if (insideInteractive) continue;
     parts.push(text);
   }
-  return parts.join(' ').replace(/\s+/g, ' ');
+  return parts.join(" ").replace(/\s+/g, " ");
 }
 
 function hasNearbyDisclosureJsx(project: Project): boolean {
@@ -143,7 +180,7 @@ function hasNearbyDisclosureJsx(project: Project): boolean {
     const inputs = [
       ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
       ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
-    ].filter(el => el.getTagNameNode().getText().toLowerCase() === 'input');
+    ].filter((el) => el.getTagNameNode().getText().toLowerCase() === "input");
 
     for (const input of inputs) {
       if (!isDataInputJsx(input)) continue;
@@ -159,21 +196,24 @@ function hasNearbyDisclosureJsx(project: Project): boolean {
 /** Static text inside an HTML container, excluding interactive controls and code. */
 function staticTextHtml(container: any): string {
   const clone = container.cloneNode(true);
-  clone.querySelectorAll('button, a, select, textarea, input, script, style').forEach((el: any) => el.remove());
-  return String(clone.textContent || '').replace(/\s+/g, ' ');
+  clone
+    .querySelectorAll("button, a, select, textarea, input, script, style")
+    .forEach((el: any) => el.remove());
+  return String(clone.textContent || "").replace(/\s+/g, " ");
 }
 
 function hasNearbyDisclosureHtml(document: any): boolean {
-  const inputs: any[] = Array.from(document.querySelectorAll('input'));
-  return inputs.some(input => {
-    const type = String(input.getAttribute('type') || 'text').toLowerCase();
+  const inputs: any[] = Array.from(document.querySelectorAll("input"));
+  return inputs.some((input) => {
+    const type = String(input.getAttribute("type") || "text").toLowerCase();
     if (NON_DATA_INPUT_TYPES.has(type)) return false;
 
     let container = input.parentElement;
-    if (container && String(container.tagName).toLowerCase() === 'label') {
+    if (container && String(container.tagName).toLowerCase() === "label") {
       container = container.parentElement;
     }
-    if (!container || String(container.tagName).toLowerCase() === 'form') return false;
+    if (!container || String(container.tagName).toLowerCase() === "form")
+      return false;
 
     return PURPOSE_TEXT_RE.test(staticTextHtml(container));
   });
@@ -194,32 +234,51 @@ type HeaderNameLiteral = StringLiteral | NoSubstitutionTemplateLiteral;
 /** Text of the value paired with a header-name literal, or '' if no pairing is recognised. */
 function pairedHeaderValueText(nameLiteral: HeaderNameLiteral): string {
   const parent: Node | undefined = nameLiteral.getParent();
-  if (!parent) return '';
+  if (!parent) return "";
 
   // set('Name', value) / setHeader('Name', value) / append('Name', value)
   if (parent.isKind(SyntaxKind.CallExpression)) {
-    return parent.getArguments().filter(a => a !== nameLiteral).map(a => a.getText()).join(' ');
+    return parent
+      .getArguments()
+      .filter((a) => a !== nameLiteral)
+      .map((a) => a.getText())
+      .join(" ");
   }
   if (parent.isKind(SyntaxKind.PropertyAssignment)) {
     // { 'Name': value }
-    if (parent.getNameNode() === nameLiteral) return parent.getInitializer()?.getText() ?? '';
+    if (parent.getNameNode() === nameLiteral)
+      return parent.getInitializer()?.getText() ?? "";
     // { name: 'Name', value: ... } -> sibling properties of the same object
     const obj = parent.getParentIfKind(SyntaxKind.ObjectLiteralExpression);
-    return obj ? obj.getProperties().filter(p => p !== parent).map(p => p.getText()).join(' ') : '';
+    return obj
+      ? obj
+          .getProperties()
+          .filter((p) => p !== parent)
+          .map((p) => p.getText())
+          .join(" ")
+      : "";
   }
   // ['Name', value]
   if (parent.isKind(SyntaxKind.ArrayLiteralExpression)) {
-    return parent.getElements().filter(e => e !== nameLiteral).map(e => e.getText()).join(' ');
+    return parent
+      .getElements()
+      .filter((e) => e !== nameLiteral)
+      .map((e) => e.getText())
+      .join(" ");
   }
   // headers['Name'] = value
   if (parent.isKind(SyntaxKind.ElementAccessExpression)) {
     const assignment = parent.getParentIfKind(SyntaxKind.BinaryExpression);
-    return assignment ? assignment.getRight().getText() : '';
+    return assignment ? assignment.getRight().getText() : "";
   }
-  return '';
+  return "";
 }
 
-function hasHeaderDeclaration(project: Project, headerName: string, valueRe: RegExp): boolean {
+function hasHeaderDeclaration(
+  project: Project,
+  headerName: string,
+  valueRe: RegExp,
+): boolean {
   for (const sf of project.getSourceFiles()) {
     const literals: HeaderNameLiteral[] = [
       ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
@@ -233,9 +292,8 @@ function hasHeaderDeclaration(project: Project, headerName: string, valueRe: Reg
   return false;
 }
 
-test.describe('Privacy Guidelines Grader - devtools-times', () => {
-
-  test('Expectation 3: Sensitive credential inputs provide inline explanatory text linked via aria-describedby or a nearby disclosure', () => {
+test.describe("Privacy Guidelines Grader - devtools-times", () => {
+  test("Expectation 3: Sensitive credential inputs provide inline explanatory text linked via aria-describedby or a nearby disclosure", () => {
     const project = getLoadedProject(targetFiles);
     let hasLinkedExplanation = false;
 
@@ -243,21 +301,36 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
       const jsxInputs = [
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
-      ].filter(el => el.getTagNameNode().getText().toLowerCase() === 'input');
+      ].filter((el) => el.getTagNameNode().getText().toLowerCase() === "input");
 
       for (const input of jsxInputs) {
-        const ariaAttr = input.getAttributes().find(attr =>
-          attr.isKind(SyntaxKind.JsxAttribute) && attr.getNameNode().getText() === 'aria-describedby'
-        );
+        const ariaAttr = input
+          .getAttributes()
+          .find(
+            (attr) =>
+              attr.isKind(SyntaxKind.JsxAttribute) &&
+              attr.getNameNode().getText() === "aria-describedby",
+          );
         if (ariaAttr && ariaAttr.isKind(SyntaxKind.JsxAttribute)) {
           const init = ariaAttr.getInitializer();
-          const describedByIds = init ? init.getText().replace(/['"`{}]/g, '').split(/\s+/) : [];
+          const describedByIds = init
+            ? init
+                .getText()
+                .replace(/['"`{}]/g, "")
+                .split(/\s+/)
+            : [];
           for (const id of describedByIds) {
             if (!id) continue;
-            const hasMatchingElement = sf.getDescendantsOfKind(SyntaxKind.JsxAttribute).some(attr =>
-              attr.getNameNode().getText() === 'id' &&
-              attr.getInitializer()?.getText().replace(/['"`{}]/g, '') === id
-            );
+            const hasMatchingElement = sf
+              .getDescendantsOfKind(SyntaxKind.JsxAttribute)
+              .some(
+                (attr) =>
+                  attr.getNameNode().getText() === "id" &&
+                  attr
+                    .getInitializer()
+                    ?.getText()
+                    .replace(/['"`{}]/g, "") === id,
+              );
             if (hasMatchingElement) {
               hasLinkedExplanation = true;
               break;
@@ -270,33 +343,43 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
     }
 
     const docs = getHtmlDocuments(targetFiles);
-    const hasLinkedExplanationInHtml = docs.some(d => {
-      const inputs: any[] = Array.from(d.document.querySelectorAll('input[aria-describedby]'));
-      return inputs.some(input => {
-        const describedBy = input.getAttribute('aria-describedby') || '';
-        return describedBy.split(/\s+/).some((id: string) => Boolean(id && d.document.getElementById(id)));
+    const hasLinkedExplanationInHtml = docs.some((d) => {
+      const inputs: any[] = Array.from(
+        d.document.querySelectorAll("input[aria-describedby]"),
+      );
+      return inputs.some((input) => {
+        const describedBy = input.getAttribute("aria-describedby") || "";
+        return describedBy
+          .split(/\s+/)
+          .some((id: string) => Boolean(id && d.document.getElementById(id)));
       });
     });
 
     // expectations.md: "linked via aria-describedby OR a nearby disclosure".
     const hasNearbyDisclosure =
-      hasNearbyDisclosureJsx(project) || docs.some(d => hasNearbyDisclosureHtml(d.document));
+      hasNearbyDisclosureJsx(project) ||
+      docs.some((d) => hasNearbyDisclosureHtml(d.document));
 
-    const hasDescribedCredentialInputs = hasLinkedExplanation || hasLinkedExplanationInHtml || hasNearbyDisclosure;
+    const hasDescribedCredentialInputs =
+      hasLinkedExplanation || hasLinkedExplanationInHtml || hasNearbyDisclosure;
     expect(hasDescribedCredentialInputs).toBe(true);
   });
 
-  test('Expectation 13: Auxiliary third-party tracking SDKs are removed in favor of static first-party markup', () => {
+  test("Expectation 13: Auxiliary third-party tracking SDKs are removed in favor of static first-party markup", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasTrackingScript = docs.some(d => {
-      const scripts: any[] = Array.from(d.document.querySelectorAll('script[src]'));
-      return scripts.some(s => /analytics-client/i.test(s.getAttribute('src') || ''));
+    const hasTrackingScript = docs.some((d) => {
+      const scripts: any[] = Array.from(
+        d.document.querySelectorAll("script[src]"),
+      );
+      return scripts.some((s) =>
+        /analytics-client/i.test(s.getAttribute("src") || ""),
+      );
     });
 
     expect(hasTrackingScript).toBe(false);
   });
 
-  test('Expectation 15: Restrictive Permissions-Policy HTTP response header disables unused powerful features by default', () => {
+  test("Expectation 15: Restrictive Permissions-Policy HTTP response header disables unused powerful features by default", () => {
     const project = getLoadedProject(targetFiles);
     let hasRestrictivePermissionsPolicy = false;
 
@@ -305,8 +388,11 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
       for (const call of calls) {
         const args = call.getArguments();
         if (args.length >= 2) {
-          const firstArgText = args[0].getText().replace(/['"`]/g, '').toLowerCase();
-          if (firstArgText === 'permissions-policy') {
+          const firstArgText = args[0]
+            .getText()
+            .replace(/['"`]/g, "")
+            .toLowerCase();
+          if (firstArgText === "permissions-policy") {
             const callText = call.getText();
             if (/=\(\)/.test(callText)) {
               hasRestrictivePermissionsPolicy = true;
@@ -320,13 +406,17 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
 
     // Data-driven declarations, e.g. { name: 'Permissions-Policy', value: 'camera=(), ...' }
     if (!hasRestrictivePermissionsPolicy) {
-      hasRestrictivePermissionsPolicy = hasHeaderDeclaration(project, 'permissions-policy', /=\(\)/);
+      hasRestrictivePermissionsPolicy = hasHeaderDeclaration(
+        project,
+        "permissions-policy",
+        /=\(\)/,
+      );
     }
 
     expect(hasRestrictivePermissionsPolicy).toBe(true);
   });
 
-  test('Expectation 16: Privacy-preserving Referrer-Policy HTTP response header is configured', () => {
+  test("Expectation 16: Privacy-preserving Referrer-Policy HTTP response header is configured", () => {
     const project = getLoadedProject(targetFiles);
     let hasPrivacyReferrerPolicy = false;
 
@@ -335,8 +425,11 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
       for (const call of calls) {
         const args = call.getArguments();
         if (args.length >= 2) {
-          const firstArgText = args[0].getText().replace(/['"`]/g, '').toLowerCase();
-          if (firstArgText === 'referrer-policy') {
+          const firstArgText = args[0]
+            .getText()
+            .replace(/['"`]/g, "")
+            .toLowerCase();
+          if (firstArgText === "referrer-policy") {
             const callText = call.getText();
             if (/(strict-origin|no-referrer|same-origin)/i.test(callText)) {
               hasPrivacyReferrerPolicy = true;
@@ -350,15 +443,19 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
 
     // Data-driven declarations, e.g. { name: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }
     if (!hasPrivacyReferrerPolicy) {
-      hasPrivacyReferrerPolicy = hasHeaderDeclaration(project, 'referrer-policy', /(strict-origin|no-referrer|same-origin)/i);
+      hasPrivacyReferrerPolicy = hasHeaderDeclaration(
+        project,
+        "referrer-policy",
+        /(strict-origin|no-referrer|same-origin)/i,
+      );
     }
 
     if (!hasPrivacyReferrerPolicy) {
       const docs = getHtmlDocuments(targetFiles);
-      hasPrivacyReferrerPolicy = docs.some(d => {
+      hasPrivacyReferrerPolicy = docs.some((d) => {
         const meta = d.document.querySelector('meta[name="referrer" i]');
         if (meta) {
-          const content = meta.getAttribute('content') || '';
+          const content = meta.getAttribute("content") || "";
           return /(strict-origin|no-referrer|same-origin)/i.test(content);
         }
         return false;
@@ -367,5 +464,4 @@ test.describe('Privacy Guidelines Grader - devtools-times', () => {
 
     expect(hasPrivacyReferrerPolicy).toBe(true);
   });
-
 });

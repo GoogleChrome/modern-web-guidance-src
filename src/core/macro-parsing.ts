@@ -12,15 +12,25 @@
 export const MACRO_PATTERN = /{{\s*([A-Z_]+)\((.*?)\)\s*}}/g;
 
 // Matches consecutive macros separated by whitespace that contains at least one newline
-export const CONSECUTIVE_MACRO_PATTERN = /({{\s*[A-Z_]+\(.*?\)\s*}})[ \t]*\r?\n\s*(?={{\s*[A-Z_]+\(.*?\)\s*}})/g;
+export const CONSECUTIVE_MACRO_PATTERN =
+  /({{\s*[A-Z_]+\(.*?\)\s*}})[ \t]*\r?\n\s*(?={{\s*[A-Z_]+\(.*?\)\s*}})/g;
 
 // Matches comment macros: {# ... #}, disambiguated from heading anchors like {#id}
 export const COMMENT_PATTERN = /\{#(?![\w-]+\s*\})[\s\S]*?#\}/g;
 
 const COMMENT_SOURCE = COMMENT_PATTERN.source;
-const PARAGRAPH_COMMENT_PATTERN = new RegExp(`(?:\\r?\\n){2,}[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n\\r?\\n)`, 'g');
-const LINE_COMMENT_PATTERN = new RegExp(`(?:^[ \\t]*${COMMENT_SOURCE}[ \\t]*(?:\\r?\\n|$))|(?:\\r?\\n[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n|$))`, 'g');
-const INLINE_COMMENT_PATTERN = new RegExp(`([ \\t]*)${COMMENT_SOURCE}(?:[ \\t]*${COMMENT_SOURCE})*([ \\t]*)`, 'g');
+const PARAGRAPH_COMMENT_PATTERN = new RegExp(
+  `(?:\\r?\\n){2,}[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n\\r?\\n)`,
+  "g",
+);
+const LINE_COMMENT_PATTERN = new RegExp(
+  `(?:^[ \\t]*${COMMENT_SOURCE}[ \\t]*(?:\\r?\\n|$))|(?:\\r?\\n[ \\t]*${COMMENT_SOURCE}[ \\t]*(?=\\r?\\n|$))`,
+  "g",
+);
+const INLINE_COMMENT_PATTERN = new RegExp(
+  `([ \\t]*)${COMMENT_SOURCE}(?:[ \\t]*${COMMENT_SOURCE})*([ \\t]*)`,
+  "g",
+);
 const CODE_BLOCK_PATTERN = /(```[\s\S]*?```|~~~[\s\S]*?~~~)/g;
 const INLINE_CODE_PATTERN = /(`+)([\s\S]*?)\1/g;
 // eslint-disable-next-line no-control-regex
@@ -30,7 +40,10 @@ const RESTORE_CODE_PATTERN = /\x00CODE_(\d+)\x00/g;
  * Runs `transform` on content with fenced code blocks (``` or ~~~) and inline code spans
  * temporarily replaced by placeholders, so comment-like syntax inside code is left untouched.
  */
-function withCodeSpansProtected(content: string, transform: (masked: string) => string): string {
+function withCodeSpansProtected(
+  content: string,
+  transform: (masked: string) => string,
+): string {
   const codeSpans: string[] = [];
   const maskCode = (match: string): string => {
     codeSpans.push(match);
@@ -46,7 +59,10 @@ function withCodeSpansProtected(content: string, transform: (masked: string) => 
   let iterations = 0;
   const maxIterations = codeSpans.length + 1;
   while (RESTORE_CODE_PATTERN.test(result) && iterations++ < maxIterations) {
-    result = result.replace(RESTORE_CODE_PATTERN, (_, idx) => codeSpans[Number(idx)]);
+    result = result.replace(
+      RESTORE_CODE_PATTERN,
+      (_, idx) => codeSpans[Number(idx)],
+    );
   }
   return result;
 }
@@ -61,7 +77,7 @@ export function maskComments(content: string): string {
   if (!content) return "";
 
   return withCodeSpansProtected(content, (masked) =>
-    masked.replace(COMMENT_PATTERN, (match) => match.replace(/[^\r\n]+/g, " "))
+    masked.replace(COMMENT_PATTERN, (match) => match.replace(/[^\r\n]+/g, " ")),
   );
 }
 
@@ -84,30 +100,37 @@ export function stripComments(content: string): string {
     result = result.replace(LINE_COMMENT_PATTERN, "");
 
     // 3. Strip inline comments and normalize adjacent whitespace
-    return result.replace(INLINE_COMMENT_PATTERN, (_match, leading, trailing, offset, fullStr) => {
-      const prevChar = offset > 0 ? fullStr[offset - 1] : "";
-      const nextChar = offset + _match.length < fullStr.length ? fullStr[offset + _match.length] : "";
+    return result.replace(
+      INLINE_COMMENT_PATTERN,
+      (_match, leading, trailing, offset, fullStr) => {
+        const prevChar = offset > 0 ? fullStr[offset - 1] : "";
+        const nextChar =
+          offset + _match.length < fullStr.length
+            ? fullStr[offset + _match.length]
+            : "";
 
-      const atStartOfLine = !prevChar || prevChar === "\n" || prevChar === "\r";
-      const atEndOfLine = !nextChar || nextChar === "\n" || nextChar === "\r";
-      if (atStartOfLine || atEndOfLine) {
-        return "";
-      }
-
-      if (leading.length > 0 && trailing.length > 0) {
-        return " ";
-      }
-
-      if (leading.length > 0 || trailing.length > 0) {
-        // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
-        if (/[([{]/.test(prevChar) || /[)\]},;:!?.]/.test(nextChar)) {
+        const atStartOfLine =
+          !prevChar || prevChar === "\n" || prevChar === "\r";
+        const atEndOfLine = !nextChar || nextChar === "\n" || nextChar === "\r";
+        if (atStartOfLine || atEndOfLine) {
           return "";
         }
-        return " ";
-      }
 
-      return "";
-    });
+        if (leading.length > 0 && trailing.length > 0) {
+          return " ";
+        }
+
+        if (leading.length > 0 || trailing.length > 0) {
+          // If opening or closing brackets/parens, or followed by punctuation like , ; : . ! ?
+          if (/[([{]/.test(prevChar) || /[)\]},;:!?.]/.test(nextChar)) {
+            return "";
+          }
+          return " ";
+        }
+
+        return "";
+      },
+    );
   });
 }
 
@@ -123,7 +146,10 @@ export function parseArguments(argsString: string): string[] {
   for (let i = 0; i < argsString.length; i++) {
     const char = argsString[i];
 
-    if ((char === "'" || char === '"') && (i === 0 || argsString[i - 1] !== "\\")) {
+    if (
+      (char === "'" || char === '"') &&
+      (i === 0 || argsString[i - 1] !== "\\")
+    ) {
       if (inQuotes === char) {
         inQuotes = null;
       } else if (!inQuotes) {
@@ -161,11 +187,17 @@ export function getTranscludedFeatureIds(content: string): string[] {
     const firstArg = args[0];
     if (!firstArg) continue;
 
-    if (macroName === "FEATURE" || macroName === "FEATURE_FALLBACKS" || macroName === "FEATURE_ISSUES") {
+    if (
+      macroName === "FEATURE" ||
+      macroName === "FEATURE_FALLBACKS" ||
+      macroName === "FEATURE_ISSUES"
+    ) {
       featureIds.add(firstArg.trim());
     } else if (macroName === "INCLUDE") {
       // Matches bare features/<id>.md or relative paths like ../../features/<id>.md (with optional #section)
-      const featureMatch = firstArg.match(/(?:^|\/)features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/);
+      const featureMatch = firstArg.match(
+        /(?:^|\/)features\/([a-zA-Z0-9_-]+)\.md(?:#|$)/,
+      );
       if (featureMatch) {
         featureIds.add(featureMatch[1].trim());
       }

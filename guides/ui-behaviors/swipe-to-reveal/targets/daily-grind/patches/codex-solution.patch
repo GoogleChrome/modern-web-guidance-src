@@ -28,7 +28,7 @@ index 66c9173..0baa1c6 100644
 @@ -120,6 +120,62 @@
        color: var(--primary);
      }
- 
+
 +    .SwipeReveal {
 +      display: grid;
 +      grid-template-columns: 100% max-content;
@@ -145,7 +145,7 @@ index 66c9173..0baa1c6 100644
 @@ -207,6 +284,35 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    for (const track of document.querySelectorAll('.SwipeReveal')) {
 +      const content = track.querySelector('.SwipeReveal-content');
@@ -176,7 +176,7 @@ index 66c9173..0baa1c6 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

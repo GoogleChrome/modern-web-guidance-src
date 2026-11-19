@@ -23,14 +23,8 @@ import {
   loadChunkCache,
   saveChunkCache,
 } from "./guide-chunk-cache.ts";
-import {
-  scanCorpusChunks,
-  type GuideChunk,
-} from "../core/guide-chunks.ts";
-import {
-  postWithRetry,
-  isBatchEmbeddingResponse,
-} from "./gemini-api.ts";
+import { scanCorpusChunks, type GuideChunk } from "../core/guide-chunks.ts";
+import { postWithRetry, isBatchEmbeddingResponse } from "./gemini-api.ts";
 
 export interface EmbedChunksOptions {
   check?: boolean;
@@ -39,7 +33,9 @@ export interface EmbedChunksOptions {
   cacheDir?: string;
 }
 
-export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promise<{
+export async function embedGuideChunks(
+  options: EmbedChunksOptions = {},
+): Promise<{
   totalChunks: number;
   cachedCount: number;
   newEmbeds: number;
@@ -49,7 +45,9 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
   const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
   const allChunks = scanCorpusChunks("skills-cli");
 
-  const existingCache = options.force ? new Map<string, Float32Array>() : loadChunkCache(cacheDir);
+  const existingCache = options.force
+    ? new Map<string, Float32Array>()
+    : loadChunkCache(cacheDir);
 
   // If check mode requested: verify that 100% of chunks are in cache without calling API
   if (options.check) {
@@ -78,12 +76,12 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
     const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
       throw new Error(
-        `GEMINI_API_KEY is required in .env or environment to embed ${missingChunks.length} missing guide chunks.`
+        `GEMINI_API_KEY is required in .env or environment to embed ${missingChunks.length} missing guide chunks.`,
       );
     }
 
     console.log(
-      `Embedding ${missingChunks.length} missing chunks using ${TEACHER_MODEL} (${TASK_TYPE}, ${TEACHER_DIM}-d -> ${STATIC_DIMS}-d)...`
+      `Embedding ${missingChunks.length} missing chunks using ${TEACHER_MODEL} (${TASK_TYPE}, ${TEACHER_DIM}-d -> ${STATIC_DIMS}-d)...`,
     );
 
     const BATCH_SIZE = 100;
@@ -106,7 +104,9 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
 
       const res = await postWithRetry(url, body);
       if (!isBatchEmbeddingResponse(res)) {
-        throw new Error(`Invalid batchEmbedContents response shape from ${TEACHER_MODEL}`);
+        throw new Error(
+          `Invalid batchEmbedContents response shape from ${TEACHER_MODEL}`,
+        );
       }
 
       res.embeddings.forEach((e, i) => {
@@ -116,7 +116,9 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
         newEmbeds++;
       });
 
-      console.log(`  Batch ${bIdx + 1}/${batches.length} completed (+${batch.length} chunks)`);
+      console.log(
+        `  Batch ${bIdx + 1}/${batches.length} completed (+${batch.length} chunks)`,
+      );
     }
   }
 
@@ -139,7 +141,7 @@ export async function embedGuideChunks(options: EmbedChunksOptions = {}): Promis
   if (newEmbeds > 0 || prunedCount > 0 || options.force) {
     const saveStats = saveChunkCache(targetCache, cacheDir);
     console.log(
-      `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`
+      `Saved chunk cache to ${cacheDir}: ${saveStats.count} chunks (${(saveStats.bytes / 1024).toFixed(1)} KB)`,
     );
     if (prunedCount > 0) {
       console.log(`Pruned ${prunedCount} stale chunk entries.`);
@@ -176,27 +178,32 @@ async function main(): Promise<void> {
     if (res.missing.length > 0) {
       const missingGuides = [...new Set(res.missing.map((c) => c.guideId))];
       console.error(
-        `❌ Release check failed: ${res.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`
+        `❌ Release check failed: ${res.missing.length} chunk(s) across ${missingGuides.length} guide(s) lack cached teacher vectors:`,
       );
       for (const g of missingGuides) {
         console.error(`   - ${g}`);
       }
-      console.error(`\nRun 'node src/rag/embed-guide-chunks.ts' to embed them before publishing.`);
+      console.error(
+        `\nRun 'node src/rag/embed-guide-chunks.ts' to embed them before publishing.`,
+      );
       process.exit(1);
     } else {
       console.log(
-        `✅ All ${res.totalChunks} guide chunks have valid cached teacher vectors (${TEACHER_MODEL}).`
+        `✅ All ${res.totalChunks} guide chunks have valid cached teacher vectors (${TEACHER_MODEL}).`,
       );
       process.exit(0);
     }
   }
 
   console.log(
-    `Done! Total chunks: ${res.totalChunks}, newly embedded: ${res.newEmbeds}, active cached: ${res.cachedCount}.`
+    `Done! Total chunks: ${res.totalChunks}, newly embedded: ${res.newEmbeds}, active cached: ${res.cachedCount}.`,
   );
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+) {
   main().catch((err) => {
     console.error("Error in embed-guide-chunks:", err);
     process.exit(1);

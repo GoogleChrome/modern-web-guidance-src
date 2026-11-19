@@ -5,7 +5,7 @@ index 66c9173..182d030 100644
 @@ -51,10 +51,35 @@
        list-style: none;
      }
- 
+
 +    ul::before {
 +      content: '';
 +      position: absolute;
@@ -24,7 +24,7 @@ index 66c9173..182d030 100644
      nav ul li {
        margin-left: 20px;
      }
- 
+
 +    li.active {
 +      anchor-name: --active;
 +    }
@@ -39,9 +39,9 @@ index 66c9173..182d030 100644
        color: white;
        text-decoration: none;
 @@ -157,10 +182,10 @@
- 
+
  <body>
- 
+
 -  <nav>
 +  <nav aria-label="Primary">
      <div class="logo">THE DAILY GRIND</div>
@@ -54,7 +54,7 @@ index 66c9173..182d030 100644
 @@ -207,6 +232,24 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
 +
@@ -74,5 +74,5 @@ index 66c9173..182d030 100644
 +  </script>
 +
  </body>
- 
+
  </html>

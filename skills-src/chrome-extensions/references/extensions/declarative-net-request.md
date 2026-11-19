@@ -6,11 +6,13 @@
 {
   "permissions": ["declarativeNetRequest"],
   "declarative_net_request": {
-    "rule_resources": [{
-      "id": "ruleset_1",
-      "enabled": true,
-      "path": "rules/rules.json"
-    }]
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules/rules.json"
+      }
+    ]
   }
 }
 ```
@@ -20,6 +22,7 @@ Add `"declarativeNetRequestFeedback"` permission to use `onRuleMatchedDebug` (de
 ## Rule Format
 
 `rules/rules.json`:
+
 ```json
 [
   {
@@ -53,12 +56,12 @@ Add `"declarativeNetRequestFeedback"` permission to use `onRuleMatchedDebug` (de
 
 ### URL Filter Patterns
 
-| Pattern | Matches |
-|---------|---------|
-| `"doubleclick.net"` | Any URL containing "doubleclick.net" |
-| `"||doubleclick.net"` | Domain starts with doubleclick.net |
-| `"||example.com/ads/*"` | Specific path pattern |
-| `*://*.tracking.com/*` | Subdomain matching |
+| Pattern                | Matches                              |
+| ---------------------- | ------------------------------------ |
+| `"doubleclick.net"`    | Any URL containing "doubleclick.net" |
+| `"                     |                                      | doubleclick.net"`   | Domain starts with doubleclick.net |
+| `"                     |                                      | example.com/ads/*"` | Specific path pattern              |
+| `*://*.tracking.com/*` | Subdomain matching                   |
 
 ### Resource Types
 
@@ -70,13 +73,15 @@ Add `"declarativeNetRequestFeedback"` permission to use `onRuleMatchedDebug` (de
 ```js
 // Add rules at runtime
 await chrome.declarativeNetRequest.updateDynamicRules({
-  addRules: [{
-    id: 1000,
-    priority: 1,
-    action: { type: 'block' },
-    condition: { urlFilter: 'ads.example.com' }
-  }],
-  removeRuleIds: [] // IDs to remove
+  addRules: [
+    {
+      id: 1000,
+      priority: 1,
+      action: { type: "block" },
+      condition: { urlFilter: "ads.example.com" },
+    },
+  ],
+  removeRuleIds: [], // IDs to remove
 });
 ```
 
@@ -101,7 +106,7 @@ chrome.webRequest.onBeforeRequest.addListener(
       incrementBlockCount(details.tabId);
     }
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
 );
 ```
 

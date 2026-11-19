@@ -22,7 +22,7 @@ Use a labeled `<input type="range">` rather than recreating a slider with `<div>
 
 ```html
 <label for="range-slider">Volume</label>
-<input type="range" id="range-slider" value="70"/>
+<input type="range" id="range-slider" value="70" />
 ```
 
 If the value requires a formatted label or unit, expose it in ordinary DOM content and update `aria-valuetext` when changed. Do not use `::before` or `::after` on slider pseudo-elements, as generated content on form controls is not interoperable. If a tooltip that follows the thumb is required, anchor it to the thumb with CSS anchor positioning; see {{ GUIDE_REF("position-aware-tooltips") }} for tooltips that stay correctly oriented when they flip.
@@ -142,14 +142,14 @@ input[type="range"]:focus-visible {
 When the filled portion of the track is styled differently from the unfilled track, Firefox exposes it via `::-moz-range-progress`. WebKit/Blink do not provide an equivalent pseudo-element, so sync the live input value to `--control-value` on `input` events:
 
 ```js
-const slider = document.querySelector('#range-slider');
+const slider = document.querySelector("#range-slider");
 
 function syncSliderValue() {
-  slider.style.setProperty('--control-value', slider.value);
+  slider.style.setProperty("--control-value", slider.value);
 }
 
 syncSliderValue();
-slider.addEventListener('input', syncSliderValue);
+slider.addEventListener("input", syncSliderValue);
 ```
 
 ## Limitations
@@ -171,7 +171,7 @@ When `progress()` is unsupported, compute `--slider-progress` with `calc()`:
   input[type="range"] {
     --slider-progress: calc(
       (var(--control-value) - var(--attr-min)) /
-      (var(--attr-max) - var(--attr-min)) * 100%
+        (var(--attr-max) - var(--attr-min)) * 100%
     );
   }
 }
@@ -183,13 +183,14 @@ When typed `attr()` is unsupported, sync `--attr-min` and `--attr-max` from the 
 
 ```js
 function syncSliderValue() {
-  slider.style.setProperty('--attr-min', slider.min || 0);
-  slider.style.setProperty('--attr-max', slider.max || 100);
-  slider.style.setProperty('--control-value', slider.value);
+  slider.style.setProperty("--attr-min", slider.min || 0);
+  slider.style.setProperty("--attr-max", slider.max || 100);
+  slider.style.setProperty("--control-value", slider.value);
 }
 ```
 
 {#
+
 ## Future standard pseudo-elements
 
 CSS Forms Level 1 specifies standard `::slider-track`, `::slider-thumb`, and

@@ -14,6 +14,7 @@ Coffee is more than a morning ritual; it is a complex beverage derived from the 
 The profile of a cup depends heavily on the roast profile and extraction method. During roasting, chemical reactions like the Maillard reaction transform green beans into aromatic brown ones, developing over 800 distinct flavor compounds.
 
 ### Key Varieties
+
 **Arabica:** Known for its acidity, sweetness, and nuanced floral notes.
 
 **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."

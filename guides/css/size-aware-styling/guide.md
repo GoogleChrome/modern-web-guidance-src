@@ -46,7 +46,7 @@ Use the `@container` rule to apply styles when the container reaches a certain s
     flex-direction: row;
     align-items: center;
   }
-  
+
   .card-image {
     width: 150px;
     height: 150px;
@@ -100,7 +100,7 @@ For browsers that do not support container queries, the best approach is to use 
       flex-direction: column;
     }
   }
-  
+
   @container (min-width: 400px) {
     .card {
       flex-direction: row;

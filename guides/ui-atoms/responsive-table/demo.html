@@ -185,7 +185,7 @@
       for (let i = 0; i < 5; i++) {
         staffData.forEach((staff) => {
           const tr = document.createElement("tr");
-          
+
           staff.forEach((data, index) => {
             if (index === 0) {
               const th = document.createElement("th");
@@ -197,7 +197,7 @@
               tr.appendChild(td);
             }
           });
-          
+
           tableBody.appendChild(tr);
         });
       }

@@ -28,7 +28,7 @@ index 22f7b64..fbeeae0 100644
 +    ): ViewTransition;
    }
  }
- 
+
 diff --git a/src/components/TopStoriesCarousel.astro b/src/components/TopStoriesCarousel.astro
 new file mode 100644
 index 0000000..c21949c
@@ -187,10 +187,10 @@ index 92f6399..6eb2328 100644
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
 +import TopStoriesCarousel from '../components/TopStoriesCarousel.astro';
  import type { RenderResult } from 'astro:content';
- 
+
  const articles = await getCollection('articles');
 @@ -12,7 +13,7 @@ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
- 
+
  // Slicing articles for different sections
  const topArticle = articles[0];
 -const topStories = articles.slice(1, 4);
@@ -200,7 +200,7 @@ index 92f6399..6eb2328 100644
  const politicsArticles = articles.slice(11, 15);   // 4 articles for the new grid
 @@ -38,21 +39,8 @@ politicsArticles[2] = {
  ---
- 
+
  <Layout title="The DevTools Times">
 -    <!-- Top Stories Bar -->
 -    <div class="bg-white border-b border-gray-300">
@@ -219,7 +219,7 @@ index 92f6399..6eb2328 100644
 -    </div>
 +    <!-- Top Stories Section -->
 +    <TopStoriesCarousel articles={topStories} />
- 
+
      <!-- Main Content Area -->
      <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 diff --git a/src/styles/global.css b/src/styles/global.css

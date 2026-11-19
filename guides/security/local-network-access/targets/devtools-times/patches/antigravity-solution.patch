@@ -32,7 +32,7 @@ index 22f7b64..4424505 100644
 +    serverCertificateHashes?: WebTransportHash[];
    }
  }
- 
+
 -export {};
 \ No newline at end of file
 +export {};
@@ -45,13 +45,13 @@ index 980b279..8b15e2f 100644
  import { getCollection } from "astro:content";
  import BottomNav from "./BottomNav.tsx";
 +import LocalNetworkPanel from "./LocalNetworkPanel.tsx";
- 
+
  const articles = await getCollection("articles");
  const reports = await getCollection("reports");
 @@ -58,10 +59,12 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
          </a>
        </div>
- 
+
 -      <!-- Right Section: Stock -->
 +      <!-- Right Section: Stock / Local Network Status -->
        <div class="text-xs font-semibold text-right">
@@ -60,7 +60,7 @@ index 980b279..8b15e2f 100644
      </div>
 +    <LocalNetworkPanel client:load compact={true} />
    </div>
- 
+
    <!-- Bottom Navigation Bar -->
 diff --git a/src/components/LocalNetworkPanel.tsx b/src/components/LocalNetworkPanel.tsx
 new file mode 100644
@@ -685,31 +685,31 @@ index 10bfbad..71941c2 100644
 --- a/src/components/ReadingListFlyout.tsx
 +++ b/src/components/ReadingListFlyout.tsx
 @@ -1,5 +1,10 @@
- 
+
  import React, { useState, useEffect } from 'react';
 +import {
 +  checkNetworkPermission,
 +  syncWithLoopbackDaemon,
 +  formatLnaErrorRemediation,
 +} from '../utils/local-network';
- 
+
  interface Article {
    slug: string;
 @@ -15,6 +20,10 @@ interface Props {
- 
+
  export default function ReadingListFlyout({ articles, onClose }: Props) {
    const [readingList, setReadingList] = useState<string[]>([]);
 +  const [loopbackPerm, setLoopbackPerm] = useState<PermissionState>('prompt');
 +  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 +  const [syncError, setSyncError] = useState<string | null>(null);
 +  const [isSyncing, setIsSyncing] = useState<boolean>(false);
- 
+
    const fetchReadingList = async () => {
      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
 @@ -22,8 +31,28 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
      setReadingList(data.readingList);
    };
- 
+
 +  const handleSyncToCompanion = async () => {
 +    setIsSyncing(true);
 +    setSyncMessage(null);
@@ -732,7 +732,7 @@ index 10bfbad..71941c2 100644
    useEffect(() => {
      fetchReadingList();
 +    checkNetworkPermission('loopback-network', setLoopbackPerm);
- 
+
      const handleKeyDown = (event: KeyboardEvent) => {
        if (event.key === 'Escape') {
 @@ -58,9 +87,32 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
@@ -777,7 +777,7 @@ index 1684cf6..3c05b8a 100644
 @@ -1,6 +1,8 @@
 -
  import { defineMiddleware } from 'astro:middleware';
- 
+
 +export const LOCAL_NETWORK_PERMISSIONS_POLICY =
 +  'local-network=(self "https://setup.partner.example.com"), loopback-network=(self "https://setup.partner.example.com")';
 +
@@ -934,13 +934,13 @@ index 24fea39..47a8ac7 100644
  import BookmarkButton from '../../components/BookmarkButton.tsx';
  import ArticleTeaser from '../../components/ArticleTeaser.astro';
 +import LocalNetworkPanel from '../../components/LocalNetworkPanel.tsx';
- 
+
  export const getStaticPaths = (async () => {
    const articles = await getCollection('articles');
 @@ -109,6 +110,15 @@ const isBookmarked = readingList.includes(article.slug);
              <Content />
          </div>
- 
+
 +        <!-- Local Network & Companion Actions (LAN Print & Loopback Sync) -->
 +        <LocalNetworkPanel
 +            client:load

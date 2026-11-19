@@ -25,9 +25,9 @@ To use Trusted Types, follow four main steps:
 A policy is a set of rules for sanitizing content. You create it using `trustedTypes.createPolicy()`, typically delegating to a sanitizer library such as DOMPurify or your application's HTML escaping rules:
 
 ```javascript
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 
-const myPolicy = trustedTypes.createPolicy('sanitize-html', {
+const myPolicy = trustedTypes.createPolicy("sanitize-html", {
   createHTML: (input) =>
     // Return a sanitized string; createPolicy() wraps it in a TrustedHTML object.
     // Example using DOMPurify:
@@ -35,14 +35,14 @@ const myPolicy = trustedTypes.createPolicy('sanitize-html', {
 });
 
 // Example using HTML escaping (for environments without third-party sanitizers):
-const escapePolicy = trustedTypes.createPolicy('escape-html', {
+const escapePolicy = trustedTypes.createPolicy("escape-html", {
   createHTML: (input) =>
     String(input)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;'),
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;"),
 });
 ```
 
@@ -54,7 +54,8 @@ const escapePolicy = trustedTypes.createPolicy('escape-html', {
 Instead of passing a string directly to a sink, you call the policy's creation method.
 
 ```javascript
-const untrustedInput = '<p>Hello, <strong>world</strong>!</p><img src="x" onerror="alert(1)">';
+const untrustedInput =
+  '<p>Hello, <strong>world</strong>!</p><img src="x" onerror="alert(1)">';
 
 // In an enforced environment, this would throw a TypeError:
 // element.innerHTML = untrustedInput;
@@ -78,6 +79,7 @@ trustedTypes.createPolicy("default", {
 ```
 
 Common sinks that support Trusted Types include:
+
 - **HTML:** `element.innerHTML`, `element.outerHTML`, `document.write()`, `element.setHTMLUnsafe()`, `Document.parseHTMLUnsafe()`
 - **Script:** `<script>` text content, `eval()`
 - **ScriptURL:** `<script src>`, `Worker()`, `SharedWorker()`

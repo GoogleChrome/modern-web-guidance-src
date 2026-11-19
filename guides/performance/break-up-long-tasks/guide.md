@@ -24,7 +24,7 @@ async function processLargeArray(items) {
   for (const item of items) {
     // Process the item
     processItem(item);
-    
+
     // MANDATORY: Yield to the main thread periodically to keep the UI
     // responsive. This can be done by checking if the deadline set earlier
     // has been exceeded. When it has been, yield, then reset the deadline
@@ -52,15 +52,15 @@ async function processLargeArrayWithFallback(items) {
 
   for (const item of items) {
     processItem(item);
-    
+
     // MANDATORY: Yield to the main thread periodically to keep the UI responsive.
     if (performance.now() >= deadline) {
       // DO: Feature detect scheduler.yield
-      if ('scheduler' in window && 'yield' in window.scheduler) {
+      if ("scheduler" in window && "yield" in window.scheduler) {
         await scheduler.yield();
       } else {
         // DO: Fallback to setTimeout for older browsers
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
       deadline = performance.now() + 50;
     }

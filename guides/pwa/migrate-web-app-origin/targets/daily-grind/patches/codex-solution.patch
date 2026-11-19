@@ -79,7 +79,7 @@ index 66c9173..a3ffd0a 100644
        --primary: #4e342e;
 @@ -73,6 +75,18 @@
      }
- 
+
      /* Hero Section */
 +    .migration-banner {
 +      background: #fff3e0;
@@ -97,9 +97,9 @@ index 66c9173..a3ffd0a 100644
        height: 60vh;
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
 @@ -157,6 +171,16 @@
- 
+
  <body>
- 
+
 +  <aside class="migration-banner" aria-labelledby="migration-heading">
 +    <h2 id="migration-heading">The Daily Grind has moved</h2>
 +    <p><a href="https://new-app.example.com/">Open the new Daily Grind app</a>.

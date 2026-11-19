@@ -32,7 +32,7 @@ index 66c9173..37a38db 100644
 +      gap: 16px;
 +      flex-wrap: wrap;
      }
- 
+
      .logo {
 @@ -49,17 +51,19 @@
      nav ul {
@@ -41,12 +41,12 @@ index 66c9173..37a38db 100644
 +      flex-wrap: wrap;
 +      gap: 12px 20px;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      margin: 0;
      }
- 
+
      nav a {
        color: white;
        text-decoration: none;
@@ -54,11 +54,11 @@ index 66c9173..37a38db 100644
 -      transition: color 0.3s;
 +      display: inline-block;
      }
- 
+
      nav a:hover {
 @@ -101,18 +105,41 @@
      }
- 
+
      .grid {
 -      display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -71,7 +71,7 @@ index 66c9173..37a38db 100644
 +      padding: 6px 6px 20px;
 +      scrollbar-color: var(--primary) var(--secondary);
      }
- 
+
      .card {
 +      flex: 0 0 min(85%, 360px);
 +      scroll-snap-align: start;
@@ -98,7 +98,7 @@ index 66c9173..37a38db 100644
 +    .card p {
 +      margin-bottom: 15px;
      }
- 
+
      .card h3 {
 @@ -128,7 +155,9 @@
        text-decoration: none;
@@ -109,11 +109,11 @@ index 66c9173..37a38db 100644
 +      font: inherit;
 +      cursor: pointer;
      }
- 
+
      .btn:hover {
 @@ -147,11 +176,91 @@
      }
- 
+
      .footer-links a {
 +      display: inline-block;
        margin: 0 10px;
@@ -202,10 +202,10 @@ index 66c9173..37a38db 100644
 +    }
    </style>
  </head>
- 
+
 @@ -175,25 +284,43 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -252,11 +252,11 @@ index 66c9173..37a38db 100644
 +      </div>
      </section>
    </main>
- 
+
 @@ -207,6 +334,85 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const supportsPopover = 'showPopover' in HTMLElement.prototype;
 +    const triggers = document.querySelectorAll('.card button[popovertarget]');
@@ -337,7 +337,7 @@ index 66c9173..37a38db 100644
 +    });
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

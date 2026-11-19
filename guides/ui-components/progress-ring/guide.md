@@ -30,12 +30,15 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
 
 ```html
 <div class="progress-ring-wrapper">
-  <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
+  <progress
+    value="75"
+    max="100"
+    aria-label="Task progress"
+    class="progress-ring"
+  ></progress>
   <!-- Optional: Content to display in the center. Hidden from assistive
        technologies because it repeats the value of the <progress> element. -->
-  <div class="progress-ring-content" aria-hidden="true">
-    75%
-  </div>
+  <div class="progress-ring-content" aria-hidden="true">75%</div>
 </div>
 ```
 
@@ -46,6 +49,7 @@ If the center content shows the value in another form, such as "3 of 5 files" or
 ### 2. Styles
 
 #### Hiding Native UI
+
 To style the `<progress>` element as a progress ring, first hide the default browser styling for progress bars.
 
 ```css
@@ -119,14 +123,13 @@ You can also use a `radial-gradient` to make rounded end caps.
 
 #### Enable smooth transitions with `@property`
 
-To animate the progress ring smoothly when the value changes, register `--value` as a numeric custom property. 
+To animate the progress ring smoothly when the value changes, register `--value` as a numeric custom property.
 
 Users with motion sensitivities may find the transition between values disorienting. Respect the `prefers-reduced-motion` media query by having a 0 second (immediate) duration by default, and setting a longer time for users with no preference.
 
-
 ```css
 @property --value {
-  syntax: '<number>';
+  syntax: "<number>";
   inherits: true;
   initial-value: 0;
 }
@@ -137,7 +140,6 @@ progress.progress-ring {
     transition-duration: 0.4s;
   }
 }
-
 ```
 
 ### 3. Progress Updates

@@ -5,7 +5,7 @@ index 66c9173..f602e7c 100644
 @@ -135,6 +135,161 @@
        background: #3e2723;
      }
- 
+
 +    /* Loyalty Rewards */
 +    .rewards {
 +      margin-top: 50px;
@@ -190,7 +190,7 @@ index 66c9173..f602e7c 100644
 +      </div>
 +    </section>
    </main>
- 
+
 +  <script>
 +    (function () {
 +      const progress = document.getElementById("rewards-progress");

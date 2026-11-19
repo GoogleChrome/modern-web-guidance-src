@@ -8,7 +8,6 @@ import { rootDir } from "../core/paths.ts";
 import { processGuides } from "./build-guides.ts";
 import { replaceMacros } from "../core/macros.ts";
 
-
 const ROOT_DIST_DIR = path.join(rootDir, "dist");
 
 interface BuildResult {
@@ -19,31 +18,31 @@ interface BuildResult {
 async function acquireLock(lockFilePath: string) {
   while (true) {
     try {
-      fs.writeFileSync(lockFilePath, String(process.pid), { flag: 'wx' });
+      fs.writeFileSync(lockFilePath, String(process.pid), { flag: "wx" });
       return;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
     }
 
     let stale = false;
     try {
-      const pid = parseInt(fs.readFileSync(lockFilePath, 'utf-8').trim(), 10);
+      const pid = parseInt(fs.readFileSync(lockFilePath, "utf-8").trim(), 10);
       if (Number.isInteger(pid) && pid > 0) process.kill(pid, 0);
       else stale = true;
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code;
-      if (code === 'ESRCH' || code === 'ENOENT') stale = true;
+      if (code === "ESRCH" || code === "ENOENT") stale = true;
     }
 
     if (!stale) {
       console.log(" Another build is in progress. Waiting...");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       continue;
     }
     try {
       fs.unlinkSync(lockFilePath);
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+      if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
     }
   }
 }
@@ -51,78 +50,136 @@ async function acquireLock(lockFilePath: string) {
 function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   // Gemini
   const geminiPath = path.join(publishCliDir, "gemini-extension.json");
-  const geminiData = JSON.parse(fs.readFileSync(geminiPath, 'utf8'));
+  const geminiData = JSON.parse(fs.readFileSync(geminiPath, "utf8"));
   geminiData.version = newVersion;
-  fs.writeFileSync(geminiPath, JSON.stringify(geminiData, null, 2) + '\n');
+  fs.writeFileSync(geminiPath, JSON.stringify(geminiData, null, 2) + "\n");
 
   // VSCode
   const vscodePath = path.join(publishCliDir, "package.json");
-  const vscodeData = JSON.parse(fs.readFileSync(vscodePath, 'utf8'));
+  const vscodeData = JSON.parse(fs.readFileSync(vscodePath, "utf8"));
   vscodeData.version = newVersion;
-  fs.writeFileSync(vscodePath, JSON.stringify(vscodeData, null, 2) + '\n');
+  fs.writeFileSync(vscodePath, JSON.stringify(vscodeData, null, 2) + "\n");
 
   // Claude Plugin
-  const claudePluginPath = path.join(publishCliDir, ".claude-plugin/plugin.json");
-  const claudePluginData = JSON.parse(fs.readFileSync(claudePluginPath, 'utf8'));
+  const claudePluginPath = path.join(
+    publishCliDir,
+    ".claude-plugin/plugin.json",
+  );
+  const claudePluginData = JSON.parse(
+    fs.readFileSync(claudePluginPath, "utf8"),
+  );
   claudePluginData.version = newVersion;
-  fs.writeFileSync(claudePluginPath, JSON.stringify(claudePluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    claudePluginPath,
+    JSON.stringify(claudePluginData, null, 2) + "\n",
+  );
 
   // Claude Marketplace
-  const marketplacePath = path.join(publishCliDir, ".claude-plugin/marketplace.json");
-  const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, 'utf8'));
+  const marketplacePath = path.join(
+    publishCliDir,
+    ".claude-plugin/marketplace.json",
+  );
+  const marketplaceData = JSON.parse(fs.readFileSync(marketplacePath, "utf8"));
   marketplaceData.plugins[0].version = newVersion;
-  fs.writeFileSync(marketplacePath, JSON.stringify(marketplaceData, null, 2) + '\n');
+  fs.writeFileSync(
+    marketplacePath,
+    JSON.stringify(marketplaceData, null, 2) + "\n",
+  );
 
   // Cursor Plugin
-  const cursorPluginPath = path.join(publishCliDir, ".cursor-plugin/plugin.json");
-  const cursorPluginData = JSON.parse(fs.readFileSync(cursorPluginPath, 'utf8'));
+  const cursorPluginPath = path.join(
+    publishCliDir,
+    ".cursor-plugin/plugin.json",
+  );
+  const cursorPluginData = JSON.parse(
+    fs.readFileSync(cursorPluginPath, "utf8"),
+  );
   cursorPluginData.version = newVersion;
-  fs.writeFileSync(cursorPluginPath, JSON.stringify(cursorPluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    cursorPluginPath,
+    JSON.stringify(cursorPluginData, null, 2) + "\n",
+  );
 
   // Copilot plugin
-  const copilotPluginPath = path.join(publishCliDir, ".github/plugin/plugin.json");
-  const copilotPluginData = JSON.parse(fs.readFileSync(copilotPluginPath, 'utf8'));
+  const copilotPluginPath = path.join(
+    publishCliDir,
+    ".github/plugin/plugin.json",
+  );
+  const copilotPluginData = JSON.parse(
+    fs.readFileSync(copilotPluginPath, "utf8"),
+  );
   copilotPluginData.version = newVersion;
-  fs.writeFileSync(copilotPluginPath, JSON.stringify(copilotPluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    copilotPluginPath,
+    JSON.stringify(copilotPluginData, null, 2) + "\n",
+  );
 
   // Kimi plugin
   const kimiPluginPath = path.join(publishCliDir, "kimi.plugin.json");
-  const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, 'utf8'));
+  const kimiPluginData = JSON.parse(fs.readFileSync(kimiPluginPath, "utf8"));
   kimiPluginData.version = newVersion;
-  fs.writeFileSync(kimiPluginPath, JSON.stringify(kimiPluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    kimiPluginPath,
+    JSON.stringify(kimiPluginData, null, 2) + "\n",
+  );
 
   // Grok Marketplace
-  const grokMarketplacePath = path.join(publishCliDir, ".grok-plugin/marketplace.json");
-  const grokMarketplaceData = JSON.parse(fs.readFileSync(grokMarketplacePath, 'utf8'));
+  const grokMarketplacePath = path.join(
+    publishCliDir,
+    ".grok-plugin/marketplace.json",
+  );
+  const grokMarketplaceData = JSON.parse(
+    fs.readFileSync(grokMarketplacePath, "utf8"),
+  );
   grokMarketplaceData.plugins[0].version = newVersion;
-  fs.writeFileSync(grokMarketplacePath, JSON.stringify(grokMarketplaceData, null, 2) + '\n');
+  fs.writeFileSync(
+    grokMarketplacePath,
+    JSON.stringify(grokMarketplaceData, null, 2) + "\n",
+  );
 
   // Codex Plugin
   const codexPluginPath = path.join(publishCliDir, ".codex-plugin/plugin.json");
-  const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, 'utf8'));
+  const codexPluginData = JSON.parse(fs.readFileSync(codexPluginPath, "utf8"));
   codexPluginData.version = newVersion;
-  fs.writeFileSync(codexPluginPath, JSON.stringify(codexPluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    codexPluginPath,
+    JSON.stringify(codexPluginData, null, 2) + "\n",
+  );
 
   // Codex Marketplace
-  const codexMarketplacePath = path.join(publishCliDir, ".agents/plugins/marketplace.json");
+  const codexMarketplacePath = path.join(
+    publishCliDir,
+    ".agents/plugins/marketplace.json",
+  );
   if (fs.existsSync(codexMarketplacePath)) {
-    const codexMarketplaceData = JSON.parse(fs.readFileSync(codexMarketplacePath, 'utf8'));
+    const codexMarketplaceData = JSON.parse(
+      fs.readFileSync(codexMarketplacePath, "utf8"),
+    );
     if (codexMarketplaceData.plugins?.[0]) {
       codexMarketplaceData.plugins[0].version = newVersion;
     }
-    fs.writeFileSync(codexMarketplacePath, JSON.stringify(codexMarketplaceData, null, 2) + '\n');
+    fs.writeFileSync(
+      codexMarketplacePath,
+      JSON.stringify(codexMarketplaceData, null, 2) + "\n",
+    );
   }
 
   // Agent Plugins
   const agentPluginPath = path.join(publishCliDir, "plugin.json");
-  const agentPluginData = JSON.parse(fs.readFileSync(agentPluginPath, 'utf8'));
+  const agentPluginData = JSON.parse(fs.readFileSync(agentPluginPath, "utf8"));
   agentPluginData.version = newVersion;
-  fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
+  fs.writeFileSync(
+    agentPluginPath,
+    JSON.stringify(agentPluginData, null, 2) + "\n",
+  );
 }
 
-export type DistTag = 'latest' | 'next';
+export type DistTag = "latest" | "next";
 
-export function processSkills(publishRoot: string, distTag: DistTag = 'latest') {
+export function processSkills(
+  publishRoot: string,
+  distTag: DistTag = "latest",
+) {
   console.log("Processing standalone skills from configuration...");
   const skills = config.standaloneSkills;
 
@@ -133,7 +190,7 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
 
     fs.mkdirSync(skillDestDir, { recursive: true });
 
-    const target = 'skills-cli';
+    const target = "skills-cli";
 
     // Copy sibling directories and files (e.g., references)
     const sourceDir = path.dirname(source);
@@ -158,22 +215,47 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
     //   to update.
     // - --abbrev=8 keeps the short SHA a stable length as the repo grows.
     const skillVersion = gitExec(
-      ['log', '-1', '--abbrev=8', '--date=format:%Y_%m_%d', '--pretty=format:%cd-%h', 'SKILL.md'],
-      { stdio: ['pipe', 'pipe', 'ignore'], cwd: sourceDir }
+      [
+        "log",
+        "-1",
+        "--abbrev=8",
+        "--date=format:%Y_%m_%d",
+        "--pretty=format:%cd-%h",
+        "SKILL.md",
+      ],
+      { stdio: ["pipe", "pipe", "ignore"], cwd: sourceDir },
     ).trim();
-    fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
+    fs.writeFileSync(
+      path.join(skillDestDir, "skill-version.txt"),
+      skillVersion,
+    );
 
-    const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
-      .replaceAll('SKILL_VERSION', skillVersion)
-      .replaceAll('modern-web-guidance@latest', `modern-web-guidance@${distTag}`);
+    const content = replaceMacros(fs.readFileSync(source, "utf8"), source, {
+      target,
+    })
+      .replaceAll("SKILL_VERSION", skillVersion)
+      .replaceAll(
+        "modern-web-guidance@latest",
+        `modern-web-guidance@${distTag}`,
+      );
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
-  return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
+  return { skillsCount: skills.length, skillNames: skills.map((s) => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
+async function main(opts: {
+  publishRoot: string;
+  version?: string;
+  failOnMissingVectors?: boolean;
+  distTag?: DistTag;
+}): Promise<BuildResult | undefined> {
+  const {
+    publishRoot,
+    version,
+    failOnMissingVectors,
+    distTag = "latest",
+  } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -195,23 +277,36 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
     // Restore the fresh vectors/guides from .cache/ into DIST_DIR.
     await processGuides({
       outputDir: DIST_DIR,
-      target: 'skills-cli',
+      target: "skills-cli",
       failOnMissingVectors,
     });
 
     // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
-    const promptApiLink = path.join(DIST_DIR, "guides/built-in-ai/prompt-api.md");
+    const promptApiLink = path.join(
+      DIST_DIR,
+      "guides/built-in-ai/prompt-api.md",
+    );
     const categoryDir = path.dirname(promptApiLink);
     if (fs.existsSync(categoryDir)) {
       if (fs.existsSync(promptApiLink)) {
         fs.unlinkSync(promptApiLink);
       }
-      fs.copyFileSync(path.join(categoryDir, "language-model.md"), promptApiLink);
-      console.log("Created prompt-api.md copy of language-model.md in distribution guides");
+      fs.copyFileSync(
+        path.join(categoryDir, "language-model.md"),
+        promptApiLink,
+      );
+      console.log(
+        "Created prompt-api.md copy of language-model.md in distribution guides",
+      );
     }
 
-    fs.cpSync(path.join(rootDir, "src/cli/template"), publishRoot, { recursive: true });
-    fs.copyFileSync(path.join(rootDir, "LICENSE"), path.join(publishRoot, "LICENSE"));
+    fs.cpSync(path.join(rootDir, "src/cli/template"), publishRoot, {
+      recursive: true,
+    });
+    fs.copyFileSync(
+      path.join(rootDir, "LICENSE"),
+      path.join(publishRoot, "LICENSE"),
+    );
 
     const srcImgDir = path.join(rootDir, ".github/img");
     const destImgDir = path.join(publishRoot, ".github/img");
@@ -228,8 +323,15 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
     const destGenDir = path.join(DIST_DIR, "gen");
     if (fs.existsSync(ragGenDir)) {
       fs.mkdirSync(destGenDir, { recursive: true });
-      for (const file of ["query-words.json", "query-words.i8", "query-words.scale.f32"]) {
-        fs.copyFileSync(path.join(ragGenDir, file), path.join(destGenDir, file));
+      for (const file of [
+        "query-words.json",
+        "query-words.i8",
+        "query-words.scale.f32",
+      ]) {
+        fs.copyFileSync(
+          path.join(ragGenDir, file),
+          path.join(destGenDir, file),
+        );
       }
     }
 
@@ -241,7 +343,10 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         platform: "node",
         format: "esm",
         mainFields: ["module", "main"],
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
+        outfile: path.join(
+          publishRoot,
+          "skills/modern-web-guidance/search.mjs",
+        ),
         sourcemap: true,
         sourcesContent: false,
         metafile: true,
@@ -251,7 +356,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
 
       fs.writeFileSync(
         path.join(ROOT_DIST_DIR, "search.meta.json"),
-        JSON.stringify(resultSearch.metafile)
+        JSON.stringify(resultSearch.metafile),
       );
 
       console.log("Bundling legacy-scan.mjs...");
@@ -260,7 +365,10 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/legacy-scan.mjs"),
+        outfile: path.join(
+          publishRoot,
+          "skills/modern-web-guidance/legacy-scan.mjs",
+        ),
         banner: {
           js: `// @ts-nocheck
 import { createRequire } from 'module';
@@ -281,7 +389,7 @@ const __dirname = __dirnameFunction(__filename);
 
       fs.writeFileSync(
         path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
-        JSON.stringify(resultAnalyze.metafile)
+        JSON.stringify(resultAnalyze.metafile),
       );
 
       console.log("Bundling modern-web.mjs...");
@@ -290,9 +398,12 @@ const __dirname = __dirnameFunction(__filename);
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
+        outfile: path.join(
+          publishRoot,
+          "skills/modern-web-guidance/modern-web.mjs",
+        ),
         define: {
-          "__MWG_DIST_TAG__": JSON.stringify(distTag),
+          __MWG_DIST_TAG__: JSON.stringify(distTag),
         },
         banner: {
           js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
@@ -302,17 +413,22 @@ if (__mwg_major < 22) {
 }
 `,
         },
-        plugins: [{
-          name: 'external-cli-modules',
-          setup(build) {
-            build.onResolve({ filter: /search\.ts$/ }, _args => {
-              return { path: './search.mjs', external: true }
-            });
-            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
-              return { path: './legacy-scan.mjs', external: true }
-            });
+        plugins: [
+          {
+            name: "external-cli-modules",
+            setup(build) {
+              build.onResolve({ filter: /search\.ts$/ }, (_args) => {
+                return { path: "./search.mjs", external: true };
+              });
+              build.onResolve(
+                { filter: /(?:analyzing\/cli|cli)\.ts$/ },
+                (_args) => {
+                  return { path: "./legacy-scan.mjs", external: true };
+                },
+              );
+            },
           },
-        }],
+        ],
         metafile: true,
       });
 
@@ -322,20 +438,33 @@ if (__mwg_major < 22) {
         bundle: true,
         platform: "node",
         format: "esm",
-        outfile: path.join(publishRoot, "skills/modern-web-guidance/watchdog/main.js"),
+        outfile: path.join(
+          publishRoot,
+          "skills/modern-web-guidance/watchdog/main.js",
+        ),
         metafile: true,
       });
 
-      const modernWebMjsPath = path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs");
+      const modernWebMjsPath = path.join(
+        publishRoot,
+        "skills/modern-web-guidance/modern-web.mjs",
+      );
       const modernWebContent = fs.readFileSync(modernWebMjsPath, "utf8");
-      const updatedModernWebContent = modernWebContent.replace(/^#!.*node.*--experimental-strip-types.*\n/, "#!/usr/bin/env node\n");
+      const updatedModernWebContent = modernWebContent.replace(
+        /^#!.*node.*--experimental-strip-types.*\n/,
+        "#!/usr/bin/env node\n",
+      );
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
-        path.join(publishRoot, "THIRD_PARTY_NOTICES")
+        [
+          resultSearch.metafile,
+          resultAnalyze.metafile,
+          resultModernWeb.metafile,
+          resultWatchdog.metafile,
+        ],
+        path.join(publishRoot, "THIRD_PARTY_NOTICES"),
       );
-
     } catch (error) {
       console.error("Failed to bundle with esbuild:", error);
       throw error;
@@ -343,7 +472,9 @@ if (__mwg_major < 22) {
 
     const { skillsCount, skillNames } = processSkills(publishRoot, distTag);
 
-    console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
+    console.log(
+      `\nSuccess! standalone distribution generated in ${publishRoot}`,
+    );
     return { skillsCount, skillNames };
   } finally {
     if (fs.existsSync(lockFilePath)) {
@@ -352,23 +483,36 @@ if (__mwg_major < 22) {
   }
 }
 
-
-function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath: string) {
-  const allowedLicenses = ['MIT', 'Apache 2.0', 'Apache-2.0', 'BSD-3-Clause', 'BSD-2-Clause', 'ISC', '0BSD'];
+function generateThirdPartyNotices(
+  metafiles: esbuild.Metafile[],
+  outputFilePath: string,
+) {
+  const allowedLicenses = [
+    "MIT",
+    "Apache 2.0",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "ISC",
+    "0BSD",
+  ];
   const paths = new Set<string>();
 
-  for (const metafile of metafiles) for (const p of Object.keys(metafile.inputs)) paths.add(p);
+  for (const metafile of metafiles)
+    for (const p of Object.keys(metafile.inputs)) paths.add(p);
 
   const nodeModules = new Map<string, string>();
   for (const filePath of paths) {
-    if (!filePath.includes('node_modules')) continue;
+    if (!filePath.includes("node_modules")) continue;
 
-    const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(rootDir, filePath);
+    const absolutePath = path.isAbsolute(filePath)
+      ? filePath
+      : path.resolve(rootDir, filePath);
     let dir = path.dirname(absolutePath);
     let pkgJsonPath;
 
     while (dir.startsWith(rootDir) && dir !== rootDir) {
-      const candidate = path.join(dir, 'package.json');
+      const candidate = path.join(dir, "package.json");
       if (fs.existsSync(candidate)) {
         pkgJsonPath = candidate;
         break;
@@ -376,46 +520,68 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
       dir = path.dirname(dir);
     }
 
-    if (pkgJsonPath && pkgJsonPath.includes('node_modules')) {
-      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
-      if (pkg.name && pkg.name !== 'modern-web-guidance-src') nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
+    if (pkgJsonPath && pkgJsonPath.includes("node_modules")) {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
+      if (pkg.name && pkg.name !== "modern-web-guidance-src")
+        nodeModules.set(pkg.name, path.dirname(pkgJsonPath));
     }
   }
 
-  const divider = '\n\n-------------------- DEPENDENCY DIVIDER --------------------\n\n';
+  const divider =
+    "\n\n-------------------- DEPENDENCY DIVIDER --------------------\n\n";
 
-  const stringifiedDependencies = Array.from(nodeModules.keys()).sort().map(name => {
-    const nodeModulePath = nodeModules.get(name)!;
-    const dependency = JSON.parse(fs.readFileSync(path.join(nodeModulePath, 'package.json'), 'utf-8'));
+  const stringifiedDependencies = Array.from(nodeModules.keys())
+    .sort()
+    .map((name) => {
+      const nodeModulePath = nodeModules.get(name)!;
+      const dependency = JSON.parse(
+        fs.readFileSync(path.join(nodeModulePath, "package.json"), "utf-8"),
+      );
 
-    const licenseFilePaths = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENSE.MIT', 'LICENSE.APACHE'].map(f => path.join(nodeModulePath, f));
-    const licenseFile = licenseFilePaths.find(f => fs.existsSync(f));
-    if (licenseFile) dependency.licenseText = fs.readFileSync(licenseFile, 'utf-8');
+      const licenseFilePaths = [
+        "LICENSE",
+        "LICENSE.txt",
+        "LICENSE.md",
+        "LICENSE.MIT",
+        "LICENSE.APACHE",
+      ].map((f) => path.join(nodeModulePath, f));
+      const licenseFile = licenseFilePaths.find((f) => fs.existsSync(f));
+      if (licenseFile)
+        dependency.licenseText = fs.readFileSync(licenseFile, "utf-8");
 
-    const license = dependency.license ?? 'N/A';
-    if (!allowedLicenses.includes(license)) throw new Error(`Unapproved license for dependency ${name}: ${license}`);
+      const license = dependency.license ?? "N/A";
+      if (!allowedLicenses.includes(license))
+        throw new Error(
+          `Unapproved license for dependency ${name}: ${license}`,
+        );
 
-    let url = dependency.homepage ?? dependency.repository;
-    if (url && typeof url === 'object') url = url.url;
+      let url = dependency.homepage ?? dependency.repository;
+      if (url && typeof url === "object") url = url.url;
 
-    return [
-      `Name: ${dependency.name ?? 'N/A'}`,
-      `URL: ${url ?? 'N/A'}`,
-      `Version: ${dependency.version ?? 'N/A'}`,
-      `License: ${license}`,
-      ...(dependency.licenseText ? ['', dependency.licenseText.replaceAll('\r', '')] : [])
-    ].join('\n');
-  }).join(divider);
+      return [
+        `Name: ${dependency.name ?? "N/A"}`,
+        `URL: ${url ?? "N/A"}`,
+        `Version: ${dependency.version ?? "N/A"}`,
+        `License: ${license}`,
+        ...(dependency.licenseText
+          ? ["", dependency.licenseText.replaceAll("\r", "")]
+          : []),
+      ].join("\n");
+    })
+    .join(divider);
 
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
 }
 
 function getLatestVersion() {
-  const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
-    stdio: ['pipe', 'pipe', 'ignore'],
-  });
-  const [tag = ''] = output.trim().split('\n');
-  return tag.startsWith('v') ? tag.slice(1) : tag;
+  const output = gitExec(
+    ["tag", "-l", "v*.*.*", "--merged", "HEAD", "--sort=-v:refname"],
+    {
+      stdio: ["pipe", "pipe", "ignore"],
+    },
+  );
+  const [tag = ""] = output.trim().split("\n");
+  return tag.startsWith("v") ? tag.slice(1) : tag;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -428,7 +594,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   (async () => {
     try {
-      await main({ publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"), version });
+      await main({
+        publishRoot: path.join(ROOT_DIST_DIR, "skills-cli"),
+        version,
+      });
     } catch (err) {
       console.error(err);
       process.exit(1);
@@ -445,29 +614,33 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
  */
 export function createStripTsMorphLibFilesPlugin(): esbuild.Plugin {
   return {
-    name: 'strip-ts-morph-lib-files',
+    name: "strip-ts-morph-lib-files",
     setup(build) {
       let didStrip = false;
 
       build.onLoad({ filter: /ts-morph-common\.js$/ }, async (args) => {
-        const source = await fs.promises.readFile(args.path, 'utf8');
+        const source = await fs.promises.readFile(args.path, "utf8");
         const transformed = source.replace(
           /const libFiles = \[[\s\S]*?\];\s*(function getLibFiles\(\))/m,
-          'const libFiles = [];\n$1'
+          "const libFiles = [];\n$1",
         );
         if (transformed.length === source.length) {
-          throw new Error('strip-ts-morph-lib-files: failed to match and strip inlined libFiles array');
+          throw new Error(
+            "strip-ts-morph-lib-files: failed to match and strip inlined libFiles array",
+          );
         }
         didStrip = true;
         return {
           contents: transformed,
-          loader: 'js',
+          loader: "js",
         };
       });
 
       build.onEnd((result) => {
         if (result.errors.length === 0 && !didStrip) {
-          throw new Error('strip-ts-morph-lib-files: filter /ts-morph-common\\.js$/ did not match any file during bundle');
+          throw new Error(
+            "strip-ts-morph-lib-files: filter /ts-morph-common\\.js$/ did not match any file during bundle",
+          );
         }
       });
     },

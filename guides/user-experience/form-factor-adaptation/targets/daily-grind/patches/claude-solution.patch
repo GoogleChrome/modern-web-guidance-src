@@ -3,7 +3,7 @@ index 66c9173..e9701b2 100644
 --- a/index.html
 +++ b/index.html
 @@ -3,7 +3,7 @@
- 
+
  <head>
    <meta charset="UTF-8">
 -  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +14,7 @@ index 66c9173..e9701b2 100644
 @@ -14,6 +14,11 @@
        --light: #fafafa;
      }
- 
+
 +    :root { --target-size: 24px; }
 +    @media (pointer: coarse) {
 +      :root { --target-size: 44px; }
@@ -41,7 +41,7 @@ index 66c9173..e9701b2 100644
 +      align-items: center;
 +      justify-content: center;
      }
- 
+
      /* Navigation */
      nav {
        background: var(--primary);
@@ -56,22 +56,22 @@ index 66c9173..e9701b2 100644
        align-items: center;
        position: sticky;
 @@ -48,12 +69,11 @@
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: wrap;
 +      gap: 0.25rem 20px;
        list-style: none;
      }
- 
+
 -    nav ul li {
 -      margin-left: 20px;
 -    }
- 
+
      nav a {
        color: white;
 @@ -74,7 +94,8 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -87,17 +87,17 @@ index 66c9173..e9701b2 100644
 -      padding: 0 20px;
 +      padding: 2rem max(20px, env(safe-area-inset-right, 0px)) 2rem max(20px, env(safe-area-inset-left, 0px));
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: clamp(2rem, 8vw, 3rem);
        margin-bottom: 1rem;
      }
- 
+
 @@ -100,9 +121,11 @@
        padding: 0 20px;
      }
- 
+
 +    .grid-wrap { container: favorites / inline-size; }
 +
      .grid {
@@ -110,7 +110,7 @@ index 66c9173..e9701b2 100644
 @@ -131,6 +154,11 @@
        transition: background 0.3s;
      }
- 
+
 +    @container favorites (inline-size < 30rem) {
 +      .card { padding: 15px; }
 +      .card .btn { display: flex; }
@@ -127,7 +127,7 @@ index 66c9173..e9701b2 100644
 +      padding: 40px max(20px, env(safe-area-inset-right, 0px)) max(40px, env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
        margin-top: 40px;
      }
- 
+
      .footer-links {
        margin-bottom: 20px;
 +      display: flex;
@@ -136,7 +136,7 @@ index 66c9173..e9701b2 100644
 +      align-items: center;
 +      gap: 0.25rem 0.5rem;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      padding: 0 10px;
@@ -160,7 +160,7 @@ index 66c9173..e9701b2 100644
 +      </div></div>
      </section>
    </main>
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

@@ -46,52 +46,54 @@ import {
   expect,
   getTargetFiles,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { getPropertyValues, CSSStyleRule, CSSContainerRule } from 'cssomnom';
+} from "../../../../../src/grading/test-fixture.ts";
+import { getPropertyValues, CSSStyleRule, CSSContainerRule } from "cssomnom";
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright/Node ESM
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('css-layout Target Grader', () => {
-  test('Expectation 2: Uses gap on flex navigation containers instead of child margins', () => {
+test.describe("css-layout Target Grader", () => {
+  test("Expectation 2: Uses gap on flex navigation containers instead of child margins", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const navListRuleHasGap = styleRules.some(
       (r) =>
         /\bnav\s+ul\b/.test(r.selectorText) &&
-        (Boolean(r.style.getPropertyValue('gap')) ||
-          Boolean(r.style.getPropertyValue('column-gap')) ||
-          Boolean(r.style.getPropertyValue('row-gap'))),
+        (Boolean(r.style.getPropertyValue("gap")) ||
+          Boolean(r.style.getPropertyValue("column-gap")) ||
+          Boolean(r.style.getPropertyValue("row-gap"))),
     );
     const navLiHasMarginLeft = styleRules.some(
       (r) =>
         /\bnav\s+(?:ul\s+)?li\b/.test(r.selectorText) &&
-        Boolean(r.style.getPropertyValue('margin-left')),
+        Boolean(r.style.getPropertyValue("margin-left")),
     );
 
     expect(navListRuleHasGap && !navLiHasMarginLeft).toBe(true);
   });
 
-  test('Expectation 4: Applies flex-wrap on flex containers whose items can overflow', () => {
+  test("Expectation 4: Applies flex-wrap on flex containers whose items can overflow", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFlexWrap = styleRules.some((r) => {
-      const wrapVal = r.style.getPropertyValue('flex-wrap');
-      const flowVal = r.style.getPropertyValue('flex-flow');
-      return /\b(wrap|balance)\b/.test(wrapVal) || /\b(wrap|balance)\b/.test(flowVal);
+      const wrapVal = r.style.getPropertyValue("flex-wrap");
+      const flowVal = r.style.getPropertyValue("flex-flow");
+      return (
+        /\b(wrap|balance)\b/.test(wrapVal) || /\b(wrap|balance)\b/.test(flowVal)
+      );
     });
 
     expect(hasFlexWrap).toBe(true);
   });
 
-  test('Expectation 6: Uses safe alignment (e.g. safe center) on flex containers', () => {
+  test("Expectation 6: Uses safe alignment (e.g. safe center) on flex containers", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasSafeAlignment = styleRules.some((r) => {
-      const alignItems = r.style.getPropertyValue('align-items');
-      const justifyContent = r.style.getPropertyValue('justify-content');
-      const placeItems = r.style.getPropertyValue('place-items');
-      const placeContent = r.style.getPropertyValue('place-content');
+      const alignItems = r.style.getPropertyValue("align-items");
+      const justifyContent = r.style.getPropertyValue("justify-content");
+      const placeItems = r.style.getPropertyValue("place-items");
+      const placeContent = r.style.getPropertyValue("place-content");
       return (
         /\bsafe\b/.test(alignItems) ||
         /\bsafe\b/.test(justifyContent) ||
@@ -103,53 +105,56 @@ test.describe('css-layout Target Grader', () => {
     expect(hasSafeAlignment).toBe(true);
   });
 
-  test('Expectation 15: Uses subgrid on card elements to align internal elements across sibling cards', () => {
+  test("Expectation 15: Uses subgrid on card elements to align internal elements across sibling cards", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasSubgrid = styleRules.some(
       (r) =>
         /\bcard\b/.test(r.selectorText) &&
-        /\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')),
+        /\bsubgrid\b/.test(r.style.getPropertyValue("grid-template-rows")),
     );
 
     expect(hasSubgrid).toBe(true);
   });
 
-  test('Expectation 16: Declares an explicit grid-template-rows fallback for card layout alongside subgrid', () => {
+  test("Expectation 16: Declares an explicit grid-template-rows fallback for card layout alongside subgrid", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasExplicitFallback = styleRules.some((r) => {
       if (!/\bcard\b/.test(r.selectorText)) return false;
-      const values = getPropertyValues(r, 'grid-template-rows');
+      const values = getPropertyValues(r, "grid-template-rows");
       return values.some((val) => !/\bsubgrid\b/.test(val));
     });
 
     expect(hasExplicitFallback).toBe(true);
   });
 
-  test('Expectation 17: Applies subgrid to one axis only on cards when sizing the other axis', () => {
+  test("Expectation 17: Applies subgrid to one axis only on cards when sizing the other axis", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const subgridRules = styleRules.filter(
       (r) =>
         /\bcard\b/.test(r.selectorText) &&
-        /\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-rows')),
+        /\bsubgrid\b/.test(r.style.getPropertyValue("grid-template-rows")),
     );
     const singleAxisSubgridOnly =
       subgridRules.length > 0 &&
       subgridRules.every(
-        (r) => !/\bsubgrid\b/.test(r.style.getPropertyValue('grid-template-columns')),
+        (r) =>
+          !/\bsubgrid\b/.test(
+            r.style.getPropertyValue("grid-template-columns"),
+          ),
       );
 
     expect(singleAxisSubgridOnly).toBe(true);
   });
 
-  test('Expectation 19: Establishes a containment context with container-type: inline-size (or container shorthand)', () => {
+  test("Expectation 19: Establishes a containment context with container-type: inline-size (or container shorthand)", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasContainerContext = styleRules.some((r) => {
-      const containerType = r.style.getPropertyValue('container-type');
-      const containerShorthand = r.style.getPropertyValue('container');
+      const containerType = r.style.getPropertyValue("container-type");
+      const containerShorthand = r.style.getPropertyValue("container");
       return (
         /\b(inline-size|size)\b/.test(containerType) ||
         /\b(inline-size|size)\b/.test(containerShorthand)
@@ -159,17 +164,17 @@ test.describe('css-layout Target Grader', () => {
     expect(hasContainerContext).toBe(true);
   });
 
-  test('Expectation 21: Uses @container queries for component-level responsive behavior', () => {
+  test("Expectation 21: Uses @container queries for component-level responsive behavior", () => {
     const containerRules = getRules(targetFiles, CSSContainerRule);
 
     expect(containerRules.length > 0).toBe(true);
   });
 
-  test('Expectation 22: Uses container query units inside clamp() for fluid typography or spacing', () => {
+  test("Expectation 22: Uses container query units inside clamp() for fluid typography or spacing", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFluidContainerClamp = styleRules.some((r) => {
-      const cssText = r.cssText || '';
+      const cssText = r.cssText || "";
       return /clamp\([^)]*\d+(?:\.\d+)?cq[ibwh]|clamp\([^)]*\d+(?:\.\d+)?cq(?:min|max)/i.test(
         cssText,
       );
@@ -178,32 +183,32 @@ test.describe('css-layout Target Grader', () => {
     expect(hasFluidContainerClamp).toBe(true);
   });
 
-  test('Expectation 38: Uses CSS logical properties for layout dimensions and spacing', () => {
+  test("Expectation 38: Uses CSS logical properties for layout dimensions and spacing", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasLogicalProperties = styleRules.some(
       (r) =>
-        Boolean(r.style.getPropertyValue('max-inline-size')) ||
-        Boolean(r.style.getPropertyValue('padding-inline')) ||
-        Boolean(r.style.getPropertyValue('padding-block')) ||
-        Boolean(r.style.getPropertyValue('margin-inline')) ||
-        Boolean(r.style.getPropertyValue('margin-block')) ||
-        Boolean(r.style.getPropertyValue('margin-block-start')) ||
-        Boolean(r.style.getPropertyValue('margin-block-end')) ||
-        Boolean(r.style.getPropertyValue('inset-block-start')),
+        Boolean(r.style.getPropertyValue("max-inline-size")) ||
+        Boolean(r.style.getPropertyValue("padding-inline")) ||
+        Boolean(r.style.getPropertyValue("padding-block")) ||
+        Boolean(r.style.getPropertyValue("margin-inline")) ||
+        Boolean(r.style.getPropertyValue("margin-block")) ||
+        Boolean(r.style.getPropertyValue("margin-block-start")) ||
+        Boolean(r.style.getPropertyValue("margin-block-end")) ||
+        Boolean(r.style.getPropertyValue("inset-block-start")),
     );
 
     expect(hasLogicalProperties).toBe(true);
   });
 
-  test('Expectation 39: Uses dynamic or modern viewport units (dvh, dvb, svh) instead of fixed height: 60vh on hero', () => {
+  test("Expectation 39: Uses dynamic or modern viewport units (dvh, dvb, svh) instead of fixed height: 60vh on hero", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasModernViewportUnit = styleRules.some((r) => {
-      const minBlockSize = r.style.getPropertyValue('min-block-size');
-      const blockSize = r.style.getPropertyValue('block-size');
-      const height = r.style.getPropertyValue('height');
-      const cssText = r.cssText || '';
+      const minBlockSize = r.style.getPropertyValue("min-block-size");
+      const blockSize = r.style.getPropertyValue("block-size");
+      const height = r.style.getPropertyValue("height");
+      const cssText = r.cssText || "";
       return (
         /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(minBlockSize) ||
         /\d+(?:\.\d+)?(?:dv[hbwi]|sv[hbwi])\b/i.test(blockSize) ||

@@ -387,7 +387,7 @@
       <div id="step1Content">
         <fieldset style="border: none; padding: 0; margin: 0;">
           <legend class="visually-hidden">Account Details</legend>
-          
+
           <!-- Single Name Field -->
           <div class="form-group">
             <label for="fullName">Full Name <span class="required-indicator" aria-hidden="true">*</span></label>
@@ -541,34 +541,34 @@
 
   <script>
     // Strict CSP: No inline handlers used, all attached via JS.
-    
+
     const form = document.getElementById('registrationForm');
     const nextBtn = document.getElementById('nextBtn');
     const prevBtn = document.getElementById('prevBtn');
     const submitBtn = document.getElementById('submitBtn');
     const errorSummary = document.getElementById('errorSummary');
     const errorList = document.getElementById('errorList');
-    
+
     let currentStep = 1;
-    
+
     // Step Navigation
     function updateStep(step) {
       document.getElementById(`step${currentStep}Content`).style.display = 'none';
       document.getElementById(`step${step}Content`).style.display = 'block';
-      
+
       document.getElementById(`step${currentStep}`).classList.remove('active');
       if (currentStep < step) {
         document.getElementById(`step${currentStep}`).classList.add('done');
       }
       document.getElementById(`step${step}`).classList.add('active');
-      
+
       // Update ARIA live region or description for screen readers
       const trackerDesc = document.querySelector('.progress-container .visually-hidden');
       const stepNames = { 1: 'Account Details', 2: 'Preferences', 3: 'Payment and Address' };
       trackerDesc.textContent = `Step ${step} of 3: ${stepNames[step]}`;
-      
+
       currentStep = step;
-      
+
       if (currentStep === 1) {
         prevBtn.style.display = 'none';
         nextBtn.style.display = 'flex';
@@ -584,7 +584,7 @@
         submitBtn.textContent = 'Complete Registration - $10.00'; // Explicit amount
       }
     }
-    
+
     nextBtn.addEventListener('click', () => {
       if (validateStep(currentStep)) {
         updateStep(currentStep + 1);
@@ -593,40 +593,40 @@
         showErrorSummary(currentStep);
       }
     });
-    
+
     prevBtn.addEventListener('click', () => {
       updateStep(currentStep - 1);
       errorSummary.style.display = 'none';
     });
-    
+
     // Password Toggle
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
-    
+
     togglePassword.addEventListener('click', () => {
       const isPassword = passwordInput.getAttribute('type') === 'password';
       passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
       togglePassword.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
     });
-    
+
     // Validation Logic
     function validateStep(step) {
       const content = document.getElementById(`step${step}Content`);
       const inputs = content.querySelectorAll('input, select, textarea');
       let isValid = true;
-      
+
       inputs.forEach(input => {
         if (!validateInput(input)) {
           isValid = false;
         }
       });
-      
+
       return isValid;
     }
-    
+
     function validateInput(input) {
       const errorSpan = document.getElementById(`${input.id}Error`);
-      
+
       // Native validation check
       if (!input.checkValidity()) {
         if (errorSpan) {
@@ -642,11 +642,11 @@
         return true;
       }
     }
-    
+
     function getCustomErrorMessage(input) {
       // ValidityState API
       const validity = input.validity;
-      
+
       if (validity.valueMissing) {
         return 'This field is required.';
       }
@@ -661,17 +661,17 @@
       if (validity.typeMismatch && input.type === 'email') {
         return 'Please enter a valid email address.';
       }
-      
+
       return input.validationMessage; // Fallback to browser message
     }
-    
+
     function showErrorSummary(step) {
       const content = document.getElementById(`step${step}Content`);
       const inputs = content.querySelectorAll('input, select, textarea');
-      
+
       errorList.innerHTML = '';
       let count = 0;
-      
+
       inputs.forEach(input => {
         if (!input.checkValidity()) {
           count++;
@@ -680,18 +680,18 @@
           const a = document.createElement('a');
           a.href = `#${input.id}`;
           a.textContent = `${label}: ${getCustomErrorMessage(input)}`;
-          
+
           // Click summary link to focus input
           a.addEventListener('click', (e) => {
             e.preventDefault();
             input.focus();
           });
-          
+
           li.appendChild(a);
           errorList.appendChild(li);
         }
       });
-      
+
       if (count > 0) {
         errorSummary.style.display = 'block';
         // Route focus to error summary
@@ -699,7 +699,7 @@
         errorSummary.focus();
       }
     }
-    
+
     // Event Listeners for timing matrix
     // Validate on Blur
     form.addEventListener('blur', (e) => {
@@ -708,7 +708,7 @@
         validateInput(e.target);
       }
     }, true); // Use capture to catch blur on inputs
-    
+
     // Reset errors on Input (active typing)
     form.addEventListener('input', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
@@ -721,17 +721,17 @@
         }
       }
     });
-    
+
     // Submit Handler
     form.addEventListener('submit', (e) => {
       // Prevent default navigation for AJAX
       e.preventDefault();
-      
+
       if (validateStep(3)) {
         // Disable button after valid submission to prevent double-posts
         submitBtn.disabled = true;
         submitBtn.textContent = 'Processing...';
-        
+
         // Simulate AJAX submission
         setTimeout(() => {
           alert('Registration Complete!');

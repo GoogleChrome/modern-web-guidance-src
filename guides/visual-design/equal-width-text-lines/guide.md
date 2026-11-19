@@ -19,10 +19,12 @@ For a single line filling its container (e.g. a heading or pull quote), apply `t
 Note: Line breaks in a lockup are either **forced** (each line is its own block) or **free** (the browser wraps). This is a continuum: a lockup can be all forced, all free, or a mix.
 
 For forced lines:
+
 - Wrap each line in a `<span>` with `display: block`.
 - Apply `white-space: nowrap` to each forced line `<span>`.
 
 Implementation guidelines:
+
 - Use `text-fit: grow per-line-all <percentage>` on the heading itself.
 - Use `per-line-all`, not `per-line`. `per-line` skips the last line and any line ending in a forced break, so with one block per line it scales nothing.
 - `grow` cannot be combined with `shrink`. Either set the base `font-size` to a maximum or a minimum depending on what would be a better fallback or easier to calculate, and set `text-fit` to `shrink` or `grow` accordingly. If you don’t have a reason to use `shrink`, prefer `grow` + setting `font-size` to a minimum, as it's safer for most cases.
@@ -33,10 +35,10 @@ Implementation guidelines:
 - IMPORTANT: Note that computed `font-size` is unchanged, so `em` spacing does not scale.
 - To avoid accidental over-emphasized orphans, apply `text-wrap: balance` or `text-wrap: pretty` if there are free lines.
 
-
 ### Spacing
 
 If all lines are forced, this produces more control over spacing:
+
 - Apply `text-box: trim-both cap alphabetic` to each line block so its box hugs its own glyphs. It trims using the scaled metrics. See {{ GUIDE_REF('precise-text-alignment') }} for more details.
 - Space lines using Flexbox or Grid + `gap` on the heading, not `line-height`. Gaps are then uniform instead of growing with each line's font-size.
 
@@ -79,18 +81,20 @@ Forced lines have a short, faithful fallback: measure each line at its base size
 ```
 
 ```js
-if (!CSS.supports('text-fit', 'grow per-line-all')) {
-  const fit = lockup => {
-    const lines = [...lockup.querySelectorAll(':scope > span')];
+if (!CSS.supports("text-fit", "grow per-line-all")) {
+  const fit = (lockup) => {
+    const lines = [...lockup.querySelectorAll(":scope > span")];
     // Unscale first: on a refit, offsetWidth would otherwise include the previous scale
-    for (const line of lines) line.style.removeProperty('--text-fit-scale');
+    for (const line of lines) line.style.removeProperty("--text-fit-scale");
     // MANDATORY: all reads, then all writes. Interleaving them (e.g. reading
     // lockup.clientWidth inside the write loop) forces one reflow per line.
-    const scales = lines.map(line => lockup.clientWidth / line.offsetWidth);
-    lines.forEach((line, i) => line.style.setProperty('--text-fit-scale', scales[i]));
+    const scales = lines.map((line) => lockup.clientWidth / line.offsetWidth);
+    lines.forEach((line, i) =>
+      line.style.setProperty("--text-fit-scale", scales[i]),
+    );
   };
   // Refit on resize and font load
-  for (const lockup of document.querySelectorAll('.lockup')) {
+  for (const lockup of document.querySelectorAll(".lockup")) {
     new ResizeObserver(() => fit(lockup)).observe(lockup);
   }
 }

@@ -20,7 +20,7 @@ The optimal way to provide real-time analytics updates, while still minimizing b
 
 3. **Reset the event queue when the timeout expires:** If a new analytics event occurs after the scheduled beacon has successfully sent (i.e. the `fetchLater()` result's `activated` value is `true`), reset the event queue.
 
-3. **Let the browser handle the rest:** If the user navigates away or closes the tab before the `activateAfter` timeout expires, the browser will still reliably send the payload from your most recent `fetchLater()` call.
+4. **Let the browser handle the rest:** If the user navigates away or closes the tab before the `activateAfter` timeout expires, the browser will still reliably send the payload from your most recent `fetchLater()` call.
 
 ## Example code
 
@@ -28,7 +28,7 @@ This code tracks all `load` and `click` events on a page, and batches together a
 
 ```javascript
 // Replace with your analytics endpoint.
-const ANALYTICS_ENDPOINT = '/path/to/analytics/endpoint';
+const ANALYTICS_ENDPOINT = "/path/to/analytics/endpoint";
 
 // Replace with a time window of your choice. All analytics events that
 // occur within this time window will be batched together.
@@ -63,8 +63,8 @@ function trackEvent(eventData) {
   // IMPORTANT: wrap the call in a try/catch to handle quota errors.
   try {
     fetchLaterResult = fetchLater(ANALYTICS_ENDPOINT, {
-      method: 'POST',
-      headers: {'content-type': 'application/json'},
+      method: "POST",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(eventQueue),
       signal: fetchLaterController.signal,
       activateAfter: BATCH_WINDOW,
@@ -75,13 +75,13 @@ function trackEvent(eventData) {
 }
 
 // Track page loads.
-window.addEventListener('load', () => {
-  trackEvent({type: 'page_load'});
+window.addEventListener("load", () => {
+  trackEvent({ type: "page_load" });
 });
 
 // Track click events.
-window.addEventListener('click', (event) => {
-  trackEvent({type: 'click', target: serializeElement(event.target)});
+window.addEventListener("click", (event) => {
+  trackEvent({ type: "click", target: serializeElement(event.target) });
 });
 ```
 
@@ -117,11 +117,11 @@ globalThis.fetchLater ??= function fetchLater(url, init = {}) {
       // parameters are specified (e.g. custom headers or methods).
       // Otherwise fall back to `navigator.sendBeacon()`.
       if (
-        'keepalive' in Request.prototype ||
-        init.method !== 'POST' ||
+        "keepalive" in Request.prototype ||
+        init.method !== "POST" ||
         init.headers
       ) {
-        fetch(url, Object.assign({}, init, {keepalive: true}));
+        fetch(url, Object.assign({}, init, { keepalive: true }));
         activated = true;
       } else {
         activated = navigator.sendBeacon(url, init.body);
@@ -131,24 +131,24 @@ globalThis.fetchLater ??= function fetchLater(url, init = {}) {
   }
 
   function destroy() {
-    document.removeEventListener('visibilitychange', sendNow);
+    document.removeEventListener("visibilitychange", sendNow);
     clearTimeout(timeoutHandle);
   }
 
-  if (document.visibilityState === 'hidden') {
+  if (document.visibilityState === "hidden") {
     // If the beacon was created while the page is already hidden, send data
     // ASAP but wait until the next microtask to allow all sync code to run.
     queueMicrotask(sendNow);
   } else {
-    document.addEventListener('visibilitychange', sendNow);
+    document.addEventListener("visibilitychange", sendNow);
 
-    if (typeof init.activateAfter === 'number' && init.activateAfter >= 0) {
+    if (typeof init.activateAfter === "number" && init.activateAfter >= 0) {
       timeoutHandle = setTimeout(sendNow, init.activateAfter);
     }
   }
 
   if (init.signal) {
-    init.signal.addEventListener('abort', destroy);
+    init.signal.addEventListener("abort", destroy);
   }
 
   return {

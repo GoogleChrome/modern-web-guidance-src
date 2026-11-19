@@ -1,11 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect, type Page } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -23,9 +23,12 @@ function getFetches(page: Page) {
 test.describe(`Deprioritize Background Fetches Expectations: ${demoName}`, () => {
   // Setup browser testing
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -35,8 +38,12 @@ test.describe(`Deprioritize Background Fetches Expectations: ${demoName}`, () =>
     });
 
     // Mock API endpoints to prevent actual network requests that might fail
-    await page.route('**/api/data', route => route.fulfill({ status: 200, body: '{}' }));
-    await page.route('**/api/analytics', route => route.fulfill({ status: 200, body: '{}' }));
+    await page.route("**/api/data", (route) =>
+      route.fulfill({ status: 200, body: "{}" }),
+    );
+    await page.route("**/api/analytics", (route) =>
+      route.fulfill({ status: 200, body: "{}" }),
+    );
 
     // Inject a spy into the browser's fetch API
     await page.addInitScript(() => {
@@ -54,30 +61,43 @@ test.describe(`Deprioritize Background Fetches Expectations: ${demoName}`, () =>
     await page.goto(demoUrl);
 
     // Wait for DOMContentLoaded, click the button, and wait for fetches without fixed timeout
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState("domcontentloaded");
     await page.evaluate(() => {
       (window as any).__fetches = []; // Clear any auto-fetches
-      (document.querySelector('button') as HTMLElement)?.click();
+      (document.querySelector("button") as HTMLElement)?.click();
     });
-    await page.waitForFunction(() => ((window as any).__fetches?.length ?? 0) >= 2);
+    await page.waitForFunction(
+      () => ((window as any).__fetches?.length ?? 0) >= 2,
+    );
   });
 
   // Browser assertions
-  test(`A fetch() call to /api/data is made without the priority: 'low' option.`, async ({ page }) => {
+  test(`A fetch() call to /api/data is made without the priority: 'low' option.`, async ({
+    page,
+  }) => {
     const fetches = await getFetches(page);
-    const isDataFetchHighPriority = fetches.some((f: any) => f.url.includes('/api/data') && f.options.priority !== 'low');
+    const isDataFetchHighPriority = fetches.some(
+      (f: any) => f.url.includes("/api/data") && f.options.priority !== "low",
+    );
 
     expect(isDataFetchHighPriority).toBe(true);
   });
 
-  test(`A fetch() call to /api/analytics is made with the priority: 'low' option.`, async ({ page }) => {
+  test(`A fetch() call to /api/analytics is made with the priority: 'low' option.`, async ({
+    page,
+  }) => {
     const fetches = await getFetches(page);
-    const isAnalyticsFetchLowPriority = fetches.some((f: any) => f.url.includes('/api/analytics') && f.options.priority === 'low');
+    const isAnalyticsFetchLowPriority = fetches.some(
+      (f: any) =>
+        f.url.includes("/api/analytics") && f.options.priority === "low",
+    );
 
     expect(isAnalyticsFetchLowPriority).toBe(true);
   });
 
-  test(`No fetch() calls use the deprecated importance option.`, async ({ page }) => {
+  test(`No fetch() calls use the deprecated importance option.`, async ({
+    page,
+  }) => {
     const fetches = await getFetches(page);
     const hasImportance = fetches.some((f: any) => f.options.importance);
 

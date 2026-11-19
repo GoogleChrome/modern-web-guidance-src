@@ -6,13 +6,13 @@
  *   node src/ci/sync-pipeline-issue.ts --write   # updates issue #1815 on GitHub
  */
 
-import child_process from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import child_process from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { parseBooleanEnv } from '../core/env.ts';
-import { gitExec, readGitObjectsBatch } from '../core/git-utils.ts';
+import { parseBooleanEnv } from "../core/env.ts";
+import { gitExec, readGitObjectsBatch } from "../core/git-utils.ts";
 import {
   classifyGuide,
   detectEvals,
@@ -25,18 +25,20 @@ import {
   scanAllGuides,
   type DraftState,
   type GuideInventory,
-} from '../core/guide-validation.ts';
-import { rootDir } from '../core/paths.ts';
-import { buildUseCaseMaps } from './sync-use-cases.ts';
+} from "../core/guide-validation.ts";
+import { rootDir } from "../core/paths.ts";
+import { buildUseCaseMaps } from "./sync-use-cases.ts";
 
-export const ORG = 'GoogleChrome';
-export const REPO = 'modern-web-guidance-src';
+export const ORG = "GoogleChrome";
+export const REPO = "modern-web-guidance-src";
 export const REPO_URL = `https://github.com/${ORG}/${REPO}`;
-export const PIPELINE_ISSUE_NUMBER = Number(process.env.PIPELINE_ISSUE_NUMBER || 1815);
-const NEW_USE_CASE_LABEL = 'new-use-case';
-const NEW_FEATURE_LABEL = 'new-feature';
+export const PIPELINE_ISSUE_NUMBER = Number(
+  process.env.PIPELINE_ISSUE_NUMBER || 1815,
+);
+const NEW_USE_CASE_LABEL = "new-use-case";
+const NEW_FEATURE_LABEL = "new-feature";
 
-const PIPELINE_BASELINE_DATE = '2026-07-22';
+const PIPELINE_BASELINE_DATE = "2026-07-22";
 export const PIPELINE_SCALE_MAX = 200;
 const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
@@ -46,9 +48,13 @@ export function computeScaleMax(maxVal: number): number {
   return Math.max(PIPELINE_SCALE_MAX, Math.ceil(maxVal / 50) * 50);
 }
 
-function parseGuidePath(filePath: string): { slug: string; guideName: string; relPath: string } | null {
+function parseGuidePath(
+  filePath: string,
+): { slug: string; guideName: string; relPath: string } | null {
   const match = /^guides\/([^/]+\/([^/]+))\/(.+)$/.exec(filePath);
-  return match ? { slug: match[1], guideName: match[2], relPath: match[3] } : null;
+  return match
+    ? { slug: match[1], guideName: match[2], relPath: match[3] }
+    : null;
 }
 
 export interface PrSummary {
@@ -166,13 +172,17 @@ export interface PipelineReportData {
   staleEvals: StaleEvalItem[];
 }
 
-export type ReviewState = 'draft' | 'changes requested' | 'approved' | 'awaiting review';
+export type ReviewState =
+  "draft" | "changes requested" | "approved" | "awaiting review";
 
-export function formatReviewDecision(decision: string | null | undefined, isDraft: boolean): ReviewState {
-  if (isDraft) return 'draft';
-  if (decision === 'CHANGES_REQUESTED') return 'changes requested';
-  if (decision === 'APPROVED') return 'approved';
-  return 'awaiting review';
+export function formatReviewDecision(
+  decision: string | null | undefined,
+  isDraft: boolean,
+): ReviewState {
+  if (isDraft) return "draft";
+  if (decision === "CHANGES_REQUESTED") return "changes requested";
+  if (decision === "APPROVED") return "approved";
+  return "awaiting review";
 }
 
 export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
@@ -180,25 +190,26 @@ export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
   let devtoolsTimesPassRate: number | null = null;
   const targetStatuses: string[] = [];
 
-  const targetSectionRegex = /##\s+Target:\s+`([^`]+)`(?:\s+\(Status:\s+`([^`]+)`\))?([\s\S]*?)(?=##\s+Target:|$)/g;
+  const targetSectionRegex =
+    /##\s+Target:\s+`([^`]+)`(?:\s+\(Status:\s+`([^`]+)`\))?([\s\S]*?)(?=##\s+Target:|$)/g;
   for (const match of body.matchAll(targetSectionRegex)) {
     const targetName = match[1];
     const status = match[2];
-    const sectionBody = match[3] || '';
+    const sectionBody = match[3] || "";
     if (status) {
       targetStatuses.push(status);
     }
     const guidedMatch = /\|\s*\*\*Guided\*\*\s*\|\s*(\d+)%/i.exec(sectionBody);
     if (guidedMatch) {
       const rate = Number(guidedMatch[1]);
-      if (targetName === 'daily-grind') dailyGrindPassRate = rate;
-      if (targetName === 'devtools-times') devtoolsTimesPassRate = rate;
+      if (targetName === "daily-grind") dailyGrindPassRate = rate;
+      if (targetName === "devtools-times") devtoolsTimesPassRate = rate;
     }
   }
 
   const isHealthy =
     targetStatuses.length > 0 &&
-    targetStatuses.every(s => s === 'HEALTHY') &&
+    targetStatuses.every((s) => s === "HEALTHY") &&
     (dailyGrindPassRate === null || dailyGrindPassRate === 100) &&
     (devtoolsTimesPassRate === null || devtoolsTimesPassRate === 100);
 
@@ -210,37 +221,49 @@ export function parseEvalReportFromPrBody(body: string): EvalPrMetrics {
 }
 
 function getLaDateString(d: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(d);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+  }).format(d);
 }
 
 export function formatShortDate(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
   if (!match) return isoDate;
   const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(d);
 }
 
-function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, filePaths: readonly string[]): boolean {
+function hasAnySubstantiveDiff(
+  cwd: string,
+  evalSha: string,
+  expSha: string,
+  filePaths: readonly string[],
+): boolean {
   try {
     gitExec(
       [
-        'diff',
-        '--quiet',
-        '--unified=0',
-        '--find-renames',
-        '--ignore-blank-lines',
-        '--ignore-matching-lines=Basic presence:',
+        "diff",
+        "--quiet",
+        "--unified=0",
+        "--find-renames",
+        "--ignore-blank-lines",
+        "--ignore-matching-lines=Basic presence:",
         evalSha,
         expSha,
-        '--',
+        "--",
         ...filePaths,
       ],
-      { cwd, stdio: 'ignore' }
+      { cwd, stdio: "ignore" },
     );
     return false;
   } catch (error) {
     // `git diff --quiet` exits 1 when any file differs; any other status is a real failure.
-    if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
+    if (!(error instanceof Error && "status" in error && error.status === 1))
+      throw error;
     return true;
   }
 }
@@ -248,24 +271,40 @@ function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, fil
 function collectGitGuideHistory(): Map<string, GitFileHistory> {
   const cwd = rootDir;
   const history = new Map<string, GitFileHistory>();
-  const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
+  const fallbackEval = new Map<
+    string,
+    { evalSha: string; evalTs: number; evalDate: string }
+  >();
   const output = gitExec(
-    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
-    { cwd }
+    [
+      "log",
+      "--find-renames",
+      "-m",
+      "--first-parent",
+      "--diff-filter=AM",
+      "--name-only",
+      "--format=COMMIT|%H|%ct|%cs|%s",
+      "--",
+      "guides/",
+    ],
+    { cwd },
   );
 
-  for (const block of output.split('\nCOMMIT|')) {
+  for (const block of output.split("\nCOMMIT|")) {
     const trimmed = block.trim();
     if (!trimmed) continue;
-    const lines = trimmed.split('\n');
-    const header = lines[0].startsWith('COMMIT|') ? lines[0].slice('COMMIT|'.length) : lines[0];
-    const parts = header.split('|');
-    const currentSha = parts[0] || '';
+    const lines = trimmed.split("\n");
+    const header = lines[0].startsWith("COMMIT|")
+      ? lines[0].slice("COMMIT|".length)
+      : lines[0];
+    const parts = header.split("|");
+    const currentSha = parts[0] || "";
     const currentTs = Number(parts[1]) || 0;
-    const currentDate = parts[2] || '';
-    const subject = parts.slice(3).join('|');
+    const currentDate = parts[2] || "";
+    const subject = parts.slice(3).join("|");
     const prMatches = [...subject.matchAll(/#(\d+)/g)];
-    const currentPr = prMatches.length > 0 ? Number(prMatches[prMatches.length - 1][1]) : null;
+    const currentPr =
+      prMatches.length > 0 ? Number(prMatches[prMatches.length - 1][1]) : null;
 
     const expSlugs = new Set<string>();
     const evalSlugs = new Set<string>();
@@ -279,12 +318,21 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
 
     // Repo-wide grader formatting/lint sweeps touch many evals with zero expectations updates;
     // ignore them unless a guide has no other eval commit in history.
-    const isBulkEvalSweep = evalSlugs.size >= BULK_EVAL_SWEEP_MIN_SLUGS && expSlugs.size === 0;
+    const isBulkEvalSweep =
+      evalSlugs.size >= BULK_EVAL_SWEEP_MIN_SLUGS && expSlugs.size === 0;
 
     for (const slug of new Set([...expSlugs, ...evalSlugs])) {
       let entry = history.get(slug);
       if (!entry) {
-        entry = { expSha: '', expTs: 0, expDate: '', expPr: null, evalSha: '', evalTs: 0, evalDate: '' };
+        entry = {
+          expSha: "",
+          expTs: 0,
+          expDate: "",
+          expPr: null,
+          evalSha: "",
+          evalTs: 0,
+          evalDate: "",
+        };
         history.set(slug, entry);
       }
 
@@ -300,7 +348,11 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
           entry.evalTs = currentTs;
           entry.evalDate = currentDate;
         } else if (isBulkEvalSweep && !fallbackEval.has(slug)) {
-          fallbackEval.set(slug, { evalSha: currentSha, evalTs: currentTs, evalDate: currentDate });
+          fallbackEval.set(slug, {
+            evalSha: currentSha,
+            evalTs: currentTs,
+            evalDate: currentDate,
+          });
         }
       }
     }
@@ -316,10 +368,14 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
   }
 
   for (const [slug, entry] of history.entries()) {
-    if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
-    entry.isSubstantiveDiff = hasAnySubstantiveDiff(cwd, entry.evalSha, entry.expSha, [
-      `guides/${slug}/${EXPECTATIONS_FILE}`,
-    ]);
+    if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha)
+      continue;
+    entry.isSubstantiveDiff = hasAnySubstantiveDiff(
+      cwd,
+      entry.evalSha,
+      entry.expSha,
+      [`guides/${slug}/${EXPECTATIONS_FILE}`],
+    );
   }
 
   return history;
@@ -331,7 +387,7 @@ export function findStaleEvals(
 ): StaleEvalItem[] {
   const items: StaleEvalItem[] = [];
   for (const g of guides) {
-    if (classifyGuide(g) !== 'complete') continue;
+    if (classifyGuide(g) !== "complete") continue;
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
@@ -358,30 +414,39 @@ export function countGen2Evals(guides: GuideInventory[]): {
   gen2CompleteCount: number;
   dualTargetCompleteCount: number;
 } {
-  const gen2 = guides.filter(g => classifyGuide(g) === 'complete' && (g.targets?.length ?? 0) >= 1);
+  const gen2 = guides.filter(
+    (g) => classifyGuide(g) === "complete" && (g.targets?.length ?? 0) >= 1,
+  );
   return {
     gen2CompleteCount: gen2.length,
-    dualTargetCompleteCount: gen2.filter(g => (g.targets?.length ?? 0) >= 2).length,
+    dualTargetCompleteCount: gen2.filter((g) => (g.targets?.length ?? 0) >= 2)
+      .length,
   };
 }
 
-const EMPTY_BLOB_SHA = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391';
-const EMPTY_GUIDE_META = parseGuideMetadata('', undefined, true);
-const guideMetaByBlobSha = new Map<string, ReturnType<typeof parseGuideMetadata>>();
+const EMPTY_BLOB_SHA = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
+const EMPTY_GUIDE_META = parseGuideMetadata("", undefined, true);
+const guideMetaByBlobSha = new Map<
+  string,
+  ReturnType<typeof parseGuideMetadata>
+>();
 const commitAnalysisCache = new Map<string, CommitAnalysis>();
 const weeklyHistoryCache = new Map<string, WeeklyProgressPoint[]>();
 
-function readCommitGuideTrees(cwd: string, commitSha: string): Map<string, Map<string, string>> {
-  const lsOutput = gitExec(['ls-tree', '-r', commitSha, 'guides/'], { cwd });
+function readCommitGuideTrees(
+  cwd: string,
+  commitSha: string,
+): Map<string, Map<string, string>> {
+  const lsOutput = gitExec(["ls-tree", "-r", commitSha, "guides/"], { cwd });
   const guideFiles = new Map<string, Map<string, string>>();
 
-  for (const line of lsOutput.trim().split('\n')) {
+  for (const line of lsOutput.trim().split("\n")) {
     if (!line) continue;
     const parts = line.split(/\s+/);
     if (parts.length < 4) continue;
     const blobSha = parts[2];
     const parsed = parseGuidePath(parts[3]);
-    if (!parsed || parsed.slug.startsWith('test-results/')) continue;
+    if (!parsed || parsed.slug.startsWith("test-results/")) continue;
 
     let files = guideFiles.get(parsed.slug);
     if (!files) {
@@ -393,7 +458,10 @@ function readCommitGuideTrees(cwd: string, commitSha: string): Map<string, Map<s
   return guideFiles;
 }
 
-function hydrateGuideMetadataCache(cwd: string, trees: Iterable<Map<string, Map<string, string>>>): void {
+function hydrateGuideMetadataCache(
+  cwd: string,
+  trees: Iterable<Map<string, Map<string, string>>>,
+): void {
   const uncachedBlobs = new Set<string>();
   for (const guideFiles of trees) {
     for (const files of guideFiles.values()) {
@@ -407,13 +475,20 @@ function hydrateGuideMetadataCache(cwd: string, trees: Iterable<Map<string, Map<
 
   const objects = readGitObjectsBatch(cwd, [...uncachedBlobs]);
   for (const [sha, obj] of objects) {
-    if (!obj) throw new Error(`Missing guide blob ${sha} in git object database`);
-    guideMetaByBlobSha.set(sha, parseGuideMetadata(obj.content.toString('utf8'), undefined, true));
+    if (!obj)
+      throw new Error(`Missing guide blob ${sha} in git object database`);
+    guideMetaByBlobSha.set(
+      sha,
+      parseGuideMetadata(obj.content.toString("utf8"), undefined, true),
+    );
   }
 }
 
 /** Counts guides with evals landed / needing evals across one or more commits. */
-function analyzeCommitsBatch(cwd: string, commitShas: readonly string[]): Map<string, CommitAnalysis> {
+function analyzeCommitsBatch(
+  cwd: string,
+  commitShas: readonly string[],
+): Map<string, CommitAnalysis> {
   const results = new Map<string, CommitAnalysis>();
   const missingTrees = new Map<string, Map<string, Map<string, string>>>();
 
@@ -438,15 +513,16 @@ function analyzeCommitsBatch(cwd: string, commitShas: readonly string[]): Map<st
       const meta =
         !guideBlobSha || guideBlobSha === EMPTY_BLOB_SHA
           ? EMPTY_GUIDE_META
-          : guideMetaByBlobSha.get(guideBlobSha) ?? EMPTY_GUIDE_META;
+          : (guideMetaByBlobSha.get(guideBlobSha) ?? EMPTY_GUIDE_META);
       const expBlobSha = files.get(EXPECTATIONS_FILE);
-      const hasExpectations = files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
+      const hasExpectations =
+        files.has(EXPECTATIONS_FILE) && expBlobSha !== EMPTY_BLOB_SHA;
       const evals = detectEvals(files.keys());
       const status = classifyGuide({ ...meta, ...evals, hasExpectations });
 
-      if (status === 'complete') {
+      if (status === "complete") {
         complete++;
-      } else if (status === 'needs-calibration' || status === 'needs-test') {
+      } else if (status === "needs-calibration" || status === "needs-test") {
         needsEvals++;
       }
     }
@@ -468,24 +544,42 @@ function findReadySince(slugs: string[]): Map<string, string> {
   if (slugs.length === 0) return new Map();
   const cwd = rootDir;
   const targetSlugSet = new Set(slugs);
-  const pathSpecs = slugs.flatMap(slug => [`guides/${slug}/${GUIDE_FILE}`, `guides/${slug}/${EXPECTATIONS_FILE}`]);
+  const pathSpecs = slugs.flatMap((slug) => [
+    `guides/${slug}/${GUIDE_FILE}`,
+    `guides/${slug}/${EXPECTATIONS_FILE}`,
+  ]);
 
-  const logOut = gitExec(['log', '--format=COMMIT|%H|%cs', '--name-only', 'HEAD', '--', ...pathSpecs], { cwd });
+  const logOut = gitExec(
+    [
+      "log",
+      "--format=COMMIT|%H|%cs",
+      "--name-only",
+      "HEAD",
+      "--",
+      ...pathSpecs,
+    ],
+    { cwd },
+  );
   const commitsBySlug = new Map<string, Array<{ sha: string; date: string }>>();
   const specsToFetch = new Set<string>();
 
-  for (const block of logOut.split('\nCOMMIT|')) {
+  for (const block of logOut.split("\nCOMMIT|")) {
     const trimmed = block.trim();
     if (!trimmed) continue;
-    const lines = trimmed.split('\n');
-    const header = lines[0].startsWith('COMMIT|') ? lines[0].slice('COMMIT|'.length) : lines[0];
-    const [sha = '', date = ''] = header.split('|');
+    const lines = trimmed.split("\n");
+    const header = lines[0].startsWith("COMMIT|")
+      ? lines[0].slice("COMMIT|".length)
+      : lines[0];
+    const [sha = "", date = ""] = header.split("|");
     const touchedSlugs = new Set<string>();
 
     for (let i = 1; i < lines.length; i++) {
       const parsed = parseGuidePath(lines[i].trim());
       if (!parsed || !targetSlugSet.has(parsed.slug)) continue;
-      if (parsed.relPath === GUIDE_FILE || parsed.relPath === EXPECTATIONS_FILE) {
+      if (
+        parsed.relPath === GUIDE_FILE ||
+        parsed.relPath === EXPECTATIONS_FILE
+      ) {
         touchedSlugs.add(parsed.slug);
       }
     }
@@ -515,16 +609,26 @@ function findReadySince(slugs: string[]): Map<string, string> {
       const expObj = objects.get(`${sha}:${expPath}`);
       if (!guideObj || !expObj) break;
 
-      const meta = parseGuideMetadata(guideObj.content.toString('utf8'), undefined, true);
+      const meta = parseGuideMetadata(
+        guideObj.content.toString("utf8"),
+        undefined,
+        true,
+      );
       const status = classifyGuide({
         ...meta,
         hasExpectations: expObj.content.length > 0,
       });
-      if (status === 'stub' || status === 'incomplete' || status === 'needs-expectations') break;
+      if (
+        status === "stub" ||
+        status === "incomplete" ||
+        status === "needs-expectations"
+      )
+        break;
       since = date;
     }
 
-    if (!since) throw new Error(`findReadySince: ${slug} is not landed at HEAD`);
+    if (!since)
+      throw new Error(`findReadySince: ${slug} is not landed at HEAD`);
     result.set(slug, since);
   }
   return result;
@@ -541,27 +645,45 @@ export function renderTwoRowProgressBar(params: {
 }): TwoRowProgressBar {
   const neededMax = Math.max(
     params.contentLanded + params.openGuideGuides,
-    params.complete + params.openEvalGuides
+    params.complete + params.openEvalGuides,
   );
   const scaleMax = params.scaleMax ?? computeScaleMax(neededMax);
   const baseline = params.baseline;
   const barWidth = Math.max(1, scaleMax - baseline);
 
   const labelWidth = 10;
-  const header = 'Guides on main since Jul 22 · 1 column = 1 guide';
-  const legend = '█ landed on main   ░ open PR   · not yet';
+  const header = "Guides on main since Jul 22 · 1 column = 1 guide";
+  const legend = "█ landed on main   ░ open PR   · not yet";
 
-  const renderRow = (label: string, landed: number, inReview: number, extraFlag = ''): string => {
+  const renderRow = (
+    label: string,
+    landed: number,
+    inReview: number,
+    extraFlag = "",
+  ): string => {
     const landedCols = Math.max(0, Math.min(barWidth, landed - baseline));
     const inReviewCols = Math.max(0, Math.min(barWidth - landedCols, inReview));
     const remainingCols = Math.max(0, barWidth - landedCols - inReviewCols);
-    const bar = '█'.repeat(landedCols) + '░'.repeat(inReviewCols) + '·'.repeat(remainingCols);
+    const bar =
+      "█".repeat(landedCols) +
+      "░".repeat(inReviewCols) +
+      "·".repeat(remainingCols);
     return `${label.padEnd(labelWidth)}${bar}  ${landed}${extraFlag} +${inReview} PRs`;
   };
 
-  const guidesRow = renderRow('Guides', params.contentLanded, params.openGuideGuides);
-  const staleFlag = params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : '';
-  const evalsRow = renderRow('Evals', params.complete, params.openEvalGuides, staleFlag);
+  const guidesRow = renderRow(
+    "Guides",
+    params.contentLanded,
+    params.openGuideGuides,
+  );
+  const staleFlag =
+    params.staleEvalsCount > 0 ? ` (${params.staleEvalsCount} stale)` : "";
+  const evalsRow = renderRow(
+    "Evals",
+    params.complete,
+    params.openEvalGuides,
+    staleFlag,
+  );
 
   // Column for guide count v: the first bar column is guide `baseline + 1`.
   const colFor = (v: number) => labelWidth + Math.max(0, v - baseline - 1);
@@ -570,18 +692,22 @@ export function renderTwoRowProgressBar(params: {
     if (t > baseline) ticks.push(t);
   }
   const width = colFor(scaleMax) + 1;
-  const ticksArr = Array<string>(width).fill(' ');
-  const numsArr = Array<string>(width + 2).fill(' ');
+  const ticksArr = Array<string>(width).fill(" ");
+  const numsArr = Array<string>(width + 2).fill(" ");
   for (const v of ticks) {
     const col = colFor(v);
-    ticksArr[col] = '┬';
+    ticksArr[col] = "┬";
     const label = String(v);
     // Left-align the first label under its tick, right-align the last, center the rest.
     const start =
-      v === baseline ? col : v === scaleMax ? col - label.length + 1 : col - Math.floor(label.length / 2);
-    numsArr.splice(start, label.length, ...label.split(''));
+      v === baseline
+        ? col
+        : v === scaleMax
+          ? col - label.length + 1
+          : col - Math.floor(label.length / 2);
+    numsArr.splice(start, label.length, ...label.split(""));
   }
-  const rulerLine = `${ticksArr.join('').trimEnd()}\n${numsArr.join('').trimEnd()}`;
+  const rulerLine = `${ticksArr.join("").trimEnd()}\n${numsArr.join("").trimEnd()}`;
 
   return {
     header,
@@ -596,11 +722,13 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   const cwd = rootDir;
   const end = new Date();
   const endLaDate = getLaDateString(end);
-  const originMainSha = gitExec(['rev-parse', '--verify', 'origin/main'], { cwd }).trim();
+  const originMainSha = gitExec(["rev-parse", "--verify", "origin/main"], {
+    cwd,
+  }).trim();
   const cacheKey = `${cwd}\0${originMainSha}\0${endLaDate}`;
   const cached = weeklyHistoryCache.get(cacheKey);
   if (cached) {
-    return cached.map(p => ({ ...p }));
+    return cached.map((p) => ({ ...p }));
   }
 
   const dates: string[] = [endLaDate];
@@ -619,17 +747,28 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   }
   dates.reverse();
 
-  const dateShas = dates.map(date => ({
+  const dateShas = dates.map((date) => ({
     date,
-    sha: gitExec(['rev-list', '--max-count=1', `--before=${date}T23:59:59Z`, originMainSha], { cwd }).trim(),
+    sha: gitExec(
+      [
+        "rev-list",
+        "--max-count=1",
+        `--before=${date}T23:59:59Z`,
+        originMainSha,
+      ],
+      { cwd },
+    ).trim(),
   }));
   const analyses = analyzeCommitsBatch(
     cwd,
-    dateShas.map(d => d.sha)
+    dateShas.map((d) => d.sha),
   );
 
   const points: WeeklyProgressPoint[] = dateShas.map(({ date, sha }) => {
-    const { complete, needsEvals } = analyses.get(sha) ?? { complete: 0, needsEvals: 0 };
+    const { complete, needsEvals } = analyses.get(sha) ?? {
+      complete: 0,
+      needsEvals: 0,
+    };
     return {
       date,
       label: formatShortDate(date),
@@ -639,36 +778,42 @@ export function fetchWeeklyProgressHistory(): WeeklyProgressPoint[] {
   });
 
   weeklyHistoryCache.set(cacheKey, points);
-  return points.map(p => ({ ...p }));
+  return points.map((p) => ({ ...p }));
 }
 
-export function renderProgressChart(points: WeeklyProgressPoint[], scaleMax?: number): string {
-  const xLabels = points.map(p => `"${p.label}"`).join(', ');
-  const contentBars = points.map(p => p.contentLanded).join(', ');
-  const completeBars = points.map(p => p.complete).join(', ');
-  const maxVal = Math.max(0, ...points.map(p => Math.max(p.contentLanded, p.complete)));
+export function renderProgressChart(
+  points: WeeklyProgressPoint[],
+  scaleMax?: number,
+): string {
+  const xLabels = points.map((p) => `"${p.label}"`).join(", ");
+  const contentBars = points.map((p) => p.contentLanded).join(", ");
+  const completeBars = points.map((p) => p.complete).join(", ");
+  const maxVal = Math.max(
+    0,
+    ...points.map((p) => Math.max(p.contentLanded, p.complete)),
+  );
   const effectiveScaleMax = scaleMax ?? computeScaleMax(maxVal);
 
   return [
-    '```mermaid',
-    '---',
-    'config:',
-    '  xyChart:',
-    '    width: 800',
-    '    height: 200',
-    '    xAxis:',
-    '      labelFontSize: 10',
-    '  themeVariables:',
-    '    xyChart:',
+    "```mermaid",
+    "---",
+    "config:",
+    "  xyChart:",
+    "    width: 800",
+    "    height: 200",
+    "    xAxis:",
+    "      labelFontSize: 10",
+    "  themeVariables:",
+    "    xyChart:",
     '      plotColorPalette: "#FBBC04, #4285F4"',
-    '---',
-    'xychart-beta',
+    "---",
+    "xychart-beta",
     `    x-axis [${xLabels}]`,
     `    y-axis "Guides" ${CHART_Y_MIN} --> ${effectiveScaleMax}`,
     `    bar "Guides landed" [${contentBars}]`,
     `    bar "Evals landed" [${completeBars}]`,
-    '```',
-  ].join('\n');
+    "```",
+  ].join("\n");
 }
 
 const FUNNEL_COLS = 60;
@@ -689,55 +834,72 @@ export function renderFunnel(params: {
   const row = (label: string, landed: number, open: number) => {
     const landedCols = cols(landed);
     const openCols = Math.min(FUNNEL_COLS - landedCols, cols(open));
-    const bar = '█'.repeat(landedCols) + '░'.repeat(openCols) + '·'.repeat(FUNNEL_COLS - landedCols - openCols);
-    const openPart = open > 0 ? ` +${open} PRs` : '';
+    const bar =
+      "█".repeat(landedCols) +
+      "░".repeat(openCols) +
+      "·".repeat(FUNNEL_COLS - landedCols - openCols);
+    const openPart = open > 0 ? ` +${open} PRs` : "";
     return `${label.padEnd(16)}${bar}  ${landed}${openPart}`;
   };
   return [
-    '```',
-    row('Use cases', useCases, 0),
-    row('Guides landed', guidesLanded, guidePrs),
-    row('Evals landed', evalsLanded, evalPrs),
-    '```',
-  ].join('\n');
+    "```",
+    row("Use cases", useCases, 0),
+    row("Guides landed", guidesLanded, guidePrs),
+    row("Evals landed", evalsLanded, evalPrs),
+    "```",
+  ].join("\n");
 }
 
 export function sanitizeIssueTitle(title: string): string {
   return title
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/@([a-zA-Z0-9_-]+)/g, '`@$1`');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/@([a-zA-Z0-9_-]+)/g, "`@$1`");
 }
 
 const GEN_BAR_COLS = 70;
 
 function codeList(names: string[]): string {
-  return names.map(n => `\`${n}\``).join(', ');
+  return names.map((n) => `\`${n}\``).join(", ");
 }
 
 function daysBetween(fromIso: string, toIso: string): number {
-  return Math.round((Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) / DAY_MS);
+  return Math.round(
+    (Date.parse(`${toIso}T00:00:00Z`) - Date.parse(`${fromIso}T00:00:00Z`)) /
+      DAY_MS,
+  );
 }
 
 function renderShareBar(label: string, count: number, total: number): string {
   const cols = total > 0 ? Math.round((count / total) * GEN_BAR_COLS) : 0;
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-  return `${label.padEnd(24)}${'█'.repeat(cols)}${'·'.repeat(GEN_BAR_COLS - cols)}  ${count} / ${total} (${pct}%)`;
+  return `${label.padEnd(24)}${"█".repeat(cols)}${"·".repeat(GEN_BAR_COLS - cols)}  ${count} / ${total} (${pct}%)`;
 }
 
-const REVIEW_GROUPS = ['approved', 'changes requested', 'awaiting review'] as const;
+const REVIEW_GROUPS = [
+  "approved",
+  "changes requested",
+  "awaiting review",
+] as const;
 
 export function renderPipelineIssueBody(data: PipelineReportData): string {
-  const totalNeedsGuidance = data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
+  const totalNeedsGuidance =
+    data.needsGuidancePrs.length + data.needsGuidanceIssues.length;
   const totalNeedsEvals = data.openEvalPrs.length + data.readyForEvals.length;
-  const blockedGuides = data.needsGuidanceIssues.filter(i => i.draft === 'blocked');
-  const wipGuides = data.needsGuidanceIssues.filter(i => i.draft === 'wip');
-  const notStarted = data.needsGuidanceIssues.filter(i => i.draft !== 'blocked' && i.draft !== 'wip');
+  const blockedGuides = data.needsGuidanceIssues.filter(
+    (i) => i.draft === "blocked",
+  );
+  const wipGuides = data.needsGuidanceIssues.filter((i) => i.draft === "wip");
+  const notStarted = data.needsGuidanceIssues.filter(
+    (i) => i.draft !== "blocked" && i.draft !== "wip",
+  );
   const maxGuides = Math.max(
     data.contentLandedCount + data.needsGuidancePrs.length,
     data.completeCount + data.openEvalPrs.length,
-    ...data.weeklyProgressPoints.map(p => Math.max(p.contentLanded, p.complete))
+    ...data.weeklyProgressPoints.map((p) =>
+      Math.max(p.contentLanded, p.complete),
+    ),
   );
   const scaleMax = computeScaleMax(maxGuides);
   const progressBar = renderTwoRowProgressBar({
@@ -757,17 +919,18 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
     evalPrs: data.openEvalPrs.length,
   });
   const today = getLaDateString(new Date());
-  const issuesQuery = (label: string) => `${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3A${label}`;
+  const issuesQuery = (label: string) =>
+    `${REPO_URL}/issues?q=is%3Aissue+is%3Aopen+label%3A${label}`;
 
   const lines: string[] = [
-    '# Content & Eval Pipeline',
-    '',
-    '```',
+    "# Content & Eval Pipeline",
+    "",
+    "```",
     progressBar.text,
-    '```',
-    '',
-    '**Guides** = `guide.md` + `expectations.md` landed on `main` (not draft) · **Evals** = a landed guide that also has a grader',
-    '',
+    "```",
+    "",
+    "**Guides** = `guide.md` + `expectations.md` landed on `main` (not draft) · **Evals** = a landed guide that also has a grader",
+    "",
     [
       `[${data.completeCount} evals landed](${REPO_URL}/tree/main/guides)`,
       `[${data.openEvalPrs.length} eval PRs](#stage-3-needs-evals-${totalNeedsEvals})`,
@@ -775,148 +938,214 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
       `[${data.needsGuidancePrs.length} guide PRs](#guide-prs-${data.needsGuidancePrs.length})`,
       `[${notStarted.length} use cases not started](#not-started-${notStarted.length})`,
       `[${data.needsUseCasesIssues.length} features awaiting use cases](#stage-1-needs-use-cases-${data.needsUseCasesIssues.length})`,
-    ].join(' · '),
-    '',
-    '### Progress since Jul 22',
-    '',
+    ].join(" · "),
+    "",
+    "### Progress since Jul 22",
+    "",
     renderProgressChart(data.weeklyProgressPoints, scaleMax),
-    '',
-    '---',
-    '',
+    "",
+    "---",
+    "",
     `## Stage 1: ${ProjectStatus.NeedsUseCases} (${data.needsUseCasesIssues.length})`,
-    '',
+    "",
     `Open [\`new-feature\`](${issuesQuery(NEW_FEATURE_LABEL)}) issues. These count features, not guides, so they aren't in the totals above.`,
-    '',
-    '<details>',
+    "",
+    "<details>",
     `<summary>Show ${data.needsUseCasesIssues.length} features, by category</summary>`,
-    '',
+    "",
   ];
 
   const featureRows = data.needsUseCasesIssues.toSorted(
-    (a, b) => (a.category ?? '\uffff').localeCompare(b.category ?? '\uffff') || b.number - a.number
+    (a, b) =>
+      (a.category ?? "\uffff").localeCompare(b.category ?? "\uffff") ||
+      b.number - a.number,
   );
   for (const item of featureRows) {
-    const categoryPart = item.category ? `**${item.category}** · ` : '';
-    const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
+    const categoryPart = item.category ? `**${item.category}** · ` : "";
+    const assigneePart =
+      item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : "";
     lines.push(
-      `- ${categoryPart}[#${item.number}](${REPO_URL}/issues/${item.number}) · ${sanitizeIssueTitle(item.title)}${assigneePart}`
+      `- ${categoryPart}[#${item.number}](${REPO_URL}/issues/${item.number}) · ${sanitizeIssueTitle(item.title)}${assigneePart}`,
     );
   }
 
   lines.push(
-    '',
-    '</details>',
-    '',
-    '---',
-    '',
+    "",
+    "</details>",
+    "",
+    "---",
+    "",
     `## Stage 2: ${ProjectStatus.NeedsGuidance} (${totalNeedsGuidance})`,
-    '',
+    "",
     `#### Guide PRs (${data.needsGuidancePrs.length})`,
-    ''
+    "",
   );
   for (const item of data.needsGuidancePrs) {
-    const guideHref = item.hasDirOnMain ? `${REPO_URL}/tree/main/guides/${item.slug}` : `${REPO_URL}/pull/${item.prNumber}`;
+    const guideHref = item.hasDirOnMain
+      ? `${REPO_URL}/tree/main/guides/${item.slug}`
+      : `${REPO_URL}/pull/${item.prNumber}`;
     const reviewState = formatReviewDecision(item.reviewDecision, item.isDraft);
-    const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-    const reviewerPart = item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : '';
+    const issuePart = item.issueNumber
+      ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})`
+      : "";
+    const reviewerPart =
+      item.reviewers.length > 0 ? ` → ${codeList(item.reviewers)}` : "";
     lines.push(
-      `- [**${item.slug}**](${guideHref}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})${issuePart} · \`${item.author}\`${reviewerPart}`
+      `- [**${item.slug}**](${guideHref}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber}) (${reviewState})${issuePart} · \`${item.author}\`${reviewerPart}`,
     );
   }
 
   const stage2Lists: Array<[string, NeedsGuidanceIssueItem[], string]> = [
-    ['Blocked', blockedGuides, 'Written but held back; the reason is from `draft-reason`.'],
-    ['In progress', wipGuides, 'Marked `draft: wip`.'],
-    ['Not started', notStarted, `Open [\`new-use-case\`](${issuesQuery(NEW_USE_CASE_LABEL)}) issues with no guide PR yet.`],
+    [
+      "Blocked",
+      blockedGuides,
+      "Written but held back; the reason is from `draft-reason`.",
+    ],
+    ["In progress", wipGuides, "Marked `draft: wip`."],
+    [
+      "Not started",
+      notStarted,
+      `Open [\`new-use-case\`](${issuesQuery(NEW_USE_CASE_LABEL)}) issues with no guide PR yet.`,
+    ],
   ];
   for (const [title, items, blurb] of stage2Lists) {
-    if (items.length === 0 && title !== 'Not started') continue;
-    lines.push('', `#### ${title} (${items.length})`, '', blurb, '');
+    if (items.length === 0 && title !== "Not started") continue;
+    lines.push("", `#### ${title} (${items.length})`, "", blurb, "");
     for (const item of items) {
-      const issuePart = item.issueNumber ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})` : '';
-      const reasonPart = item.draftReason ? ` · ${sanitizeIssueTitle(item.draftReason)}` : '';
-      const assigneePart = item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : '';
-      lines.push(`- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${reasonPart}${assigneePart}`);
-    }
-  }
-
-  lines.push('', '---', '', '### Funnel', '', funnel, '', '---', '', `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`);
-
-  for (const group of REVIEW_GROUPS) {
-    const items = data.openEvalPrs.filter(item => formatReviewDecision(item.reviewDecision, false) === group);
-    if (items.length === 0) continue;
-    lines.push('', `#### Eval PRs: ${group} (${items.length})`, '');
-    for (const item of items) {
-      const rates = [
-        item.metrics.dailyGrindPassRate !== null ? `dg **${item.metrics.dailyGrindPassRate}%**` : null,
-        item.metrics.devtoolsTimesPassRate !== null ? `dt **${item.metrics.devtoolsTimesPassRate}%**` : null,
-      ].filter(r => r !== null);
-      const passPart = rates.length > 0 ? `Pass@1 ${rates.join(' · ')} · ` : '';
-      const healthyPart = item.metrics.isHealthy ? ' · `HEALTHY`' : '';
-      const reviewerPart = item.reviewers.length > 0 ? ` · reviewers ${codeList(item.reviewers)}` : '';
+      const issuePart = item.issueNumber
+        ? ` · [#${item.issueNumber}](${REPO_URL}/issues/${item.issueNumber})`
+        : "";
+      const reasonPart = item.draftReason
+        ? ` · ${sanitizeIssueTitle(item.draftReason)}`
+        : "";
+      const assigneePart =
+        item.assignees.length > 0 ? ` · ${codeList(item.assignees)}` : "";
       lines.push(
-        `- ${passPart}[**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${healthyPart}${reviewerPart}`
+        `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug})${issuePart}${reasonPart}${assigneePart}`,
       );
     }
   }
 
-  lines.push('', `#### Ready for evals (${data.readyForEvals.length})`, '', 'Guides with no eval PR yet, oldest first. Next step: `gd dev-gap`.', '');
+  lines.push(
+    "",
+    "---",
+    "",
+    "### Funnel",
+    "",
+    funnel,
+    "",
+    "---",
+    "",
+    `## Stage 3: ${ProjectStatus.NeedsEvals} (${totalNeedsEvals})`,
+  );
+
+  for (const group of REVIEW_GROUPS) {
+    const items = data.openEvalPrs.filter(
+      (item) => formatReviewDecision(item.reviewDecision, false) === group,
+    );
+    if (items.length === 0) continue;
+    lines.push("", `#### Eval PRs: ${group} (${items.length})`, "");
+    for (const item of items) {
+      const rates = [
+        item.metrics.dailyGrindPassRate !== null
+          ? `dg **${item.metrics.dailyGrindPassRate}%**`
+          : null,
+        item.metrics.devtoolsTimesPassRate !== null
+          ? `dt **${item.metrics.devtoolsTimesPassRate}%**`
+          : null,
+      ].filter((r) => r !== null);
+      const passPart = rates.length > 0 ? `Pass@1 ${rates.join(" · ")} · ` : "";
+      const healthyPart = item.metrics.isHealthy ? " · `HEALTHY`" : "";
+      const reviewerPart =
+        item.reviewers.length > 0
+          ? ` · reviewers ${codeList(item.reviewers)}`
+          : "";
+      lines.push(
+        `- ${passPart}[**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · [PR #${item.prNumber}](${REPO_URL}/pull/${item.prNumber})${healthyPart}${reviewerPart}`,
+      );
+    }
+  }
+
+  lines.push(
+    "",
+    `#### Ready for evals (${data.readyForEvals.length})`,
+    "",
+    "Guides with no eval PR yet, oldest first. Next step: `gd dev-gap`.",
+    "",
+  );
   for (const { slug, readySince } of data.readyForEvals) {
     lines.push(
-      `- [**${slug}**](${REPO_URL}/tree/main/guides/${slug}) · ready since ${formatShortDate(readySince)} (${daysBetween(readySince, today)} days)`
+      `- [**${slug}**](${REPO_URL}/tree/main/guides/${slug}) · ready since ${formatShortDate(readySince)} (${daysBetween(readySince, today)} days)`,
     );
   }
 
   if (data.staleEvals.length > 0) {
-    lines.push('', `#### Stale evals (${data.staleEvals.length})`, '', 'Counted as evals landed, but `expectations.md` changed after the grader did.', '');
+    lines.push(
+      "",
+      `#### Stale evals (${data.staleEvals.length})`,
+      "",
+      "Counted as evals landed, but `expectations.md` changed after the grader did.",
+      "",
+    );
   }
   for (const item of data.staleEvals) {
-    const prPart = item.expPr ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))` : '';
+    const prPart = item.expPr
+      ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))`
+      : "";
     lines.push(
-      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
+      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`,
     );
   }
 
-  const auditAsset = (name: string) => `${REPO_URL}/releases/download/audit-data/${name}`;
+  const auditAsset = (name: string) =>
+    `${REPO_URL}/releases/download/audit-data/${name}`;
   lines.push(
-    '',
-    `Quality audits (point-in-time snapshots, not tracked above): [expectations coverage, Sep 24](${auditAsset('audit-2026-09-24-expectations-coverage.json')}) · [eval defects behind #1998, Oct 12](${auditAsset('audit-2026-10-12-eval-defects-pr1998.json')})`,
-    '',
-    '---',
-    '',
-    '## Eval format: Gen 1 → Gen 2',
-    '',
-    '```',
-    renderShareBar('Evals in Gen 2 format', data.gen2CompleteCount, data.completeCount),
-    renderShareBar('Gen 2 on both targets', data.dualTargetCompleteCount, data.completeCount),
-    '```',
-    '',
+    "",
+    `Quality audits (point-in-time snapshots, not tracked above): [expectations coverage, Sep 24](${auditAsset("audit-2026-09-24-expectations-coverage.json")}) · [eval defects behind #1998, Oct 12](${auditAsset("audit-2026-10-12-eval-defects-pr1998.json")})`,
+    "",
+    "---",
+    "",
+    "## Eval format: Gen 1 → Gen 2",
+    "",
+    "```",
+    renderShareBar(
+      "Evals in Gen 2 format",
+      data.gen2CompleteCount,
+      data.completeCount,
+    ),
+    renderShareBar(
+      "Gen 2 on both targets",
+      data.dualTargetCompleteCount,
+      data.completeCount,
+    ),
+    "```",
+    "",
     `**Gen 1**: root \`grader.ts\` + \`tasks/\` · **Gen 2**: \`targets/<base_app>/\` with its own \`task.md\` + \`grader.ts\` (targets: \`daily-grind\`, \`devtools-times\`). See [\`docs/CONTEXT.md\`](${REPO_URL}/blob/main/docs/CONTEXT.md).`,
-    '',
-    `> Migration is paused while \`gd dev-gap\` writes Gen 2 evals for the ${totalNeedsEvals} guides in Stage 3.`
+    "",
+    `> Migration is paused while \`gd dev-gap\` writes Gen 2 evals for the ${totalNeedsEvals} guides in Stage 3.`,
   );
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 const PR_FETCH_LIMIT = 300;
 
 function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
   const raw = child_process.execFileSync(
-    'gh',
+    "gh",
     [
-      'pr',
-      'list',
-      '--repo',
+      "pr",
+      "list",
+      "--repo",
       `${ORG}/${REPO}`,
-      '--state',
-      'open',
-      '--limit',
+      "--state",
+      "open",
+      "--limit",
       String(PR_FETCH_LIMIT),
-      '--json',
-      'number,title,body,isDraft,reviewDecision,headRefName,headRefOid,author,reviewRequests,latestReviews,labels,files',
+      "--json",
+      "number,title,body,isDraft,reviewDecision,headRefName,headRefOid,author,reviewRequests,latestReviews,labels,files",
     ],
-    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
   );
   const parsed = JSON.parse(raw) as Array<{
     number: number;
@@ -935,31 +1164,31 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
 
   if (parsed.length >= PR_FETCH_LIMIT) {
     throw new Error(
-      `fetchOpenPrs hit limit of ${PR_FETCH_LIMIT} open PRs; results may be truncated. Increase limit.`
+      `fetchOpenPrs hit limit of ${PR_FETCH_LIMIT} open PRs; results may be truncated. Increase limit.`,
     );
   }
 
-  const prs: PrSummary[] = parsed.map(p => ({
+  const prs: PrSummary[] = parsed.map((p) => ({
     number: p.number,
     title: p.title,
-    body: p.body ?? '',
+    body: p.body ?? "",
     isDraft: Boolean(p.isDraft),
     reviewDecision: p.reviewDecision ?? null,
-    headRefName: p.headRefName ?? '',
+    headRefName: p.headRefName ?? "",
     headRefOid: p.headRefOid,
-    author: p.author?.login ?? 'unknown',
+    author: p.author?.login ?? "unknown",
     reviewers: [
       ...new Set([
-        ...(p.reviewRequests ?? []).map(r => r.login ?? r.name ?? ''),
-        ...(p.latestReviews ?? []).map(r => r.author?.login ?? ''),
+        ...(p.reviewRequests ?? []).map((r) => r.login ?? r.name ?? ""),
+        ...(p.latestReviews ?? []).map((r) => r.author?.login ?? ""),
       ]),
     ].filter(Boolean),
-    labels: (p.labels ?? []).map(l => l.name ?? '').filter(Boolean),
-    files: (p.files ?? []).map(f => f.path ?? '').filter(Boolean),
+    labels: (p.labels ?? []).map((l) => l.name ?? "").filter(Boolean),
+    files: (p.files ?? []).map((f) => f.path ?? "").filter(Boolean),
     guideContents: {},
   }));
 
-  const bySlug = new Map(guides.map(g => [`${g.category}/${g.name}`, g]));
+  const bySlug = new Map(guides.map((g) => [`${g.category}/${g.name}`, g]));
   const blobQueries: Array<{ pr: PrSummary; slug: string; expr: string }> = [];
   for (const pr of prs) {
     if (!pr.headRefOid) continue;
@@ -967,35 +1196,56 @@ function fetchOpenPrs(guides: GuideInventory[]): PrSummary[] {
       const parsed = parseGuidePath(filePath);
       if (!parsed || parsed.relPath !== GUIDE_FILE) continue;
       const inv = bySlug.get(parsed.slug);
-      const status = inv ? classifyGuide(inv) : 'stub';
-      if (status === 'stub' || status === 'incomplete' || status === 'needs-expectations') {
-        blobQueries.push({ pr, slug: parsed.slug, expr: `${pr.headRefOid}:guides/${parsed.slug}/${GUIDE_FILE}` });
+      const status = inv ? classifyGuide(inv) : "stub";
+      if (
+        status === "stub" ||
+        status === "incomplete" ||
+        status === "needs-expectations"
+      ) {
+        blobQueries.push({
+          pr,
+          slug: parsed.slug,
+          expr: `${pr.headRefOid}:guides/${parsed.slug}/${GUIDE_FILE}`,
+        });
       }
     }
   }
 
   if (blobQueries.length > 0) {
     const fields = blobQueries
-      .map((q, i) => `b${i}: object(expression: ${JSON.stringify(q.expr)}) { ... on Blob { text } }`)
-      .join('\n');
+      .map(
+        (q, i) =>
+          `b${i}: object(expression: ${JSON.stringify(q.expr)}) { ... on Blob { text } }`,
+      )
+      .join("\n");
     const gql = `{ repository(owner: ${JSON.stringify(ORG)}, name: ${JSON.stringify(REPO)}) { ${fields} } }`;
-    const gqlRaw = child_process.execFileSync('gh', ['api', 'graphql', '--field', `query=${gql}`], {
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    });
-    const repoData = (JSON.parse(gqlRaw) as { data?: { repository?: Record<string, { text?: string } | null> } }).data
-      ?.repository;
+    const gqlRaw = child_process.execFileSync(
+      "gh",
+      ["api", "graphql", "--field", `query=${gql}`],
+      {
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    );
+    const repoData = (
+      JSON.parse(gqlRaw) as {
+        data?: { repository?: Record<string, { text?: string } | null> };
+      }
+    ).data?.repository;
     for (let i = 0; i < blobQueries.length; i++) {
       const { pr, slug } = blobQueries[i];
       if (!pr.guideContents) pr.guideContents = {};
-      pr.guideContents[slug] = repoData?.[`b${i}`]?.text ?? '';
+      pr.guideContents[slug] = repoData?.[`b${i}`]?.text ?? "";
     }
   }
 
   return prs;
 }
 
-function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] {
+function fetchOpenIssuesByLabel(
+  label: string,
+  minExpected = 1,
+): IssueSummary[] {
   const query = `
     query($owner: String!, $repo: String!, $label: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
@@ -1031,22 +1281,22 @@ function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] 
 
   do {
     const args = [
-      'api',
-      'graphql',
-      '-f',
+      "api",
+      "graphql",
+      "-f",
       `query=${query}`,
-      '-f',
+      "-f",
       `owner=${ORG}`,
-      '-f',
+      "-f",
       `repo=${REPO}`,
-      '-f',
+      "-f",
       `label=${label}`,
     ];
     if (cursor) {
-      args.push('-f', `cursor=${cursor}`);
+      args.push("-f", `cursor=${cursor}`);
     }
-    const raw = child_process.execFileSync('gh', args, {
-      encoding: 'utf8',
+    const raw = child_process.execFileSync("gh", args, {
+      encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
     });
     const parsed = JSON.parse(raw) as {
@@ -1069,9 +1319,11 @@ function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] 
 
     const conn = parsed.data?.repository?.issues;
     if (!conn || !Array.isArray(conn.nodes)) {
-      throw new Error(`Invalid GraphQL response in fetchOpenIssuesByLabel(${label}).`);
+      throw new Error(
+        `Invalid GraphQL response in fetchOpenIssuesByLabel(${label}).`,
+      );
     }
-    if (expectedTotal === null && typeof conn.totalCount === 'number') {
+    if (expectedTotal === null && typeof conn.totalCount === "number") {
       expectedTotal = conn.totalCount;
     }
 
@@ -1079,10 +1331,14 @@ function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] 
       if (!node) continue;
       issues.push({
         number: node.number,
-        title: node.title ?? '',
-        body: node.body ?? '',
-        assignees: (node.assignees?.nodes ?? []).map(a => a?.login ?? '').filter(Boolean),
-        labels: (node.labels?.nodes ?? []).map(l => l?.name ?? '').filter(Boolean),
+        title: node.title ?? "",
+        body: node.body ?? "",
+        assignees: (node.assignees?.nodes ?? [])
+          .map((a) => a?.login ?? "")
+          .filter(Boolean),
+        labels: (node.labels?.nodes ?? [])
+          .map((l) => l?.name ?? "")
+          .filter(Boolean),
       });
     }
 
@@ -1092,12 +1348,12 @@ function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] 
 
   if (expectedTotal !== null && issues.length !== expectedTotal) {
     throw new Error(
-      `fetchOpenIssuesByLabel(${label}) count mismatch: expected ${expectedTotal} issues, received ${issues.length}.`
+      `fetchOpenIssuesByLabel(${label}) count mismatch: expected ${expectedTotal} issues, received ${issues.length}.`,
     );
   }
   if (issues.length < minExpected) {
     throw new Error(
-      `fetchOpenIssuesByLabel(${label}) returned only ${issues.length} open issues (expected at least ${minExpected}); refusing to overwrite tracker issue.`
+      `fetchOpenIssuesByLabel(${label}) returned only ${issues.length} open issues (expected at least ${minExpected}); refusing to overwrite tracker issue.`,
     );
   }
 
@@ -1106,28 +1362,43 @@ function fetchOpenIssuesByLabel(label: string, minExpected = 1): IssueSummary[] 
 
 function fetchIssueBody(issueNumber: number): string {
   return child_process.execFileSync(
-    'gh',
-    ['issue', 'view', String(issueNumber), '--repo', `${ORG}/${REPO}`, '--json', 'body', '--jq', '.body'],
-    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+    "gh",
+    [
+      "issue",
+      "view",
+      String(issueNumber),
+      "--repo",
+      `${ORG}/${REPO}`,
+      "--json",
+      "body",
+      "--jq",
+      ".body",
+    ],
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
   );
 }
 
-function loadInfraOwnersFromCodeowners(): { catchAllOwners: Set<string>; evalOwners: Set<string> } {
+function loadInfraOwnersFromCodeowners(): {
+  catchAllOwners: Set<string>;
+  evalOwners: Set<string>;
+} {
   const catchAllOwners = new Set<string>();
   const evalOwners = new Set<string>();
-  const content = fs.readFileSync(path.join(rootDir, 'CODEOWNERS'), 'utf8');
-  for (const rawLine of content.split('\n')) {
+  const content = fs.readFileSync(path.join(rootDir, "CODEOWNERS"), "utf8");
+  for (const rawLine of content.split("\n")) {
     const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
+    if (!line || line.startsWith("#")) continue;
     const [pattern, ...owners] = line.split(/\s+/);
-    const handles = owners.filter(o => o.startsWith('@')).map(o => o.slice(1));
-    if (pattern === '*') {
+    const handles = owners
+      .filter((o) => o.startsWith("@"))
+      .map((o) => o.slice(1));
+    if (pattern === "*") {
       for (const h of handles) catchAllOwners.add(h);
     } else if (
-      pattern.includes('grader.ts') ||
-      pattern.includes('targets/') ||
-      pattern.includes('tasks/') ||
-      pattern.includes('src/grading/')
+      pattern.includes("grader.ts") ||
+      pattern.includes("targets/") ||
+      pattern.includes("tasks/") ||
+      pattern.includes("src/grading/")
     ) {
       for (const h of handles) evalOwners.add(h);
     }
@@ -1135,17 +1406,25 @@ function loadInfraOwnersFromCodeowners(): { catchAllOwners: Set<string>; evalOwn
   return { catchAllOwners, evalOwners };
 }
 
-const { catchAllOwners: CATCHALL_INFRA_OWNERS, evalOwners: EVAL_CODEOWNERS } = loadInfraOwnersFromCodeowners();
+const { catchAllOwners: CATCHALL_INFRA_OWNERS, evalOwners: EVAL_CODEOWNERS } =
+  loadInfraOwnersFromCodeowners();
 
-export function filterCatchAllReviewers(reviewers: string[], stage: 'guidance' | 'evals'): string[] {
+export function filterCatchAllReviewers(
+  reviewers: string[],
+  stage: "guidance" | "evals",
+): string[] {
   if (reviewers.length <= 1) return reviewers;
-  if (stage === 'guidance') {
-    const nonInfra = reviewers.filter(r => !CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r));
+  if (stage === "guidance") {
+    const nonInfra = reviewers.filter(
+      (r) => !CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r),
+    );
     if (nonInfra.length > 0) return nonInfra;
-    const nonCatchAll = reviewers.filter(r => !CATCHALL_INFRA_OWNERS.has(r));
+    const nonCatchAll = reviewers.filter((r) => !CATCHALL_INFRA_OWNERS.has(r));
     return nonCatchAll.length > 0 ? nonCatchAll : reviewers;
   }
-  const nonCatchAllOnly = reviewers.filter(r => !(CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r)));
+  const nonCatchAllOnly = reviewers.filter(
+    (r) => !(CATCHALL_INFRA_OWNERS.has(r) && !EVAL_CODEOWNERS.has(r)),
+  );
   return nonCatchAllOnly.length > 0 ? nonCatchAllOnly : reviewers;
 }
 
@@ -1158,21 +1437,33 @@ export function buildPipelineReportData(params: {
   weeklyProgressPoints?: WeeklyProgressPoint[];
   readySinceBySlug?: Map<string, string>;
 }): PipelineReportData {
-  const validGuides = params.guides.filter(g => g.category !== 'test-results' && (g.hasGuide || g.isStub));
-  const guideBySlug = new Map(validGuides.map(g => [`${g.category}/${g.name}`, g]));
-  const existingGuideNames = new Set(validGuides.map(g => g.name));
+  const validGuides = params.guides.filter(
+    (g) => g.category !== "test-results" && (g.hasGuide || g.isStub),
+  );
+  const guideBySlug = new Map(
+    validGuides.map((g) => [`${g.category}/${g.name}`, g]),
+  );
+  const existingGuideNames = new Set(validGuides.map((g) => g.name));
 
-  const completeCount = validGuides.filter(g => classifyGuide(g) === 'complete').length;
-  const needsEvalsGuides = validGuides.filter(g => {
+  const completeCount = validGuides.filter(
+    (g) => classifyGuide(g) === "complete",
+  ).length;
+  const needsEvalsGuides = validGuides.filter((g) => {
     const s = classifyGuide(g);
-    return s === 'needs-calibration' || s === 'needs-test';
+    return s === "needs-calibration" || s === "needs-test";
   });
   const contentLandedCount = completeCount + needsEvalsGuides.length;
 
-  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(params.openUseCaseIssues);
-  const useCaseIssueNumbers = new Set(params.openUseCaseIssues.map(i => i.number));
+  const { nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(
+    params.openUseCaseIssues,
+  );
+  const useCaseIssueNumbers = new Set(
+    params.openUseCaseIssues.map((i) => i.number),
+  );
   const findUseCaseIssue = (slug: string, guideName: string) =>
-    subdirToIssueMap.get(`guides/${slug}`) ?? nameToIssueMap.get(guideName) ?? null;
+    subdirToIssueMap.get(`guides/${slug}`) ??
+    nameToIssueMap.get(guideName) ??
+    null;
 
   const openEvalPrsBySlug = new Map<string, OpenEvalPrItem>();
   const needsGuidancePrsBySlug = new Map<string, NeedsGuidancePrItem>();
@@ -1189,11 +1480,14 @@ export function buildPipelineReportData(params: {
 
     for (const [slug, touchedRelFiles] of touchedFilesBySlug) {
       const inv = guideBySlug.get(slug);
-      const guideName = slug.split('/')[1];
+      const guideName = slug.split("/")[1];
       if (!inv && existingGuideNames.has(guideName)) continue;
 
       const guideContent = pr.guideContents?.[slug];
-      const guideMetaAfter = guideContent !== undefined ? parseGuideMetadata(guideContent, undefined, true) : undefined;
+      const guideMetaAfter =
+        guideContent !== undefined
+          ? parseGuideMetadata(guideContent, undefined, true)
+          : undefined;
       const stage = getPendingGuideStage(inv, touchedRelFiles, guideMetaAfter);
 
       if (stage === ProjectStatus.NeedsEvals && !openEvalPrsBySlug.has(slug)) {
@@ -1202,9 +1496,12 @@ export function buildPipelineReportData(params: {
           prNumber: pr.number,
           metrics: parseEvalReportFromPrBody(pr.body),
           reviewDecision: pr.reviewDecision,
-          reviewers: filterCatchAllReviewers(pr.reviewers, 'evals'),
+          reviewers: filterCatchAllReviewers(pr.reviewers, "evals"),
         });
-      } else if (stage === ProjectStatus.NeedsGuidance && !needsGuidancePrsBySlug.has(slug)) {
+      } else if (
+        stage === ProjectStatus.NeedsGuidance &&
+        !needsGuidancePrsBySlug.has(slug)
+      ) {
         const matchedIssue = findUseCaseIssue(slug, guideName);
         const titleIssueNum = Number(/^\[#(\d+)\]/.exec(pr.title)?.[1]) || null;
         needsGuidancePrsBySlug.set(slug, {
@@ -1214,36 +1511,43 @@ export function buildPipelineReportData(params: {
           isDraft: pr.isDraft,
           reviewDecision: pr.reviewDecision,
           issueNumber:
-            matchedIssue?.number ?? (titleIssueNum && useCaseIssueNumbers.has(titleIssueNum) ? titleIssueNum : null),
+            matchedIssue?.number ??
+            (titleIssueNum && useCaseIssueNumbers.has(titleIssueNum)
+              ? titleIssueNum
+              : null),
           author: pr.author,
-          reviewers: filterCatchAllReviewers(pr.reviewers, 'guidance'),
+          reviewers: filterCatchAllReviewers(pr.reviewers, "guidance"),
         });
       }
     }
   }
-  const openEvalPrs = Array.from(openEvalPrsBySlug.values()).sort((a, b) => a.slug.localeCompare(b.slug));
-  const needsGuidancePrs = Array.from(needsGuidancePrsBySlug.values()).sort((a, b) => a.slug.localeCompare(b.slug));
+  const openEvalPrs = Array.from(openEvalPrsBySlug.values()).sort((a, b) =>
+    a.slug.localeCompare(b.slug),
+  );
+  const needsGuidancePrs = Array.from(needsGuidancePrsBySlug.values()).sort(
+    (a, b) => a.slug.localeCompare(b.slug),
+  );
 
   const readyForEvalSlugs = needsEvalsGuides
-    .filter(g => !openEvalPrsBySlug.has(`${g.category}/${g.name}`))
-    .map(g => `${g.category}/${g.name}`);
+    .filter((g) => !openEvalPrsBySlug.has(`${g.category}/${g.name}`))
+    .map((g) => `${g.category}/${g.name}`);
 
   const needsEvalsTotal = contentLandedCount - completeCount;
   if (openEvalPrs.length + readyForEvalSlugs.length !== needsEvalsTotal) {
     throw new Error(
-      `Invariant violation in Needs Evals: openEvalPrs (${openEvalPrs.length}) + readyForEvalSlugs (${readyForEvalSlugs.length}) !== contentLandedCount - completeCount (${needsEvalsTotal})`
+      `Invariant violation in Needs Evals: openEvalPrs (${openEvalPrs.length}) + readyForEvalSlugs (${readyForEvalSlugs.length}) !== contentLandedCount - completeCount (${needsEvalsTotal})`,
     );
   }
 
   const needsGuidanceIssues = validGuides
-    .filter(g => {
+    .filter((g) => {
       const s = classifyGuide(g);
       return (
-        (s === 'stub' || s === 'incomplete' || s === 'needs-expectations') &&
+        (s === "stub" || s === "incomplete" || s === "needs-expectations") &&
         !needsGuidancePrsBySlug.has(`${g.category}/${g.name}`)
       );
     })
-    .map(g => {
+    .map((g) => {
       const slug = `${g.category}/${g.name}`;
       const matchedIssue = findUseCaseIssue(slug, g.name);
       return {
@@ -1256,27 +1560,40 @@ export function buildPipelineReportData(params: {
     })
     .sort((a, b) => a.slug.localeCompare(b.slug));
   const staleEvals = findStaleEvals(validGuides, params.gitHistory);
-  const { gen2CompleteCount, dualTargetCompleteCount } = countGen2Evals(validGuides);
+  const { gen2CompleteCount, dualTargetCompleteCount } =
+    countGen2Evals(validGuides);
 
-  const historical = params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
-  if (historical.length === 0) throw new Error('Cannot determine baseline: no weekly progress points');
+  const historical =
+    params.weeklyProgressPoints ?? fetchWeeklyProgressHistory();
+  if (historical.length === 0)
+    throw new Error("Cannot determine baseline: no weekly progress points");
   const today = getLaDateString(new Date());
   // Today's point comes from the in-memory inventory so the chart always matches the counts.
   const weeklyProgressPoints = [
-    ...historical.filter(p => p.date !== today),
-    { date: today, label: formatShortDate(today), complete: completeCount, contentLanded: contentLandedCount },
+    ...historical.filter((p) => p.date !== today),
+    {
+      date: today,
+      label: formatShortDate(today),
+      complete: completeCount,
+      contentLanded: contentLandedCount,
+    },
   ];
 
-  const readySinceBySlug = params.readySinceBySlug ?? findReadySince(readyForEvalSlugs);
+  const readySinceBySlug =
+    params.readySinceBySlug ?? findReadySince(readyForEvalSlugs);
   const readyForEvals = readyForEvalSlugs
-    .map(slug => {
+    .map((slug) => {
       const readySince = readySinceBySlug.get(slug);
       if (!readySince) throw new Error(`Missing ready-since date for ${slug}`);
       return { slug, readySince };
     })
-    .sort((a, b) => a.readySince.localeCompare(b.readySince) || a.slug.localeCompare(b.slug));
+    .sort(
+      (a, b) =>
+        a.readySince.localeCompare(b.readySince) ||
+        a.slug.localeCompare(b.slug),
+    );
 
-  const guideCategories = new Set(validGuides.map(g => g.category));
+  const guideCategories = new Set(validGuides.map((g) => g.category));
 
   return {
     baseline: historical[0].complete,
@@ -1285,9 +1602,9 @@ export function buildPipelineReportData(params: {
     gen2CompleteCount,
     dualTargetCompleteCount,
     weeklyProgressPoints,
-    needsUseCasesIssues: params.openFeatureIssues.map(issue => ({
+    needsUseCasesIssues: params.openFeatureIssues.map((issue) => ({
       ...issue,
-      category: issue.labels.find(l => guideCategories.has(l)) ?? null,
+      category: issue.labels.find((l) => guideCategories.has(l)) ?? null,
     })),
     needsGuidancePrs,
     needsGuidanceIssues,
@@ -1298,7 +1615,8 @@ export function buildPipelineReportData(params: {
 }
 
 export function runSyncPipelineIssue(): void {
-  const hasWriteFlag = process.argv.includes('--write') || process.argv.includes('--live');
+  const hasWriteFlag =
+    process.argv.includes("--write") || process.argv.includes("--live");
   const isDryRunEnv = parseBooleanEnv(process.env.DRY_RUN, true);
   const isDryRun = hasWriteFlag ? false : isDryRunEnv;
 
@@ -1319,7 +1637,9 @@ export function runSyncPipelineIssue(): void {
   const nextBody = renderPipelineIssueBody(reportData);
 
   if (isDryRun) {
-    console.log(`🏃 Dry run mode enabled for issue #${PIPELINE_ISSUE_NUMBER}. Pass --write or DRY_RUN=false to update GitHub.\n`);
+    console.log(
+      `🏃 Dry run mode enabled for issue #${PIPELINE_ISSUE_NUMBER}. Pass --write or DRY_RUN=false to update GitHub.\n`,
+    );
     console.log(nextBody);
     return;
   }
@@ -1331,13 +1651,28 @@ export function runSyncPipelineIssue(): void {
   }
 
   child_process.execFileSync(
-    'gh',
-    ['issue', 'edit', String(PIPELINE_ISSUE_NUMBER), '--repo', `${ORG}/${REPO}`, '--body-file', '-'],
-    { input: nextBody, encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] }
+    "gh",
+    [
+      "issue",
+      "edit",
+      String(PIPELINE_ISSUE_NUMBER),
+      "--repo",
+      `${ORG}/${REPO}`,
+      "--body-file",
+      "-",
+    ],
+    {
+      input: nextBody,
+      encoding: "utf8",
+      stdio: ["pipe", "inherit", "inherit"],
+    },
   );
   console.log(`✅ Updated pipeline tracker issue #${PIPELINE_ISSUE_NUMBER}.`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   runSyncPipelineIssue();
 }

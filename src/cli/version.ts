@@ -27,6 +27,7 @@ export function getVersion(importMetaDirname: string): string {
     dir = dirname(dir);
   }
 
-  throw new Error(`Could not find package.json with a valid version from ${importMetaDirname}`);
+  throw new Error(
+    `Could not find package.json with a valid version from ${importMetaDirname}`,
+  );
 }
-

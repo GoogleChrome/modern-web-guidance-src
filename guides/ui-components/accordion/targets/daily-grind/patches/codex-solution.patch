@@ -5,7 +5,7 @@ index 66c9173..95b32cd 100644
 @@ -135,6 +135,101 @@
        background: #3e2723;
      }
- 
+
 +    /* Coffee FAQ */
 +    #coffee-faq {
 +      margin-top: 40px;
@@ -131,12 +131,12 @@ index 66c9173..95b32cd 100644
 +      </details>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +324,21 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // Preserve exclusivity in browsers without native details grouping.
 +    if (!("name" in HTMLDetailsElement.prototype)) {
@@ -153,7 +153,7 @@ index 66c9173..95b32cd 100644
 +  </script>
 +
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..43e7284 100644

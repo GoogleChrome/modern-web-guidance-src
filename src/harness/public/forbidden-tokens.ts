@@ -1,5 +1,5 @@
-import os from 'node:os';
-import { isTokenShaped, MIN_TOKEN_LENGTH } from './scrub.ts';
+import os from "node:os";
+import { isTokenShaped, MIN_TOKEN_LENGTH } from "./scrub.ts";
 
 /**
  * Words that must not appear anywhere in published output, beyond the fixed
@@ -26,20 +26,34 @@ export interface ForbiddenTokenOptions {
   osUser?: string;
 }
 
-export function forbiddenTokens(explicit: readonly string[] = [], env = process.env, options: ForbiddenTokenOptions = {}): string[] {
+export function forbiddenTokens(
+  explicit: readonly string[] = [],
+  env = process.env,
+  options: ForbiddenTokenOptions = {},
+): string[] {
   const requireList = options.requireList ?? isCi(env);
-  const fromEnv = (env['PUBLIC_EVALS_FORBIDDEN_TOKENS'] ?? '').split(',');
-  if (requireList && fromEnv.every(token => token.trim() === '')) {
-    throw new Error('PUBLIC_EVALS_FORBIDDEN_TOKENS must list the suite operators (comma-separated) before building for publication');
+  const fromEnv = (env["PUBLIC_EVALS_FORBIDDEN_TOKENS"] ?? "").split(",");
+  if (requireList && fromEnv.every((token) => token.trim() === "")) {
+    throw new Error(
+      "PUBLIC_EVALS_FORBIDDEN_TOKENS must list the suite operators (comma-separated) before building for publication",
+    );
   }
 
   // On a CI runner the OS user is something like `runner`, which also appears in ordinary
   // harness text ("Playwright test runner failed"), so it is not a useful token there.
   const implicit = isCi(env) ? [] : [options.osUser ?? os.userInfo().username];
-  const tokens = [...new Set([...explicit, ...fromEnv, ...implicit].map(token => token.trim()).filter(token => token !== ''))];
-  const malformed = tokens.filter(token => !isTokenShaped(token));
+  const tokens = [
+    ...new Set(
+      [...explicit, ...fromEnv, ...implicit]
+        .map((token) => token.trim())
+        .filter((token) => token !== ""),
+    ),
+  ];
+  const malformed = tokens.filter((token) => !isTokenShaped(token));
   if (malformed.length > 0) {
-    throw new Error(`Forbidden tokens must be at least ${MIN_TOKEN_LENGTH} characters of letters, digits, '.', '-' or '_': ${malformed.join(', ')}`);
+    throw new Error(
+      `Forbidden tokens must be at least ${MIN_TOKEN_LENGTH} characters of letters, digits, '.', '-' or '_': ${malformed.join(", ")}`,
+    );
   }
   return tokens;
 }
@@ -51,17 +65,19 @@ export function forbiddenTokens(explicit: readonly string[] = [], env = process.
  * means `0`; anything other than decimal digits is refused.
  */
 export function forbiddenTokensVersion(env = process.env): number {
-  const raw = (env['PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION'] ?? '').trim();
-  if (raw === '') {
+  const raw = (env["PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION"] ?? "").trim();
+  if (raw === "") {
     return 0;
   }
   const parsed = Number(raw);
   if (!/^\d+$/.test(raw) || !Number.isSafeInteger(parsed)) {
-    throw new Error(`PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION must be a non-negative integer, got ${JSON.stringify(raw)}`);
+    throw new Error(
+      `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION must be a non-negative integer, got ${JSON.stringify(raw)}`,
+    );
   }
   return parsed;
 }
 
 function isCi(env: NodeJS.ProcessEnv): boolean {
-  return env['CI'] !== undefined && env['CI'] !== '' && env['CI'] !== 'false';
+  return env["CI"] !== undefined && env["CI"] !== "" && env["CI"] !== "false";
 }

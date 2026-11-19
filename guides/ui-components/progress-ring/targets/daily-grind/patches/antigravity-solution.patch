@@ -165,7 +165,7 @@ index 66c9173..8f3f014 100644
 +    }
    </style>
  </head>
- 
+
 @@ -195,8 +352,72 @@
          </div>
        </div>
@@ -190,7 +190,7 @@ index 66c9173..8f3f014 100644
 +      </div>
 +    </section>
    </main>
- 
+
 +  <script>
 +    (function () {
 +      const progress = document.getElementById('loyalty-progress');

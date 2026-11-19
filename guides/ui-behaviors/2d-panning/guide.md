@@ -29,7 +29,12 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 ```html
 <!-- Make the 2D scroll container keyboard-focusable and labeled so keyboard
      users can focus the viewport and pan in all directions with Arrow keys. -->
-<div class="pan-viewport" tabindex="0" role="region" aria-label="Interactive canvas">
+<div
+  class="pan-viewport"
+  tabindex="0"
+  role="region"
+  aria-label="Interactive canvas"
+>
   <div class="pan-surface">
     <!-- 2D overflowing content (map tiles, zoomed image, canvas nodes, or grid) -->
   </div>
@@ -111,13 +116,13 @@ Because `wheel` (`e.deltaX`, `e.deltaY`) and `pointermove` (`e.clientX`, `e.clie
 
 ```javascript
 // Only attach the main-thread gesture fallback when native support is missing
-if (!CSS.supports('scroll-axis-lock', 'none')) {
-  const viewport = document.querySelector('.pan-viewport');
+if (!CSS.supports("scroll-axis-lock", "none")) {
+  const viewport = document.querySelector(".pan-viewport");
   let lastPointer = null;
 
   // 1. Trackpad and mouse wheel fallback
   viewport.addEventListener(
-    'wheel',
+    "wheel",
     (e) => {
       if (e.ctrlKey) return; // Ctrl+wheel and trackpad pinch zoom the page
       e.preventDefault();
@@ -128,7 +133,7 @@ if (!CSS.supports('scroll-axis-lock', 'none')) {
   );
 
   // 2. Touch and pointer drag fallback
-  viewport.addEventListener('pointerdown', (e) => {
+  viewport.addEventListener("pointerdown", (e) => {
     // Ignore non-primary buttons and clicks on native scrollbars
     const rect = viewport.getBoundingClientRect();
     if (
@@ -143,7 +148,7 @@ if (!CSS.supports('scroll-axis-lock', 'none')) {
     viewport.setPointerCapture(e.pointerId);
   });
 
-  viewport.addEventListener('pointermove', (e) => {
+  viewport.addEventListener("pointermove", (e) => {
     if (!lastPointer) return;
     viewport.scrollLeft -= e.clientX - lastPointer.x;
     viewport.scrollTop -= e.clientY - lastPointer.y;
@@ -153,7 +158,7 @@ if (!CSS.supports('scroll-axis-lock', 'none')) {
   const endPointerPan = () => {
     lastPointer = null;
   };
-  viewport.addEventListener('pointerup', endPointerPan);
-  viewport.addEventListener('pointercancel', endPointerPan);
+  viewport.addEventListener("pointerup", endPointerPan);
+  viewport.addEventListener("pointercancel", endPointerPan);
 }
 ```

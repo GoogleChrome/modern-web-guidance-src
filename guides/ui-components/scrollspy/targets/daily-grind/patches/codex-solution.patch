@@ -28,11 +28,11 @@ index 66c9173..8dc1e90 100644
        --light: #fafafa;
 +      --nav-height: 80px;
      }
- 
+
      * {
 @@ -47,12 +48,15 @@
      }
- 
+
      nav ul {
 +      scroll-target-group: auto;
        display: flex;
@@ -40,12 +40,12 @@ index 66c9173..8dc1e90 100644
 +      gap: 8px 20px;
        list-style: none;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      margin: 0;
      }
- 
+
      nav a {
 @@ -60,6 +64,28 @@
        text-decoration: none;
@@ -74,12 +74,12 @@ index 66c9173..8dc1e90 100644
 +        gap: 12px;
 +      }
      }
- 
+
      nav a:hover {
 @@ -107,6 +133,17 @@
        margin-top: 20px;
      }
- 
+
 +    main > section {
 +      min-height: 75vh;
 +      padding: 40px 0;
@@ -95,9 +95,9 @@ index 66c9173..8dc1e90 100644
        background: white;
        padding: 20px;
 @@ -157,13 +194,13 @@
- 
+
  <body>
- 
+
 -  <nav>
 +  <nav aria-label="Primary navigation">
      <div class="logo">THE DAILY GRIND</div>
@@ -115,7 +115,7 @@ index 66c9173..8dc1e90 100644
    </nav>
 @@ -175,8 +212,9 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -155,15 +155,15 @@ index 66c9173..8dc1e90 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +270,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="./scrollspy.js"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..4a1cb16 100644

@@ -1,26 +1,30 @@
-import { describe, it, beforeEach, afterEach, mock } from 'node:test';
-import assert from 'node:assert';
-import { detectOS, bucketizeLatency, ClearcutLogger } from './clearcut-logger.ts';
-import { OsType, CommandType } from './types.ts';
-import { WatchdogClient } from './watchdog-client.ts';
+import { describe, it, beforeEach, afterEach, mock } from "node:test";
+import assert from "node:assert";
+import {
+  detectOS,
+  bucketizeLatency,
+  ClearcutLogger,
+} from "./clearcut-logger.ts";
+import { OsType, CommandType } from "./types.ts";
+import { WatchdogClient } from "./watchdog-client.ts";
 
-describe('detectOS', () => {
+describe("detectOS", () => {
   const expectedOS =
-    process.platform === 'darwin'
+    process.platform === "darwin"
       ? OsType.MACOS
-      : process.platform === 'win32'
+      : process.platform === "win32"
         ? OsType.WINDOWS
-        : process.platform === 'linux'
+        : process.platform === "linux"
           ? OsType.LINUX
           : OsType.UNSPECIFIED;
 
-  it('detects current operating system correctly', () => {
+  it("detects current operating system correctly", () => {
     assert.strictEqual(detectOS(), expectedOS);
   });
 });
 
-describe('bucketizeLatency', () => {
-  it('groups latency into correct discrete buckets', () => {
+describe("bucketizeLatency", () => {
+  it("groups latency into correct discrete buckets", () => {
     assert.strictEqual(bucketizeLatency(3), 5);
     assert.strictEqual(bucketizeLatency(10), 15);
     assert.strictEqual(bucketizeLatency(25), 50);
@@ -36,7 +40,7 @@ describe('bucketizeLatency', () => {
   });
 });
 
-describe('ClearcutLogger', () => {
+describe("ClearcutLogger", () => {
   let savedDisableTelemetry: string | undefined;
   let savedNodeTestContext: string | undefined;
 
@@ -60,129 +64,176 @@ describe('ClearcutLogger', () => {
     }
   });
 
-  it('disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True', async () => {
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
+  it("disables telemetry case-insensitively when DISABLE_TELEMETRY is set to True", async () => {
+    const sendMock = mock.method(WatchdogClient.prototype, "send", () => {});
 
     try {
-      process.env.DISABLE_TELEMETRY = 'True';
+      process.env.DISABLE_TELEMETRY = "True";
       const logger = new ClearcutLogger();
       await logger.logToolCommand(120, true, CommandType.INSTALL);
-      assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called when telemetry is disabled');
+      assert.strictEqual(
+        sendMock.mock.calls.length,
+        0,
+        "WatchdogClient.send should not be called when telemetry is disabled",
+      );
     } finally {
       sendMock.mock.restore();
     }
   });
 
-  it('disables telemetry automatically when NODE_TEST_CONTEXT is set', async () => {
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
+  it("disables telemetry automatically when NODE_TEST_CONTEXT is set", async () => {
+    const sendMock = mock.method(WatchdogClient.prototype, "send", () => {});
 
     try {
-      process.env.NODE_TEST_CONTEXT = 'child-v8';
+      process.env.NODE_TEST_CONTEXT = "child-v8";
       const logger = new ClearcutLogger();
       await logger.logToolCommand(120, true, CommandType.INSTALL);
-      assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called inside node --test context');
+      assert.strictEqual(
+        sendMock.mock.calls.length,
+        0,
+        "WatchdogClient.send should not be called inside node --test context",
+      );
     } finally {
       sendMock.mock.restore();
     }
   });
 
-  it('logs tool command results correctly via watchdog', async () => {
+  it("logs tool command results correctly via watchdog", async () => {
     const sentMessages: any[] = [];
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
-      sentMessages.push(msg);
-    });
+    const sendMock = mock.method(
+      WatchdogClient.prototype,
+      "send",
+      (msg: any) => {
+        sentMessages.push(msg);
+      },
+    );
 
     try {
-      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-abc' });
+      const logger = new ClearcutLogger({ skillVersion: "2026_05_14-abc" });
       await logger.logToolCommand(120, true, CommandType.INSTALL);
 
-      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      assert.ok(
+        sentMessages.length > 0,
+        "Should send at least one message to watchdog",
+      );
       const payload = sentMessages[sentMessages.length - 1].payload;
-      assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.INSTALL });
+      assert.deepStrictEqual(payload.tool_command, {
+        command_type: CommandType.INSTALL,
+      });
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 250); // 120 bucketized to 250
-      assert.strictEqual(payload.skill_version, '2026_05_14-abc');
+      assert.strictEqual(payload.skill_version, "2026_05_14-abc");
     } finally {
       sendMock.mock.restore();
     }
   });
 
-  it('logs LIST tool command correctly via watchdog', async () => {
+  it("logs LIST tool command correctly via watchdog", async () => {
     const sentMessages: any[] = [];
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
-      sentMessages.push(msg);
-    });
+    const sendMock = mock.method(
+      WatchdogClient.prototype,
+      "send",
+      (msg: any) => {
+        sentMessages.push(msg);
+      },
+    );
 
     try {
-      const logger = new ClearcutLogger({ skillVersion: '2026_06_04-list' });
+      const logger = new ClearcutLogger({ skillVersion: "2026_06_04-list" });
       await logger.logToolCommand(45, true, CommandType.LIST);
 
-      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      assert.ok(
+        sentMessages.length > 0,
+        "Should send at least one message to watchdog",
+      );
       const payload = sentMessages[sentMessages.length - 1].payload;
-      assert.deepStrictEqual(payload.tool_command, { command_type: CommandType.LIST });
+      assert.deepStrictEqual(payload.tool_command, {
+        command_type: CommandType.LIST,
+      });
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 50); // 45 bucketized to 50
-      assert.strictEqual(payload.skill_version, '2026_06_04-list');
+      assert.strictEqual(payload.skill_version, "2026_06_04-list");
 
       await logger.logToolCommand(180, true, CommandType.LEGACY_SCAN);
       const scanPayload = sentMessages[sentMessages.length - 1].payload;
-      assert.deepStrictEqual(scanPayload.tool_command, { command_type: CommandType.LEGACY_SCAN });
+      assert.deepStrictEqual(scanPayload.tool_command, {
+        command_type: CommandType.LEGACY_SCAN,
+      });
       assert.strictEqual(scanPayload.tool_command.command_type, 6);
     } finally {
       sendMock.mock.restore();
     }
   });
 
-  it('logs retrieve results correctly via watchdog', async () => {
+  it("logs retrieve results correctly via watchdog", async () => {
     const sentMessages: any[] = [];
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
-      sentMessages.push(msg);
-    });
+    const sendMock = mock.method(
+      WatchdogClient.prototype,
+      "send",
+      (msg: any) => {
+        sentMessages.push(msg);
+      },
+    );
 
     try {
-      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-xyz' });
-      await logger.logRetrieveResult(300, false, 'guide-id-1');
+      const logger = new ClearcutLogger({ skillVersion: "2026_05_14-xyz" });
+      await logger.logRetrieveResult(300, false, "guide-id-1");
 
-      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      assert.ok(
+        sentMessages.length > 0,
+        "Should send at least one message to watchdog",
+      );
       const payload = sentMessages[sentMessages.length - 1].payload;
-      assert.strictEqual(payload.retrieve_result.guide_id, 'guide-id-1');
+      assert.strictEqual(payload.retrieve_result.guide_id, "guide-id-1");
       assert.strictEqual(payload.success, false);
       assert.strictEqual(payload.latency_ms, 500); // 300 bucketized to 500
-      assert.strictEqual(payload.skill_version, '2026_05_14-xyz');
+      assert.strictEqual(payload.skill_version, "2026_05_14-xyz");
     } finally {
       sendMock.mock.restore();
     }
   });
 
-  it('logs search results correctly via watchdog', async () => {
+  it("logs search results correctly via watchdog", async () => {
     const sentMessages: any[] = [];
-    const sendMock = mock.method(WatchdogClient.prototype, 'send', (msg: any) => {
-      sentMessages.push(msg);
-    });
+    const sendMock = mock.method(
+      WatchdogClient.prototype,
+      "send",
+      (msg: any) => {
+        sentMessages.push(msg);
+      },
+    );
 
     try {
-      const logger = new ClearcutLogger({ skillVersion: '2026_05_14-search', agent: 'claude' });
-      await logger.logSearchResult('address form', 80, true, [{ guide_id: 'guide-1', similarity: 0.9 }]);
+      const logger = new ClearcutLogger({
+        skillVersion: "2026_05_14-search",
+        agent: "claude",
+      });
+      await logger.logSearchResult("address form", 80, true, [
+        { guide_id: "guide-1", similarity: 0.9 },
+      ]);
 
-      assert.ok(sentMessages.length > 0, 'Should send at least one message to watchdog');
+      assert.ok(
+        sentMessages.length > 0,
+        "Should send at least one message to watchdog",
+      );
       const payload = sentMessages[sentMessages.length - 1].payload;
       assert.deepStrictEqual(payload.search_result, {
-        query: 'address form',
-        search_items: [{ guide_id: 'guide-1', similarity: 0.9 }]
+        query: "address form",
+        search_items: [{ guide_id: "guide-1", similarity: 0.9 }],
       });
       assert.strictEqual(payload.success, true);
       assert.strictEqual(payload.latency_ms, 100); // 80 bucketized to 100
-      assert.strictEqual(payload.skill_version, '2026_05_14-search');
-      assert.strictEqual(payload.agent, 'claude');
+      assert.strictEqual(payload.skill_version, "2026_05_14-search");
+      assert.strictEqual(payload.agent, "claude");
     } finally {
       sendMock.mock.restore();
     }
   });
 });
 
-describe('Installation output parser regex', () => {
+describe("Installation output parser regex", () => {
   const sampleStdout = `
-┌   skills 
+┌   skills
 │
 ◇  Source: https://github.com/vercel-labs/agent-skills.git
 │
@@ -200,13 +251,21 @@ describe('Installation output parser regex', () => {
 ├────────────────────────────────────────────────────╯
   `;
 
-  it('extracts successfully installed skills strictly from the Installed summary box', () => {
+  it("extracts successfully installed skills strictly from the Installed summary box", () => {
     /* eslint-disable-next-line no-control-regex */
-    const cleanOutput = sampleStdout.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+    const cleanOutput = sampleStdout.replace(
+      /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+      "",
+    );
     const skills: string[] = [];
 
-    const installedBoxMatch = cleanOutput.match(/Installed \d+ skill[\s\S]*?├─/);
-    assert.ok(installedBoxMatch, 'Should locate the installed skills summary block');
+    const installedBoxMatch = cleanOutput.match(
+      /Installed \d+ skill[\s\S]*?├─/,
+    );
+    assert.ok(
+      installedBoxMatch,
+      "Should locate the installed skills summary block",
+    );
 
     const boxContent = installedBoxMatch[0];
     const regex = /✓\s*([a-zA-Z0-9_-]+)/g;
@@ -215,6 +274,9 @@ describe('Installation output parser regex', () => {
       skills.push(match[1]);
     }
 
-    assert.deepStrictEqual(skills, ['deploy-to-vercel', 'vercel-react-best-practices']);
+    assert.deepStrictEqual(skills, [
+      "deploy-to-vercel",
+      "vercel-react-best-practices",
+    ]);
   });
 });

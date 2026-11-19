@@ -17,13 +17,20 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
-import { SyntaxKind, Node, type ObjectLiteralExpression, type Project } from 'ts-morph';
+} from "../../../../test-fixture.ts";
+import {
+  SyntaxKind,
+  Node,
+  type ObjectLiteralExpression,
+  type Project,
+} from "ts-morph";
 
 // @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function resolveToolObject(node: Node | undefined): ObjectLiteralExpression | undefined {
+function resolveToolObject(
+  node: Node | undefined,
+): ObjectLiteralExpression | undefined {
   if (!node) return undefined;
   if (Node.isObjectLiteralExpression(node)) return node;
   if (Node.isIdentifier(node)) {
@@ -51,70 +58,88 @@ function collectToolObjects(project: Project): ObjectLiteralExpression[] {
   for (const sf of project.getSourceFiles()) {
     for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       const exprText = call.getExpression().getText();
-      if (!exprText.endsWith('registerTool') && exprText !== 'useWebMCP') continue;
+      if (!exprText.endsWith("registerTool") && exprText !== "useWebMCP")
+        continue;
       const resolved = resolveToolObject(call.getArguments()[0]);
       if (resolved) found.add(resolved);
     }
-    for (const obj of sf.getDescendantsOfKind(SyntaxKind.ObjectLiteralExpression)) {
-      if (obj.getProperty('name') && obj.getProperty('execute')) found.add(obj);
+    for (const obj of sf.getDescendantsOfKind(
+      SyntaxKind.ObjectLiteralExpression,
+    )) {
+      if (obj.getProperty("name") && obj.getProperty("execute")) found.add(obj);
     }
   }
   return [...found];
 }
 
 function usesWebMcpReactHook(project: Project): boolean {
-  return project.getSourceFiles().some((sf) =>
-    sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) =>
-      call.getExpression().getText() === 'useWebMCP'
-    )
-  );
+  return project
+    .getSourceFiles()
+    .some((sf) =>
+      sf
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .some((call) => call.getExpression().getText() === "useWebMCP"),
+    );
 }
 
-test.describe('WebMCP Target Grader - DevTools Times', () => {
-
-  test('Expectation 1: Feature-detect document.modelContext before calling WebMCP registration methods', () => {
+test.describe("WebMCP Target Grader - DevTools Times", () => {
+  test("Expectation 1: Feature-detect document.modelContext before calling WebMCP registration methods", () => {
     const project = getJsProject(targetFiles);
-    const hasFeatureDetection = usesWebMcpReactHook(project) || project.getSourceFiles().some((sf) => {
-      const fullText = sf.getFullText();
-      if (!fullText.includes('modelContext')) return false;
+    const hasFeatureDetection =
+      usesWebMcpReactHook(project) ||
+      project.getSourceFiles().some((sf) => {
+        const fullText = sf.getFullText();
+        if (!fullText.includes("modelContext")) return false;
 
-      const ifStmts = sf.getDescendantsOfKind(SyntaxKind.IfStatement);
-      const hasIfGuard = ifStmts.some((stmt) => {
-        const condText = stmt.getExpression().getText();
-        return condText.includes('modelContext');
+        const ifStmts = sf.getDescendantsOfKind(SyntaxKind.IfStatement);
+        const hasIfGuard = ifStmts.some((stmt) => {
+          const condText = stmt.getExpression().getText();
+          return condText.includes("modelContext");
+        });
+
+        const binaryExprs = sf.getDescendantsOfKind(
+          SyntaxKind.BinaryExpression,
+        );
+        const hasBinaryGuard = binaryExprs.some((expr) => {
+          return expr.getText().includes("modelContext");
+        });
+
+        return hasIfGuard || hasBinaryGuard;
       });
-
-      const binaryExprs = sf.getDescendantsOfKind(SyntaxKind.BinaryExpression);
-      const hasBinaryGuard = binaryExprs.some((expr) => {
-        return expr.getText().includes('modelContext');
-      });
-
-      return hasIfGuard || hasBinaryGuard;
-    });
 
     expect(hasFeatureDetection).toBe(true);
   });
 
-  test('Expectation 2: Register dynamic tools via registerTool with name, description, and execute', () => {
+  test("Expectation 2: Register dynamic tools via registerTool with name, description, and execute", () => {
     const project = getJsProject(targetFiles);
-    const hasRegisterToolCall = usesWebMcpReactHook(project) || project.getSourceFiles().some((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) =>
-        call.getExpression().getText().endsWith('registerTool')
-      )
+    const hasRegisterToolCall =
+      usesWebMcpReactHook(project) ||
+      project
+        .getSourceFiles()
+        .some((sf) =>
+          sf
+            .getDescendantsOfKind(SyntaxKind.CallExpression)
+            .some((call) =>
+              call.getExpression().getText().endsWith("registerTool"),
+            ),
+        );
+    const hasValidToolDefinition = collectToolObjects(project).some(
+      (toolObj) => {
+        const hasName = Boolean(toolObj.getProperty("name"));
+        const hasDesc = Boolean(toolObj.getProperty("description"));
+        const hasExec = Boolean(toolObj.getProperty("execute"));
+        return hasName && hasDesc && hasExec;
+      },
     );
-    const hasValidToolDefinition = collectToolObjects(project).some((toolObj) => {
-      const hasName = Boolean(toolObj.getProperty('name'));
-      const hasDesc = Boolean(toolObj.getProperty('description'));
-      const hasExec = Boolean(toolObj.getProperty('execute'));
-      return hasName && hasDesc && hasExec;
-    });
 
     expect(hasRegisterToolCall && hasValidToolDefinition).toBe(true);
   });
 
-  test('Expectation 3: Define typed and described inputSchema properties for parameterized tools', () => {
+  test("Expectation 3: Define typed and described inputSchema properties for parameterized tools", () => {
     const project = getJsProject(targetFiles);
-    const checkPropertiesObject = (propsObj: ObjectLiteralExpression | undefined): boolean => {
+    const checkPropertiesObject = (
+      propsObj: ObjectLiteralExpression | undefined,
+    ): boolean => {
       if (!propsObj) return false;
       const schemaParams = propsObj.getProperties();
       if (schemaParams.length === 0) return false;
@@ -125,60 +150,75 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
             ? resolveToolObject(paramProp.getNameNode())
             : undefined;
         if (!paramObj) return false;
-        const hasType = Boolean(paramObj.getProperty('type'));
-        const hasDesc = Boolean(paramObj.getProperty('description'));
+        const hasType = Boolean(paramObj.getProperty("type"));
+        const hasDesc = Boolean(paramObj.getProperty("description"));
         return hasType && hasDesc;
       });
     };
 
     const hasInlineSchema = collectToolObjects(project).some((toolObj) => {
-      const inputSchemaProp = toolObj.getProperty('inputSchema');
+      const inputSchemaProp = toolObj.getProperty("inputSchema");
       if (!inputSchemaProp) return false;
       const schemaObj = Node.isPropertyAssignment(inputSchemaProp)
         ? resolveToolObject(inputSchemaProp.getInitializer())
         : undefined;
       if (!schemaObj) return false;
-      const propsProp = schemaObj.getProperty('properties');
+      const propsProp = schemaObj.getProperty("properties");
       if (!propsProp || !Node.isPropertyAssignment(propsProp)) return false;
-      return checkPropertiesObject(resolveToolObject(propsProp.getInitializer()));
+      return checkPropertiesObject(
+        resolveToolObject(propsProp.getInitializer()),
+      );
     });
 
     const hasHelperSchema = project.getSourceFiles().some((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
-        if (call.getExpression().getText() !== 'schema') return false;
+        if (call.getExpression().getText() !== "schema") return false;
         return checkPropertiesObject(resolveToolObject(call.getArguments()[0]));
-      })
+      }),
     );
 
     expect(hasInlineSchema || hasHelperSchema).toBe(true);
   });
 
-  test('Expectation 4: Include readOnlyHint annotation on read-only query tools', () => {
+  test("Expectation 4: Include readOnlyHint annotation on read-only query tools", () => {
     const project = getJsProject(targetFiles);
-    const hasReadOnlyAnnotation = collectToolObjects(project).some((toolObj) => {
-      const annotationsProp = toolObj.getProperty('annotations');
-      if (!annotationsProp || !Node.isPropertyAssignment(annotationsProp)) return false;
-      const annObj = annotationsProp.getInitializerIfKind(SyntaxKind.ObjectLiteralExpression);
-      if (!annObj) return false;
-      const readOnlyProp = annObj.getProperty('readOnlyHint');
-      if (!readOnlyProp) return false;
-      if (Node.isPropertyAssignment(readOnlyProp)) {
-        return readOnlyProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword;
-      }
-      if (Node.isShorthandPropertyAssignment(readOnlyProp)) {
-        return project.getSourceFiles().some((sf) =>
-          sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((c) =>
-            c.getArguments().some((a) => a.getKind() === SyntaxKind.TrueKeyword)
-          )
+    const hasReadOnlyAnnotation = collectToolObjects(project).some(
+      (toolObj) => {
+        const annotationsProp = toolObj.getProperty("annotations");
+        if (!annotationsProp || !Node.isPropertyAssignment(annotationsProp))
+          return false;
+        const annObj = annotationsProp.getInitializerIfKind(
+          SyntaxKind.ObjectLiteralExpression,
         );
-      }
-      return false;
-    });
+        if (!annObj) return false;
+        const readOnlyProp = annObj.getProperty("readOnlyHint");
+        if (!readOnlyProp) return false;
+        if (Node.isPropertyAssignment(readOnlyProp)) {
+          return (
+            readOnlyProp.getInitializer()?.getKind() === SyntaxKind.TrueKeyword
+          );
+        }
+        if (Node.isShorthandPropertyAssignment(readOnlyProp)) {
+          return project
+            .getSourceFiles()
+            .some((sf) =>
+              sf
+                .getDescendantsOfKind(SyntaxKind.CallExpression)
+                .some((c) =>
+                  c
+                    .getArguments()
+                    .some((a) => a.getKind() === SyntaxKind.TrueKeyword),
+                ),
+            );
+        }
+        return false;
+      },
+    );
 
     expect(hasReadOnlyAnnotation).toBe(true);
   });
 
-  test('Expectation 5: Pass AbortSignal from AbortController to registerTool', () => {
+  test("Expectation 5: Pass AbortSignal from AbortController to registerTool", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
@@ -186,26 +226,30 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     // the signal threaded through to a registration helper in another, or managed by useWebMCP.
     const hasAbortController = sourceFiles
       .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression))
-      .some((ne) => ne.getExpression().getText() === 'AbortController');
+      .some((ne) => ne.getExpression().getText() === "AbortController");
 
     const registersWithSignal = sourceFiles
       .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
       .some((call) => {
-        if (!call.getExpression().getText().endsWith('registerTool')) return false;
+        if (!call.getExpression().getText().endsWith("registerTool"))
+          return false;
         const args = call.getArguments();
         if (args.length < 2) return false;
         const secondArgText = args[1].getText();
         return (
-          secondArgText.includes('signal') ||
-          secondArgText.includes('options') ||
-          secondArgText.includes('controller')
+          secondArgText.includes("signal") ||
+          secondArgText.includes("options") ||
+          secondArgText.includes("controller")
         );
       });
 
-    expect((hasAbortController && registersWithSignal) || usesWebMcpReactHook(project)).toBe(true);
+    expect(
+      (hasAbortController && registersWithSignal) ||
+        usesWebMcpReactHook(project),
+    ).toBe(true);
   });
 
-  test('Expectation 6: Rely on AbortController.abort for tool cleanup without calling unregisterTool', () => {
+  test("Expectation 6: Rely on AbortController.abort for tool cleanup without calling unregisterTool", () => {
     const project = getJsProject(targetFiles);
     let callsUnregisterTool = false;
     let callsAbort = usesWebMcpReactHook(project);
@@ -214,10 +258,10 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
       for (const call of calls) {
         const exprText = call.getExpression().getText();
-        if (exprText.endsWith('unregisterTool')) {
+        if (exprText.endsWith("unregisterTool")) {
           callsUnregisterTool = true;
         }
-        if (exprText.endsWith('.abort') || exprText.endsWith('?.abort')) {
+        if (exprText.endsWith(".abort") || exprText.endsWith("?.abort")) {
           callsAbort = true;
         }
       }
@@ -227,45 +271,56 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
     expect(usesAbortInsteadOfUnregister).toBe(true);
   });
 
-  test('Expectation 7: Tool execute handlers are asynchronous and resolve after operations complete', () => {
+  test("Expectation 7: Tool execute handlers are asynchronous and resolve after operations complete", () => {
     const project = getJsProject(targetFiles);
     const toolObjects = collectToolObjects(project);
     const hasAsyncAwaitingExecute = toolObjects.some((toolObj) => {
-      const execProp = toolObj.getProperty('execute');
+      const execProp = toolObj.getProperty("execute");
       if (!execProp) return false;
       let isAsync = false;
       if (Node.isMethodDeclaration(execProp)) {
         isAsync = execProp.isAsync();
       } else if (Node.isPropertyAssignment(execProp)) {
         const init = execProp.getInitializer();
-        if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) {
+        if (
+          init &&
+          (Node.isArrowFunction(init) || Node.isFunctionExpression(init))
+        ) {
           isAsync = init.isAsync();
         }
       }
-      const awaitExprs = execProp.getDescendantsOfKind(SyntaxKind.AwaitExpression);
+      const awaitExprs = execProp.getDescendantsOfKind(
+        SyntaxKind.AwaitExpression,
+      );
       return isAsync && awaitExprs.length > 0;
     });
 
     expect(hasAsyncAwaitingExecute).toBe(true);
   });
 
-  test('Expectation 8: Annotate declarative form tools with toolname and tooldescription attributes', () => {
+  test("Expectation 8: Annotate declarative form tools with toolname and tooldescription attributes", () => {
     const project = getJsProject(targetFiles);
-    const formElements: Array<{ hasToolName: boolean; hasToolDescription: boolean }> = [];
+    const formElements: Array<{
+      hasToolName: boolean;
+      hasToolDescription: boolean;
+    }> = [];
 
     project.getSourceFiles().forEach((sf) => {
       const openingForms = sf
         .getDescendantsOfKind(SyntaxKind.JsxOpeningElement)
-        .filter((el) => el.getTagNameNode().getText() === 'form');
+        .filter((el) => el.getTagNameNode().getText() === "form");
       const selfClosingForms = sf
         .getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement)
-        .filter((el) => el.getTagNameNode().getText() === 'form');
+        .filter((el) => el.getTagNameNode().getText() === "form");
       const allForms = [...openingForms, ...selfClosingForms];
 
       allForms.forEach((form) => {
         // Match on attribute text so both `toolname="..."` and TSX spreads like
         // `{...({ toolname: '...', tooldescription: '...' } as any)}` are recognized.
-        const attrText = form.getAttributes().map((attr) => attr.getText()).join(' ');
+        const attrText = form
+          .getAttributes()
+          .map((attr) => attr.getText())
+          .join(" ");
         formElements.push({
           hasToolName: /\btoolname\b/.test(attrText),
           hasToolDescription: /\btooldescription\b/.test(attrText),
@@ -275,20 +330,24 @@ test.describe('WebMCP Target Grader - DevTools Times', () => {
 
     const docs = getHtmlDocuments(targetFiles);
     docs.forEach((d) => {
-      const forms = d.document.querySelectorAll('form');
+      const forms = d.document.querySelectorAll("form");
       forms.forEach((form: any) => {
         formElements.push({
-          hasToolName: form.hasAttribute('toolname'),
-          hasToolDescription: form.hasAttribute('tooldescription'),
+          hasToolName: form.hasAttribute("toolname"),
+          hasToolDescription: form.hasAttribute("tooldescription"),
         });
       });
     });
 
     // Only forms that opt in as declarative tools (via either attribute) are
     // subject to the rule; those must carry both attributes.
-    const toolForms = formElements.filter((f) => f.hasToolName || f.hasToolDescription);
+    const toolForms = formElements.filter(
+      (f) => f.hasToolName || f.hasToolDescription,
+    );
     expect(toolForms.length).toBeGreaterThan(0);
-    const hasAnnotatedForms = toolForms.every((f) => f.hasToolName && f.hasToolDescription);
+    const hasAnnotatedForms = toolForms.every(
+      (f) => f.hasToolName && f.hasToolDescription,
+    );
     expect(hasAnnotatedForms).toBe(true);
   });
 });

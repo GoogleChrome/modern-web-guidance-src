@@ -13,12 +13,14 @@ web-feature-ids:
 # Accessible Error Announcement
 
 ## The Problem
-Standard HTML5 validation provides visual feedback (via `:invalid` or `:user-invalid`), but it doesn't automatically synchronize with accessibility attributes like `aria-invalid`. 
+
+Standard HTML5 validation provides visual feedback (via `:invalid` or `:user-invalid`), but it doesn't automatically synchronize with accessibility attributes like `aria-invalid`.
 
 If you use standard `:invalid` styling, screen readers might announce "Invalid entry" the moment a user tabs into a required field that is currently empty. This creates a disruptive experience for users using assistive technologies, as the error is announced before interaction has occurred.
 
 ## The Solution
-We want the *programmatic* state (`aria-invalid="true"`) to be applied **at the exact same moment** the *visual* state (`:user-invalid`) applies. Since `:user-invalid` relies on the browser's internal "user-interacted" flag, we can use JavaScript to check that this selector matches during standard interaction events.
+
+We want the _programmatic_ state (`aria-invalid="true"`) to be applied **at the exact same moment** the _visual_ state (`:user-invalid`) applies. Since `:user-invalid` relies on the browser's internal "user-interacted" flag, we can use JavaScript to check that this selector matches during standard interaction events.
 
 Set `aria-invalid="false"` until `:user-invalid` matches, rather than leaving the attribute unset. Firefox and Safari expose an empty `required` field as invalid from page load, so an unset attribute still causes the premature "invalid entry" announcement there.
 
@@ -32,18 +34,14 @@ Set `aria-invalid="false"` until `:user-invalid` matches, rather than leaving th
 ## Implementation Guide
 
 ### 1. HTML Structure
+
 Link your input to its error message by setting the input's `data-error` attribute to the error message's `id`. The script in section 3 lists that `id` in `aria-describedby` only while the field is invalid. Don't reference the error from `aria-describedby` in the markup: the error element is always in the page, and text that `aria-describedby` references is announced even when it's hidden, so the error would be read out before the user has interacted.
 
 ```html
 <form>
   <div class="field">
     <label for="email">Email</label>
-    <input 
-      type="email" 
-      id="email" 
-      required 
-      data-error="email-error"
-    >
+    <input type="email" id="email" required data-error="email-error" />
     <span id="email-error" class="error-msg">
       Please enter a valid email address.
     </span>
@@ -52,6 +50,7 @@ Link your input to its error message by setting the input's `data-error` attribu
 ```
 
 ### 2. CSS
+
 Control the visibility of the error message using the native pseudo-class `:user-invalid`.
 
 ```css
@@ -72,6 +71,7 @@ input:user-invalid {
 ```
 
 ### 3. JavaScript
+
 Since there is no "UserInvalidChanged" event, hook into standard form events to check the state.
 
 {{ FEATURE("user-pseudos", "aria-invalid") }}

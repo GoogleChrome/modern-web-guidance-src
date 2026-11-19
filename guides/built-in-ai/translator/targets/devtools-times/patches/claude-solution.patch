@@ -94,7 +94,7 @@ index 22f7b64..cf75470 100644
 +  /** Only present in browsers that ship the built-in Translator API. */
 +  const Translator: TranslatorFactory;
  }
- 
+
 -export {};
 \ No newline at end of file
 +export {};
@@ -470,11 +470,11 @@ index 24fea39..ef597ae 100644
  import BookmarkButton from '../../components/BookmarkButton.tsx';
 +import ArticleTranslator from '../../components/ArticleTranslator.tsx';
  import ArticleTeaser from '../../components/ArticleTeaser.astro';
- 
+
  export const getStaticPaths = (async () => {
 @@ -36,7 +37,7 @@ const isBookmarked = readingList.includes(article.slug);
  ---
- 
+
  <Layout title={article.data.title}>
 -    <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
 +    <article id="article-content" class="max-w-3xl mx-auto px-4 py-8 md:py-12">
@@ -483,16 +483,16 @@ index 24fea39..ef597ae 100644
              <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
 @@ -53,7 +54,7 @@ const isBookmarked = readingList.includes(article.slug);
          </p>
- 
+
          <!-- Author / Date -->
 -        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
 +        <div data-no-translate class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
              By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
          </div>
- 
+
 @@ -87,7 +88,7 @@ const isBookmarked = readingList.includes(article.slug);
          </figure>
- 
+
          <!-- Share Buttons & Comments -->
 -        <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
 +        <div data-no-translate class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
@@ -500,9 +500,9 @@ index 24fea39..ef597ae 100644
              <div class="flex space-x-3 items-center">
                  <span class="text-sm font-semibold text-gray-800">Share:</span>
 @@ -104,13 +105,16 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
          </div>
- 
+
 +        <!-- On-device translation controls -->
 +        <ArticleTranslator client:load targetSelector="#article-content" sourceLanguage="en" />
 +
@@ -510,7 +510,7 @@ index 24fea39..ef597ae 100644
          <div class="prose max-w-none">
              <Content />
          </div>
- 
+
          <!-- ADVERTISEMENT -->
 -        <section class="p-4 md:p-6 text-center">
 +        <section data-no-translate class="p-4 md:p-6 text-center">

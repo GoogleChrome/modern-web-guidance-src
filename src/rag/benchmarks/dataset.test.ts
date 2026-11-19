@@ -22,15 +22,39 @@ import {
   validateQueryRecord,
   type QrelRecord,
 } from "./dataset.ts";
-import { extractCardHeadings, poolQueryCandidates, type CorpusForPooling } from "./judge-fill.ts";
-import { buildJudgePrompt, parseJudgeResponse, type GuideCard } from "./judge-prompts.ts";
-import { extractSearchQueriesFromTrajectory, mineLocalSuitesDir, resolveAgentFromSuiteId, sampleHarnessQueries } from "./mine-harness.ts";
-import { compareDatasetSummaries, evaluateQuery, pairedBootstrapDelta, summarizeDataset } from "./metrics.ts";
+import {
+  extractCardHeadings,
+  poolQueryCandidates,
+  type CorpusForPooling,
+} from "./judge-fill.ts";
+import {
+  buildJudgePrompt,
+  parseJudgeResponse,
+  type GuideCard,
+} from "./judge-prompts.ts";
+import {
+  extractSearchQueriesFromTrajectory,
+  mineLocalSuitesDir,
+  resolveAgentFromSuiteId,
+  sampleHarnessQueries,
+} from "./mine-harness.ts";
+import {
+  compareDatasetSummaries,
+  evaluateQuery,
+  pairedBootstrapDelta,
+  summarizeDataset,
+} from "./metrics.ts";
 
 describe("dataset parsers and serializers", () => {
   it("round-trips queries and qrels JSONL", () => {
     const queries = [
-      { qid: "q1", query: "native modal dialog", stratum: "traffic", freq: 5, words: 3 },
+      {
+        qid: "q1",
+        query: "native modal dialog",
+        stratum: "traffic",
+        freq: 5,
+        words: 3,
+      },
       {
         qid: "q2",
         query: "autofill address form",
@@ -43,11 +67,16 @@ describe("dataset parsers and serializers", () => {
       },
     ];
     const parsedQueries = parseQueriesJsonl(serializeQueriesJsonl(queries));
-    assert.deepStrictEqual(parsedQueries.map((item) => item.qid), ["q1", "q2"]);
+    assert.deepStrictEqual(
+      parsedQueries.map((item) => item.qid),
+      ["q1", "q2"],
+    );
     assert.strictEqual(parsedQueries[1]?.agent, Agents.CLAUDE_CODE);
     assert.strictEqual(parsedQueries[1]?.calledList, true);
     assert.strictEqual(parsedQueries[1]?.retriedSearch, false);
-    assert.deepStrictEqual(parsedQueries[1]?.retrievedGuides, ["autofill-address-form"]);
+    assert.deepStrictEqual(parsedQueries[1]?.retrievedGuides, [
+      "autofill-address-form",
+    ]);
 
     const qrels = [
       {
@@ -55,7 +84,13 @@ describe("dataset parsers and serializers", () => {
         query: "native modal dialog",
         scope: "in_domain" as const,
         needs: ["modal dialog"],
-        grades: [{ id: "light-dismiss-a-dialog", grade: 2 as const, reason: "Covers dialog dismiss" }],
+        grades: [
+          {
+            id: "light-dismiss-a-dialog",
+            grade: 2 as const,
+            reason: "Covers dialog dismiss",
+          },
+        ],
         judgeModel: "gemini-3.8-flash",
         rubricVersion: "v1",
       },
@@ -67,61 +102,83 @@ describe("dataset parsers and serializers", () => {
   it("rejects malformed records at the boundary", async (t) => {
     await t.test("duplicate qid", () => {
       assert.throws(
-        () => parseQueriesJsonl('{"qid":"q1","query":"a"}\n{"qid":"q1","query":"b"}\n'),
-        /Duplicate qid "q1"/
+        () =>
+          parseQueriesJsonl(
+            '{"qid":"q1","query":"a"}\n{"qid":"q1","query":"b"}\n',
+          ),
+        /Duplicate qid "q1"/,
       );
     });
     await t.test("invalid agent", () => {
       assert.throws(
-        () => parseQueriesJsonl('{"qid":"q1","query":"a","agent":"unknown_agent"}\n'),
-        /Invalid agent/
+        () =>
+          parseQueriesJsonl(
+            '{"qid":"q1","query":"a","agent":"unknown_agent"}\n',
+          ),
+        /Invalid agent/,
       );
     });
     await t.test("out-of-range grade", () => {
       assert.throws(
         () =>
           parseQrelsJsonl(
-            '{"qid":"q1","query":"a","scope":"in_domain","needs":[],"grades":[{"id":"g1","grade":3}],"judgeModel":"m","rubricVersion":"v1"}\n'
+            '{"qid":"q1","query":"a","scope":"in_domain","needs":[],"grades":[{"id":"g1","grade":3}],"judgeModel":"m","rubricVersion":"v1"}\n',
           ),
-        /Invalid grade entry/
+        /Invalid grade entry/,
       );
     });
     await t.test("invalid calledList", () => {
       assert.throws(
-        () => validateQueryRecord({ qid: "q1", query: "a", calledList: "true" }),
-        /Invalid calledList.*expected boolean/
+        () =>
+          validateQueryRecord({ qid: "q1", query: "a", calledList: "true" }),
+        /Invalid calledList.*expected boolean/,
       );
     });
     await t.test("invalid retriedSearch", () => {
       assert.throws(
         () => validateQueryRecord({ qid: "q1", query: "a", retriedSearch: 1 }),
-        /Invalid retriedSearch.*expected boolean/
+        /Invalid retriedSearch.*expected boolean/,
       );
     });
     await t.test("invalid retrievedGuides", () => {
       assert.throws(
-        () => validateQueryRecord({ qid: "q1", query: "a", retrievedGuides: "guide" }),
-        /Invalid retrievedGuides.*expected array of non-empty strings/
+        () =>
+          validateQueryRecord({
+            qid: "q1",
+            query: "a",
+            retrievedGuides: "guide",
+          }),
+        /Invalid retrievedGuides.*expected array of non-empty strings/,
       );
       assert.throws(
-        () => validateQueryRecord({ qid: "q1", query: "a", retrievedGuides: [""] }),
-        /Invalid retrievedGuides.*expected array of non-empty strings/
+        () =>
+          validateQueryRecord({ qid: "q1", query: "a", retrievedGuides: [""] }),
+        /Invalid retrievedGuides.*expected array of non-empty strings/,
       );
       assert.throws(
-        () => validateQueryRecord({ qid: "q1", query: "a", retrievedGuides: [123] }),
-        /Invalid retrievedGuides.*expected array of non-empty strings/
+        () =>
+          validateQueryRecord({
+            qid: "q1",
+            query: "a",
+            retrievedGuides: [123],
+          }),
+        /Invalid retrievedGuides.*expected array of non-empty strings/,
       );
     });
     await t.test("invalid split", () => {
       assert.throws(
         () => validateQueryRecord({ qid: "q1", query: "a", split: "other" }),
-        /Invalid split.*expected "dev" or "test"/
+        /Invalid split.*expected "dev" or "test"/,
       );
     });
     await t.test("valid split", () => {
       const qDev = validateQueryRecord({ qid: "q1", query: "a", split: "dev" });
       assert.strictEqual(qDev.split, "dev");
-      const qTest = validateQueryRecord({ qid: "q2", query: "b", split: "test" });
+      const qTest = validateQueryRecord({
+        qid: "q2",
+        query: "b",
+        split: "test",
+      });
       assert.strictEqual(qTest.split, "test");
     });
   });
@@ -136,11 +193,16 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
     assert.strictEqual(agent.manifest.version, "v1");
 
     const guidesJson: { id: string }[] = JSON.parse(
-      fs.readFileSync(path.join(outDir, "build/skills-cli/gen/guides.json"), "utf8")
+      fs.readFileSync(
+        path.join(outDir, "build/skills-cli/gen/guides.json"),
+        "utf8",
+      ),
     );
     const validIds = new Set(guidesJson.map((g) => g.id));
 
-    const missingQrelQids = agent.queries.filter((q) => !agent.qrels.has(q.qid)).map((q) => q.qid);
+    const missingQrelQids = agent.queries
+      .filter((q) => !agent.qrels.has(q.qid))
+      .map((q) => q.qid);
     assert.deepStrictEqual(missingQrelQids, []);
 
     const orphanedExpectedGuides = agent.queries
@@ -150,8 +212,14 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
 
     // Every query has valid split and non-empty alphanumeric content
     for (const q of agent.queries) {
-      assert.ok(q.split === "dev" || q.split === "test", `Query ${q.qid} missing valid split`);
-      assert.ok(/[a-z0-9]/i.test(q.query), `Query ${q.qid} missing alphanumeric tokens`);
+      assert.ok(
+        q.split === "dev" || q.split === "test",
+        `Query ${q.qid} missing valid split`,
+      );
+      assert.ok(
+        /[a-z0-9]/i.test(q.query),
+        `Query ${q.qid} missing alphanumeric tokens`,
+      );
     }
 
     // Split filtering
@@ -170,52 +238,81 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
   });
 
   it("throws fail-fast when agent manifest is missing, version mismatched, or SHA tampered", (t) => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-agent-manifest-test-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "rag-agent-manifest-test-"),
+    );
     t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
-    const qContent = serializeQueriesJsonl([{ qid: "aq0001", query: "popover", split: "dev", words: 1 }]);
-    const rContent = serializeQrelsJsonl([{ qid: "aq0001", query: "popover", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const qContent = serializeQueriesJsonl([
+      { qid: "aq0001", query: "popover", split: "dev", words: 1 },
+    ]);
+    const rContent = serializeQrelsJsonl([
+      {
+        qid: "aq0001",
+        query: "popover",
+        scope: "in_domain",
+        needs: [],
+        grades: [],
+        judgeModel: "m",
+        rubricVersion: "v1",
+      },
+    ]);
 
     fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent);
     fs.writeFileSync(path.join(tmpDir, "agent-qrels.jsonl"), rContent);
 
     // Missing manifest throws
-    assert.throws(() => loadPublicDataset("agent", tmpDir), /ENOENT.*agent-manifest\.json/);
+    assert.throws(
+      () => loadPublicDataset("agent", tmpDir),
+      /ENOENT.*agent-manifest\.json/,
+    );
 
     // Version mismatch throws
-    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
-      version: "v2",
-      createdAt: "2026-10-13T00:00:00Z",
-      judgeModel: "gemini-3.8-flash",
-      rubricVersion: "v1",
-      files: {
-        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
-        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
-      },
-    }));
-    assert.throws(() => loadPublicDataset("agent", tmpDir), /Manifest version mismatch.*expected "v1"/);
+    fs.writeFileSync(
+      path.join(tmpDir, "agent-manifest.json"),
+      JSON.stringify({
+        version: "v2",
+        createdAt: "2026-10-13T00:00:00Z",
+        judgeModel: "gemini-3.8-flash",
+        rubricVersion: "v1",
+        files: {
+          "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+          "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+        },
+      }),
+    );
+    assert.throws(
+      () => loadPublicDataset("agent", tmpDir),
+      /Manifest version mismatch.*expected "v1"/,
+    );
 
     // Missing SHA throws
-    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
-      version: "v1",
-      createdAt: "2026-10-13T00:00:00Z",
-      judgeModel: "gemini-3.8-flash",
-      rubricVersion: "v1",
-      files: {},
-    }));
+    fs.writeFileSync(
+      path.join(tmpDir, "agent-manifest.json"),
+      JSON.stringify({
+        version: "v1",
+        createdAt: "2026-10-13T00:00:00Z",
+        judgeModel: "gemini-3.8-flash",
+        rubricVersion: "v1",
+        files: {},
+      }),
+    );
     assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
 
     // Tampered query file throws
-    fs.writeFileSync(path.join(tmpDir, "agent-manifest.json"), JSON.stringify({
-      version: "v1",
-      createdAt: "2026-10-13T00:00:00Z",
-      judgeModel: "gemini-3.8-flash",
-      rubricVersion: "v1",
-      files: {
-        "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
-        "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
-      },
-    }));
+    fs.writeFileSync(
+      path.join(tmpDir, "agent-manifest.json"),
+      JSON.stringify({
+        version: "v1",
+        createdAt: "2026-10-13T00:00:00Z",
+        judgeModel: "gemini-3.8-flash",
+        rubricVersion: "v1",
+        files: {
+          "agent-queries.jsonl": { rows: 1, sha256: sha256(qContent) },
+          "agent-qrels.jsonl": { rows: 1, sha256: sha256(rContent) },
+        },
+      }),
+    );
     fs.writeFileSync(path.join(tmpDir, "agent-queries.jsonl"), qContent + "\n");
     assert.throws(() => loadPublicDataset("agent", tmpDir), /SHA-256 mismatch/);
   });
@@ -226,11 +323,16 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
     assert.strictEqual(harness.qrels.size, 160);
 
     const guidesJson: { id: string }[] = JSON.parse(
-      fs.readFileSync(path.join(outDir, "build/skills-cli/gen/guides.json"), "utf8")
+      fs.readFileSync(
+        path.join(outDir, "build/skills-cli/gen/guides.json"),
+        "utf8",
+      ),
     );
     const validIds = new Set(guidesJson.map((g) => g.id));
 
-    const missingQrelQids = harness.queries.filter((q) => !harness.qrels.has(q.qid)).map((q) => q.qid);
+    const missingQrelQids = harness.queries
+      .filter((q) => !harness.qrels.has(q.qid))
+      .map((q) => q.qid);
     assert.deepStrictEqual(missingQrelQids, []);
 
     const orphanedExpectedGuides = harness.queries
@@ -243,9 +345,19 @@ describe("checked-in public datasets (agent, harness & oos)", () => {
     const oos = loadPublicDataset("oos");
     assert.strictEqual(oos.queries.length, 90);
     assert.strictEqual(oos.qrels.size, 90);
-    assert.strictEqual(oos.queries.filter((q) => q.stratum === "far").length, 50);
-    assert.strictEqual(oos.queries.filter((q) => q.stratum === "near").length, 40);
-    assert.ok([...oos.qrels.values()].every((r) => r.scope === "out_of_domain" && r.grades.length === 0));
+    assert.strictEqual(
+      oos.queries.filter((q) => q.stratum === "far").length,
+      50,
+    );
+    assert.strictEqual(
+      oos.queries.filter((q) => q.stratum === "near").length,
+      40,
+    );
+    assert.ok(
+      [...oos.qrels.values()].every(
+        (r) => r.scope === "out_of_domain" && r.grades.length === 0,
+      ),
+    );
   });
 });
 
@@ -256,7 +368,9 @@ describe("ensureWildDataset cache verification", () => {
     const vDir = path.join(tmpDir, "v99");
     fs.mkdirSync(vDir, { recursive: true });
 
-    const queriesContent = serializeQueriesJsonl([{ qid: "w1", query: "popover api", words: 2 }]);
+    const queriesContent = serializeQueriesJsonl([
+      { qid: "w1", query: "popover api", words: 2 },
+    ]);
     const qrelsContent = serializeQrelsJsonl([
       {
         qid: "w1",
@@ -281,29 +395,55 @@ describe("ensureWildDataset cache verification", () => {
 
     fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), queriesContent);
     fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), qrelsContent);
-    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    fs.writeFileSync(
+      path.join(vDir, "manifest.json"),
+      JSON.stringify(manifest),
+    );
 
-    const parsedManifest = parseManifestJson(fs.readFileSync(path.join(vDir, "manifest.json"), "utf8"));
+    const parsedManifest = parseManifestJson(
+      fs.readFileSync(path.join(vDir, "manifest.json"), "utf8"),
+    );
     assert.strictEqual(parsedManifest.version, "v99");
 
-    const loaded = await ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false });
+    const loaded = await ensureWildDataset("v99", {
+      cacheDir: tmpDir,
+      allowDownload: false,
+    });
     assert.strictEqual(loaded.queries.length, 1);
     assert.strictEqual(loaded.qrels.get("w1")?.grades[0]?.id, "html");
 
-    fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), queriesContent + "\n");
+    fs.writeFileSync(
+      path.join(vDir, "wild-queries.jsonl"),
+      queriesContent + "\n",
+    );
     await assert.rejects(
-      () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
-      /SHA-256 mismatch/
+      () =>
+        ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
+      /SHA-256 mismatch/,
     );
   });
 
   it("throws on manifest version mismatch", async (t) => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-manifest-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "rag-wild-test-manifest-"),
+    );
     t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
     const vDir = path.join(tmpDir, "v99");
     fs.mkdirSync(vDir, { recursive: true });
-    const qContent = serializeQueriesJsonl([{ qid: "w1", query: "popover api", words: 2 }]);
-    const rContent = serializeQrelsJsonl([{ qid: "w1", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const qContent = serializeQueriesJsonl([
+      { qid: "w1", query: "popover api", words: 2 },
+    ]);
+    const rContent = serializeQrelsJsonl([
+      {
+        qid: "w1",
+        query: "popover api",
+        scope: "in_domain",
+        needs: [],
+        grades: [],
+        judgeModel: "m",
+        rubricVersion: "v1",
+      },
+    ]);
     const manifest = {
       version: "v98", // mismatch against requested v99
       createdAt: "2026-10-13T00:00:00Z",
@@ -316,20 +456,38 @@ describe("ensureWildDataset cache verification", () => {
     };
     fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
     fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
-    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    fs.writeFileSync(
+      path.join(vDir, "manifest.json"),
+      JSON.stringify(manifest),
+    );
     await assert.rejects(
-      () => ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
-      /Manifest version mismatch.*expected "v99", got "v98"/
+      () =>
+        ensureWildDataset("v99", { cacheDir: tmpDir, allowDownload: false }),
+      /Manifest version mismatch.*expected "v99", got "v98"/,
     );
   });
 
   it("rejects wild-v2 records missing split at load time", async (t) => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rag-wild-test-v2-nosplit-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "rag-wild-test-v2-nosplit-"),
+    );
     t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
     const vDir = path.join(tmpDir, "v2");
     fs.mkdirSync(vDir, { recursive: true });
-    const qContent = serializeQueriesJsonl([{ qid: "w0001", query: "popover api", words: 2 }]); // lacks split!
-    const rContent = serializeQrelsJsonl([{ qid: "w0001", query: "popover api", scope: "in_domain", needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }]);
+    const qContent = serializeQueriesJsonl([
+      { qid: "w0001", query: "popover api", words: 2 },
+    ]); // lacks split!
+    const rContent = serializeQrelsJsonl([
+      {
+        qid: "w0001",
+        query: "popover api",
+        scope: "in_domain",
+        needs: [],
+        grades: [],
+        judgeModel: "m",
+        rubricVersion: "v1",
+      },
+    ]);
     const manifest = {
       version: "v2",
       createdAt: "2026-10-26T00:00:00Z",
@@ -342,10 +500,13 @@ describe("ensureWildDataset cache verification", () => {
     };
     fs.writeFileSync(path.join(vDir, "wild-queries.jsonl"), qContent);
     fs.writeFileSync(path.join(vDir, "wild-qrels.jsonl"), rContent);
-    fs.writeFileSync(path.join(vDir, "manifest.json"), JSON.stringify(manifest));
+    fs.writeFileSync(
+      path.join(vDir, "manifest.json"),
+      JSON.stringify(manifest),
+    );
     await assert.rejects(
       () => ensureWildDataset("v2", { cacheDir: tmpDir, allowDownload: false }),
-      /Invalid wild-v2 query record.*missing or invalid split/
+      /Invalid wild-v2 query record.*missing or invalid split/,
     );
   });
 
@@ -358,8 +519,30 @@ describe("ensureWildDataset cache verification", () => {
         createQueryRecord({ qid: "w2", query: "dialog", split: "test" }),
       ],
       qrels: new Map([
-        ["w1", { qid: "w1", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
-        ["w2", { qid: "w2", query: "dialog", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+        [
+          "w1",
+          {
+            qid: "w1",
+            query: "popover",
+            scope: "in_domain" as const,
+            needs: [],
+            grades: [],
+            judgeModel: "m",
+            rubricVersion: "v1",
+          },
+        ],
+        [
+          "w2",
+          {
+            qid: "w2",
+            query: "dialog",
+            scope: "in_domain" as const,
+            needs: [],
+            grades: [],
+            judgeModel: "m",
+            rubricVersion: "v1",
+          },
+        ],
       ]),
     };
     const devSplit = filterDatasetBySplit(mockDataset, "dev");
@@ -379,11 +562,11 @@ describe("ensureWildDataset cache verification", () => {
     // Rejects invalid split arguments (including empty string)
     assert.throws(
       () => filterDatasetBySplit(mockDataset, "" as any),
-      /Invalid split "": expected "dev" or "test"/
+      /Invalid split "": expected "dev" or "test"/,
     );
     assert.throws(
       () => filterDatasetBySplit(mockDataset, "devv" as any),
-      /Invalid split "devv": expected "dev" or "test"/
+      /Invalid split "devv": expected "dev" or "test"/,
     );
 
     // Rejects split filtering when records lack a valid split (e.g. wild-v1)
@@ -391,12 +574,23 @@ describe("ensureWildDataset cache verification", () => {
       name: "wild-v1",
       queries: [createQueryRecord({ qid: "w0000", query: "popover" })],
       qrels: new Map([
-        ["w0000", { qid: "w0000", query: "popover", scope: "in_domain" as const, needs: [], grades: [], judgeModel: "m", rubricVersion: "v1" }],
+        [
+          "w0000",
+          {
+            qid: "w0000",
+            query: "popover",
+            scope: "in_domain" as const,
+            needs: [],
+            grades: [],
+            judgeModel: "m",
+            rubricVersion: "v1",
+          },
+        ],
       ]),
     };
     assert.throws(
       () => filterDatasetBySplit(mockV1Dataset, "dev"),
-      /Dataset "wild-v1" query "w0000" does not have a valid split.*does not support split filtering/
+      /Dataset "wild-v1" query "w0000" does not have a valid split.*does not support split filtering/,
     );
   });
 });
@@ -406,27 +600,54 @@ describe("bench-rag CLI validation", () => {
 
   it("eagerly rejects invalid --split values even under --public-only", () => {
     assert.throws(
-      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", "devv"], { encoding: "utf8", stdio: "pipe" }),
-      /Invalid --split "devv"/
+      () =>
+        execFileSync(
+          process.execPath,
+          [benchScript, "--public-only", "--split", "devv"],
+          { encoding: "utf8", stdio: "pipe" },
+        ),
+      /Invalid --split "devv"/,
     );
     assert.throws(
-      () => execFileSync(process.execPath, [benchScript, "--public-only", "--split", ""], { encoding: "utf8", stdio: "pipe" }),
-      /Invalid --split ""/
+      () =>
+        execFileSync(
+          process.execPath,
+          [benchScript, "--public-only", "--split", ""],
+          { encoding: "utf8", stdio: "pipe" },
+        ),
+      /Invalid --split ""/,
     );
   });
 
   it("eagerly rejects invalid --wild-version values", () => {
     assert.throws(
-      () => execFileSync(process.execPath, [benchScript, "--public-only", "--wild-version", ""], { encoding: "utf8", stdio: "pipe" }),
-      /Invalid --wild-version ""/
+      () =>
+        execFileSync(
+          process.execPath,
+          [benchScript, "--public-only", "--wild-version", ""],
+          { encoding: "utf8", stdio: "pipe" },
+        ),
+      /Invalid --wild-version ""/,
     );
   });
 });
 
 describe("judge-prompts", () => {
   const cards: GuideCard[] = [
-    { id: "g1", title: "Guide One", description: "First guide", category: "css", headings: ["Usage"] },
-    { id: "g2", title: "Guide Two", description: "Second guide", category: "html", headings: ["Markup"] },
+    {
+      id: "g1",
+      title: "Guide One",
+      description: "First guide",
+      category: "css",
+      headings: ["Usage"],
+    },
+    {
+      id: "g2",
+      title: "Guide Two",
+      description: "Second guide",
+      category: "html",
+      headings: ["Markup"],
+    },
   ];
 
   it("formats candidate cards into the judge prompt and validates complete responses", () => {
@@ -456,12 +677,19 @@ describe("judge-prompts", () => {
       ],
     };
 
-    const parsed = parseJudgeResponse(fakeResponse, "css hover state", new Set(["g1", "g2"]));
+    const parsed = parseJudgeResponse(
+      fakeResponse,
+      "css hover state",
+      new Set(["g1", "g2"]),
+    );
     assert.strictEqual(parsed.scope, "in_domain");
-    assert.deepStrictEqual(parsed.grades.map((g) => [g.id, g.grade]), [
-      ["g1", 2],
-      ["g2", 0],
-    ]);
+    assert.deepStrictEqual(
+      parsed.grades.map((g) => [g.id, g.grade]),
+      [
+        ["g1", 2],
+        ["g2", 0],
+      ],
+    );
   });
 
   it("rejects judge responses that omit a candidate or invent an unknown candidate", () => {
@@ -469,14 +697,22 @@ describe("judge-prompts", () => {
       candidates: [
         {
           content: {
-            parts: [{ text: JSON.stringify({ scope: "in_domain", needs: ["x"], grades: [{ id: "g1", grade: 1 }] }) }],
+            parts: [
+              {
+                text: JSON.stringify({
+                  scope: "in_domain",
+                  needs: ["x"],
+                  grades: [{ id: "g1", grade: 1 }],
+                }),
+              },
+            ],
           },
         },
       ],
     };
     assert.throws(
       () => parseJudgeResponse(omittedResponse, "query", new Set(["g1", "g2"])),
-      /Judge omitted candidate "g2"/
+      /Judge omitted candidate "g2"/,
     );
   });
 });
@@ -507,15 +743,58 @@ describe("pooling and mining helpers", () => {
 
   it("pools union of dense max, dense mean, BM25, and expectedGuide", () => {
     const cards = new Map<string, GuideCard>([
-      ["g1", { id: "g1", title: "G1", description: "d1", category: "c", headings: [] }],
-      ["g2", { id: "g2", title: "G2", description: "d2", category: "c", headings: [] }],
-      ["g3", { id: "g3", title: "G3", description: "d3", category: "c", headings: [] }],
+      [
+        "g1",
+        {
+          id: "g1",
+          title: "G1",
+          description: "d1",
+          category: "c",
+          headings: [],
+        },
+      ],
+      [
+        "g2",
+        {
+          id: "g2",
+          title: "G2",
+          description: "d2",
+          category: "c",
+          headings: [],
+        },
+      ],
+      [
+        "g3",
+        {
+          id: "g3",
+          title: "G3",
+          description: "d3",
+          category: "c",
+          headings: [],
+        },
+      ],
     ]);
     const corpus: CorpusForPooling = {
       cards,
       vectors: [
-        { id: "g1", description: "d1", category: "c", featuresUsed: [], tokenCount: 100, vector: [1, 0], chunkContent: "alpha" },
-        { id: "g2", description: "d2", category: "c", featuresUsed: [], tokenCount: 100, vector: [0, 1], chunkContent: "user-invalid validation" },
+        {
+          id: "g1",
+          description: "d1",
+          category: "c",
+          featuresUsed: [],
+          tokenCount: 100,
+          vector: [1, 0],
+          chunkContent: "alpha",
+        },
+        {
+          id: "g2",
+          description: "d2",
+          category: "c",
+          featuresUsed: [],
+          tokenCount: 100,
+          vector: [0, 1],
+          chunkContent: "user-invalid validation",
+        },
       ],
       bm25: buildBm25Index([
         { id: "g1", text: "alpha" },
@@ -531,7 +810,10 @@ describe("pooling and mining helpers", () => {
   });
 
   it("extracts skill_search queries from trajectory summaries and stratifies by agent", () => {
-    assert.strictEqual(resolveAgentFromSuiteId("nightly-2026-10-12-claude_code"), Agents.CLAUDE_CODE);
+    assert.strictEqual(
+      resolveAgentFromSuiteId("nightly-2026-10-12-claude_code"),
+      Agents.CLAUDE_CODE,
+    );
     const summary = {
       steps: [
         {
@@ -559,17 +841,32 @@ describe("pooling and mining helpers", () => {
       [
         [0, "view transitions cross document"],
         [1, "popover light dismiss"],
-      ]
+      ],
     );
 
-    const sampled = sampleHarnessQueries(mined, new Set(["consistent-cross-document-transitions"]), { perAgentLimit: 5 });
+    const sampled = sampleHarnessQueries(
+      mined,
+      new Set(["consistent-cross-document-transitions"]),
+      { perAgentLimit: 5 },
+    );
     assert.strictEqual(sampled.length, 1);
     assert.strictEqual(sampled[0]?.query, "view transitions cross document");
   });
 
   it("computes nDCG@5, token budgets, OOS admission, and paired bootstrap deltas", () => {
-    const q1 = { qid: "q1", query: "modal dialog", stratum: "traffic", words: 2, expectedGuide: "dialogs" };
-    const q2 = { qid: "q2", query: "kubernetes ingress", stratum: "far", words: 2 };
+    const q1 = {
+      qid: "q1",
+      query: "modal dialog",
+      stratum: "traffic",
+      words: 2,
+      expectedGuide: "dialogs",
+    };
+    const q2 = {
+      qid: "q2",
+      query: "kubernetes ingress",
+      stratum: "far",
+      words: 2,
+    };
     const qrel1: QrelRecord = {
       qid: "q1",
       query: "modal dialog",
@@ -593,8 +890,20 @@ describe("pooling and mining helpers", () => {
     };
 
     const evalPerfect = evaluateQuery(q1, qrel1, [
-      { id: "dialogs", description: "d", category: "ui", tokenCount: 1200, similarity: 0.7 },
-      { id: "popovers", description: "p", category: "ui", tokenCount: 800, similarity: 0.5 },
+      {
+        id: "dialogs",
+        description: "d",
+        category: "ui",
+        tokenCount: 1200,
+        similarity: 0.7,
+      },
+      {
+        id: "popovers",
+        description: "p",
+        category: "ui",
+        tokenCount: 800,
+        similarity: 0.5,
+      },
     ]);
     assert.strictEqual(evalPerfect.ndcg5, 1);
     assert.strictEqual(evalPerfect.success1, 1);
@@ -614,16 +923,49 @@ describe("pooling and mining helpers", () => {
     const baseSummary = summarizeDataset(
       ds,
       new Map([
-        ["q1", [{ id: "popovers", description: "p", category: "ui", tokenCount: 800, similarity: 0.5 }]],
-        ["q2", [{ id: "dialogs", description: "d", category: "ui", tokenCount: 1200, similarity: 0.35 }]],
-      ])
+        [
+          "q1",
+          [
+            {
+              id: "popovers",
+              description: "p",
+              category: "ui",
+              tokenCount: 800,
+              similarity: 0.5,
+            },
+          ],
+        ],
+        [
+          "q2",
+          [
+            {
+              id: "dialogs",
+              description: "d",
+              category: "ui",
+              tokenCount: 1200,
+              similarity: 0.35,
+            },
+          ],
+        ],
+      ]),
     );
     const headSummary = summarizeDataset(
       ds,
       new Map([
-        ["q1", [{ id: "dialogs", description: "d", category: "ui", tokenCount: 1200, similarity: 0.7 }]],
+        [
+          "q1",
+          [
+            {
+              id: "dialogs",
+              description: "d",
+              category: "ui",
+              tokenCount: 1200,
+              similarity: 0.7,
+            },
+          ],
+        ],
         ["q2", []],
-      ])
+      ]),
     );
 
     const comp = compareDatasetSummaries(baseSummary, headSummary);
@@ -635,17 +977,28 @@ describe("pooling and mining helpers", () => {
     // Guide-cluster bootstrap: resamples by guide cluster for agent dataset
     const agentBaseSummary = { ...baseSummary, dataset: "agent" };
     const agentHeadSummary = { ...headSummary, dataset: "agent" };
-    const agentComp = compareDatasetSummaries(agentBaseSummary, agentHeadSummary);
+    const agentComp = compareDatasetSummaries(
+      agentBaseSummary,
+      agentHeadSummary,
+    );
     assert.strictEqual(typeof agentComp.ndcg5Delta.ciLow, "number");
     assert.ok(agentComp.ndcg5Delta.ciLow <= agentComp.ndcg5Delta.ciHigh);
 
-    const boot = pairedBootstrapDelta([0.1, 0.2, 0.1, 0.2], [0.8, 0.9, 0.8, 0.9]);
+    const boot = pairedBootstrapDelta(
+      [0.1, 0.2, 0.1, 0.2],
+      [0.8, 0.9, 0.8, 0.9],
+    );
     assert.strictEqual(boot.significant, true);
     assert.ok(boot.ciLow > 0.5);
   });
 
   it("caps discipline-guide grade at 1 when a leaf guide is graded 2", () => {
-    const queryRec = { qid: "q_cap", query: "address autofill form", stratum: "traffic", words: 3 };
+    const queryRec = {
+      qid: "q_cap",
+      query: "address autofill form",
+      stratum: "traffic",
+      words: 3,
+    };
     const qrelWithLeafG2: QrelRecord = {
       qid: "q_cap",
       query: "address autofill form",
@@ -662,21 +1015,61 @@ describe("pooling and mining helpers", () => {
     // When discipline guide "forms" is returned at rank 0:
     // It is capped to 1, so hit1 must be 0, success1 must be 1, disciplineTop1 must be 1.
     const evalFormsTop = evaluateQuery(queryRec, qrelWithLeafG2, [
-      { id: "forms", description: "Forms discipline guide", category: "forms", tokenCount: 1500, similarity: 0.85 },
-      { id: "autofill-address-form", description: "Autofill address leaf guide", category: "forms", tokenCount: 900, similarity: 0.80 },
+      {
+        id: "forms",
+        description: "Forms discipline guide",
+        category: "forms",
+        tokenCount: 1500,
+        similarity: 0.85,
+      },
+      {
+        id: "autofill-address-form",
+        description: "Autofill address leaf guide",
+        category: "forms",
+        tokenCount: 900,
+        similarity: 0.8,
+      },
     ]);
-    assert.strictEqual(evalFormsTop.hit1, 0, "Discipline guide forms should be capped to 1 and not yield hit1");
-    assert.strictEqual(evalFormsTop.success1, 1, "Discipline guide forms still counts as success1 (grade >= 1)");
+    assert.strictEqual(
+      evalFormsTop.hit1,
+      0,
+      "Discipline guide forms should be capped to 1 and not yield hit1",
+    );
+    assert.strictEqual(
+      evalFormsTop.success1,
+      1,
+      "Discipline guide forms still counts as success1 (grade >= 1)",
+    );
     assert.strictEqual(evalFormsTop.disciplineTop1, 1);
     assert.strictEqual(evalFormsTop.disciplineTop5, 1);
-    assert.strictEqual(evalFormsTop.leafRecall5, 1, "Leaf guide autofill-address-form returned in top 5 gives leafRecall5 = 1");
+    assert.strictEqual(
+      evalFormsTop.leafRecall5,
+      1,
+      "Leaf guide autofill-address-form returned in top 5 gives leafRecall5 = 1",
+    );
 
     // When leaf guide "autofill-address-form" is returned at rank 0:
     const evalLeafTop = evaluateQuery(queryRec, qrelWithLeafG2, [
-      { id: "autofill-address-form", description: "Autofill address leaf guide", category: "forms", tokenCount: 900, similarity: 0.88 },
-      { id: "forms", description: "Forms discipline guide", category: "forms", tokenCount: 1500, similarity: 0.70 },
+      {
+        id: "autofill-address-form",
+        description: "Autofill address leaf guide",
+        category: "forms",
+        tokenCount: 900,
+        similarity: 0.88,
+      },
+      {
+        id: "forms",
+        description: "Forms discipline guide",
+        category: "forms",
+        tokenCount: 1500,
+        similarity: 0.7,
+      },
     ]);
-    assert.strictEqual(evalLeafTop.hit1, 1, "Dedicated leaf guide yields hit1 = 1");
+    assert.strictEqual(
+      evalLeafTop.hit1,
+      1,
+      "Dedicated leaf guide yields hit1 = 1",
+    );
     assert.strictEqual(evalLeafTop.disciplineTop1, 0);
     assert.strictEqual(evalLeafTop.disciplineTop5, 1);
     assert.strictEqual(evalLeafTop.leafRecall5, 1);
@@ -695,15 +1088,39 @@ describe("pooling and mining helpers", () => {
       rubricVersion: "v1",
     };
     const evalNoCap = evaluateQuery(queryRec, qrelNoLeafG2, [
-      { id: "forms", description: "Forms discipline guide", category: "forms", tokenCount: 1500, similarity: 0.85 },
+      {
+        id: "forms",
+        description: "Forms discipline guide",
+        category: "forms",
+        tokenCount: 1500,
+        similarity: 0.85,
+      },
     ]);
-    assert.strictEqual(evalNoCap.hit1, 1, "Discipline guide is not capped when no leaf guide is graded 2");
-    assert.strictEqual(evalNoCap.leafRecall5, undefined, "leafRecall5 is undefined when totalLeafG2 === 0");
+    assert.strictEqual(
+      evalNoCap.hit1,
+      1,
+      "Discipline guide is not capped when no leaf guide is graded 2",
+    );
+    assert.strictEqual(
+      evalNoCap.leafRecall5,
+      undefined,
+      "leafRecall5 is undefined when totalLeafG2 === 0",
+    );
   });
 
   it("computes leafRecall5, disciplineTop1Rate, and disciplineTop5Rate in summaries and comparisons", () => {
-    const queryOne = { qid: "q1", query: "autofill address form", stratum: "traffic", words: 3 };
-    const queryTwo = { qid: "q2", query: "accessible modal dialog", stratum: "traffic", words: 3 };
+    const queryOne = {
+      qid: "q1",
+      query: "autofill address form",
+      stratum: "traffic",
+      words: 3,
+    };
+    const queryTwo = {
+      qid: "q2",
+      query: "accessible modal dialog",
+      stratum: "traffic",
+      words: 3,
+    };
 
     const qrelOne: QrelRecord = {
       qid: "q1",
@@ -743,9 +1160,31 @@ describe("pooling and mining helpers", () => {
     const baseSummary = summarizeDataset(
       datasetObj,
       new Map([
-        ["q1", [{ id: "forms", description: "d", category: "c", tokenCount: 1000, similarity: 0.8 }]],
-        ["q2", [{ id: "accessibility", description: "d", category: "c", tokenCount: 1000, similarity: 0.8 }]],
-      ])
+        [
+          "q1",
+          [
+            {
+              id: "forms",
+              description: "d",
+              category: "c",
+              tokenCount: 1000,
+              similarity: 0.8,
+            },
+          ],
+        ],
+        [
+          "q2",
+          [
+            {
+              id: "accessibility",
+              description: "d",
+              category: "c",
+              tokenCount: 1000,
+              similarity: 0.8,
+            },
+          ],
+        ],
+      ]),
     );
     assert.strictEqual(baseSummary.disciplineTop1Rate, 1.0);
     assert.strictEqual(baseSummary.disciplineTop5Rate, 1.0);
@@ -756,9 +1195,31 @@ describe("pooling and mining helpers", () => {
     const headSummary = summarizeDataset(
       datasetObj,
       new Map([
-        ["q1", [{ id: "autofill-address-form", description: "d", category: "c", tokenCount: 800, similarity: 0.9 }]],
-        ["q2", [{ id: "light-dismiss-a-dialog", description: "d", category: "c", tokenCount: 800, similarity: 0.9 }]],
-      ])
+        [
+          "q1",
+          [
+            {
+              id: "autofill-address-form",
+              description: "d",
+              category: "c",
+              tokenCount: 800,
+              similarity: 0.9,
+            },
+          ],
+        ],
+        [
+          "q2",
+          [
+            {
+              id: "light-dismiss-a-dialog",
+              description: "d",
+              category: "c",
+              tokenCount: 800,
+              similarity: 0.9,
+            },
+          ],
+        ],
+      ]),
     );
     assert.strictEqual(headSummary.disciplineTop1Rate, 0.0);
     assert.strictEqual(headSummary.disciplineTop5Rate, 0.0);
@@ -820,7 +1281,9 @@ describe("pooling and mining helpers", () => {
     // Second search was not followed by list, and was followed directly by guide_retrieval
     assert.strictEqual(mined[1]?.calledList, undefined);
     assert.strictEqual(mined[1]?.retriedSearch, undefined);
-    assert.deepStrictEqual(mined[1]?.retrievedGuides, ["light-dismiss-a-dialog"]);
+    assert.deepStrictEqual(mined[1]?.retrievedGuides, [
+      "light-dismiss-a-dialog",
+    ]);
 
     // 2. retrievedGuides from summary.retrievedGuides when present
     const summaryWithExplicitGuides = {
@@ -834,12 +1297,15 @@ describe("pooling and mining helpers", () => {
         },
       ],
     };
-    const minedExplicit = extractSearchQueriesFromTrajectory(summaryWithExplicitGuides, {
-      suiteId: "s_explicit",
-      agent: Agents.CODEX_CLI,
-      runDate: "2026-10-19",
-      expectedGuide: "autofill-address-form",
-    });
+    const minedExplicit = extractSearchQueriesFromTrajectory(
+      summaryWithExplicitGuides,
+      {
+        suiteId: "s_explicit",
+        agent: Agents.CODEX_CLI,
+        runDate: "2026-10-19",
+        expectedGuide: "autofill-address-form",
+      },
+    );
     assert.strictEqual(minedExplicit.length, 1);
     assert.deepStrictEqual(minedExplicit[0]?.retrievedGuides, [
       "autofill-address-form",
@@ -847,13 +1313,19 @@ describe("pooling and mining helpers", () => {
     ]);
 
     // 3. sampleHarnessQueries preserves calledList, retriedSearch, and retrievedGuides on QueryRecord
-    const sampledWithBehaviors = sampleHarnessQueries(mined, new Set(["light-dismiss-a-dialog"]));
+    const sampledWithBehaviors = sampleHarnessQueries(
+      mined,
+      new Set(["light-dismiss-a-dialog"]),
+    );
     assert.strictEqual(sampledWithBehaviors.length, 1);
     assert.strictEqual(sampledWithBehaviors[0]?.calledList, true);
     assert.strictEqual(sampledWithBehaviors[0]?.retriedSearch, true);
     assert.strictEqual(sampledWithBehaviors[0]?.retrievedGuides, undefined);
 
-    const sampledExplicit = sampleHarnessQueries(minedExplicit, new Set(["autofill-address-form"]));
+    const sampledExplicit = sampleHarnessQueries(
+      minedExplicit,
+      new Set(["autofill-address-form"]),
+    );
     assert.strictEqual(sampledExplicit.length, 1);
     assert.deepStrictEqual(sampledExplicit[0]?.retrievedGuides, [
       "autofill-address-form",
@@ -869,7 +1341,8 @@ describe("pooling and mining helpers", () => {
             name: "Bash",
             canonicalCategory: "skill_search",
             params: {
-              command: 'npx -y modern-web-guidance@latest search "form validation" --skill-version 1.0',
+              command:
+                'npx -y modern-web-guidance@latest search "form validation" --skill-version 1.0',
             },
           },
         },
@@ -878,7 +1351,8 @@ describe("pooling and mining helpers", () => {
             name: "Bash",
             canonicalCategory: "skill_search",
             params: {
-              CommandLine: 'npx -y modern-web-guidance search "dialog autofocus" --limit 5',
+              CommandLine:
+                'npx -y modern-web-guidance search "dialog autofocus" --limit 5',
             },
           },
         },
@@ -887,7 +1361,8 @@ describe("pooling and mining helpers", () => {
             name: "Bash",
             canonicalCategory: "guide_retrieval",
             params: {
-              command: 'npx -y modern-web-guidance retrieve "dialog-focus-management"',
+              command:
+                'npx -y modern-web-guidance retrieve "dialog-focus-management"',
             },
           },
         },
@@ -908,23 +1383,27 @@ describe("pooling and mining helpers", () => {
 
     assert.strictEqual(mined[1]?.query, "dialog autofocus");
     assert.strictEqual(mined[1]?.retriedSearch, undefined);
-    assert.deepStrictEqual(mined[1]?.retrievedGuides, ["dialog-focus-management"]);
+    assert.deepStrictEqual(mined[1]?.retrievedGuides, [
+      "dialog-focus-management",
+    ]);
   });
 
   it("mines local suites directories supporting nested iteration folders and legacy layouts", (testContext) => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "mine-suites-test-"));
-    testContext.after(() => fs.rmSync(tempDir, { recursive: true, force: true }));
+    testContext.after(() =>
+      fs.rmSync(tempDir, { recursive: true, force: true }),
+    );
 
     const suiteId = "nightly-2026-10-19-claude_code";
     const nestedSummaryPath = path.join(
       tempDir,
       suiteId,
-      "1/accessible-generated-content/daily-grind/guided/trajectory_summary.json"
+      "1/accessible-generated-content/daily-grind/guided/trajectory_summary.json",
     );
     const legacySummaryPath = path.join(
       tempDir,
       suiteId,
-      "autofill-address-form--basic/task/guided/trajectory_summary.json"
+      "autofill-address-form--basic/task/guided/trajectory_summary.json",
     );
 
     fs.mkdirSync(path.dirname(nestedSummaryPath), { recursive: true });
@@ -945,19 +1424,37 @@ describe("pooling and mining helpers", () => {
         ],
       });
 
-    fs.writeFileSync(nestedSummaryPath, summaryContent("aria live polite announcement"), "utf8");
-    fs.writeFileSync(legacySummaryPath, summaryContent("autofill autocomplete address"), "utf8");
+    fs.writeFileSync(
+      nestedSummaryPath,
+      summaryContent("aria live polite announcement"),
+      "utf8",
+    );
+    fs.writeFileSync(
+      legacySummaryPath,
+      summaryContent("autofill autocomplete address"),
+      "utf8",
+    );
 
     const mined = mineLocalSuitesDir(tempDir);
     assert.strictEqual(mined.length, 2);
 
-    const nestedMined = mined.find((item) => item.expectedGuide === "accessible-generated-content");
-    assert.ok(nestedMined, "Should find query for accessible-generated-content from nested layout");
+    const nestedMined = mined.find(
+      (item) => item.expectedGuide === "accessible-generated-content",
+    );
+    assert.ok(
+      nestedMined,
+      "Should find query for accessible-generated-content from nested layout",
+    );
     assert.strictEqual(nestedMined?.query, "aria live polite announcement");
     assert.strictEqual(nestedMined?.agent, Agents.CLAUDE_CODE);
 
-    const legacyMined = mined.find((item) => item.expectedGuide === "autofill-address-form");
-    assert.ok(legacyMined, "Should find query for autofill-address-form from legacy layout");
+    const legacyMined = mined.find(
+      (item) => item.expectedGuide === "autofill-address-form",
+    );
+    assert.ok(
+      legacyMined,
+      "Should find query for autofill-address-form from legacy layout",
+    );
     assert.strictEqual(legacyMined?.query, "autofill autocomplete address");
     assert.strictEqual(legacyMined?.agent, Agents.CLAUDE_CODE);
   });

@@ -73,14 +73,14 @@
       grid-column: 1 / span 12;
       grid-template-columns: subgrid;
     }
-    
+
     [role="grid"] [role="row"]:nth-child(1) {
       grid-row: 1 / span 1;
       & .spatial-card:nth-child(1) {
         order: 1;
         grid-column: span 4;
       }
-      
+
       & .spatial-card:nth-child(2) {
         order: 3;
         grid-column: span 4;
@@ -94,12 +94,12 @@
 
     [role="grid"] [role="row"]:nth-child(2) {
       grid-row: 2 / span 1;
-      
+
       & .spatial-card:nth-child(1) {
         order: 2;
         grid-column: span 6;
       }
-      
+
       & .spatial-card:nth-child(2) {
         order: 1;
         grid-column: span 6;
@@ -108,7 +108,7 @@
 
     [role="grid"] [role="row"]:nth-child(3) {
       grid-row: 3 / span 1;
-      
+
       & .spatial-card:nth-child(1),
       & .spatial-card:nth-child(2),
       & .spatial-card:nth-child(3),
@@ -116,15 +116,15 @@
         order: 1;
         grid-column: span 3;
       }
-  
+
       & .spatial-card:nth-child(1) {
         order: 2;
       }
-  
+
       & .spatial-card:nth-child(2) {
         order: 3;
       }
-  
+
       & .spatial-card:nth-child(3) {
         order: 4;
       }

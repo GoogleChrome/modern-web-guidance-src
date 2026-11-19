@@ -13,7 +13,7 @@
   <div class="card">
     <h2>Confirm Transaction</h2>
     <p>Please confirm your identity using biometrics before continuing.</p>
-    
+
     <!-- Violates expectation: Button lacks the correct data-testid="reauth-button" attribute -->
     <button id="reauth-btn">Confirm Transaction</button>
   </div>
@@ -22,9 +22,9 @@
     async function triggerButtonReauth() {
       const optionsResponse = await fetch('/api/reauth/options', { method: 'POST' });
       const optionsJSON = await optionsResponse.json();
-      
+
       // Violates expectation: Bypasses calling parseRequestOptionsFromJSON completely
-      
+
       try {
         // Violates expectation: populates options empty allowCredentials (discoverable key prompt) instead of specifying active credentials
         const credential = await navigator.credentials.get({

@@ -1,9 +1,20 @@
 /* oxlint-disable max-lines-per-function, max-depth */
-import { Node, SyntaxKind, type CallExpression, type JsxAttribute, type SourceFile } from 'ts-morph';
-import type { AnalyzerMatch, AnalyzerRule, JsMatcherContext, JsRuleMatcher } from '../schema.ts';
-import { unwrapExpression } from '../scanners/ast-helpers.ts';
+import {
+  Node,
+  SyntaxKind,
+  type CallExpression,
+  type JsxAttribute,
+  type SourceFile,
+} from "ts-morph";
+import type {
+  AnalyzerMatch,
+  AnalyzerRule,
+  JsMatcherContext,
+  JsRuleMatcher,
+} from "../schema.ts";
+import { unwrapExpression } from "../scanners/ast-helpers.ts";
 
-export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = '99e3b42fb16a';
+export const IME_SAFE_ENTER_SUBMIT_GUIDE_HASH = "99e3b42fb16a";
 
 // keyCode/which === 13 checks are deliberately absent: the keydown that confirms an IME
 // composition reports keyCode 229, so those handlers never fire mid-composition.
@@ -20,13 +31,13 @@ const SYNTHETIC_KEY_EVENT_REGEX =
   /Event\s*\(\s*['"]key(?:press|down|up)['"]\s*\)/i;
 
 const ARIA_BUTTON_ROLES = new Set([
-  'button',
-  'menuitem',
-  'tab',
-  'link',
-  'switch',
-  'checkbox',
-  'option',
+  "button",
+  "menuitem",
+  "tab",
+  "link",
+  "switch",
+  "checkbox",
+  "option",
 ]);
 
 const TEST_FILE_PATH_REGEX =
@@ -38,12 +49,15 @@ const TEST_FILE_PATH_REGEX =
  */
 function isSuppressOnlyBranch(branchText: string): boolean {
   const stripped = branchText
-    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-    .replace(/(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g, '')
-    .replace(/\breturn\s*(?:false|true)?\s*;?/g, '')
-    .replace(/\bbreak\s*;?/g, '')
-    .replace(/case\s+['"]Enter['"]\s*:/g, '')
-    .replace(/[{};,\s]/g, '');
+    .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, "")
+    .replace(
+      /(?:e|event|evt)\s*\.\s*(?:preventDefault|stopPropagation|stopImmediatePropagation)\s*\(\s*\)/g,
+      "",
+    )
+    .replace(/\breturn\s*(?:false|true)?\s*;?/g, "")
+    .replace(/\bbreak\s*;?/g, "")
+    .replace(/case\s+['"]Enter['"]\s*:/g, "")
+    .replace(/[{};,\s]/g, "");
   return stripped.length === 0;
 }
 
@@ -51,7 +65,10 @@ function isSuppressOnlyBranch(branchText: string): boolean {
  * Checks if an element has been configured with an ARIA button role
  * via setAttribute('role', ...) or .role = ... in the enclosing scope.
  */
-function hasAriaButtonRoleAssignment(targetNode: Node, variableName: string): boolean {
+function hasAriaButtonRoleAssignment(
+  targetNode: Node,
+  variableName: string,
+): boolean {
   let currentScope: Node | undefined = targetNode.getParent();
   while (
     currentScope &&
@@ -63,12 +80,12 @@ function hasAriaButtonRoleAssignment(targetNode: Node, variableName: string): bo
   }
   const scopeNode = currentScope ?? targetNode.getSourceFile();
   const fullScopeText = scopeNode.getText();
-  if (!fullScopeText.includes('role') && !fullScopeText.includes('Role')) {
+  if (!fullScopeText.includes("role") && !fullScopeText.includes("Role")) {
     return false;
   }
   const roleRegex = new RegExp(
     `\\b${variableName}\\s*(?:\\.\\s*setAttribute\\s*\\(\\s*['"]role['"]\\s*,\\s*['"](?:button|menuitem|tab|link|switch|checkbox|option)['"]|\\.\\s*role\\s*=\\s*['"](?:button|menuitem|tab|link|switch|checkbox|option)['"])`,
-    'i',
+    "i",
   );
   return roleRegex.test(fullScopeText);
 }
@@ -81,9 +98,18 @@ function requiresCtrlOrMetaModifier(condText: string): boolean {
   if (/!\s*\([^)]*\b(?:ctrlKey|metaKey|altKey)\b/.test(condText)) {
     return false;
   }
-  const hasPositiveCtrl = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bctrlKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveMeta = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bmetaKey\b(?!\s*===?\s*false)/.test(condText);
-  const hasPositiveAlt = /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\baltKey\b(?!\s*===?\s*false)/.test(condText);
+  const hasPositiveCtrl =
+    /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bctrlKey\b(?!\s*===?\s*false)/.test(
+      condText,
+    );
+  const hasPositiveMeta =
+    /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\bmetaKey\b(?!\s*===?\s*false)/.test(
+      condText,
+    );
+  const hasPositiveAlt =
+    /(?:^|[^!.\w])(?:\b[a-zA-Z_$][\w$]*\.)?\baltKey\b(?!\s*===?\s*false)/.test(
+      condText,
+    );
   return hasPositiveCtrl || hasPositiveMeta || hasPositiveAlt;
 }
 
@@ -95,8 +121,8 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
 
   // If the handler already checks isComposing, keyCode 229, or key === 'Process', skip!
   if (
-    handlerText.includes('isComposing') ||
-    handlerText.includes('229') ||
+    handlerText.includes("isComposing") ||
+    handlerText.includes("229") ||
     handlerText.includes("'Process'") ||
     handlerText.includes('"Process"')
   ) {
@@ -118,7 +144,10 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
   for (const ifStmt of ifStatements) {
     const condText = ifStmt.getExpression().getText();
     if (ENTER_CHECK_REGEX.test(condText)) {
-      if (requiresCtrlOrMetaModifier(condText) || SPACE_OR_BUTTON_KEY_REGEX.test(condText)) {
+      if (
+        requiresCtrlOrMetaModifier(condText) ||
+        SPACE_OR_BUTTON_KEY_REGEX.test(condText)
+      ) {
         continue;
       }
 
@@ -130,17 +159,19 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
         return {
           line: ifStmt.getStartLineNumber(),
           message:
-            'Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety',
+            "Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety",
         };
       }
     }
   }
 
   // Look for SwitchStatements on event.key with an 'Enter' case
-  const switchStatements = handler.getDescendantsOfKind(SyntaxKind.SwitchStatement);
+  const switchStatements = handler.getDescendantsOfKind(
+    SyntaxKind.SwitchStatement,
+  );
   for (const switchStmt of switchStatements) {
     const exprText = switchStmt.getExpression().getText();
-    if (exprText.includes('key')) {
+    if (exprText.includes("key")) {
       const caseBlock = switchStmt.getCaseBlock();
       for (const clause of caseBlock.getClauses()) {
         if (Node.isCaseClause(clause)) {
@@ -154,7 +185,7 @@ function checkHandlerForUnsafeEnter(handler: Node): AnalyzerMatch | null {
               return {
                 line: clause.getStartLineNumber(),
                 message:
-                  'Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety',
+                  "Keydown Enter listener triggers submission/action without checking event.isComposing or event.keyCode === 229 for IME composition safety",
               };
             }
           }
@@ -178,7 +209,11 @@ function resolveHandlerFunction(fnExpr: Node): Node | null {
     return null;
   }
   const name = unwrapped.getText();
-  for (let current: Node | undefined = unwrapped.getParent(); current; current = current.getParent()) {
+  for (
+    let current: Node | undefined = unwrapped.getParent();
+    current;
+    current = current.getParent()
+  ) {
     if (!Node.isSourceFile(current) && !Node.isBlock(current)) continue;
     for (const stmt of current.getStatements()) {
       if (Node.isFunctionDeclaration(stmt) && stmt.getName() === name) {
@@ -186,7 +221,8 @@ function resolveHandlerFunction(fnExpr: Node): Node | null {
       }
       if (Node.isVariableStatement(stmt)) {
         for (const decl of stmt.getDeclarationList().getDeclarations()) {
-          const init = decl.getName() === name ? decl.getInitializer() : undefined;
+          const init =
+            decl.getName() === name ? decl.getInitializer() : undefined;
           if (init) return unwrapExpression(init);
         }
       }
@@ -213,7 +249,11 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
         const firstArg = unwrapExpression(callArgs[0]);
         if (Node.isStringLiteral(firstArg)) {
           const selectorText = firstArg.getLiteralValue().toLowerCase();
-          if (/role\s*=\s*['"]?(?:button|menuitem|tab|link|switch|checkbox|option)\b/i.test(selectorText)) {
+          if (
+            /role\s*=\s*['"]?(?:button|menuitem|tab|link|switch|checkbox|option)\b/i.test(
+              selectorText,
+            )
+          ) {
             return null;
           }
         }
@@ -222,22 +262,30 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
   }
 
   // 1. addEventListener('keydown', handler)
-  if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'addEventListener') {
+  if (
+    Node.isPropertyAccessExpression(expr) &&
+    expr.getName() === "addEventListener"
+  ) {
     const receiverText = unwrapExpression(expr.getExpression()).getText();
     const isGlobalTarget =
-      receiverText === 'document' ||
-      receiverText === 'window' ||
-      receiverText === 'globalThis' ||
-      receiverText === 'document.body';
+      receiverText === "document" ||
+      receiverText === "window" ||
+      receiverText === "globalThis" ||
+      receiverText === "document.body";
     const args = callExpr.getArguments();
     if (args.length >= 2) {
       const eventArg = unwrapExpression(args[0]);
-      if (Node.isStringLiteral(eventArg) && eventArg.getLiteralValue() === 'keydown') {
+      if (
+        Node.isStringLiteral(eventArg) &&
+        eventArg.getLiteralValue() === "keydown"
+      ) {
         const handler = resolveHandlerFunction(args[1]);
         if (handler) {
           if (
             isGlobalTarget &&
-            !/\b(?:target|srcElement|activeElement|input|textarea|form)\b/i.test(handler.getText())
+            !/\b(?:target|srcElement|activeElement|input|textarea|form)\b/i.test(
+              handler.getText(),
+            )
           ) {
             return null;
           }
@@ -248,13 +296,13 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
   }
 
   // 2. $(...).on('keydown', handler) or $(...).on('keydown.namespace', handler)
-  if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'on') {
+  if (Node.isPropertyAccessExpression(expr) && expr.getName() === "on") {
     const args = callExpr.getArguments();
     if (args.length >= 2) {
       const eventArg = unwrapExpression(args[0]);
       if (Node.isStringLiteral(eventArg)) {
         const val = eventArg.getLiteralValue();
-        if (val === 'keydown' || val.startsWith('keydown.')) {
+        if (val === "keydown" || val.startsWith("keydown.")) {
           const handlerArg = args.length >= 3 ? args[2] : args[1];
           const handler = resolveHandlerFunction(handlerArg);
           if (handler) {
@@ -266,7 +314,7 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
   }
 
   // 3. $(...).keydown(handler)
-  if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'keydown') {
+  if (Node.isPropertyAccessExpression(expr) && expr.getName() === "keydown") {
     const args = callExpr.getArguments();
     if (args.length >= 1) {
       const handler = resolveHandlerFunction(args[0]);
@@ -284,14 +332,16 @@ function matchKeydownCall(callExpr: CallExpression): AnalyzerMatch | null {
  */
 function matchJsxKeydown(jsxAttr: JsxAttribute): AnalyzerMatch | null {
   const name = jsxAttr.getNameNode().getText();
-  if (name !== 'onKeyDown' && name !== 'onkeydown') {
+  if (name !== "onKeyDown" && name !== "onkeydown") {
     return null;
   }
 
   const attributesContainer = jsxAttr.getParent();
   if (attributesContainer) {
-    for (const siblingAttr of attributesContainer.getChildrenOfKind(SyntaxKind.JsxAttribute)) {
-      if (siblingAttr.getNameNode().getText() === 'role') {
+    for (const siblingAttr of attributesContainer.getChildrenOfKind(
+      SyntaxKind.JsxAttribute,
+    )) {
+      if (siblingAttr.getNameNode().getText() === "role") {
         const init = siblingAttr.getInitializer();
         if (init && Node.isStringLiteral(init)) {
           if (ARIA_BUTTON_ROLES.has(init.getLiteralValue().toLowerCase())) {
@@ -321,11 +371,8 @@ function matchJsxKeydown(jsxAttr: JsxAttribute): AnalyzerMatch | null {
 }
 
 export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
-  kind: 'js',
-  fastTokens: [
-    ['keydown', 'onkeydown', 'onKeyDown'],
-    ['Enter'],
-  ],
+  kind: "js",
+  fastTokens: [["keydown", "onkeydown", "onKeyDown"], ["Enter"]],
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     if (ctx.filePath && TEST_FILE_PATH_REGEX.test(ctx.filePath)) {
       return [];
@@ -343,20 +390,29 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
       }
     };
 
-    for (const callExpr of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    for (const callExpr of sourceFile.getDescendantsOfKind(
+      SyntaxKind.CallExpression,
+    )) {
       recordMatch(matchKeydownCall(callExpr));
     }
 
-    for (const jsxAttr of sourceFile.getDescendantsOfKind(SyntaxKind.JsxAttribute)) {
+    for (const jsxAttr of sourceFile.getDescendantsOfKind(
+      SyntaxKind.JsxAttribute,
+    )) {
       recordMatch(matchJsxKeydown(jsxAttr));
     }
 
-    for (const assign of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    for (const assign of sourceFile.getDescendantsOfKind(
+      SyntaxKind.BinaryExpression,
+    )) {
       if (assign.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) {
         continue;
       }
       const left = unwrapExpression(assign.getLeft());
-      if (Node.isPropertyAccessExpression(left) && left.getName() === 'onkeydown') {
+      if (
+        Node.isPropertyAccessExpression(left) &&
+        left.getName() === "onkeydown"
+      ) {
         const receiver = unwrapExpression(left.getExpression());
         if (
           Node.isIdentifier(receiver) &&
@@ -376,8 +432,8 @@ export const imeSafeEnterSubmitMatcher: JsRuleMatcher = {
 };
 
 export const imeSafeEnterSubmitRule: AnalyzerRule = {
-  id: 'ime-safe-enter-submit',
-  guideId: 'ime-safe-enter-submit',
+  id: "ime-safe-enter-submit",
+  guideId: "ime-safe-enter-submit",
   guideHash: IME_SAFE_ENTER_SUBMIT_GUIDE_HASH,
   summary:
     'Flag keydown event listeners on inputs or textareas intercepting Enter (event.key or event.code "Enter") to submit forms, send messages, or trigger actions without checking event.isComposing or event.keyCode === 229, breaking IME input in CJK languages.',
@@ -385,19 +441,17 @@ export const imeSafeEnterSubmitRule: AnalyzerRule = {
   verifierRubric: {
     keepWhen: [
       'Keydown event listeners on inputs or textareas checking event.key === "Enter" or event.code === "Enter" to trigger submission, search, or message sending without checking event.isComposing or event.keyCode === 229.',
-      'Custom enter-to-submit implementations intercepting Enter to call form.submit(), form.requestSubmit(), or trigger a click on a submit button without IME composition gating.',
+      "Custom enter-to-submit implementations intercepting Enter to call form.submit(), form.requestSubmit(), or trigger a click on a submit button without IME composition gating.",
     ],
     dropWhen: [
-      'Keyup or keypress event listeners (composition has already ended by keyup).',
-      'Handlers that check event.isComposing or event.keyCode === 229.',
-      'Handlers that detect Enter only through event.keyCode === 13 or event.which === 13 (the keydown that confirms an IME composition reports keyCode 229, so these never fire mid-composition).',
-      'Handlers strictly requiring modifier keys (Ctrl+Enter or Cmd+Enter) where IME character selection is not triggered.',
-      'Native form submit events or standard inputs inside a form with no custom Enter keydown listener (native Enter submission handles IME automatically).',
-      'Global document-level hotkeys, non-text UI widgets (buttons, menus, tabs, treeviews, dropdowns, modals, media players), or rich-text/code editor newline/indentation handlers rather than text-input submission.',
+      "Keyup or keypress event listeners (composition has already ended by keyup).",
+      "Handlers that check event.isComposing or event.keyCode === 229.",
+      "Handlers that detect Enter only through event.keyCode === 13 or event.which === 13 (the keydown that confirms an IME composition reports keyCode 229, so these never fire mid-composition).",
+      "Handlers strictly requiring modifier keys (Ctrl+Enter or Cmd+Enter) where IME character selection is not triggered.",
+      "Native form submit events or standard inputs inside a form with no custom Enter keydown listener (native Enter submission handles IME automatically).",
+      "Global document-level hotkeys, non-text UI widgets (buttons, menus, tabs, treeviews, dropdowns, modals, media players), or rich-text/code editor newline/indentation handlers rather than text-input submission.",
     ],
   },
 };
 
-export default [
-  imeSafeEnterSubmitRule,
-] satisfies readonly AnalyzerRule[];
+export default [imeSafeEnterSubmitRule] satisfies readonly AnalyzerRule[];

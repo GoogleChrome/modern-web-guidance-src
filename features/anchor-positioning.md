@@ -35,6 +35,7 @@ Without a bundler, import from a CDN inside a `<script type="module">`:
 ```
 
 **Polyfill caveats:**
+
 - **No implicit anchors:** The polyfill does not support implicit anchor associations (such as those created by `popovertarget`, `commandfor`, `interestfor`, or `showPopover({ source })`). You **MUST** set a unique explicit `anchor-name` on each trigger and a matching `position-anchor` on the positioned element.
 - **No `position-area` with `position-try-fallbacks`:** `position-area` with `position-try-fallbacks` is not supported by the polyfill. When using the polyfill on elements needing fallbacks, position elements using `anchor()` functions on inset properties (`top`, `left`, `right`, `bottom`) with `inset: auto` instead of `position-area`.
 - **Do not wrap polyfilled rules in `@supports`:** Browsers without native anchor positioning evaluate `@supports (position-area: ...)` and `@supports (anchor-name: --a)` to `false` and discard the block before the polyfill can process it.
@@ -67,7 +68,10 @@ Instead, gate `inset: auto` and `margin: 0` inside `@supports` for the specific 
     inset: auto;
     margin: 0;
     position-area: block-end span-inline-end;
-    position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    position-try-fallbacks:
+      flip-block,
+      flip-inline,
+      flip-block flip-inline;
   }
 }
 

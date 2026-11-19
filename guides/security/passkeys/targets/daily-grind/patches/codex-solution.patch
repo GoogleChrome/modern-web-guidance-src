@@ -26,7 +26,7 @@ diff --git a/index.html b/index.html
 +    }
    </style>
  </head>
- 
+
 @@ -165,6 +184,7 @@
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
@@ -34,10 +34,10 @@ diff --git a/index.html b/index.html
 +      <li class="passkey-hidden" id="navPasskeyItem"><button class="passkey-btn" id="signInPasskeyBtn" onclick="authenticatePasskey()">Passkey Sign In</button></li>
      </ul>
    </nav>
- 
+
 @@ -175,6 +195,17 @@
    </header>
- 
+
    <main class="container">
 +    <section class="passkey-section passkey-hidden" id="passkeySection">
 +      <h2>Passkey Management</h2>
@@ -56,7 +56,7 @@ diff --git a/index.html b/index.html
 @@ -207,6 +238,181 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const AAGUID_PROVIDERS = {
 +      'ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4': { name: 'Google Password Manager', icon: 'gpm.png' },
@@ -233,6 +233,6 @@ diff --git a/index.html b/index.html
 +    });
 +  </script>
  </body>
- 
+
  </html>
 

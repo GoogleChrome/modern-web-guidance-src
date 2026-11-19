@@ -62,17 +62,17 @@
     /* ---------------------------------------------------- */
     /* Explicit Custom Color Definitions with Variables */
     /* ---------------------------------------------------- */
-    
+
     .scroller.adaptive-contrast {
       /* Define default colors as CSS variables (subtle grey theme) */
       --scrollbar-thumb: #707070;
       --scrollbar-thumb-hover: #555;
       --scrollbar-track: #f1f1f1;
-      
+
       /* Apply standard property natively */
       scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
       scrollbar-width: thin;
-      
+
       /* Force track background to be visible on macOS */
       scrollbar-gutter: stable;
     }
@@ -87,7 +87,7 @@
         --scrollbar-thumb: #000000;
         --scrollbar-thumb-hover: #333333;
         --scrollbar-track: #ffffff;
-        
+
         /* Apply a thicker border to the container itself for high-contrast visibility */
         border: 3px solid #000;
       }

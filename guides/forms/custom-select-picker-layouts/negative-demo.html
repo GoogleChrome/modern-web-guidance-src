@@ -115,7 +115,7 @@
       const val = card.getAttribute('data-val');
       const text = card.querySelector('span:last-child').innerText;
       const icon = card.querySelector('.icon').innerText;
-      
+
       trigger.innerHTML = `<span class="icon">${icon}</span><span>${text}</span>`;
       hiddenSelect.value = val;
       picker.classList.remove('active');

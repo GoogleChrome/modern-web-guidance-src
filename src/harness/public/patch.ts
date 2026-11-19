@@ -1,4 +1,4 @@
-import { createTwoFilesPatch, parsePatch } from 'diff';
+import { createTwoFilesPatch, parsePatch } from "diff";
 
 /**
  * Prepares the public `agent.patch` for one run. Two sources:
@@ -18,14 +18,16 @@ export const MAX_PATCH_BYTES = 1024 * 1024;
  * and `docs/dist/readme.md` stay in; lockfiles and `node_modules/` count at
  * any depth.
  */
-export const EXCLUDED_PATH_RE = new RegExp([
-  String.raw`(?:^|/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$`,
-  String.raw`(?:^|/)node_modules/`,
-  String.raw`^(?:dist|build|\.next)/`,
-  String.raw`(?:^|/)\.env(?:\.[^/]+)?$`,
-  String.raw`\.(?:pem|key)$`,
-  String.raw`^\.(?:claude|codex|gemini|antigravity)/`,
-].join('|'));
+export const EXCLUDED_PATH_RE = new RegExp(
+  [
+    String.raw`(?:^|/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$`,
+    String.raw`(?:^|/)node_modules/`,
+    String.raw`^(?:dist|build|\.next)/`,
+    String.raw`(?:^|/)\.env(?:\.[^/]+)?$`,
+    String.raw`\.(?:pem|key)$`,
+    String.raw`^\.(?:claude|codex|gemini|antigravity)/`,
+  ].join("|"),
+);
 
 export interface PreparedPatch {
   text: string;
@@ -47,7 +49,7 @@ export function preparePatch(rawPatch: string): PreparedPatch {
   const droppedFiles: string[] = [];
   for (const section of splitPatch(rawPatch)) {
     const paths = pathsOfSection(section);
-    const excluded = paths?.find(file => EXCLUDED_PATH_RE.test(file));
+    const excluded = paths?.find((file) => EXCLUDED_PATH_RE.test(file));
     if (paths === undefined) {
       droppedFiles.push(headerLine(section));
     } else if (excluded !== undefined) {
@@ -56,7 +58,7 @@ export function preparePatch(rawPatch: string): PreparedPatch {
       kept.push(section);
     }
   }
-  return capPatch(kept.join(''), droppedFiles);
+  return capPatch(kept.join(""), droppedFiles);
 }
 
 /**
@@ -66,36 +68,52 @@ export function preparePatch(rawPatch: string): PreparedPatch {
  * fonts) get git's one-line `Binary files ... differ` section instead of a
  * byte-soup diff.
  */
-export function patchFromFiles(relPath: string, base: Buffer | undefined, agent: Buffer): PreparedPatch {
+export function patchFromFiles(
+  relPath: string,
+  base: Buffer | undefined,
+  agent: Buffer,
+): PreparedPatch {
   if (EXCLUDED_PATH_RE.test(relPath)) {
-    return { text: '', truncated: false, droppedFiles: [relPath] };
+    return { text: "", truncated: false, droppedFiles: [relPath] };
   }
   if (isBinary(agent) || (base !== undefined && isBinary(base))) {
     if (base !== undefined && base.equals(agent)) {
-      return { text: '', truncated: false, droppedFiles: [] };
+      return { text: "", truncated: false, droppedFiles: [] };
     }
-    const from = base === undefined ? '/dev/null' : `a/${relPath}`;
-    return { text: `diff --git a/${relPath} b/${relPath}\nBinary files ${from} and b/${relPath} differ\n`, truncated: false, droppedFiles: [] };
+    const from = base === undefined ? "/dev/null" : `a/${relPath}`;
+    return {
+      text: `diff --git a/${relPath} b/${relPath}\nBinary files ${from} and b/${relPath} differ\n`,
+      truncated: false,
+      droppedFiles: [],
+    };
   }
-  const baseText = base?.toString('utf8');
-  const agentText = agent.toString('utf8');
+  const baseText = base?.toString("utf8");
+  const agentText = agent.toString("utf8");
   // Not `generateUnifiedDiff`: it trims the output, which eats a trailing blank context line
   // and leaves the hunk shorter than its `@@` header claims. Only the `====` separator line
   // that git-style patches do not have is removed.
-  const diff = createTwoFilesPatch(`a/${relPath}`, `b/${relPath}`, baseText ?? '', agentText).replace(/^=+\n/, '');
-  if (!diff.includes('@@')) {
-    return { text: '', truncated: false, droppedFiles: [] };
+  const diff = createTwoFilesPatch(
+    `a/${relPath}`,
+    `b/${relPath}`,
+    baseText ?? "",
+    agentText,
+  ).replace(/^=+\n/, "");
+  if (!diff.includes("@@")) {
+    return { text: "", truncated: false, droppedFiles: [] };
   }
-  const header = baseText === undefined
-    ? `diff --git a/${relPath} b/${relPath}\nnew file mode 100644\n`
-    : `diff --git a/${relPath} b/${relPath}\n`;
+  const header =
+    baseText === undefined
+      ? `diff --git a/${relPath} b/${relPath}\nnew file mode 100644\n`
+      : `diff --git a/${relPath} b/${relPath}\n`;
   return capPatch(header + diff, []);
 }
 
 /** Splits a patch into one string per `diff --git` section, keeping the header line with its section. */
 function splitPatch(patch: string): string[] {
   const sections: string[] = [];
-  const starts = [...patch.matchAll(/^diff --git /gm)].map(match => match.index);
+  const starts = [...patch.matchAll(/^diff --git /gm)].map(
+    (match) => match.index,
+  );
   for (let i = 0; i < starts.length; i++) {
     sections.push(patch.slice(starts[i], starts[i + 1]));
   }
@@ -110,7 +128,7 @@ export function isBinary(buffer: Buffer): boolean {
   }
   try {
     // stream: true tolerates a multi-byte character cut off at the 8 KB boundary.
-    new TextDecoder('utf-8', { fatal: true }).decode(head, { stream: true });
+    new TextDecoder("utf-8", { fatal: true }).decode(head, { stream: true });
     return false;
   } catch {
     return true;
@@ -138,8 +156,11 @@ function pathsOfSection(section: string): string[] | undefined {
     return undefined;
   }
   const paths: string[] = [];
-  for (const [name, prefix] of [[parsed[0].oldFileName, 'a/'], [parsed[0].newFileName, 'b/']] as const) {
-    if (name === '/dev/null') {
+  for (const [name, prefix] of [
+    [parsed[0].oldFileName, "a/"],
+    [parsed[0].newFileName, "b/"],
+  ] as const) {
+    if (name === "/dev/null") {
       continue;
     }
     const stripped = stripPrefix(name, prefix);
@@ -152,19 +173,30 @@ function pathsOfSection(section: string): string[] | undefined {
 }
 
 function headerLine(section: string): string {
-  const end = section.indexOf('\n');
+  const end = section.indexOf("\n");
   return end === -1 ? section : section.slice(0, end);
 }
 
-function stripPrefix(text: string | undefined, prefix: string): string | undefined {
-  return text !== undefined && text.startsWith(prefix) && text.length > prefix.length ? text.slice(prefix.length) : undefined;
+function stripPrefix(
+  text: string | undefined,
+  prefix: string,
+): string | undefined {
+  return text !== undefined &&
+    text.startsWith(prefix) &&
+    text.length > prefix.length
+    ? text.slice(prefix.length)
+    : undefined;
 }
 
 function capPatch(text: string, droppedFiles: string[]): PreparedPatch {
-  const bytes = Buffer.byteLength(text, 'utf8');
+  const bytes = Buffer.byteLength(text, "utf8");
   if (bytes > MAX_PATCH_BYTES) {
     const mb = (bytes / (1024 * 1024)).toFixed(1);
-    return { text: `# diff omitted: ${mb} MB exceeds the ${MAX_PATCH_BYTES / (1024 * 1024)} MB cap\n`, truncated: true, droppedFiles };
+    return {
+      text: `# diff omitted: ${mb} MB exceeds the ${MAX_PATCH_BYTES / (1024 * 1024)} MB cap\n`,
+      truncated: true,
+      droppedFiles,
+    };
   }
   return { text, truncated: false, droppedFiles };
 }

@@ -48,10 +48,10 @@ These guidelines provide a high-density reference for writing maintainable and s
 - [10. Transitions \& animations](#10-transitions--animations)
 - [11. Generated content](#11-generated-content)
 
-
 ## 1. Foundations
 
 Be allergic to knowledge duplication. Prefer variables over repetition, but whenever possible, prefer built-in conventions such as:
+
 - `currentColor` instead of defining a variable and setting `color` to it
 - The `inherit` keyword instead of defining a variable on the parent and using it on the same property across parent and child.
 - `em` units instead of `font-size: var(--size)`
@@ -71,6 +71,7 @@ Within each layer, use `:where()` to make selectors only compete based on meanin
 
 Use keywords like `inherit`, `initial`, `unset`, or `revert` instead of explicit values to improve maintainability and better express intent.
 Examples:
+
 - When specifying a transition on a child that should match the parent's `transition-*` properties, instead of repeating the transition properties on the child, use `transition: inherit` (reduce duplication, improve maintainability)
 - Use `initial` to reset a property to its initial value instead of specifying the value explicitly (clearer expression of intent)
 
@@ -205,9 +206,14 @@ Use native CSS nesting to group related styles to the extent it improves maintai
 Prefer `@scope` over nesting when proximity should matter more than pure specificity. This is common in selectors that can be nested in any order, but the closest matching one (in element -> ancestor order) should win, e.g. theming classes.
 
 For example this will not work as expected:
+
 ```css
-.dark .invert { color-scheme: light }
-.light .invert { color-scheme: dark }
+.dark .invert {
+  color-scheme: light;
+}
+.light .invert {
+  color-scheme: dark;
+}
 ```
 
 If `.invert` is nested within _both_ `.dark` and `.light`, it will always resolve to dark mode as both rules have the same specificity.
@@ -215,11 +221,15 @@ Using `@scope` fixes this:
 
 ```css
 @scope (.dark) {
-  .invert { color-scheme: light }
+  .invert {
+    color-scheme: light;
+  }
 }
 
 @scope (.light) {
-  .invert { color-scheme: dark }
+  .invert {
+    color-scheme: dark;
+  }
 }
 ```
 
@@ -234,6 +244,7 @@ Use CSS custom properties on `:root` to define core design variables (colors, fo
 One exception is use cases where keeping code small and simple is far more important than long-term maintainability and evolution, such as testcases.
 
 Typically these are organized in tiers, with each tier building upon the previous one. For example:
+
 1. Tier 1: Literal design tokens (e.g. `--color-blue-10`, `--color-gray-90`, `--font-sans-serif`, `--size-xl` etc)
 2. Tier 2: Semantic design tokens (e.g. `--color-accent`, `--color-neutral`, `--font-body`, `--font-heading` etc)
 3. Tier 3: General UI design tokens (e.g. `--ui-border`, `--surface-bg-subtle` etc)
@@ -273,5 +284,5 @@ See {{ GUIDE_REF('visual-effects') }} for look & feel enhancements such as conve
 See {{ GUIDE_REF('motion') }}. For rendering performance (`content-visibility`, containment), see {{ GUIDE_REF('performance') }}.
 
 ## 11. Generated content
-See {{ GUIDE_REF('accessible-generated-content') }} for adding decorative or supplementary content with CSS without breaking screen readers or copy-paste.
 
+See {{ GUIDE_REF('accessible-generated-content') }} for adding decorative or supplementary content with CSS without breaking screen readers or copy-paste.

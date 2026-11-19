@@ -3,24 +3,18 @@ import {
   SyntaxKind,
   type CallExpression,
   type ObjectLiteralExpression,
-} from 'ts-morph';
+} from "ts-morph";
 import {
   isLibraryReference,
   resolveLocalExpression,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
-import { createJsCallMatcher } from '../scanners/js-scanner.ts';
-import type {
-  AnalyzerRule,
-  JsRuleMatcher,
-} from '../schema.ts';
+} from "../scanners/ast-helpers.ts";
+import { createJsCallMatcher } from "../scanners/js-scanner.ts";
+import type { AnalyzerRule, JsRuleMatcher } from "../schema.ts";
 
-export const SLIDER_GUIDE_HASH = '3082b9fc3260';
+export const SLIDER_GUIDE_HASH = "3082b9fc3260";
 
-const SLIDER_GUARD_TOKENS = [
-  'accent-color',
-  'accentColor',
-] as const;
+const SLIDER_GUARD_TOKENS = ["accent-color", "accentColor"] as const;
 
 function isNumericValueNode(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
@@ -37,8 +31,10 @@ function isNumericValueNode(node: Node): boolean {
   return false;
 }
 
-function isSingleHandleStartOption(optionsObj: ObjectLiteralExpression): boolean {
-  const startProp = optionsObj.getProperty('start');
+function isSingleHandleStartOption(
+  optionsObj: ObjectLiteralExpression,
+): boolean {
+  const startProp = optionsObj.getProperty("start");
   if (!startProp || !Node.isPropertyAssignment(startProp)) {
     return false;
   }
@@ -60,12 +56,14 @@ function isSingleHandleStartOption(optionsObj: ObjectLiteralExpression): boolean
   return false;
 }
 
-function hasNonNativeSliderOptions(optionsObj: ObjectLiteralExpression): boolean {
-  if (optionsObj.getProperty('pips') || optionsObj.getProperty('format')) {
+function hasNonNativeSliderOptions(
+  optionsObj: ObjectLiteralExpression,
+): boolean {
+  if (optionsObj.getProperty("pips") || optionsObj.getProperty("format")) {
     return true;
   }
 
-  const tooltipsProp = optionsObj.getProperty('tooltips');
+  const tooltipsProp = optionsObj.getProperty("tooltips");
   if (tooltipsProp && Node.isPropertyAssignment(tooltipsProp)) {
     const init = tooltipsProp.getInitializer();
     if (!init || unwrapExpression(init).getKind() !== SyntaxKind.FalseKeyword) {
@@ -73,21 +71,22 @@ function hasNonNativeSliderOptions(optionsObj: ObjectLiteralExpression): boolean
     }
   }
 
-  const orientationProp = optionsObj.getProperty('orientation');
+  const orientationProp = optionsObj.getProperty("orientation");
   if (orientationProp && Node.isPropertyAssignment(orientationProp)) {
     const init = orientationProp.getInitializer();
     if (init) {
       const resolved = resolveLocalExpression(init, 2);
       if (
-        (Node.isStringLiteral(resolved) || Node.isNoSubstitutionTemplateLiteral(resolved)) &&
-        resolved.getLiteralValue().trim().toLowerCase() === 'vertical'
+        (Node.isStringLiteral(resolved) ||
+          Node.isNoSubstitutionTemplateLiteral(resolved)) &&
+        resolved.getLiteralValue().trim().toLowerCase() === "vertical"
       ) {
         return true;
       }
     }
   }
 
-  const rangeProp = optionsObj.getProperty('range');
+  const rangeProp = optionsObj.getProperty("range");
   if (rangeProp && Node.isPropertyAssignment(rangeProp)) {
     const init = rangeProp.getInitializer();
     if (init) {
@@ -95,8 +94,12 @@ function hasNonNativeSliderOptions(optionsObj: ObjectLiteralExpression): boolean
       if (Node.isObjectLiteralExpression(resolvedRange)) {
         for (const prop of resolvedRange.getProperties()) {
           if (Node.isPropertyAssignment(prop)) {
-            const rawKey = prop.getName().replace(/^['"`]|['"`]$/g, '').trim().toLowerCase();
-            if (rawKey !== 'min' && rawKey !== 'max') {
+            const rawKey = prop
+              .getName()
+              .replace(/^['"`]|['"`]$/g, "")
+              .trim()
+              .toLowerCase();
+            if (rawKey !== "min" && rawKey !== "max") {
               return true;
             }
           }
@@ -110,14 +113,17 @@ function hasNonNativeSliderOptions(optionsObj: ObjectLiteralExpression): boolean
 
 function matchNoUiSliderCreate(callExpr: CallExpression): string | null {
   const callee = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(callee) || callee.getName() !== 'create') {
+  if (
+    !Node.isPropertyAccessExpression(callee) ||
+    callee.getName() !== "create"
+  ) {
     return null;
   }
 
   const receiver = callee.getExpression();
   if (
-    !isLibraryReference(receiver, 'noUiSlider', ['nouislider']) &&
-    !isLibraryReference(receiver, 'nouislider', ['nouislider'])
+    !isLibraryReference(receiver, "noUiSlider", ["nouislider"]) &&
+    !isLibraryReference(receiver, "nouislider", ["nouislider"])
   ) {
     return null;
   }
@@ -132,7 +138,10 @@ function matchNoUiSliderCreate(callExpr: CallExpression): string | null {
     return null;
   }
 
-  if (!isSingleHandleStartOption(optionsNode) || hasNonNativeSliderOptions(optionsNode)) {
+  if (
+    !isSingleHandleStartOption(optionsNode) ||
+    hasNonNativeSliderOptions(optionsNode)
+  ) {
     return null;
   }
 
@@ -140,31 +149,29 @@ function matchNoUiSliderCreate(callExpr: CallExpression): string | null {
 }
 
 export const sliderJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['noUiSlider', 'nouislider'],
+  fastTokens: ["noUiSlider", "nouislider"],
   featureGuardTokens: SLIDER_GUARD_TOKENS,
   matchCall: matchNoUiSliderCreate,
 });
 
 export const sliderJsRule: AnalyzerRule = {
-  id: 'slider/js-slider',
-  guideId: 'slider',
+  id: "slider/js-slider",
+  guideId: "slider",
   guideHash: SLIDER_GUIDE_HASH,
   summary:
     'Single-handle noUiSlider.create() calls should be modernized with native HTML <input type="range"> and CSS accent-color.',
   matcher: sliderJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript calls noUiSlider.create() with a single numeric start value (e.g., start: 50 or start: [50]) and a linear min/max range to build a basic horizontal single-thumb range slider.',
-      'Custom drag handle divs calculate percentage left offsets on mousemove for a single numeric value.',
+      "JavaScript calls noUiSlider.create() with a single numeric start value (e.g., start: 50 or start: [50]) and a linear min/max range to build a basic horizontal single-thumb range slider.",
+      "Custom drag handle divs calculate percentage left offsets on mousemove for a single numeric value.",
     ],
     dropWhen: [
-      'The slider configures multiple handles or thumbs (e.g., start: [20, 80]) for min/max interval selection.',
+      "The slider configures multiple handles or thumbs (e.g., start: [20, 80]) for min/max interval selection.",
       'The slider configures non-linear percentage range stops (e.g., "30%": ...), custom pips/tick rulers (pips: {...}), thumb tooltips/formatters (tooltips: true, format: {...}), or vertical orientation (orientation: "vertical").',
       'The control is a multi-thumb timeline video scrubbing bar or already uses native <input type="range">.',
     ],
   },
 };
 
-export default [
-  sliderJsRule,
-] satisfies readonly AnalyzerRule[];
+export default [sliderJsRule] satisfies readonly AnalyzerRule[];

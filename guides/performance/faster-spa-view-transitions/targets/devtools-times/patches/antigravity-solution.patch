@@ -6,12 +6,12 @@ index 6d031f5..482f6e6 100644
 -import React, { useState } from 'react';
 +import React, { useState, useEffect } from 'react';
  import FlyoutMenu from './FlyoutMenu';
- 
+
  interface BottomNavProps {
 @@ -8,8 +8,44 @@ interface BottomNavProps {
      multimedia: any[];
  }
- 
+
 +export const SPA_SECTIONS = [
 +    { id: 'top-news', label: 'Top News' },
 +    { id: 'world', label: 'World' },
@@ -50,13 +50,13 @@ index 6d031f5..482f6e6 100644
  const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
      const [activeCategory, setActiveCategory] = useState<string | null>(null);
 +    const [activeViewId, setActiveViewId] = useState<string>('top-news');
- 
+
      const groupedCategories = {
          'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
 @@ -18,10 +54,58 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
          'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
      };
- 
+
 +    useEffect(() => {
 +        if (typeof window !== 'undefined') {
 +            (window as any).switchToView = switchToView;
@@ -95,7 +95,7 @@ index 6d031f5..482f6e6 100644
      const handleMouseLeave = () => {
          setActiveCategory(null);
      };
- 
+
 +    const handleSectionClick = (e: React.MouseEvent, viewId: string) => {
 +        const targetView = document.getElementById(viewId);
 +        if (targetView) {
@@ -143,12 +143,12 @@ index 6d031f5..482f6e6 100644
 +                    <span className="text-gray-300 select-none" aria-hidden="true">|</span>
 +                    {Object.entries(groupedCategories).map(([groupName]) => {
                          return (
-                             <div 
+                             <div
                                  key={groupName}
 @@ -39,6 +145,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
                              >
-                                 <a 
-                                     href="#" 
+                                 <a
+                                     href="#"
 +                                    onClick={(e) => e.preventDefault()}
                                      className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
                                  >
@@ -176,7 +176,7 @@ index 37cf4bf..d5a5ed6 100644
 +  onClose?: () => void;
 +  onSwitchView?: (viewId: string) => void;
  }
- 
+
 -const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
 +const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles = [], reports = [], multimedia = [], onSwitchView }) => {
    if (!isOpen) {
@@ -229,7 +229,7 @@ index 92f6399..28a75a9 100644
 @@ -7,9 +7,19 @@ import { getCollection } from 'astro:content';
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
  import type { RenderResult } from 'astro:content';
- 
+
 +export interface Props {
 +    initialView?: 'top-news' | 'world' | 'politics' | 'multimedia' | 'reports';
 +    title?: string;
@@ -239,7 +239,7 @@ index 92f6399..28a75a9 100644
 +
  const articles = await getCollection('articles');
  articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
- 
+
 +const multimedia = await getCollection('multimedia');
 +const reports = await getCollection('reports');
 +
@@ -249,7 +249,7 @@ index 92f6399..28a75a9 100644
 @@ -37,7 +47,7 @@ politicsArticles[2] = {
    };
  ---
- 
+
 -<Layout title="The DevTools Times">
 +<Layout title={title}>
      <!-- Top Stories Bar -->
@@ -258,7 +258,7 @@ index 92f6399..28a75a9 100644
 @@ -54,31 +64,103 @@ politicsArticles[2] = {
          </div>
      </div>
- 
+
 -    <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 -        <ArticleTeaser article={topArticle} large={true} />
@@ -283,7 +283,7 @@ index 92f6399..28a75a9 100644
 +                <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
 +            </div>
 +        </div>
- 
+
 -    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
 -        <section class="p-4 md:p-6 text-center">
 -            <Ad client:visible />
@@ -303,7 +303,7 @@ index 92f6399..28a75a9 100644
 +                </section>
 +            </div>
 +        </div>
- 
+
 -        <!-- "Top News" section with the new grid variant -->
 -        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
 +        <!-- View 3: Politics -->
@@ -321,7 +321,7 @@ index 92f6399..28a75a9 100644
 +                </section>
 +            </div>
 +        </div>
- 
+
 -        <section class="p-4 md:p-6 text-center">
 -            <Ad client:visible />
 -        </section>
@@ -347,7 +347,7 @@ index 92f6399..28a75a9 100644
 +                </div>
 +            </div>
 +        </div>
- 
+
 -        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
 -
 -        <section class="p-4 md:p-6 text-center">
@@ -356,7 +356,7 @@ index 92f6399..28a75a9 100644
 -
 -        <!-- "Politics" section with the new grid variant -->
 -        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
--        
+-
 +        <!-- View 5: Reports -->
 +        <div
 +            id="reports"

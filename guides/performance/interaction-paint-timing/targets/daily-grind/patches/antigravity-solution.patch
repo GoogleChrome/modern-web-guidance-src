@@ -5,7 +5,7 @@ index 66c9173..056db49 100644
 @@ -207,6 +207,26 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    import { observeInteractionPaints, trackSoftNavigationLCP } from '/paint-timing.js';
 +
@@ -26,7 +26,7 @@ index 66c9173..056db49 100644
 +    });
 +  </script>
  </body>
- 
+
  </html>
 +
 diff --git a/node_modules/.pnpm-workspace-state-v1.json b/node_modules/.pnpm-workspace-state-v1.json

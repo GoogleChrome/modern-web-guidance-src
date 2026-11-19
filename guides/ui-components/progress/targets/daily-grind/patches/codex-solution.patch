@@ -23,7 +23,7 @@ index 66c9173..dcfbed7 100644
 @@ -107,6 +107,108 @@
        margin-top: 20px;
      }
- 
+
 +    /* Order and reward progress */
 +    .progress-section {
 +      margin-bottom: 40px;
@@ -131,7 +131,7 @@ index 66c9173..dcfbed7 100644
        padding: 20px;
 @@ -175,6 +277,27 @@
    </header>
- 
+
    <main class="container">
 +    <section class="progress-section" aria-labelledby="progress-title">
 +      <h2 id="progress-title">Your Daily Progress</h2>

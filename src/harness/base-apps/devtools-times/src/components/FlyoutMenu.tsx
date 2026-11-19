@@ -29,7 +29,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
     <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-4 gap-x-8">
-          
+
           {/* Column 1: SECTIONS */}
           <div>
             <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>

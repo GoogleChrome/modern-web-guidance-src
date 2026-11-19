@@ -37,7 +37,7 @@ To adapt to the user's preferences in older browsers, use `prefers-color-scheme`
 }
 
 button.primary {
-	background-color: var(--color-brand);
-	color: var(--color-brand-text);
+  background-color: var(--color-brand);
+  color: var(--color-brand-text);
 }
 ```

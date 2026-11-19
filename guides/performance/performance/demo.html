@@ -8,7 +8,7 @@
   <!-- 1. Resource Hints -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  
+
   <!-- Preload critical LCP image -->
   <link rel="preload" href="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1200&q=80" as="image" fetchpriority="high">
 
@@ -67,7 +67,7 @@
 
   <!-- 4. Defer JavaScript -->
   <script defer src="app.js"></script>
-  
+
   <link rel="stylesheet" href="print.css" media="print">
 </head>
 <body>
@@ -75,12 +75,12 @@
   <section class="hero">
     <h1 class="hero-title">Blazing Fast Web Experiences</h1>
     <p class="hero-subtitle">Demonstrating Largest Contentful Paint (LCP), Interaction to Next Paint (INP), and Critical Rendering Path optimizations.</p>
-    
-    <img 
-      src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1200&q=80" 
-      alt="Futuristic Web Interface" 
+
+    <img
+      src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=1200&q=80"
+      alt="Futuristic Web Interface"
       class="lcp-image"
-      width="1200" 
+      width="1200"
       height="675"
       fetchpriority="high"
       decoding="sync"
@@ -92,33 +92,33 @@
   </div>
 
   <main class="container" style="max-width: 1200px; margin: 0 auto; padding: 4rem 2rem;">
-    
+
     <section class="dynamic-section" style="margin-bottom: 4rem;">
       <h2>Dynamic Content Interaction</h2>
       <p>Click the button below to simulate a heavy JavaScript task and load a dynamic feature.</p>
-      
+
       <button id="heavyTaskBtn" style="background: var(--accent-primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
         Run Heavy Task & Load Feature
       </button>
       <span id="taskStatus" style="margin-left: 1rem; color: var(--text-secondary);"></span>
-      
+
       <div class="progress-bar" style="width: 100%; height: 4px; background: var(--border-color); margin-top: 1rem; border-radius: 2px; overflow: hidden;">
         <div id="progressBarFill" style="width: 0%; height: 100%; background: var(--accent-primary); transition: width 0.1s;"></div>
       </div>
     </section>
 
     <section class="image-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 4rem;">
-      
+
       <div class="card" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
         <picture>
           <source type="image/avif" srcset="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 50vw">
           <source type="image/webp" srcset="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=400&q=80 400w, https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80 800w" sizes="(max-width: 600px) 100vw, 50vw">
-          <img 
-            src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80" 
-            alt="Cyber Security Concept" 
-            width="800" 
+          <img
+            src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&q=80"
+            alt="Cyber Security Concept"
+            width="800"
             height="533"
-            loading="lazy" 
+            loading="lazy"
           >
         </picture>
         <div style="padding: 1.5rem;">
@@ -128,12 +128,12 @@
       </div>
 
       <div class="card" style="background: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
-        <img 
-          src="https://images.unsplash.com/photo-151877066853b-5e6c9f492113?auto=format&fit=crop&w=800&q=80" 
-          alt="Microchip" 
-          width="800" 
+        <img
+          src="https://images.unsplash.com/photo-151877066853b-5e6c9f492113?auto=format&fit=crop&w=800&q=80"
+          alt="Microchip"
+          width="800"
           height="533"
-          loading="lazy" 
+          loading="lazy"
         >
         <div style="padding: 1.5rem;">
           <h3>Standard Lazy Loading</h3>
@@ -144,12 +144,12 @@
 
     <section class="video-section" style="margin-bottom: 4rem;">
       <h2>Optimized Video Delivery</h2>
-      
-      <video 
-        controls 
-        width="1200" 
+
+      <video
+        controls
+        width="1200"
         height="675"
-        poster="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80" 
+        poster="https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80"
         preload="none"
         style="width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border-color);"
         loading="lazy"
@@ -195,24 +195,24 @@
     heavyTaskBtn.addEventListener('click', async () => {
       heavyTaskBtn.disabled = true;
       taskStatus.textContent = 'Processing...';
-      
+
       const totalItems = 1000;
       for (let i = 0; i < totalItems; i++) {
         Math.sqrt(Math.random() * 10000);
-        
+
         if (i % 10 === 0) {
           const progress = (i / totalItems) * 100;
           progressBarFill.style.width = `${progress}%`;
         }
-        
+
         if (i % 50 === 0) {
           await yieldToMain();
         }
       }
-      
+
       progressBarFill.style.width = '100%';
       taskStatus.textContent = 'Complete! Loading feature...';
-      
+
       // Real Dynamic Import
       try {
         const { heavyFunction } = await import('./feature.js');
@@ -222,7 +222,7 @@
         console.error('Failed to load feature:', error);
         taskStatus.textContent = 'Failed to load feature.';
       }
-      
+
       heavyTaskBtn.disabled = false;
     });
 

@@ -28,11 +28,11 @@ For a `<textarea>` or `<input>` with custom enter-to-submit, check the native `i
 ```
 
 ```js
-const textarea = document.getElementById('chat-input');
-const form = document.getElementById('chat-form');
+const textarea = document.getElementById("chat-input");
+const form = document.getElementById("chat-form");
 
-textarea.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+textarea.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
     // Prevent the default action (newline in a textarea, implicit form submission in an input)
     event.preventDefault();
 
@@ -64,16 +64,17 @@ In recent versions of Safari, an event-ordering issue (WebKit bug 165004) delive
 If you need to support cross-browser compatibility across older versions of Safari and other platforms, adopt one of the following fallback strategies:
 
 {# Maintainer references:
-   - W3C UI Events spec (keyCode 229 during IME composition): https://w3c.github.io/uievents/#determine-keydown-keyup-keyCode
-   - WebKit Bug 165004 (Safari firing compositionend before keydown): https://bugs.webkit.org/show_bug.cgi?id=165004 #}
+
+- W3C UI Events spec (keyCode 229 during IME composition): https://w3c.github.io/uievents/#determine-keydown-keyup-keyCode
+- WebKit Bug 165004 (Safari firing compositionend before keydown): https://bugs.webkit.org/show_bug.cgi?id=165004 #}
 
 ### Strategy 1: Add a `keyCode === 229` check (recommended)
 
 During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead of `13` on `keydown`, even while setting `event.key === 'Enter'` on the confirming keystroke. Pairing `event.isComposing` with `event.keyCode === 229` reliably catches Safari's out-of-order confirming `Enter` keydown. (This also means legacy `event.keyCode === 13` handlers are already immune to IME confirmation, whereas migrating them to `event.key === 'Enter'` without `event.isComposing` and `event.keyCode === 229` will introduce premature submission.) Because this check is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
 
 ```js
-textarea.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+textarea.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
 
     // Block submission if composing natively or if keyCode is 229
@@ -88,21 +89,21 @@ textarea.addEventListener('keydown', (event) => {
 
 ### Strategy 2: The `event.timeStamp` window workaround (alternative)
 
-For codebases that strictly forbid the use of deprecated APIs like `keyCode`, or if there are known issues with the `229` check in specific targeted environments, you can track the browser-reported event dispatch timestamp instead. 
+For codebases that strictly forbid the use of deprecated APIs like `keyCode`, or if there are known issues with the `229` check in specific targeted environments, you can track the browser-reported event dispatch timestamp instead.
 
-Because Safari dispatches the confirming `Enter` keydown event extremely close to the `compositionend` event (often within 5ms, and sometimes with the keydown timestamp being slightly *earlier* due to handler delivery order inversion), checking the time difference is highly reliable and is unlikely to trigger false-positives on mobile virtual keyboards under standard conditions.
+Because Safari dispatches the confirming `Enter` keydown event extremely close to the `compositionend` event (often within 5ms, and sometimes with the keydown timestamp being slightly _earlier_ due to handler delivery order inversion), checking the time difference is highly reliable and is unlikely to trigger false-positives on mobile virtual keyboards under standard conditions.
 
 ```js
 let lastCompositionEndAt = null;
 
-textarea.addEventListener('compositionend', (event) => {
+textarea.addEventListener("compositionend", (event) => {
   // IMPORTANT: Always use event.timeStamp, not Date.now() or performance.now().
   // Handler-time measurements are vulnerable to drift when the main thread is blocked.
   lastCompositionEndAt = event.timeStamp;
 });
 
-textarea.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+textarea.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
 
     if (event.isComposing) {

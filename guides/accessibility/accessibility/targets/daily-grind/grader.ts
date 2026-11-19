@@ -9,43 +9,53 @@ import {
   expect,
   getTargetFiles,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule } from 'cssomnom';
+} from "../../../../../src/grading/test-fixture.ts";
+import { CSSStyleRule } from "cssomnom";
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('accessibility Target Grader', () => {
-  test('Expectation 1: Defines custom keyboard focus styles using :focus-visible paired with outline and outline-offset', () => {
+test.describe("accessibility Target Grader", () => {
+  test("Expectation 1: Defines custom keyboard focus styles using :focus-visible paired with outline and outline-offset", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFocusVisibleWithOutlineAndOffset = styleRules.some((rule) => {
-      if (!rule.selectorText.includes(':focus-visible')) {
+      if (!rule.selectorText.includes(":focus-visible")) {
         return false;
       }
-      const outline = rule.style.getPropertyValue('outline').trim();
-      const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
-      const outlineStyle = rule.style.getPropertyValue('outline-style').trim();
-      const outlineOffset = rule.style.getPropertyValue('outline-offset').trim();
+      const outline = rule.style.getPropertyValue("outline").trim();
+      const outlineWidth = rule.style.getPropertyValue("outline-width").trim();
+      const outlineStyle = rule.style.getPropertyValue("outline-style").trim();
+      const outlineOffset = rule.style
+        .getPropertyValue("outline-offset")
+        .trim();
 
       const hasValidOutline =
         (outline.length > 0 && !/\b(none|0)\b/.test(outline)) ||
-        (outlineWidth.length > 0 && outlineWidth !== '0' && outlineStyle !== 'none');
+        (outlineWidth.length > 0 &&
+          outlineWidth !== "0" &&
+          outlineStyle !== "none");
 
-      return hasValidOutline && outlineOffset.length > 0 && outlineOffset !== '0';
+      return (
+        hasValidOutline && outlineOffset.length > 0 && outlineOffset !== "0"
+      );
     });
 
     expect(hasFocusVisibleWithOutlineAndOffset).toBe(true);
   });
 
-  test('Expectation 3: Interactive targets meet a minimum size of 24px using min-block-size or min-inline-size', () => {
+  test("Expectation 3: Interactive targets meet a minimum size of 24px using min-block-size or min-inline-size", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasMinTargetSize = styleRules.some((rule) => {
-      const minBlockSize = rule.style.getPropertyValue('min-block-size').trim();
-      const minInlineSize = rule.style.getPropertyValue('min-inline-size').trim();
-      return /\b(24px|44px|[2-9]\dpx|\d+(\.\d+)?rem)\b/.test(minBlockSize) ||
-        /\b(24px|44px|[2-9]\dpx|\d+(\.\d+)?rem)\b/.test(minInlineSize);
+      const minBlockSize = rule.style.getPropertyValue("min-block-size").trim();
+      const minInlineSize = rule.style
+        .getPropertyValue("min-inline-size")
+        .trim();
+      return (
+        /\b(24px|44px|[2-9]\dpx|\d+(\.\d+)?rem)\b/.test(minBlockSize) ||
+        /\b(24px|44px|[2-9]\dpx|\d+(\.\d+)?rem)\b/.test(minInlineSize)
+      );
     });
 
     expect(hasMinTargetSize).toBe(true);

@@ -14,7 +14,7 @@ Web applications frequently need to capture and export rich HTML content—such 
 1. Check if HTML-in-Canvas is supported in the browser:
 
 ```js
-if ('content' in HTMLCanvasElement.prototype) {
+if ("content" in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy
@@ -51,7 +51,8 @@ const options = supportsDevicePixelContentBox
 observer.observe(canvas, options);
 ```
 
-4. Render the HTML content to the canvas inside a `canvas.onpaint` event handler. 
+4. Render the HTML content to the canvas inside a `canvas.onpaint` event handler.
+
 - In 2D context, use the `drawElementImage` method. It draws the last snapshot of a `drawable` element, and its drawable subtree (excluding other drawable children), starting at the element's border box, before CSS transforms:
 
 ```js
@@ -95,14 +96,14 @@ function allocateElementTexture(gl, texture, state, width, height) {
 
   gl.texImage2D(
     gl.TEXTURE_2D,
-    0,                // Mipmap level
-    gl.RGBA8,         // Internal format: 8 bits per RGBA channel
-    width,            // Size in canvas grid pixels
+    0, // Mipmap level
+    gl.RGBA8, // Internal format: 8 bits per RGBA channel
+    width, // Size in canvas grid pixels
     height,
-    0,                // Border: must be 0
-    gl.RGBA,          // Format and type that match RGBA8
+    0, // Border: must be 0
+    gl.RGBA, // Format and type that match RGBA8
     gl.UNSIGNED_BYTE,
-    null              // null reserves GPU memory without uploading pixels
+    null, // null reserves GPU memory without uploading pixels
   );
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   state.width = width;
@@ -135,7 +136,7 @@ canvas.onpaint = () => {
   try {
     uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
   } catch (err) {
-    console.error('texElementSubImage2D copy failed:', err);
+    console.error("texElementSubImage2D copy failed:", err);
   }
 };
 ```
@@ -170,35 +171,43 @@ canvas.onpaint = () => {
   const size = getElementImageSize(canvas, uiElement);
   if (!size) return;
   const previousTexture = textureState.texture;
-  const texture = ensureElementTexture(device, textureState, size.width, size.height);
+  const texture = ensureElementTexture(
+    device,
+    textureState,
+    size.width,
+    size.height,
+  );
   if (texture !== previousTexture) {
     // New texture: create, or rebuild, the bind groups that reference it.
   }
   try {
-    device.queue.drawElementImageToTexture({ source: uiElement }, { texture, size });
+    device.queue.drawElementImageToTexture(
+      { source: uiElement },
+      { texture, size },
+    );
   } catch (err) {
-    console.error('drawElementImageToTexture copy failed:', err);
+    console.error("drawElementImageToTexture copy failed:", err);
   }
 };
 ```
 
 When using a `requestAnimationFrame` loop to render the scene, call `canvas.requestPaint()` within the loop to ensure that the HTML content is rendered to the canvas. `event.changedElements` lists the elements whose rendering changed. Make sure you only redraw the element, or re-upload its texture, if there has been an update to the descendant HTML elements:
 
-  ```js
-  function render() {
-    // Request to update the canvas
-    canvas.requestPaint();
-    requestAnimationFrame(render);
-  }
+```js
+function render() {
+  // Request to update the canvas
+  canvas.requestPaint();
   requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
 
-  canvas.onpaint = (event) => {
-    if (event.changedElements && event.changedElements.length > 0) {
-      // Redraw the element, or update its texture, as shown above
-    }
-    // In WebGL and WebGPU, render the scene, and sync the element geometry as shown in step 5
-  };
-  ```
+canvas.onpaint = (event) => {
+  if (event.changedElements && event.changedElements.length > 0) {
+    // Redraw the element, or update its texture, as shown above
+  }
+  // In WebGL and WebGPU, render the scene, and sync the element geometry as shown in step 5
+};
+```
 
 5. Sync the element geometry.
 
@@ -234,7 +243,11 @@ The browser needs to know where the HTML element is drawn, so that its DOM posit
       // Move center (0,0) to center of canvas
       .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
       // Scale normalized clip (-1..1) to viewport size, and flip Y back
-      .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
+      .scale(
+        canvas.clientWidth / 2,
+        -canvas.clientHeight / 2,
+        canvas.clientHeight / 2,
+      );
 
     // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
     return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
@@ -243,15 +256,20 @@ The browser needs to know where the HTML element is drawn, so that its DOM posit
 
 Then pass the transform to `canvas.updateElementGeometry()` as `canvasTransform`. This moves the HTML element to sit directly on top of its rendered pixels. This ensures that when a user clicks a button or selects text, they are actually hitting the real HTML element. The browser also uses the transform for the element's accessibility bounds, for example, for screen reader focus rings:
 
-  ```js
-  canvas.updateElementGeometry(targetHTMLElement, {
-    canvasTransform: computeCanvasTransform(canvas, targetHTMLElement, htmlElementMVP),
-  });
-  ```
+```js
+canvas.updateElementGeometry(targetHTMLElement, {
+  canvasTransform: computeCanvasTransform(
+    canvas,
+    targetHTMLElement,
+    htmlElementMVP,
+  ),
+});
+```
 
 Use these options to control hit testing:
-  - Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
-  - Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
+
+- Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
+- Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
 
 6. Use regular canvas export methods like `toDataURL()`, `toBlob()`, or `captureStream()`. The exported data will include the rendered HTML content.
 
@@ -259,47 +277,53 @@ Use these options to control hit testing:
 
 ```html
 <body>
-    <canvas id="canvas" style="width: 400px; height: 200px;" content="drawable">
-        <input id="element" drawable>
-    </canvas>
-    
-    <button id="download">Download Image</button>
+  <canvas id="canvas" style="width: 400px; height: 200px;" content="drawable">
+    <input id="element" drawable />
+  </canvas>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        const element = document.getElementById('element');
-        const download = document.getElementById('download');
+  <button id="download">Download Image</button>
 
-        canvas.onpaint = (event) => {
-            ctx.reset();
-            // Draw the element into the canvas. The browser synchronizes its
-            // DOM position for hit testing (typing).
-            ctx.drawElementImage(element, 10, 10);
-        };
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const element = document.getElementById("element");
+    const download = document.getElementById("download");
 
-        download.onclick = () => {
-            // Export the canvas content as an image
-            const dataURL = canvas.toDataURL('image/png');
-            const link = document.createElement('a');
-            link.download = 'exported-canvas.png';
-            link.href = dataURL;
-            link.click();
-        };
+    canvas.onpaint = (event) => {
+      ctx.reset();
+      // Draw the element into the canvas. The browser synchronizes its
+      // DOM position for hit testing (typing).
+      ctx.drawElementImage(element, 10, 10);
+    };
 
-        // Re-initialize canvas size on screen resize
-        const observer = new ResizeObserver(([entry]) => {
-            const dpc = entry.devicePixelContentBoxSize;
-            canvas.width = dpc ? dpc[0].inlineSize : Math.round(entry.contentRect.width * window.devicePixelRatio);
-            canvas.height = dpc ? dpc[0].blockSize : Math.round(entry.contentRect.height * window.devicePixelRatio);
-            canvas.requestPaint();
-        });
-        const supportsDevicePixelContentBox = 
-            typeof ResizeObserverEntry !== 'undefined' && 
-            'devicePixelContentBoxSize' in ResizeObserverEntry.prototype;
-        const options = supportsDevicePixelContentBox ? { box: 'device-pixel-content-box' } : {};
-        observer.observe(canvas, options);
-    </script>
+    download.onclick = () => {
+      // Export the canvas content as an image
+      const dataURL = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = "exported-canvas.png";
+      link.href = dataURL;
+      link.click();
+    };
+
+    // Re-initialize canvas size on screen resize
+    const observer = new ResizeObserver(([entry]) => {
+      const dpc = entry.devicePixelContentBoxSize;
+      canvas.width = dpc
+        ? dpc[0].inlineSize
+        : Math.round(entry.contentRect.width * window.devicePixelRatio);
+      canvas.height = dpc
+        ? dpc[0].blockSize
+        : Math.round(entry.contentRect.height * window.devicePixelRatio);
+      canvas.requestPaint();
+    });
+    const supportsDevicePixelContentBox =
+      typeof ResizeObserverEntry !== "undefined" &&
+      "devicePixelContentBoxSize" in ResizeObserverEntry.prototype;
+    const options = supportsDevicePixelContentBox
+      ? { box: "device-pixel-content-box" }
+      : {};
+    observer.observe(canvas, options);
+  </script>
 </body>
 ```
 
@@ -324,8 +348,8 @@ Use these options to control hit testing:
 
 The HTML-in-Canvas API is not currently supported in all modern browsers, thus a fallback strategy is typically required. However, given the improved performance benefits of this API, HTML-in-Canvas should be used if the browser supports it.
 
-For the use case where HTML content needs to be exported from a canvas, use libraries like `html2canvas`, `dom-to-image`, or `snapdom`. 
+For the use case where HTML content needs to be exported from a canvas, use libraries like `html2canvas`, `dom-to-image`, or `snapdom`.
 
-To capture HTML interactions frame by frame, for example, for streaming, capture DOM mutations using libraries like `rrweb`. 
+To capture HTML interactions frame by frame, for example, for streaming, capture DOM mutations using libraries like `rrweb`.
 
 Alternatively, implement a warning that HTML media export is not supported in the browser because it doesn't support HTML-in-Canvas.

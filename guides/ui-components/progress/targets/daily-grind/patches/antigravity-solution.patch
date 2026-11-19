@@ -9,7 +9,7 @@ index 66c9173..b32cfc1 100644
 +      --color-neutral-90: #e0d6d2;
 +      --accent-color: #4e342e;
      }
- 
+
      * {
 @@ -152,6 +154,142 @@
        text-decoration: none;
@@ -153,10 +153,10 @@ index 66c9173..b32cfc1 100644
 +    }
    </style>
  </head>
- 
+
 @@ -175,6 +313,36 @@
    </header>
- 
+
    <main class="container">
 +    <section class="progress-section" aria-labelledby="progress-heading">
 +      <h2 id="progress-heading">Order &amp; Rewards Progress</h2>
@@ -194,7 +194,7 @@ index 66c9173..b32cfc1 100644
 @@ -207,6 +375,55 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (function () {
 +      const rewardProgress = document.getElementById('reward-progress');
@@ -245,5 +245,5 @@ index 66c9173..b32cfc1 100644
 +    })();
 +  </script>
  </body>
- 
+
  </html>

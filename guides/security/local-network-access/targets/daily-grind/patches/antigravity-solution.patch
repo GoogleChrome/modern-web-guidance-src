@@ -224,7 +224,7 @@ index 66c9173..9cf3a4a 100644
 +    }
    </style>
  </head>
- 
+
 @@ -195,6 +411,157 @@
          </div>
        </div>
@@ -381,12 +381,12 @@ index 66c9173..9cf3a4a 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +574,336 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    /**
 +     * Cross-browser permission check for the granular LNA permissions.
@@ -718,5 +718,5 @@ index 66c9173..9cf3a4a 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>

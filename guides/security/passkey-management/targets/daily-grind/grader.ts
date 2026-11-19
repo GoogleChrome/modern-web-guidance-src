@@ -1,46 +1,57 @@
-import * as path from 'path';
-import { pathToFileURL } from 'url';
-import { SyntaxKind } from 'ts-morph';
+import * as path from "path";
+import { pathToFileURL } from "url";
+import { SyntaxKind } from "ts-morph";
 import {
   test,
   expect,
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from "../../../../test-fixture.ts";
 
-const currentFileUrl = typeof __filename !== 'undefined'
-  ? pathToFileURL(__filename).href
-  : pathToFileURL(path.resolve(process.cwd(), 'grader.ts')).href;
+const currentFileUrl =
+  typeof __filename !== "undefined"
+    ? pathToFileURL(__filename).href
+    : pathToFileURL(path.resolve(process.cwd(), "grader.ts")).href;
 
 const targetFiles: string[] = getTargetFiles(currentFileUrl);
 
-test.describe('Passkey Management Target Grader', () => {
-
-  test('The application fetches registered credentials from the credential endpoint on load', () => {
+test.describe("Passkey Management Target Grader", () => {
+  test("The application fetches registered credentials from the credential endpoint on load", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     // Helper: collect all function/method definitions in the project mapped by name
     const fnBodiesByName = new Map<string, string>();
     for (const sf of sourceFiles) {
-      for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+      for (const fn of sf.getDescendantsOfKind(
+        SyntaxKind.FunctionDeclaration,
+      )) {
         const name = fn.getName();
         if (name) fnBodiesByName.set(name, fn.getText());
       }
       for (const v of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
         const init = v.getInitializer();
-        if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
+        if (
+          init &&
+          (init.getKind() === SyntaxKind.ArrowFunction ||
+            init.getKind() === SyntaxKind.FunctionExpression)
+        ) {
           fnBodiesByName.set(v.getName(), init.getText());
         }
       }
     }
-    const callsReachText = (text: string, predicate: (t: string) => boolean, depth = 3, seen = new Set<string>()): boolean => {
+    const callsReachText = (
+      text: string,
+      predicate: (t: string) => boolean,
+      depth = 3,
+      seen = new Set<string>(),
+    ): boolean => {
       if (predicate(text)) return true;
       if (depth <= 0) return false;
       for (const [name, body] of fnBodiesByName) {
         if (seen.has(name)) continue;
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         if (new RegExp(`\\b${escaped}\\s*\\(`).test(text)) {
           seen.add(name);
           if (callsReachText(body, predicate, depth - 1, seen)) return true;
@@ -50,31 +61,41 @@ test.describe('Passkey Management Target Grader', () => {
     };
 
     const isCredentialFetchText = (t: string): boolean =>
-      ((/fetch|api|request/i.test(t) && /['"`][^'"`]*credential/i.test(t)) ||
-        /listCredentials|getCredentials|fetchCredentials/i.test(t));
+      (/fetch|api|request/i.test(t) && /['"`][^'"`]*credential/i.test(t)) ||
+      /listCredentials|getCredentials|fetchCredentials/i.test(t);
 
-    const hasCredentialEndpointCall = sourceFiles.some(sf => {
+    const hasCredentialEndpointCall = sourceFiles.some((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(call => {
+      return calls.some((call) => {
         const callText = call.getText();
         const exprText = call.getExpression().getText();
-        const args = call.getArguments().map(a => a.getText());
-        return ((/fetch|api|request/i.test(exprText) || callText.includes('fetch(')) &&
-          (args.some(a => /credential/i.test(a)) || callText.includes('/api/credentials'))) ||
-          /listCredentials|getCredentials|fetchCredentials/i.test(exprText);
+        const args = call.getArguments().map((a) => a.getText());
+        return (
+          ((/fetch|api|request/i.test(exprText) ||
+            callText.includes("fetch(")) &&
+            (args.some((a) => /credential/i.test(a)) ||
+              callText.includes("/api/credentials"))) ||
+          /listCredentials|getCredentials|fetchCredentials/i.test(exprText)
+        );
       });
     });
 
-    const hasLoadTrigger = sourceFiles.some(sf => {
+    const hasLoadTrigger = sourceFiles.some((sf) => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const hasListener = calls.some(call => {
+      const hasListener = calls.some((call) => {
         const text = call.getText();
-        return text.includes('addEventListener') && (/DOMContentLoaded/i.test(text) || /\bload\b/i.test(text));
+        return (
+          text.includes("addEventListener") &&
+          (/DOMContentLoaded/i.test(text) || /\bload\b/i.test(text))
+        );
       });
-      const hasTopLevelInvocation = sf.getStatements().some(stmt => {
+      const hasTopLevelInvocation = sf.getStatements().some((stmt) => {
         const text = stmt.getText();
-        return /loadManagementPanel|load.*credential|refresh.*credential|init/i.test(text) ||
-          callsReachText(text, isCredentialFetchText);
+        return (
+          /loadManagementPanel|load.*credential|refresh.*credential|init/i.test(
+            text,
+          ) || callsReachText(text, isCredentialFetchText)
+        );
       });
       return hasListener || hasTopLevelInvocation;
     });
@@ -82,48 +103,64 @@ test.describe('Passkey Management Target Grader', () => {
     expect(hasCredentialEndpointCall && hasLoadTrigger).toBe(true);
   });
 
-  test('The application automatically invokes signalAllAcceptedCredentials on load to sync credentials with the password manager', () => {
+  test("The application automatically invokes signalAllAcceptedCredentials on load to sync credentials with the password manager", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasSignalAllAccepted = sourceFiles.some(sf => {
-      return sf.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getText() === 'signalAllAcceptedCredentials');
+    const hasSignalAllAccepted = sourceFiles.some((sf) => {
+      return sf
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .some((id) => id.getText() === "signalAllAcceptedCredentials");
     });
 
-    const hasLoadSync = sourceFiles.some(sf => {
+    const hasLoadSync = sourceFiles.some((sf) => {
       const text = sf.getFullText();
-      return (/DOMContentLoaded|load|mount|init/i.test(text)) &&
-        /signalAllAcceptedCredentials|sync.*AcceptedCredentials|sync.*Credentials/i.test(text);
+      return (
+        /DOMContentLoaded|load|mount|init/i.test(text) &&
+        /signalAllAcceptedCredentials|sync.*AcceptedCredentials|sync.*Credentials/i.test(
+          text,
+        )
+      );
     });
 
     expect(hasSignalAllAccepted && hasLoadSync).toBe(true);
   });
 
-  test('The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions', () => {
+  test("The application updates passkey providers by immediately calling signalAllAcceptedCredentials within the delete trigger handler upon successful deletions", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const fnBodiesByName = new Map<string, string>();
     for (const sf of sourceFiles) {
-      for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+      for (const fn of sf.getDescendantsOfKind(
+        SyntaxKind.FunctionDeclaration,
+      )) {
         const name = fn.getName();
         if (name) fnBodiesByName.set(name, fn.getText());
       }
       for (const v of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
         const init = v.getInitializer();
-        if (init && (init.getKind() === SyntaxKind.ArrowFunction || init.getKind() === SyntaxKind.FunctionExpression)) {
+        if (
+          init &&
+          (init.getKind() === SyntaxKind.ArrowFunction ||
+            init.getKind() === SyntaxKind.FunctionExpression)
+        ) {
           fnBodiesByName.set(v.getName(), init.getText());
         }
       }
     }
-    const callsReachSignalAll = (text: string, depth = 3, seen = new Set<string>()): boolean => {
-      if (text.includes('signalAllAcceptedCredentials')) {
+    const callsReachSignalAll = (
+      text: string,
+      depth = 3,
+      seen = new Set<string>(),
+    ): boolean => {
+      if (text.includes("signalAllAcceptedCredentials")) {
         return true;
       }
       if (depth <= 0) return false;
       for (const [name, body] of fnBodiesByName) {
         if (seen.has(name)) continue;
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         if (new RegExp(`\\b${escaped}\\s*\\(`).test(text)) {
           seen.add(name);
           if (callsReachSignalAll(body, depth - 1, seen)) return true;
@@ -132,20 +169,22 @@ test.describe('Passkey Management Target Grader', () => {
       return false;
     };
 
-    const hasDeleteWithSignal = sourceFiles.some(sf => {
+    const hasDeleteWithSignal = sourceFiles.some((sf) => {
       const callableNodes = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
         ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
       ];
-      return callableNodes.some(node => {
+      return callableNodes.some((node) => {
         const text = node.getText();
-        const isDeleteHandler = /delete/i.test(text) && (
-          text.includes('DELETE') ||
-          text.includes('deleteFetch') ||
-          /api.*credential|deleteCredential|store\.remove|removeCredential/i.test(text)
-        );
+        const isDeleteHandler =
+          /delete/i.test(text) &&
+          (text.includes("DELETE") ||
+            text.includes("deleteFetch") ||
+            /api.*credential|deleteCredential|store\.remove|removeCredential/i.test(
+              text,
+            ));
         return isDeleteHandler && callsReachSignalAll(text);
       });
     });
@@ -153,22 +192,32 @@ test.describe('Passkey Management Target Grader', () => {
     expect(hasDeleteWithSignal).toBe(true);
   });
 
-  test('The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename', () => {
+  test("The application invokes signalCurrentUserDetails within the user profile rename handler upon successful username or display name rename", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasUserRenameWithSignal = sourceFiles.some(sf => {
+    const hasUserRenameWithSignal = sourceFiles.some((sf) => {
       const callableNodes = [
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration),
         ...sf.getDescendantsOfKind(SyntaxKind.ArrowFunction),
         ...sf.getDescendantsOfKind(SyntaxKind.FunctionExpression),
         ...sf.getDescendantsOfKind(SyntaxKind.MethodDeclaration),
       ];
-      return callableNodes.some(node => {
+      return callableNodes.some((node) => {
         const text = node.getText();
-        const isUserRenameHandler = (/displayName/i.test(text) || /username/i.test(text) || /profile/i.test(text) || /updateUser/i.test(text) || text.includes('/api/user')) &&
-          (/rename/i.test(text) || /update/i.test(text) || /submit/i.test(text) || /save/i.test(text));
-        const callsSignal = text.includes('signalCurrentUserDetails') || /sync(?:Current)?UserDetails/i.test(text);
+        const isUserRenameHandler =
+          (/displayName/i.test(text) ||
+            /username/i.test(text) ||
+            /profile/i.test(text) ||
+            /updateUser/i.test(text) ||
+            text.includes("/api/user")) &&
+          (/rename/i.test(text) ||
+            /update/i.test(text) ||
+            /submit/i.test(text) ||
+            /save/i.test(text));
+        const callsSignal =
+          text.includes("signalCurrentUserDetails") ||
+          /sync(?:Current)?UserDetails/i.test(text);
         return isUserRenameHandler && callsSignal;
       });
     });
@@ -176,17 +225,31 @@ test.describe('Passkey Management Target Grader', () => {
     expect(hasUserRenameWithSignal).toBe(true);
   });
 
-  test('Each credential row resolved against the AAGUID registry renders info such as the provider icon, name and a human-readable last-used timestamp', () => {
+  test("Each credential row resolved against the AAGUID registry renders info such as the provider icon, name and a human-readable last-used timestamp", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const fullProjectText = sourceFiles.map(sf => sf.getFullText()).join('\n');
-    const hasAaguidLookup = /aaguid/i.test(fullProjectText) && (/registry|resolve|aaguids/i.test(fullProjectText));
-    const hasLastUsedFormatting = /lastUsed/i.test(fullProjectText) && (/toLocaleDateString|DateTimeFormat|formatDate|formatTimestamp|new Date/i.test(fullProjectText));
-    const hasProviderIcon = /providerIcon|icon_light|icon_dark|provider-icon/i.test(fullProjectText);
+    const fullProjectText = sourceFiles
+      .map((sf) => sf.getFullText())
+      .join("\n");
+    const hasAaguidLookup =
+      /aaguid/i.test(fullProjectText) &&
+      /registry|resolve|aaguids/i.test(fullProjectText);
+    const hasLastUsedFormatting =
+      /lastUsed/i.test(fullProjectText) &&
+      /toLocaleDateString|DateTimeFormat|formatDate|formatTimestamp|new Date/i.test(
+        fullProjectText,
+      );
+    const hasProviderIcon =
+      /providerIcon|icon_light|icon_dark|provider-icon/i.test(fullProjectText);
     const hasNameRendering = /name/i.test(fullProjectText);
 
-    expect(hasAaguidLookup && hasLastUsedFormatting && hasProviderIcon && hasNameRendering).toBe(true);
+    expect(
+      hasAaguidLookup &&
+        hasLastUsedFormatting &&
+        hasProviderIcon &&
+        hasNameRendering,
+    ).toBe(true);
   });
 
   test('The "Create Passkey" entry-point button is gated on PublicKeyCredential.getClientCapabilities and hidden when passkey is unsupported', () => {
@@ -194,23 +257,29 @@ test.describe('Passkey Management Target Grader', () => {
     const docs = getHtmlDocuments(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasClientCapabilitiesCheck = sourceFiles.some(sf => {
-      const hasMethod = sf.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getText() === 'getClientCapabilities');
+    const hasClientCapabilitiesCheck = sourceFiles.some((sf) => {
+      const hasMethod = sf
+        .getDescendantsOfKind(SyntaxKind.Identifier)
+        .some((id) => id.getText() === "getClientCapabilities");
       const text = sf.getFullText();
-      const gatesButton = /hidden|display/i.test(text) && /create.*passkey|createButton|btn.*create/i.test(text);
+      const gatesButton =
+        /hidden|display/i.test(text) &&
+        /create.*passkey|createButton|btn.*create/i.test(text);
       return hasMethod && gatesButton;
     });
 
-    const hasCreateButtonInHtml = docs.some(d => {
-      const allButtons = Array.from(d.document.querySelectorAll('button, [role="button"], a'));
-      return allButtons.some((el: any) =>
-        /create.*passkey/i.test(el.textContent || '') ||
-        /create-passkey/i.test(el.id || '') ||
-        /create-passkey/i.test(el.getAttribute('data-testid') || '')
+    const hasCreateButtonInHtml = docs.some((d) => {
+      const allButtons = Array.from(
+        d.document.querySelectorAll('button, [role="button"], a'),
+      );
+      return allButtons.some(
+        (el: any) =>
+          /create.*passkey/i.test(el.textContent || "") ||
+          /create-passkey/i.test(el.id || "") ||
+          /create-passkey/i.test(el.getAttribute("data-testid") || ""),
       );
     });
 
     expect(hasClientCapabilitiesCheck && hasCreateButtonInHtml).toBe(true);
   });
-
 });

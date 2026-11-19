@@ -5,7 +5,7 @@ index 66c9173..13c4864 100644
 @@ -142,6 +142,10 @@
        margin-top: 40px;
      }
- 
+
 +    rating-input:invalid {
 +      outline: 1px dashed #c62828;
 +    }
@@ -29,7 +29,7 @@ index 66c9173..13c4864 100644
 +      </form>
 +    </section>
    </main>
- 
+
 +  <script>
 +    class RatingInput extends HTMLElement {
 +      static formAssociated = true;

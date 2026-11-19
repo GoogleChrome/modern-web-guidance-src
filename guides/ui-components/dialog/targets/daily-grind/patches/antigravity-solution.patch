@@ -10,11 +10,11 @@ index 66c9173..5a1d06b 100644
 +      font: inherit;
 +      cursor: pointer;
      }
- 
+
      .btn:hover {
        background: #3e2723;
      }
- 
+
 +    .btn-secondary {
 +      background: var(--secondary);
 +      color: var(--text);
@@ -197,7 +197,7 @@ index 66c9173..5a1d06b 100644
 -    <a href="/order-online" class="btn">Order Now</a>
 +    <button type="button" class="btn" command="show-modal" commandfor="order-dialog" data-drink="maple-oat-latte">Order Now</button>
    </header>
- 
+
 +  <div class="order-status" aria-live="polite">
 +    <p id="order-feedback" class="order-status-banner" hidden></p>
 +  </div>
@@ -227,7 +227,7 @@ index 66c9173..5a1d06b 100644
        </div>
      </section>
    </main>
- 
+
 +  <dialog id="order-dialog" closedby="any" aria-labelledby="order-dialog-title">
 +    <div class="dialog-header">
 +      <h2 id="order-dialog-title">Maple Oat Latte</h2>
@@ -318,7 +318,7 @@ index 66c9173..5a1d06b 100644
 @@ -207,6 +470,184 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    // MANDATORY: feature detect on HTMLButtonElement.prototype and load only when native support is missing
 +    if (!('commandForElement' in HTMLButtonElement.prototype)) {
@@ -498,5 +498,5 @@ index 66c9173..5a1d06b 100644
 +  </script>
 +
  </body>
- 
+
  </html>

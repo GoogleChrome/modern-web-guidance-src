@@ -17,6 +17,7 @@ Supported agents are defined in the `Agents` object within [`src/harness/config.
 The Claude Code agent (`claude_code`) is implemented with [Claude Code on Vertex AI](https://code.claude.com/docs/en/google-vertex-ai).
 
 **Configuration:**
+
 1. Log in with `gcloud` and set your active project ID:
    ```bash
    gcloud config set project <YOUR-GCP-PROJECT-ID>
@@ -61,6 +62,7 @@ Jetski CLI (`jetski_cli`) can be used by the guide development workflows (`gd de
 
 **Configuration:**
 Configure the preferred model for Jetski CLI agent runs:
+
 ```bash
 # Model selection for Jetski CLI agent runs
 JETSKI_MODEL='Gemini 3.8 Flash (Medium)'
@@ -77,13 +79,16 @@ Antigravity CLI (`antigravity_cli`) is the default agent used by the guide devel
 
 **Installation:**
 Antigravity CLI (`agy`) must be installed first:
+
 ```bash
 curl -fsSL https://antigravity.google/cli/install.sh | bash
 ```
+
 Then run `agy` once interactively to sign in.
 
 **Configuration:**
 All settings are optional. If you sign in with a personal Antigravity account, no GCP project is needed. If you use agy through a GCP project, set it in `~/.gemini/antigravity-cli/settings.json` (`gcp.project`), or override it in your `.env` file:
+
 ```bash
 # Optional: GCP project (only for GCP-project auth)
 ANTIGRAVITY_GCP_PROJECT=<YOUR-GCP-PROJECT-ID>

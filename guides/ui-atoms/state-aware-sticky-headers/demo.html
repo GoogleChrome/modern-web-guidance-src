@@ -11,7 +11,7 @@
 
     html {
       /* Accounts for the height of the header */
-     scroll-padding-top: var(--header-height); ; 
+     scroll-padding-top: var(--header-height); ;
     }
 
     body {
@@ -130,21 +130,21 @@
 
       document.querySelectorAll('.sticky-container').forEach(container => {
         const root = getScrollParent(container);
-        
+
         const topOffset = parseFloat(getComputedStyle(container).top) || 0;
-        
+
         const observer = new IntersectionObserver(
           ([e]) => {
             // Toggle class when element moves above the top edge
             e.target.classList.toggle('is-stuck', e.intersectionRatio < 1);
           },
-          { 
+          {
             root: root,
             threshold: [1],
             rootMargin: `-${topOffset + 1}px 0px 0px 0px`
           }
         );
-        
+
         observer.observe(container);
       });
     }

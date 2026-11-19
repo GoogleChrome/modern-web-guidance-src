@@ -26,7 +26,7 @@ index 66c9173..bbb0c7f 100644
 @@ -135,6 +135,11 @@
        background: #3e2723;
      }
- 
+
 +    /* The link's HTML supplies its label; the arrow is purely decorative. */
 +    .btn::after {
 +      content: " →" / "";
@@ -48,9 +48,9 @@ index 66c9173..bbb0c7f 100644
 +    }
    </style>
  </head>
- 
+
 @@ -199,9 +211,9 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

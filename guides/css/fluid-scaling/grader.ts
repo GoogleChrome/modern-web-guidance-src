@@ -1,36 +1,47 @@
-import { test, expect } from '@playwright/test';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as path from "path";
 
-const targetFile = process.env.TARGET_FILE || path.resolve(import.meta.dirname, 'demo.html');
+const targetFile =
+  process.env.TARGET_FILE || path.resolve(import.meta.dirname, "demo.html");
 const fileUrl = `file://${path.resolve(targetFile)}`;
 
 test.beforeEach(async ({ page }) => {
   await page.goto(fileUrl);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
 });
 
-test('The component wrapper has container-type: inline-size (or size) applied', async ({ page }) => {
+test("The component wrapper has container-type: inline-size (or size) applied", async ({
+  page,
+}) => {
   const containerType = await page.evaluate(() => {
-    const wrapper = document.querySelector('.card-wrapper');
+    const wrapper = document.querySelector(".card-wrapper");
     if (!wrapper) return null;
     const style = window.getComputedStyle(wrapper);
-    return style.containerType || style.getPropertyValue('container-type');
+    return style.containerType || style.getPropertyValue("container-type");
   });
 
-  expect(['inline-size', 'size']).toContain(containerType);
+  expect(["inline-size", "size"]).toContain(containerType);
 });
 
-test('The component title has a font-size that uses container query units (like cqi or cqw)', async ({ page }) => {
+test("The component title has a font-size that uses container query units (like cqi or cqw)", async ({
+  page,
+}) => {
   const hasContainerUnit = await page.evaluate(() => {
     let found = false;
 
     // Helper to check CSS rules
     const checkRule = (rule: CSSRule) => {
       if (rule instanceof CSSStyleRule) {
-        const selector = rule.selectorText || '';
-        if (selector.includes('card-title') || selector.includes('title')) {
+        const selector = rule.selectorText || "";
+        if (selector.includes("card-title") || selector.includes("title")) {
           const fontSize = rule.style.fontSize;
-          if (fontSize && (fontSize.includes('cqi') || fontSize.includes('cqw') || fontSize.includes('cqmin') || fontSize.includes('cqmax'))) {
+          if (
+            fontSize &&
+            (fontSize.includes("cqi") ||
+              fontSize.includes("cqw") ||
+              fontSize.includes("cqmin") ||
+              fontSize.includes("cqmax"))
+          ) {
             found = true;
           }
         }
@@ -55,10 +66,15 @@ test('The component title has a font-size that uses container query units (like 
     }
 
     // Check inline style
-    const title = document.querySelector('.card-title');
+    const title = document.querySelector(".card-title");
     if (title) {
-      const inlineStyle = title.getAttribute('style') || '';
-      if (inlineStyle.includes('cqi') || inlineStyle.includes('cqw') || inlineStyle.includes('cqmin') || inlineStyle.includes('cqmax')) {
+      const inlineStyle = title.getAttribute("style") || "";
+      if (
+        inlineStyle.includes("cqi") ||
+        inlineStyle.includes("cqw") ||
+        inlineStyle.includes("cqmin") ||
+        inlineStyle.includes("cqmax")
+      ) {
         found = true;
       }
     }
@@ -69,16 +85,18 @@ test('The component title has a font-size that uses container query units (like 
   expect(hasContainerUnit).toBe(true);
 });
 
-test('The component title uses clamp() to constrain the font size between a minimum and maximum value', async ({ page }) => {
+test("The component title uses clamp() to constrain the font size between a minimum and maximum value", async ({
+  page,
+}) => {
   const hasClamp = await page.evaluate(() => {
     let found = false;
 
     const checkRule = (rule: CSSRule) => {
       if (rule instanceof CSSStyleRule) {
-        const selector = rule.selectorText || '';
-        if (selector.includes('card-title') || selector.includes('title')) {
+        const selector = rule.selectorText || "";
+        if (selector.includes("card-title") || selector.includes("title")) {
           const fontSize = rule.style.fontSize;
-          if (fontSize && fontSize.includes('clamp(')) {
+          if (fontSize && fontSize.includes("clamp(")) {
             found = true;
           }
         }
@@ -103,10 +121,10 @@ test('The component title uses clamp() to constrain the font size between a mini
     }
 
     // Check inline style
-    const title = document.querySelector('.card-title');
+    const title = document.querySelector(".card-title");
     if (title) {
-      const inlineStyle = title.getAttribute('style') || '';
-      if (inlineStyle.includes('clamp(')) {
+      const inlineStyle = title.getAttribute("style") || "";
+      if (inlineStyle.includes("clamp(")) {
         found = true;
       }
     }
@@ -117,22 +135,24 @@ test('The component title uses clamp() to constrain the font size between a mini
   expect(hasClamp).toBe(true);
 });
 
-test('The maximum size in clamp() for font size is at most 2.5 times the minimum size to meet accessibility guidelines', async ({ page }) => {
+test("The maximum size in clamp() for font size is at most 2.5 times the minimum size to meet accessibility guidelines", async ({
+  page,
+}) => {
   const clampRatio = await page.evaluate(() => {
     const extractClampValue = (styleStr: string | null): number | null => {
-      if (!styleStr || !styleStr.includes('clamp(')) return null;
-      
-      const startIdx = styleStr.indexOf('clamp(');
+      if (!styleStr || !styleStr.includes("clamp(")) return null;
+
+      const startIdx = styleStr.indexOf("clamp(");
       let openParens = 0;
-      let currentArg = '';
+      let currentArg = "";
       const args: string[] = [];
-      
+
       for (let i = startIdx + 6; i < styleStr.length; i++) {
         const char = styleStr[i];
-        if (char === '(') {
+        if (char === "(") {
           openParens++;
           currentArg += char;
-        } else if (char === ')') {
+        } else if (char === ")") {
           if (openParens === 0) {
             args.push(currentArg.trim());
             break;
@@ -140,28 +160,31 @@ test('The maximum size in clamp() for font size is at most 2.5 times the minimum
             openParens--;
             currentArg += char;
           }
-        } else if (char === ',' && openParens === 0) {
+        } else if (char === "," && openParens === 0) {
           args.push(currentArg.trim());
-          currentArg = '';
+          currentArg = "";
         } else {
           currentArg += char;
         }
       }
-      
+
       if (args.length === 3) {
         const minStr = args[0];
         const maxStr = args[2];
-        
+
         const parseVal = (str: string): number => {
           const val = parseFloat(str);
-          const unit = str.replace(/[\d.-]/g, '').trim().toLowerCase();
+          const unit = str
+            .replace(/[\d.-]/g, "")
+            .trim()
+            .toLowerCase();
           let px = val;
-          if (unit === 'rem' || unit === 'em') {
+          if (unit === "rem" || unit === "em") {
             px = val * 16;
           }
           return px;
         };
-        
+
         const minPx = parseVal(minStr);
         const maxPx = parseVal(maxStr);
         if (!isNaN(minPx) && !isNaN(maxPx) && minPx > 0) {
@@ -175,8 +198,8 @@ test('The maximum size in clamp() for font size is at most 2.5 times the minimum
 
     const checkRule = (rule: CSSRule) => {
       if (rule instanceof CSSStyleRule) {
-        const selector = rule.selectorText || '';
-        if (selector.includes('card-title') || selector.includes('title')) {
+        const selector = rule.selectorText || "";
+        if (selector.includes("card-title") || selector.includes("title")) {
           const ratio = extractClampValue(rule.style.fontSize);
           if (ratio !== null) resultRatio = ratio;
         }
@@ -200,7 +223,7 @@ test('The maximum size in clamp() for font size is at most 2.5 times the minimum
       }
     }
 
-    const title = document.querySelector('.card-title') as HTMLElement;
+    const title = document.querySelector(".card-title") as HTMLElement;
     if (title && resultRatio === null) {
       const inlineStyle = title.style.fontSize;
       const ratio = extractClampValue(inlineStyle);
@@ -214,24 +237,30 @@ test('The maximum size in clamp() for font size is at most 2.5 times the minimum
   expect(clampRatio).toBeLessThanOrEqual(2.51);
 });
 
-test('The font size of the title changes when the width of the container changes, independently of the viewport size', async ({ page }) => {
+test("The font size of the title changes when the width of the container changes, independently of the viewport size", async ({
+  page,
+}) => {
   const fontSizeChanged = await page.evaluate(async () => {
-    const wrapper = document.querySelector('.card-wrapper') as HTMLElement;
-    const title = document.querySelector('.card-title') as HTMLElement;
+    const wrapper = document.querySelector(".card-wrapper") as HTMLElement;
+    const title = document.querySelector(".card-title") as HTMLElement;
     if (!wrapper || !title) return false;
 
     // Set container to inline-size type if it's not set (to isolate change)
     const originalWidth = wrapper.style.width;
-    
+
     // Set initial size
-    wrapper.style.width = '300px';
+    wrapper.style.width = "300px";
     // Flush style changes
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
     const sizeAt300 = parseFloat(window.getComputedStyle(title).fontSize);
 
     // Set larger size
-    wrapper.style.width = '600px';
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    wrapper.style.width = "600px";
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
     const sizeAt600 = parseFloat(window.getComputedStyle(title).fontSize);
 
     // Restore original width
@@ -242,5 +271,3 @@ test('The font size of the title changes when the width of the container changes
 
   expect(fontSizeChanged).toBe(true);
 });
-
-

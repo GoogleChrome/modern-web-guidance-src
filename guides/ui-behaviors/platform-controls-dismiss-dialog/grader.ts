@@ -1,17 +1,17 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
 // Ensure TARGET_FILE is defined
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable is not defined.');
+  throw new Error("TARGET_FILE environment variable is not defined.");
 }
 
-test.describe('Platform controls dismiss dialog tests', () => {
+test.describe("Platform controls dismiss dialog tests", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as any)._dialogCalls = {
         showModal: 0,
-        show: 0
+        show: 0,
       };
       (window as any)._registeredKeyListeners = [];
       (window as any)._registeredPopStateListeners = [];
@@ -19,14 +19,14 @@ test.describe('Platform controls dismiss dialog tests', () => {
       (window as any)._historyCalls = [];
 
       // Spy on HTMLDialogElement methods if exists
-      if (typeof HTMLDialogElement !== 'undefined') {
+      if (typeof HTMLDialogElement !== "undefined") {
         const originalShowModal = HTMLDialogElement.prototype.showModal;
-        HTMLDialogElement.prototype.showModal = function() {
+        HTMLDialogElement.prototype.showModal = function () {
           (window as any)._dialogCalls.showModal++;
           return originalShowModal.apply(this, arguments as any);
         };
         const originalShow = HTMLDialogElement.prototype.show;
-        HTMLDialogElement.prototype.show = function() {
+        HTMLDialogElement.prototype.show = function () {
           (window as any)._dialogCalls.show++;
           return originalShow.apply(this, arguments as any);
         };
@@ -34,73 +34,111 @@ test.describe('Platform controls dismiss dialog tests', () => {
 
       // Spy on History methods
       const originalPushState = history.pushState;
-      history.pushState = function(state: any) {
-        (window as any)._historyCalls.push({ method: 'pushState', state });
+      history.pushState = function (state: any) {
+        (window as any)._historyCalls.push({ method: "pushState", state });
         return originalPushState.apply(this, arguments as any);
       };
       const originalReplaceState = history.replaceState;
-      history.replaceState = function(state: any) {
-        (window as any)._historyCalls.push({ method: 'replaceState', state });
+      history.replaceState = function (state: any) {
+        (window as any)._historyCalls.push({ method: "replaceState", state });
         return originalReplaceState.apply(this, arguments as any);
       };
 
       // Spy on addEventListener
       const spyAddEventListener = (targetName: string, original: Function) => {
-        return function(this: any, type: string, listener: any, _options: any) {
-          if (typeof listener === 'function') {
+        return function (
+          this: any,
+          type: string,
+          listener: any,
+          _options: any,
+        ) {
+          if (typeof listener === "function") {
             const code = listener.toString();
-            if (['keydown', 'keyup', 'keypress'].includes(type)) {
-              (window as any)._registeredKeyListeners.push({ target: targetName, type, code });
+            if (["keydown", "keyup", "keypress"].includes(type)) {
+              (window as any)._registeredKeyListeners.push({
+                target: targetName,
+                type,
+                code,
+              });
             }
-            if (['popstate', 'hashchange'].includes(type)) {
-              (window as any)._registeredPopStateListeners.push({ target: targetName, type, code });
+            if (["popstate", "hashchange"].includes(type)) {
+              (window as any)._registeredPopStateListeners.push({
+                target: targetName,
+                type,
+                code,
+              });
             }
-            if (['click', 'mousedown', 'mouseup', 'pointerdown', 'pointerup'].includes(type)) {
-              (window as any)._registeredClickListeners.push({ target: targetName, type, code });
+            if (
+              [
+                "click",
+                "mousedown",
+                "mouseup",
+                "pointerdown",
+                "pointerup",
+              ].includes(type)
+            ) {
+              (window as any)._registeredClickListeners.push({
+                target: targetName,
+                type,
+                code,
+              });
             }
           }
           return original.apply(this, arguments as any);
         };
       };
 
-      window.addEventListener = spyAddEventListener('window', window.addEventListener);
-      document.addEventListener = spyAddEventListener('document', document.addEventListener);
-      if (typeof Element !== 'undefined') {
-        Element.prototype.addEventListener = spyAddEventListener('Element', Element.prototype.addEventListener);
+      window.addEventListener = spyAddEventListener(
+        "window",
+        window.addEventListener,
+      );
+      document.addEventListener = spyAddEventListener(
+        "document",
+        document.addEventListener,
+      );
+      if (typeof Element !== "undefined") {
+        Element.prototype.addEventListener = spyAddEventListener(
+          "Element",
+          Element.prototype.addEventListener,
+        );
       }
     });
 
     // Navigate to the target file
     await page.goto(`file://${targetFile}`);
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForLoadState("domcontentloaded");
   });
 
-  test('The modal dialog is a <dialog> element', async ({ page }) => {
-    const dialogCount = await page.locator('dialog').count();
+  test("The modal dialog is a <dialog> element", async ({ page }) => {
+    const dialogCount = await page.locator("dialog").count();
     expect(dialogCount).toBeGreaterThan(0);
   });
 
-  test('The <dialog> element has an accessible name', async ({ page }) => {
-    const dialogs = await page.locator('dialog').all();
+  test("The <dialog> element has an accessible name", async ({ page }) => {
+    const dialogs = await page.locator("dialog").all();
     expect(dialogs.length).toBeGreaterThan(0);
 
     const allHaveAccessibleName = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('dialog'));
+      const els = Array.from(document.querySelectorAll("dialog"));
       if (els.length === 0) return false;
-      return els.every(el => {
-        const ariaLabel = el.getAttribute('aria-label');
+      return els.every((el) => {
+        const ariaLabel = el.getAttribute("aria-label");
         if (ariaLabel && ariaLabel.trim().length > 0) return true;
 
-        const ariaLabelledby = el.getAttribute('aria-labelledby');
+        const ariaLabelledby = el.getAttribute("aria-labelledby");
         if (ariaLabelledby) {
           const ids = ariaLabelledby.split(/\s+/);
-          return ids.some(id => {
+          return ids.some((id) => {
             const labelEl = document.getElementById(id);
-            return labelEl && labelEl.textContent && labelEl.textContent.trim().length > 0;
+            return (
+              labelEl &&
+              labelEl.textContent &&
+              labelEl.textContent.trim().length > 0
+            );
           });
         }
 
-        const title = el.getAttribute('title');
+        const title = el.getAttribute("title");
         if (title && title.trim().length > 0) return true;
 
         return false;
@@ -110,29 +148,38 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(allHaveAccessibleName).toBe(true);
   });
 
-  test('The <dialog> element has no closedby attribute or closedby set to any', async ({ page }) => {
-    const dialogs = await page.locator('dialog').all();
+  test("The <dialog> element has no closedby attribute or closedby set to any", async ({
+    page,
+  }) => {
+    const dialogs = await page.locator("dialog").all();
     expect(dialogs.length).toBeGreaterThan(0);
 
     const validClosedByAttributes = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('dialog'));
+      const els = Array.from(document.querySelectorAll("dialog"));
       if (els.length === 0) return false;
-      return els.every(el => {
-        const closedby = el.getAttribute('closedby');
-        return closedby === null || closedby === 'any';
+      return els.every((el) => {
+        const closedby = el.getAttribute("closedby");
+        return closedby === null || closedby === "any";
       });
     });
 
     expect(validClosedByAttributes).toBe(true);
   });
 
-  test('The dialog is opened with showModal or show-modal command', async ({ page }) => {
+  test("The dialog is opened with showModal or show-modal command", async ({
+    page,
+  }) => {
     const hasDeclarativeCommand = await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button, [command="show-modal"]'));
-      return buttons.some(b => {
-        const cmd = b.getAttribute('command');
-        const cmdFor = b.getAttribute('commandfor') || b.getAttribute('invoketarget');
-        return (cmd === 'show-modal' || b.getAttribute('invoketarget')) && !!cmdFor;
+      const buttons = Array.from(
+        document.querySelectorAll('button, [command="show-modal"]'),
+      );
+      return buttons.some((b) => {
+        const cmd = b.getAttribute("command");
+        const cmdFor =
+          b.getAttribute("commandfor") || b.getAttribute("invoketarget");
+        return (
+          (cmd === "show-modal" || b.getAttribute("invoketarget")) && !!cmdFor
+        );
       });
     });
 
@@ -141,7 +188,7 @@ test.describe('Platform controls dismiss dialog tests', () => {
       return;
     }
 
-    const buttons = await page.locator('button').all();
+    const buttons = await page.locator("button").all();
     let openedWithShowModal = false;
 
     for (const button of buttons) {
@@ -162,8 +209,12 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(openedWithShowModal).toBe(true);
   });
 
-  test('No fallback mechanism is provided for dismissing with the Esc key', async ({ page }) => {
-    const listeners = await page.evaluate(() => (window as any)._registeredKeyListeners || []);
+  test("No fallback mechanism is provided for dismissing with the Esc key", async ({
+    page,
+  }) => {
+    const listeners = await page.evaluate(
+      () => (window as any)._registeredKeyListeners || [],
+    );
 
     let hasManualEscFallback = false;
     for (const listener of listeners) {
@@ -173,17 +224,17 @@ test.describe('Platform controls dismiss dialog tests', () => {
     }
 
     const inlineHandlers = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('*'))
-        .map(el => ({
-          onkeydown: el.getAttribute('onkeydown'),
-          onkeyup: el.getAttribute('onkeyup'),
-          onkeypress: el.getAttribute('onkeypress')
+      return Array.from(document.querySelectorAll("*"))
+        .map((el) => ({
+          onkeydown: el.getAttribute("onkeydown"),
+          onkeyup: el.getAttribute("onkeyup"),
+          onkeypress: el.getAttribute("onkeypress"),
         }))
-        .filter(item => item.onkeydown || item.onkeyup || item.onkeypress);
+        .filter((item) => item.onkeydown || item.onkeyup || item.onkeypress);
     });
 
     for (const handler of inlineHandlers) {
-      const code = `${handler.onkeydown || ''} ${handler.onkeyup || ''} ${handler.onkeypress || ''}`;
+      const code = `${handler.onkeydown || ""} ${handler.onkeyup || ""} ${handler.onkeypress || ""}`;
       if (/escape|esc|27/i.test(code)) {
         hasManualEscFallback = true;
       }
@@ -192,8 +243,10 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(hasManualEscFallback).toBe(false);
   });
 
-  test('No fallback mechanism is provided for the mobile back button or gesture', async ({ page }) => {
-    const buttons = await page.locator('button').all();
+  test("No fallback mechanism is provided for the mobile back button or gesture", async ({
+    page,
+  }) => {
+    const buttons = await page.locator("button").all();
     for (const button of buttons) {
       try {
         await button.click({ timeout: 300 });
@@ -209,24 +262,28 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(hasHistoryCallsOrPopstateListeners).toBe(false);
   });
 
-  test('No fallback mechanism is provided for light dismiss when using closedby=any', async ({ page }) => {
+  test("No fallback mechanism is provided for light dismiss when using closedby=any", async ({
+    page,
+  }) => {
     const hasLightDismissFallback = await page.evaluate(() => {
       const listeners = (window as any)._registeredClickListeners || [];
       for (const listener of listeners) {
         const code = listener.code;
-        const hasTargetCheck = /target|clientX|clientY|rect|getBoundingClientRect/i.test(code);
+        const hasTargetCheck =
+          /target|clientX|clientY|rect|getBoundingClientRect/i.test(code);
         const hasCloseAction = /close|hide|remove|active/i.test(code);
         if (hasTargetCheck && hasCloseAction) {
           return true;
         }
       }
 
-      const inlineHandlers = Array.from(document.querySelectorAll('*'))
-        .map(el => el.getAttribute('onclick'))
+      const inlineHandlers = Array.from(document.querySelectorAll("*"))
+        .map((el) => el.getAttribute("onclick"))
         .filter((val): val is string => !!val);
 
       for (const handler of inlineHandlers) {
-        const hasTargetCheck = /target|clientX|clientY|rect|getBoundingClientRect/i.test(handler);
+        const hasTargetCheck =
+          /target|clientX|clientY|rect|getBoundingClientRect/i.test(handler);
         const hasCloseAction = /close|hide|remove|active/i.test(handler);
         if (hasTargetCheck && hasCloseAction) {
           return true;

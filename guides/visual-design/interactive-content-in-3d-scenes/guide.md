@@ -12,6 +12,7 @@ The HTML-in-Canvas API allows rendering real DOM directly inside a canvas elemen
 ## How to implement
 
 ### WebGL and WebGPU
+
 When using WebGL or WebGPU, follow these steps:
 
 1. Check if HTML-in-Canvas is supported in the browser:
@@ -89,14 +90,14 @@ function allocateElementTexture(gl, texture, state, width, height) {
 
   gl.texImage2D(
     gl.TEXTURE_2D,
-    0,                // Mipmap level
-    gl.RGBA8,         // Internal format: 8 bits per RGBA channel
-    width,            // Size in canvas grid pixels
+    0, // Mipmap level
+    gl.RGBA8, // Internal format: 8 bits per RGBA channel
+    width, // Size in canvas grid pixels
     height,
-    0,                // Border: must be 0
-    gl.RGBA,          // Format and type that match RGBA8
+    0, // Border: must be 0
+    gl.RGBA, // Format and type that match RGBA8
     gl.UNSIGNED_BYTE,
-    null              // null reserves GPU memory without uploading pixels
+    null, // null reserves GPU memory without uploading pixels
   );
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   state.width = width;
@@ -129,7 +130,7 @@ canvas.onpaint = () => {
   try {
     uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
   } catch (err) {
-    console.error('texElementSubImage2D copy failed:', err);
+    console.error("texElementSubImage2D copy failed:", err);
   }
 };
 ```
@@ -164,14 +165,22 @@ canvas.onpaint = () => {
   const size = getElementImageSize(canvas, uiElement);
   if (!size) return;
   const previousTexture = textureState.texture;
-  const texture = ensureElementTexture(device, textureState, size.width, size.height);
+  const texture = ensureElementTexture(
+    device,
+    textureState,
+    size.width,
+    size.height,
+  );
   if (texture !== previousTexture) {
     // New texture: create, or rebuild, the bind groups that reference it.
   }
   try {
-    device.queue.drawElementImageToTexture({ source: uiElement }, { texture, size });
+    device.queue.drawElementImageToTexture(
+      { source: uiElement },
+      { texture, size },
+    );
   } catch (err) {
-    console.error('drawElementImageToTexture copy failed:', err);
+    console.error("drawElementImageToTexture copy failed:", err);
   }
 };
 ```
@@ -197,58 +206,68 @@ canvas.onpaint = (event) => {
 5. Sync the element geometry.
 
 Compute a `DOMMatrix` that maps the element's border box, in CSS pixels, to the canvas, in CSS pixels. The browser needs to map from the 3D coordinate space into the CSS coordinate space using a viewport transform. To facilitate this, do the following:
-  - Normalize the HTML element. HTML elements are sized in pixels (for example, 200px wide). WebGL, however, usually treats objects as "unit squares", for example, ranging from -0.5 to 0.5. If you don't normalize, your 200px button will look 200 times larger. This step also flips the Y-axis, because in CSS, down is positive, but in WebGL, up is positive.
-  - Convert the WebGL MVP Matrix to a DOM Matrix.
-  - Map to the canvas viewport. This step is the "re-scaling" phase: it stretches that unit-space math back out to match the CSS pixel dimensions of your `<canvas>` element on the screen, and flips the Y-axis back.
-  - Calculate the final transform. Multiply the matrices in order: Viewport * MVP * Normalization. Combining them into one final transform produces a "map" that tells the browser exactly where that HTML element should sit to align with the 3D drawing. The browser performs the perspective divide.
 
-  ```js
-  // Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
-  // quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
-  function computeCanvasTransform(canvas, element, mvp) {
-    const width = element.offsetWidth;
-    const height = element.offsetHeight;
+- Normalize the HTML element. HTML elements are sized in pixels (for example, 200px wide). WebGL, however, usually treats objects as "unit squares", for example, ranging from -0.5 to 0.5. If you don't normalize, your 200px button will look 200 times larger. This step also flips the Y-axis, because in CSS, down is positive, but in WebGL, up is positive.
+- Convert the WebGL MVP Matrix to a DOM Matrix.
+- Map to the canvas viewport. This step is the "re-scaling" phase: it stretches that unit-space math back out to match the CSS pixel dimensions of your `<canvas>` element on the screen, and flips the Y-axis back.
+- Calculate the final transform. Multiply the matrices in order: Viewport * MVP * Normalization. Combining them into one final transform produces a "map" that tells the browser exactly where that HTML element should sit to align with the 3D drawing. The browser performs the perspective divide.
 
-    // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
-    const toGLModel = new DOMMatrix()
-      // Scale pixels to 1 unit, flip Y (as in CSS it points down, and in WebGL it points up)
-      .scale(1 / width, -1 / height, 1 / height)
-      // Center the origin: (0,0) becomes (-width/2, -height/2) before scaling
-      .translate(-width / 2, -height / 2);
+```js
+// Maps the element's border box (CSS pixels) to the canvas (CSS pixels), for a
+// quad that spans -0.5 to 0.5 in model space and is drawn with the `mvp` matrix.
+function computeCanvasTransform(canvas, element, mvp) {
+  const width = element.offsetWidth;
+  const height = element.offsetHeight;
 
-    // 2. Convert WebGL MVP Matrix to DOM Matrix
-    const mvpDOM = new DOMMatrix(Array.from(mvp));
+  // 1. Normalize the HTML element (CSS pixels -> WebGL Model Space)
+  const toGLModel = new DOMMatrix()
+    // Scale pixels to 1 unit, flip Y (as in CSS it points down, and in WebGL it points up)
+    .scale(1 / width, -1 / height, 1 / height)
+    // Center the origin: (0,0) becomes (-width/2, -height/2) before scaling
+    .translate(-width / 2, -height / 2);
 
-    // 3. Map to the canvas viewport, in CSS pixels
-    const clipToCanvasViewport = new DOMMatrix()
-      // Move center (0,0) to center of canvas
-      .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
-      // Scale normalized clip (-1..1) to viewport size, and flip Y back
-      .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
+  // 2. Convert WebGL MVP Matrix to DOM Matrix
+  const mvpDOM = new DOMMatrix(Array.from(mvp));
 
-    // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
-    return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
-  }
-  ```
+  // 3. Map to the canvas viewport, in CSS pixels
+  const clipToCanvasViewport = new DOMMatrix()
+    // Move center (0,0) to center of canvas
+    .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
+    // Scale normalized clip (-1..1) to viewport size, and flip Y back
+    .scale(
+      canvas.clientWidth / 2,
+      -canvas.clientHeight / 2,
+      canvas.clientHeight / 2,
+    );
+
+  // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
+  return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
+}
+```
 
 Then pass the transform to `canvas.updateElementGeometry()` as `canvasTransform`. This moves the HTML element to sit directly on top of its rendered pixels. This ensures that when a user clicks a button or selects text, they are actually hitting the real HTML element. The browser also uses the transform for the element's accessibility bounds, for example, for screen reader focus rings:
 
-  ```js
-  canvas.updateElementGeometry(targetHTMLElement, {
-    canvasTransform: computeCanvasTransform(canvas, targetHTMLElement, htmlElementMVP),
-  });
-  ```
+```js
+canvas.updateElementGeometry(targetHTMLElement, {
+  canvasTransform: computeCanvasTransform(
+    canvas,
+    targetHTMLElement,
+    htmlElementMVP,
+  ),
+});
+```
 
 Use these options to control hit testing:
-  - Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
-  - Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
+
+- Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
+- Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
 
 ### Three.js
 
 1. Check if HTML-in-Canvas is supported in the browser:
 
 ```js
-if ('content' in HTMLCanvasElement.prototype) {
+if ("content" in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy
@@ -258,23 +277,25 @@ if ('content' in HTMLCanvasElement.prototype) {
 2. Create a custom geometry and material for the HTML content.
 
 3. Pass the DOM element into THREE.HTMLTexture. The renderer adds the element to its canvas, and sets the required attributes:
+
 ```js
-  material.map = new THREE.HTMLTexture(element);
-  mesh = new THREE.Mesh( geometry, material );
-  scene.add( mesh );
+material.map = new THREE.HTMLTexture(element);
+mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
 ```
 
 4. Register the mesh with `InteractionManager` to make the HTML element interactive. It keeps the element aligned with the mesh, and syncs the element geometry with the canvas, so that clicks and text selection hit the real HTML element. Call `interactions.update()` in the animation loop, before rendering:
+
 ```js
-  import { InteractionManager } from 'three/addons/interaction/InteractionManager.js';
+import { InteractionManager } from "three/addons/interaction/InteractionManager.js";
 
-  const interactions = new InteractionManager();
-  interactions.connect( renderer, camera );
-  interactions.add( mesh );
+const interactions = new InteractionManager();
+interactions.connect(renderer, camera);
+interactions.add(mesh);
 
-  // In the animation loop
-  interactions.update();
-  renderer.render( scene, camera );
+// In the animation loop
+interactions.update();
+renderer.render(scene, camera);
 ```
 
 ## Example code
@@ -308,14 +329,18 @@ if ('content' in HTMLCanvasElement.prototype) {
     try {
       uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
     } catch (err) {
-      console.error('texElementSubImage2D copy failed:', err);
+      console.error("texElementSubImage2D copy failed:", err);
     }
 
     // ... Render your 3D scene here, calculating htmlElementMVP matrix ...
 
     // 2. Sync DOM position, hit testing, and accessibility bounds with 3D scene
     canvas.updateElementGeometry(uiElement, {
-      canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
+      canvasTransform: computeCanvasTransform(
+        canvas,
+        uiElement,
+        htmlElementMVP,
+      ),
     });
   };
 </script>
@@ -347,14 +372,22 @@ if ('content' in HTMLCanvasElement.prototype) {
     const size = getElementImageSize(canvas, uiElement);
     if (size) {
       const previousTexture = textureState.texture;
-      const texture = ensureElementTexture(device, textureState, size.width, size.height);
+      const texture = ensureElementTexture(
+        device,
+        textureState,
+        size.width,
+        size.height,
+      );
       if (texture !== previousTexture) {
         // New texture: create, or rebuild, the bind groups that reference it.
       }
       try {
-        device.queue.drawElementImageToTexture({ source: uiElement }, { texture, size });
+        device.queue.drawElementImageToTexture(
+          { source: uiElement },
+          { texture, size },
+        );
       } catch (err) {
-        console.error('drawElementImageToTexture copy failed:', err);
+        console.error("drawElementImageToTexture copy failed:", err);
       }
     }
 
@@ -362,7 +395,11 @@ if ('content' in HTMLCanvasElement.prototype) {
 
     // 2. Sync DOM position, hit testing, and accessibility bounds (same matrix math as WebGL)
     canvas.updateElementGeometry(uiElement, {
-      canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
+      canvasTransform: computeCanvasTransform(
+        canvas,
+        uiElement,
+        htmlElementMVP,
+      ),
     });
   };
 </script>
@@ -374,28 +411,31 @@ if ('content' in HTMLCanvasElement.prototype) {
 // 1. Initialize Three.js camera, scene, renderer, mesh, interactions;
 
 // 2. Ensure HTML-in-Canvas feature support
-if (!('content' in HTMLCanvasElement.prototype)) {
+if (!("content" in HTMLCanvasElement.prototype)) {
   // Use a fallback strategy
 }
 
 // 3. Initialize the source HTML DOM element
-const element = document.createElement('div');
-element.innerHTML = '<h1>Hello World</h1>';
+const element = document.createElement("div");
+element.innerHTML = "<h1>Hello World</h1>";
 
 // 4. Create geometry and material
-const geometry = new RoundedBoxGeometry( 100, 100, 100, 10, 10 );
-const material = new THREE.MeshStandardMaterial( { roughness: 0, metalness: 0.5 } );
+const geometry = new RoundedBoxGeometry(100, 100, 100, 10, 10);
+const material = new THREE.MeshStandardMaterial({
+  roughness: 0,
+  metalness: 0.5,
+});
 
 // 5. Pass the DOM element into THREE.HTMLTexture
 material.map = new THREE.HTMLTexture(element);
 
-mesh = new THREE.Mesh( geometry, material );
-scene.add( mesh );
+mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
 
 // 6. Make the HTML element interactive
 interactions = new InteractionManager();
-interactions.connect( renderer, camera );
-interactions.add( mesh );
+interactions.connect(renderer, camera);
+interactions.add(mesh);
 
 // 7. Render Loop
 function animate() {

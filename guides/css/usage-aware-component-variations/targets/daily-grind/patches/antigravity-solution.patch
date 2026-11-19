@@ -5,7 +5,7 @@ index 66c9173..f1a49c3 100644
 @@ -100,6 +100,13 @@
        padding: 0 20px;
      }
- 
+
 +    .featured,
 +    .seasonal {
 +      --surface: featured;
@@ -23,12 +23,12 @@ index 66c9173..f1a49c3 100644
 +      position: relative;
 +      border: 1px solid transparent;
      }
- 
+
      .card h3 {
 @@ -120,19 +129,121 @@
        color: var(--primary);
      }
- 
+
 +    .badge {
 +      display: none;
 +      background: var(--accent);
@@ -57,7 +57,7 @@ index 66c9173..f1a49c3 100644
 +      font-weight: 600;
 +      transition: background 0.3s, color 0.3s;
      }
- 
+
      .btn:hover {
        background: #3e2723;
 +      color: white;
@@ -148,11 +148,11 @@ index 66c9173..f1a49c3 100644
 +        border: none;
 +      }
      }
- 
+
      footer {
 @@ -175,20 +286,23 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section class="featured seasonal">

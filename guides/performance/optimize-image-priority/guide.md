@@ -2,8 +2,8 @@
 name: optimize-image-priority
 description: Optimize the loading priority of Largest Contentful Paint (LCP) candidate images and deprioritize non-critical images to reduce critical resource load delays.
 web-feature-ids:
-    - fetch-priority
-    - loading-lazy
+  - fetch-priority
+  - loading-lazy
 ---
 
 # Optimize image priority
@@ -26,40 +26,59 @@ The `loading=lazy` attribute prevents images from being downloaded at all when s
 
 ```html
 <!-- Elevate priority for the LCP image -->
-<img src="/images/hero-lcp.jpg"
-     alt="Main Banner"
-     fetchpriority="high"
-     width="800" height="400">
+<img
+  src="/images/hero-lcp.jpg"
+  alt="Main Banner"
+  fetchpriority="high"
+  width="800"
+  height="400"
+/>
 
 <!-- Deprioritize initially hidden images above the fold -->
 <!-- Additionally use `loading="lazy"` if there are likely to be many images-->
- <div class="carousel">
-     <img src="/images/gallery-alt.jpg"
-          alt="Gallery Image 1"
-          width="400" height="300">
-     <img src="/images/gallery-alt.jpg"
-          alt="Gallery Image 2"
-          fetchpriority="low"
-          loading="lazy"
-          width="400" height="300">
-<div>
+<div class="carousel">
+  <img
+    src="/images/gallery-alt.jpg"
+    alt="Gallery Image 1"
+    width="400"
+    height="300"
+  />
+  <img
+    src="/images/gallery-alt.jpg"
+    alt="Gallery Image 2"
+    fetchpriority="low"
+    loading="lazy"
+    width="400"
+    height="300"
+  />
+  <div>
+    <!-- Deprioritize images revealed only after user interaction -->
+    <img
+      src="/images/mega-menu-promo.jpg"
+      alt="Special Offer"
+      fetchpriority="low"
+      width="300"
+      height="150"
+    />
 
-<!-- Deprioritize images revealed only after user interaction -->
-<img src="/images/mega-menu-promo.jpg"
-     alt="Special Offer"
-     fetchpriority="low"
-     width="300" height="150">
+    <!-- Use lazy loading ALONE for standard below-the-fold images -->
+    <img
+      src="/images/footer-logo.png"
+      alt="Footer Logo"
+      loading="lazy"
+      width="120"
+      height="60"
+    />
 
-<!-- Use lazy loading ALONE for standard below-the-fold images -->
-<img src="/images/footer-logo.png"
-     alt="Footer Logo"
-     loading="lazy"
-     width="120" height="60">
-
-<!-- Omit fetchpriority for images with standard priority -->
-<img src="/images/standard-image.jpg"
-     alt="Standard Image"
-     width="400" height="300">
+    <!-- Omit fetchpriority for images with standard priority -->
+    <img
+      src="/images/standard-image.jpg"
+      alt="Standard Image"
+      width="400"
+      height="300"
+    />
+  </div>
+</div>
 ```
 
 ## Best practices

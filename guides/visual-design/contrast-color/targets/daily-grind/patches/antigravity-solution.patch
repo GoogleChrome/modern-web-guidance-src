@@ -11,7 +11,7 @@ index 66c9173..e37add1 100644
        display: flex;
        justify-content: space-between;
 @@ -57,6 +58,7 @@
- 
+
      nav a {
        color: white;
 +      color: contrast-color(var(--primary));
@@ -27,7 +27,7 @@ index 66c9173..e37add1 100644
        text-decoration: none;
        border-radius: 5px;
 @@ -137,6 +140,8 @@
- 
+
      footer {
        background: var(--secondary);
 +      color: var(--text);
@@ -83,4 +83,4 @@ index 66c9173..e37add1 100644
 +    }
    </style>
  </head>
- 
+

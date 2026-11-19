@@ -5,7 +5,7 @@ index 66c9173..e864104 100644
 @@ -207,6 +207,13 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    import { observeInteractionPaints, trackSoftNavigationLCP } from '/paint-timing.js';
 +
@@ -14,7 +14,7 @@ index 66c9173..e864104 100644
 +  </script>
 +
  </body>
- 
+
  </html>
 diff --git a/paint-timing.js b/paint-timing.js
 new file mode 100644

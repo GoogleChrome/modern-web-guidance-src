@@ -15,7 +15,7 @@ index 66c9173..6aec9d0 100644
        background-color: var(--light);
 +      overflow-wrap: anywhere;
      }
- 
+
      /* Navigation */
 +    .navigation-shell {
 +      container: navigation / inline-size;
@@ -37,10 +37,10 @@ index 66c9173..6aec9d0 100644
 -      z-index: 1000;
 +      gap: 1rem;
      }
- 
+
      .logo {
 @@ -48,11 +55,15 @@
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: wrap;
@@ -48,17 +48,17 @@ index 66c9173..6aec9d0 100644
 +      gap: 0.75rem 1.25rem;
        list-style: none;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      display: flex;
 +      align-items: center;
      }
- 
+
      nav a {
 @@ -73,8 +84,15 @@
      }
- 
+
      /* Hero Section */
 +    .hero-shell {
 +      container: hero / inline-size;
@@ -80,13 +80,13 @@ index 66c9173..6aec9d0 100644
 -      padding: 0 20px;
 +      padding: 2rem 20px;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: clamp(2rem, 5cqi, 3rem);
        margin-bottom: 1rem;
      }
- 
+
      /* Content Sections */
      .container {
 +      container: favorites / inline-size;
@@ -94,7 +94,7 @@ index 66c9173..6aec9d0 100644
        margin: 40px auto;
        padding: 0 20px;
 @@ -102,12 +121,13 @@
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -102,7 +102,7 @@ index 66c9173..6aec9d0 100644
        gap: 20px;
        margin-top: 20px;
      }
- 
+
      .card {
 +      min-width: 0;
        background: white;
@@ -110,7 +110,7 @@ index 66c9173..6aec9d0 100644
        border-radius: 8px;
 @@ -136,6 +156,7 @@
      }
- 
+
      footer {
 +      container: footer / inline-size;
        background: var(--secondary);
@@ -118,7 +118,7 @@ index 66c9173..6aec9d0 100644
        padding: 40px 20px;
 @@ -147,16 +168,54 @@
      }
- 
+
      .footer-links a {
 +      display: inline-block;
        margin: 0 10px;
@@ -164,9 +164,9 @@ index 66c9173..6aec9d0 100644
 +    }
    </style>
  </head>
- 
+
  <body>
- 
+
 +  <div class="navigation-shell">
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -176,7 +176,7 @@ index 66c9173..6aec9d0 100644
      </ul>
    </nav>
 +  </div>
- 
+
 +  <div class="hero-shell">
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
@@ -184,7 +184,7 @@ index 66c9173..6aec9d0 100644
      <a href="/order-online" class="btn">Order Now</a>
    </header>
 +  </div>
- 
+
    <main class="container">
      <section>
 diff --git a/package.json b/package.json

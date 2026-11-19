@@ -23,11 +23,14 @@ Large icon fonts, emoji fonts, and fonts with extensive Unicode coverage are dow
 
 ```css
 @font-face {
-  font-family: 'Shared Emoji Font';
+  font-family: "Shared Emoji Font";
   src:
     /* MANDATORY: List the COS-enhanced source first, then the plain fallback. */
-    url('/fonts/shared-emoji.woff2' integrity('sha256-example-only-hash') cross-origin-storage(*)) format('woff2'),
-    url('/fonts/shared-emoji.woff2') format('woff2');
+    url("/fonts/shared-emoji.woff2"integrity(
+          "sha256-example-only-hash"
+        )cross-origin-storage(*))
+      format("woff2"),
+    url("/fonts/shared-emoji.woff2") format("woff2");
 }
 ```
 

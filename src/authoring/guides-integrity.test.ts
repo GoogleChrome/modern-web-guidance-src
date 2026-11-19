@@ -1,32 +1,38 @@
-import test, { describe, it } from 'node:test';
-import assert from 'node:assert';
-import path from 'node:path';
-import fs from 'node:fs';
-import matter from '@11ty/gray-matter';
-import { marked } from 'marked';
+import test, { describe, it } from "node:test";
+import assert from "node:assert";
+import path from "node:path";
+import fs from "node:fs";
+import matter from "@11ty/gray-matter";
+import { marked } from "marked";
 
 // Import shared utilities
-import { scanAllGuides, processGuideInventory } from '../core/guide-validation.ts';
-import { replaceMacros, MACRO_PATTERN } from '../core/macros.ts';
-import { validateGraderExpectationCoverage, formatCoverageFailureMessage } from '../core/grader-coverage.ts';
-import { gitExec } from '../core/git-utils.ts';
-import { rootDir } from '../core/paths.ts';
-import { findStaleTargets } from './dev.ts';
+import {
+  scanAllGuides,
+  processGuideInventory,
+} from "../core/guide-validation.ts";
+import { replaceMacros, MACRO_PATTERN } from "../core/macros.ts";
+import {
+  validateGraderExpectationCoverage,
+  formatCoverageFailureMessage,
+} from "../core/grader-coverage.ts";
+import { gitExec } from "../core/git-utils.ts";
+import { rootDir } from "../core/paths.ts";
+import { findStaleTargets } from "./dev.ts";
 
 const REPO_ROOT = rootDir;
 
-describe('Guides Validation (Single Source of Truth)', () => {
+describe("Guides Validation (Single Source of Truth)", () => {
   const guides = scanAllGuides();
   const staleTargets = findStaleTargets(REPO_ROOT);
 
   if (guides.length === 0) {
-    test('No guides found', () => {
-      assert.fail('No guides found in the workspace');
+    test("No guides found", () => {
+      assert.fail("No guides found in the workspace");
     });
     return;
   }
 
-  it('ensures all guide IDs are unique', () => {
+  it("ensures all guide IDs are unique", () => {
     const seen = new Set<string>();
     const duplicates = new Set<string>();
     for (const guide of guides) {
@@ -36,7 +42,9 @@ describe('Guides Validation (Single Source of Truth)', () => {
       seen.add(guide.name);
     }
     if (duplicates.size > 0) {
-      assert.fail(`Duplicate guide IDs found: ${Array.from(duplicates).join(', ')}`);
+      assert.fail(
+        `Duplicate guide IDs found: ${Array.from(duplicates).join(", ")}`,
+      );
     }
   });
 
@@ -45,22 +53,24 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
     it(`validates ${relativeDir}`, () => {
       const result = processGuideInventory([guide]);
-      
+
       if (result.hasError) {
-        assert.fail(`Validation errors found in ${relativeDir}:\n${result.errors.join('\n')}`);
+        assert.fail(
+          `Validation errors found in ${relativeDir}:\n${result.errors.join("\n")}`,
+        );
       }
     });
 
     it(`validates markdown soundness for ${relativeDir}`, () => {
-      const guidePath = path.join(guide.dir, 'guide.md');
+      const guidePath = path.join(guide.dir, "guide.md");
       if (!fs.existsSync(guidePath)) return;
 
-      const content = fs.readFileSync(guidePath, 'utf8');
+      const content = fs.readFileSync(guidePath, "utf8");
 
       // 1. Check frontmatter with @11ty/gray-matter
       try {
         const { data } = matter(content);
-        assert.ok(data, 'Frontmatter should be parsable');
+        assert.ok(data, "Frontmatter should be parsable");
       } catch (e) {
         assert.fail(`Frontmatter parsing failed: ${e}`);
       }
@@ -70,25 +80,29 @@ describe('Guides Validation (Single Source of Truth)', () => {
       // silently consume unclosed blocks to the end of the file. Since many guides
       // legitimately end with a code block, checking if the last token is a code block
       // yields too many false positives. Linters are also too noisy with style rules.
-      const lines = content.split('\n');
-      const fenceLines = lines.filter(line => line.trim().startsWith('```'));
+      const lines = content.split("\n");
+      const fenceLines = lines.filter((line) => line.trim().startsWith("```"));
       if (fenceLines.length % 2 !== 0) {
-        assert.fail(`Odd number of code block fences (\`\`\`) in ${relativeDir}. Likely an unclosed code block.`);
+        assert.fail(
+          `Odd number of code block fences (\`\`\`) in ${relativeDir}. Likely an unclosed code block.`,
+        );
       }
 
       // 3. Check with marked
       try {
         const tokens = marked.lexer(content);
-        assert.ok(tokens.length > 0, 'Marked should produce tokens');
+        assert.ok(tokens.length > 0, "Marked should produce tokens");
       } catch (e) {
         assert.fail(`Marked parsing failed: ${e}`);
       }
 
       // 4. Check for git conflict markers at the start of a line
-      const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+      const conflictMarkers = ["<<<<<<<", "=======", ">>>>>>>"];
       for (const marker of conflictMarkers) {
-        if (lines.some(l => l.startsWith(marker))) {
-          assert.fail(`File contains git conflict marker "${marker}" in ${relativeDir}`);
+        if (lines.some((l) => l.startsWith(marker))) {
+          assert.fail(
+            `File contains git conflict marker "${marker}" in ${relativeDir}`,
+          );
         }
       }
     });
@@ -103,41 +117,54 @@ describe('Guides Validation (Single Source of Truth)', () => {
     // - BASELINE_STATUS: not a transclusion macro; it either returns content or
     //   throws (already caught by validateMacros), so a non-empty check is redundant.
     it(`validates transclusion macros for ${relativeDir}`, () => {
-      const guidePath = path.join(guide.dir, 'guide.md');
+      const guidePath = path.join(guide.dir, "guide.md");
       if (!fs.existsSync(guidePath)) return;
 
-      const { content: body } = matter(fs.readFileSync(guidePath, 'utf8'));
-      const REQUIRED = new Set(['INCLUDE', 'FEATURE', 'FEATURE_FALLBACKS']);
+      const { content: body } = matter(fs.readFileSync(guidePath, "utf8"));
+      const REQUIRED = new Set(["INCLUDE", "FEATURE", "FEATURE_FALLBACKS"]);
 
       for (const match of body.matchAll(MACRO_PATTERN)) {
         const [full, name] = match;
         if (!REQUIRED.has(name)) continue;
         const result = replaceMacros(full, guidePath);
         if (!result.trim()) {
-          assert.fail(`${full} in ${relativeDir} returned empty content (file or section not found).`);
+          assert.fail(
+            `${full} in ${relativeDir} returned empty content (file or section not found).`,
+          );
         }
       }
     });
 
-    const targetsDir = path.join(guide.dir, 'targets');
-    const expectationsPath = path.join(guide.dir, 'expectations.md');
+    const targetsDir = path.join(guide.dir, "targets");
+    const expectationsPath = path.join(guide.dir, "expectations.md");
 
     // Discipline guide graders only cover the expectations relevant to each target app.
-    if (!guide.isDisciplineGuide && fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
-      const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory() && !e.name.startsWith('.'))
-        .map(e => e.name);
+    if (
+      !guide.isDisciplineGuide &&
+      fs.existsSync(targetsDir) &&
+      fs.existsSync(expectationsPath)
+    ) {
+      const targetApps = fs
+        .readdirSync(targetsDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+        .map((e) => e.name);
 
       for (const targetApp of targetApps) {
-        const targetGraderPath = path.join(targetsDir, targetApp, 'grader.ts');
+        const targetGraderPath = path.join(targetsDir, targetApp, "grader.ts");
         if (!fs.existsSync(targetGraderPath)) continue;
 
         it(`validates expectation coverage for target ${relativeDir}/targets/${targetApp}`, async () => {
           // Stale graders (expectations.md modified after grader.ts) are tracked in #1815.
-          const relGrader = path.relative(REPO_ROOT, targetGraderPath).split(path.sep).join('/');
+          const relGrader = path
+            .relative(REPO_ROOT, targetGraderPath)
+            .split(path.sep)
+            .join("/");
           if (staleTargets.has(relGrader)) return;
 
-          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath);
+          const result = await validateGraderExpectationCoverage(
+            expectationsPath,
+            targetGraderPath,
+          );
           if (!result.isComplete) {
             assert.fail(formatCoverageFailureMessage(result, REPO_ROOT));
           }
@@ -146,10 +173,10 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   }
 
-  it('checks all tracked files for conflict markers', () => {
-    const files = gitExec(['ls-files'], { cwd: REPO_ROOT }).trim().split('\n');
-    const extensions = ['.md', '.html', '.txt', '.yaml', '.yml'];
-    const conflictMarkers = ['<<<<<<<', '=======', '>>>>>>>'];
+  it("checks all tracked files for conflict markers", () => {
+    const files = gitExec(["ls-files"], { cwd: REPO_ROOT }).trim().split("\n");
+    const extensions = [".md", ".html", ".txt", ".yaml", ".yml"];
+    const conflictMarkers = ["<<<<<<<", "=======", ">>>>>>>"];
     const failedFiles: string[] = [];
 
     for (const file of files) {
@@ -158,10 +185,10 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
       const filePath = path.resolve(REPO_ROOT, file);
       try {
-        const content = fs.readFileSync(filePath, 'utf8');
-        const fileLines = content.split('\n');
+        const content = fs.readFileSync(filePath, "utf8");
+        const fileLines = content.split("\n");
         for (const marker of conflictMarkers) {
-          if (fileLines.some(l => l.startsWith(marker))) {
+          if (fileLines.some((l) => l.startsWith(marker))) {
             failedFiles.push(`${file} (contains "${marker}")`);
             break;
           }
@@ -172,119 +199,157 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
 
     if (failedFiles.length > 0) {
-      assert.fail(`Conflict markers found in the following files:\n${failedFiles.join('\n')}`);
+      assert.fail(
+        `Conflict markers found in the following files:\n${failedFiles.join("\n")}`,
+      );
     }
   });
 
-  it('validates all feature override keys in .github/atls.json', async () => {
-    const { validateFeature } = await import('../core/baseline.ts');
-    const atlsPath = path.join(REPO_ROOT, '.github', 'atls.json');
-    const atlsConfig = JSON.parse(fs.readFileSync(atlsPath, 'utf8'));
+  it("validates all feature override keys in .github/atls.json", async () => {
+    const { validateFeature } = await import("../core/baseline.ts");
+    const atlsPath = path.join(REPO_ROOT, ".github", "atls.json");
+    const atlsConfig = JSON.parse(fs.readFileSync(atlsPath, "utf8"));
     const featureIds = Object.keys(atlsConfig.web_features || {});
 
     for (const fid of featureIds) {
       const res = validateFeature(fid);
       if (!res.isValid) {
-        assert.fail(`Feature ID "${fid}" in .github/atls.json is invalid: ${res.errorMessage}`);
-      }
-    }
-  });
-
-  it('validates that pending temporary feature groups and compat_features are valid', async () => {
-    const { groups } = await import('web-features');
-    const pendingPath = path.join(REPO_ROOT, 'features', 'pending-web-features.json');
-    const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
-
-    for (const [fid, entry] of Object.entries<{ group?: string | string[]; compat_features?: string | string[] }>(pending)) {
-      const entryGroups = entry.group === undefined ? [] : [entry.group].flat();
-      for (const group of entryGroups) {
-        if (!(group in groups)) {
-          assert.fail(`Feature ID "${fid}" in features/pending-web-features.json has unknown group "${group}"`);
-        }
-      }
-
-      const compatKeys = entry.compat_features === undefined ? [] : [entry.compat_features].flat();
-      for (const bcdKey of compatKeys) {
-        assert.ok(
-          typeof bcdKey === 'string' && bcdKey.trim().length > 0 && bcdKey.includes('.'),
-          `Feature ID "${fid}" in features/pending-web-features.json has invalid compat_features entry "${bcdKey}"`
+        assert.fail(
+          `Feature ID "${fid}" in .github/atls.json is invalid: ${res.errorMessage}`,
         );
       }
     }
   });
 
-  it('ensures feature-to-groups.gen.json is synchronized with .github/atls.json', async () => {
-    const { buildFeatureToGroupsJson, FEATURE_TO_GROUPS_PATH } = await import('../ci/generate-feature-to-groups.ts');
+  it("validates that pending temporary feature groups and compat_features are valid", async () => {
+    const { groups } = await import("web-features");
+    const pendingPath = path.join(
+      REPO_ROOT,
+      "features",
+      "pending-web-features.json",
+    );
+    const pending = JSON.parse(fs.readFileSync(pendingPath, "utf8"));
+
+    for (const [fid, entry] of Object.entries<{
+      group?: string | string[];
+      compat_features?: string | string[];
+    }>(pending)) {
+      const entryGroups = entry.group === undefined ? [] : [entry.group].flat();
+      for (const group of entryGroups) {
+        if (!(group in groups)) {
+          assert.fail(
+            `Feature ID "${fid}" in features/pending-web-features.json has unknown group "${group}"`,
+          );
+        }
+      }
+
+      const compatKeys =
+        entry.compat_features === undefined
+          ? []
+          : [entry.compat_features].flat();
+      for (const bcdKey of compatKeys) {
+        assert.ok(
+          typeof bcdKey === "string" &&
+            bcdKey.trim().length > 0 &&
+            bcdKey.includes("."),
+          `Feature ID "${fid}" in features/pending-web-features.json has invalid compat_features entry "${bcdKey}"`,
+        );
+      }
+    }
+  });
+
+  it("ensures feature-to-groups.gen.json is synchronized with .github/atls.json", async () => {
+    const { buildFeatureToGroupsJson, FEATURE_TO_GROUPS_PATH } =
+      await import("../ci/generate-feature-to-groups.ts");
     assert.strictEqual(
-      fs.readFileSync(FEATURE_TO_GROUPS_PATH, 'utf8'),
+      fs.readFileSync(FEATURE_TO_GROUPS_PATH, "utf8"),
       buildFeatureToGroupsJson(),
-      'src/ci/feature-to-groups.gen.json is out of date. Run: node src/ci/generate-feature-to-groups.ts'
+      "src/ci/feature-to-groups.gen.json is out of date. Run: node src/ci/generate-feature-to-groups.ts",
     );
   });
 
-  it('validates that all features/tmp-*.md files are registered in features/pending-web-features.json', async () => {
-    const { validateFeature } = await import('../core/baseline.ts');
-    const featuresDir = path.join(REPO_ROOT, 'features');
+  it("validates that all features/tmp-*.md files are registered in features/pending-web-features.json", async () => {
+    const { validateFeature } = await import("../core/baseline.ts");
+    const featuresDir = path.join(REPO_ROOT, "features");
     const files = fs.readdirSync(featuresDir);
 
     for (const file of files) {
-      if (file.startsWith('tmp-') && file.endsWith('.md')) {
+      if (file.startsWith("tmp-") && file.endsWith(".md")) {
         const tmpId = file.slice(0, -3);
         const res = validateFeature(tmpId);
         if (!res.isValid) {
-          assert.fail(`Feature snippet file "features/${file}" uses unregistered feature ID: ${res.errorMessage}`);
+          assert.fail(
+            `Feature snippet file "features/${file}" uses unregistered feature ID: ${res.errorMessage}`,
+          );
         }
       }
     }
   });
 
-  it('validates that all feature IDs and fields in features/origin-trials.json are valid', async () => {
-    const { validateFeature } = await import('../core/baseline.ts');
-    const otPath = path.join(REPO_ROOT, 'features', 'origin-trials.json');
-    const otRegistry = JSON.parse(fs.readFileSync(otPath, 'utf8'));
+  it("validates that all feature IDs and fields in features/origin-trials.json are valid", async () => {
+    const { validateFeature } = await import("../core/baseline.ts");
+    const otPath = path.join(REPO_ROOT, "features", "origin-trials.json");
+    const otRegistry = JSON.parse(fs.readFileSync(otPath, "utf8"));
 
     for (const [fid, entry] of Object.entries<any>(otRegistry)) {
       const res = validateFeature(fid);
       if (!res.isValid) {
-        assert.fail(`Feature ID "${fid}" in features/origin-trials.json is invalid: ${res.errorMessage}`);
+        assert.fail(
+          `Feature ID "${fid}" in features/origin-trials.json is invalid: ${res.errorMessage}`,
+        );
       }
       assert.ok(
-        typeof entry.chromestatus_url === 'string' && entry.chromestatus_url.startsWith('https://chromestatus.com/feature/'),
-        `Origin trial "${fid}" must have a valid chromestatus_url`
+        typeof entry.chromestatus_url === "string" &&
+          entry.chromestatus_url.startsWith(
+            "https://chromestatus.com/feature/",
+          ),
+        `Origin trial "${fid}" must have a valid chromestatus_url`,
       );
     }
   });
 
-  it('validates that all feature IDs and fields in features/volatile-features.json are valid', async () => {
-    const { validateFeature } = await import('../core/baseline.ts');
-    const volatilePath = path.join(REPO_ROOT, 'features', 'volatile-features.json');
-    const volatileRegistry = JSON.parse(fs.readFileSync(volatilePath, 'utf8'));
+  it("validates that all feature IDs and fields in features/volatile-features.json are valid", async () => {
+    const { validateFeature } = await import("../core/baseline.ts");
+    const volatilePath = path.join(
+      REPO_ROOT,
+      "features",
+      "volatile-features.json",
+    );
+    const volatileRegistry = JSON.parse(fs.readFileSync(volatilePath, "utf8"));
 
     for (const [fid, entry] of Object.entries<any>(volatileRegistry)) {
       const res = validateFeature(fid);
       if (!res.isValid) {
-        assert.fail(`Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`);
+        assert.fail(
+          `Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`,
+        );
       }
       assert.ok(
-        typeof entry.reason === 'string' && entry.reason.length > 0,
-        `Volatile feature "${fid}" must specify a non-empty reason (e.g., 'recent-single-engine' or 'built-in-ai')`
+        typeof entry.reason === "string" && entry.reason.length > 0,
+        `Volatile feature "${fid}" must specify a non-empty reason (e.g., 'recent-single-engine' or 'built-in-ai')`,
       );
     }
   });
 
-  it('correctly evaluates volatile feature active status', async () => {
-    const { isVolatileActive } = await import('../core/feature-gates.ts');
+  it("correctly evaluates volatile feature active status", async () => {
+    const { isVolatileActive } = await import("../core/feature-gates.ts");
 
-    assert.strictEqual(isVolatileActive({ reason: 'recent-single-engine' }), true);
-    assert.strictEqual(isVolatileActive({ reason: 'built-in-ai' }), true);
+    assert.strictEqual(
+      isVolatileActive({ reason: "recent-single-engine" }),
+      true,
+    );
+    assert.strictEqual(isVolatileActive({ reason: "built-in-ai" }), true);
     assert.strictEqual(isVolatileActive(undefined), false);
   });
 
-  it('validates that all graders conform to static anti-pattern checks', async () => {
-    const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
+  it("validates that all graders conform to static anti-pattern checks", async () => {
+    const { checkAllGraders, formatViolations } =
+      await import("../core/grader-lint.ts");
     const violations = checkAllGraders({ repoRoot: REPO_ROOT });
     if (violations.size > 0) {
-      assert.fail(`Static grader anti-pattern violations found in ${violations.size} file(s):\n${formatViolations(violations)}`);
+      assert.fail(
+        `Static grader anti-pattern violations found in ${violations.size} file(s):\n${formatViolations(violations)}`,
+      );
     }
   });
 });

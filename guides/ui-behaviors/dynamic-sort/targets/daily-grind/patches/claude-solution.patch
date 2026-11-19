@@ -5,7 +5,7 @@ index 66c9173..377a5d5 100644
 @@ -115,6 +115,14 @@
        text-align: center;
      }
- 
+
 +    .card {
 +      /* Unique view-transition name derived from each card's identity. */
 +      view-transition-name: match-element;
@@ -20,7 +20,7 @@ index 66c9173..377a5d5 100644
 @@ -135,6 +143,50 @@
        background: #3e2723;
      }
- 
+
 +    .sort-controls {
 +      display: flex;
 +      justify-content: center;
@@ -69,7 +69,7 @@ index 66c9173..377a5d5 100644
        background: var(--secondary);
        text-align: center;
 @@ -176,8 +228,17 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -91,7 +91,7 @@ index 66c9173..377a5d5 100644
 @@ -207,6 +268,76 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      const grid = document.getElementById('seasonal-grid');
@@ -163,5 +163,5 @@ index 66c9173..377a5d5 100644
 +  </script>
 +
  </body>
- 
+
  </html>

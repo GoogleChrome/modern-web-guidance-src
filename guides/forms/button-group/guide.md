@@ -39,7 +39,6 @@ Add a `size` attribute with any value greater than 1 to a `<select>` element to 
 Disable the default browser styling on a `select` with `appearance: base-select` and apply your own. Using CSS variables ensures consistency across your UI.
 
 ```css
-
 select {
   appearance: base-select;
   border: none;
@@ -165,7 +164,8 @@ With `appearance: base-select` applied to a `<select>` element, users don't have
 For browsers that do not support customizable select, there is not a reasonable fallback with similar styling. If the default system UI is acceptable, only apply the styles in browsers that support `appearance: base-select`.
 
 ```css
-@supports (appearance: base-select){}
+@supports (appearance: base-select) {
+}
 ```
 
 If the default system UI is not acceptable and you must support browsers without customizable select, do not use customizable selects to implement button groups.

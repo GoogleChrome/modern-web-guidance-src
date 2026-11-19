@@ -10,7 +10,7 @@ index 66c9173..0472734 100644
 --- a/index.html
 +++ b/index.html
 @@ -3,7 +3,7 @@
- 
+
  <head>
    <meta charset="UTF-8">
 -  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@ index 66c9173..0472734 100644
        --light: #fafafa;
 +      --target-size: 24px;
      }
- 
+
      * {
 @@ -25,37 +26,79 @@
        line-height: 1.6;
@@ -56,7 +56,7 @@ index 66c9173..0472734 100644
 +        --target-size: 44px;
 +      }
      }
- 
+
      /* Navigation */
      nav {
        background: var(--primary);
@@ -78,14 +78,14 @@ index 66c9173..0472734 100644
 -      z-index: 1000;
 +      min-inline-size: 0;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
 +      text-align: center;
      }
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: wrap;
@@ -95,13 +95,13 @@ index 66c9173..0472734 100644
        list-style: none;
 +      min-inline-size: 0;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      min-inline-size: 0;
 +      max-inline-size: 100%;
      }
- 
+
      nav a {
 +      display: inline-flex;
 +      align-items: center;
@@ -114,7 +114,7 @@ index 66c9173..0472734 100644
 @@ -72,42 +115,81 @@
        border-radius: 4px;
      }
- 
+
 +    @container navigation (inline-size >= 52rem) {
 +      .nav-content {
 +        flex-direction: row;
@@ -148,14 +148,14 @@ index 66c9173..0472734 100644
 -      padding: 0 20px;
 +      min-inline-size: 0;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: 2rem;
 +      font-size: clamp(2rem, 1.25rem + 3cqi, 3rem);
        margin-bottom: 1rem;
      }
- 
+
 +    .hero p {
 +      max-inline-size: 60ch;
 +    }
@@ -171,7 +171,7 @@ index 66c9173..0472734 100644
 +    .container > section {
 +      container: favorites / inline-size;
      }
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -179,7 +179,7 @@ index 66c9173..0472734 100644
        gap: 20px;
        margin-top: 20px;
      }
- 
+
 +    @container favorites (inline-size >= 34rem) {
 +      .grid {
 +        grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -203,7 +203,7 @@ index 66c9173..0472734 100644
 @@ -115,13 +197,21 @@
        text-align: center;
      }
- 
+
 +    .card p {
 +      flex-grow: 1;
 +    }
@@ -212,7 +212,7 @@ index 66c9173..0472734 100644
        margin-bottom: 10px;
        color: var(--primary);
      }
- 
+
      .btn {
 -      display: inline-block;
 +      display: inline-flex;
@@ -233,7 +233,7 @@ index 66c9173..0472734 100644
        margin-top: 40px;
 +      container: footer / inline-size;
      }
- 
+
      .footer-links {
        margin-bottom: 20px;
 +      display: flex;
@@ -241,7 +241,7 @@ index 66c9173..0472734 100644
 +      align-items: center;
 +      gap: 0.5rem 1rem;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      display: inline-flex;
@@ -263,9 +263,9 @@ index 66c9173..0472734 100644
 +    }
    </style>
  </head>
- 
+
  <body>
- 
+
 -  <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -287,7 +287,7 @@ index 66c9173..0472734 100644
 +      </ul>
 +    </div>
    </nav>
- 
+
    <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -298,10 +298,10 @@ index 66c9173..0472734 100644
 +      <a href="/order-online" class="btn">Order Now</a>
 +    </div>
    </header>
- 
+
    <main class="container">
 @@ -199,9 +311,9 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

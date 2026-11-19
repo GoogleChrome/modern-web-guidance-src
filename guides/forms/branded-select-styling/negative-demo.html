@@ -93,7 +93,7 @@
   function selectOption(val) {
     document.getElementById('selected-text').innerText = val;
     document.getElementById('options-list').classList.remove('open');
-    
+
     const select = document.getElementById('hidden-select');
     for (let i = 0; i < select.options.length; i++) {
       if (select.options[i].text === val) {

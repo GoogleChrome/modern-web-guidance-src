@@ -40,7 +40,7 @@ export function computeChunkHash(
   embeddedText: string,
   model = TEACHER_MODEL,
   taskType = TASK_TYPE,
-  dims = STATIC_DIMS
+  dims = STATIC_DIMS,
 ): string {
   return crypto
     .createHash("sha256")
@@ -52,12 +52,18 @@ export function computeChunkHash(
  * Loads the committed Int8 chunk vector cache from disk.
  * Returns a map of hash -> 256-d unit Float32Array.
  */
-export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float32Array> {
+export function loadChunkCache(
+  cacheDir = DEFAULT_CACHE_DIR,
+): Map<string, Float32Array> {
   const jsonPath = path.join(cacheDir, "guide-chunk-cache.json");
   const i8Path = path.join(cacheDir, "guide-chunk-cache.i8");
   const scalePath = path.join(cacheDir, "guide-chunk-cache.scale.f32");
 
-  if (!fs.existsSync(jsonPath) || !fs.existsSync(i8Path) || !fs.existsSync(scalePath)) {
+  if (
+    !fs.existsSync(jsonPath) ||
+    !fs.existsSync(i8Path) ||
+    !fs.existsSync(scalePath)
+  ) {
     return new Map();
   }
 
@@ -68,12 +74,12 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
   const N = hashes.length;
   if (i8Buf.byteLength !== N * STATIC_DIMS) {
     throw new Error(
-      `Chunk cache corrupted: ${i8Path} byteLength (${i8Buf.byteLength}) !== ${N} * ${STATIC_DIMS}`
+      `Chunk cache corrupted: ${i8Path} byteLength (${i8Buf.byteLength}) !== ${N} * ${STATIC_DIMS}`,
     );
   }
   if (scaleBuf.byteLength !== N * 4) {
     throw new Error(
-      `Chunk cache corrupted: ${scalePath} byteLength (${scaleBuf.byteLength}) !== ${N} * 4`
+      `Chunk cache corrupted: ${scalePath} byteLength (${scaleBuf.byteLength}) !== ${N} * 4`,
     );
   }
 
@@ -95,7 +101,7 @@ export function loadChunkCache(cacheDir = DEFAULT_CACHE_DIR): Map<string, Float3
  */
 export function saveChunkCache(
   cache: Map<string, Float32Array>,
-  cacheDir = DEFAULT_CACHE_DIR
+  cacheDir = DEFAULT_CACHE_DIR,
 ): { count: number; bytes: number } {
   fs.mkdirSync(cacheDir, { recursive: true });
 
@@ -120,8 +126,14 @@ export function saveChunkCache(
 
   const jsonContent = JSON.stringify(sortedHashes, null, 2) + "\n";
   fs.writeFileSync(jsonPath, jsonContent);
-  fs.writeFileSync(i8Path, Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength));
-  fs.writeFileSync(scalePath, Buffer.from(scales.buffer, scales.byteOffset, scales.byteLength));
+  fs.writeFileSync(
+    i8Path,
+    Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength),
+  );
+  fs.writeFileSync(
+    scalePath,
+    Buffer.from(scales.buffer, scales.byteOffset, scales.byteLength),
+  );
 
   const totalBytes =
     Buffer.byteLength(jsonContent) + qTable.byteLength + scales.byteLength;

@@ -14,13 +14,13 @@
  * to bypass (local debugging only).
  */
 
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { spawnSync } from 'child_process';
-import { rootDir } from '../../core/paths.ts';
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { spawnSync } from "child_process";
+import { rootDir } from "../../core/paths.ts";
 
-export const UNSAFE_NO_SANDBOX_ENV = 'GD_UNSAFE_NO_SANDBOX';
+export const UNSAFE_NO_SANDBOX_ENV = "GD_UNSAFE_NO_SANDBOX";
 
 export interface SandboxPolicy {
   /** Directory that is hidden from the agent. */
@@ -55,39 +55,51 @@ function realpathOrSelf(p: string): string {
  *   `.jetski`, `.jetski-server`, `.pi`, `.guidance_logs`) and top-level non-dot
  *   directories in the user's home directory (e.g. an additional checkout of `modern-web-guidance-src`).
  */
-export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.platform): string[] {
+export function defaultExtraHiddenPaths(
+  platform: NodeJS.Platform = process.platform,
+): string[] {
   const homedir = os.userInfo().homedir;
   const resolvedRoot = realpathOrSelf(rootDir);
   const resolvedExec = realpathOrSelf(process.execPath);
-  const resolvedPathEntries = (process.env.PATH ?? '')
+  const resolvedPathEntries = (process.env.PATH ?? "")
     .split(path.delimiter)
     .filter(Boolean)
     .map(realpathOrSelf);
   const hiddenDotDirs = [
-    '.gemini',
-    '.claude',
-    '.codex',
-    '.jetski',
-    '.jetski-server',
-    '.pi',
-    '.guidance_logs',
+    ".gemini",
+    ".claude",
+    ".codex",
+    ".jetski",
+    ".jetski-server",
+    ".pi",
+    ".guidance_logs",
   ];
-  const dirs = hiddenDotDirs.map(name => path.join(homedir, name));
+  const dirs = hiddenDotDirs.map((name) => path.join(homedir, name));
   try {
     for (const entry of fs.readdirSync(homedir, { withFileTypes: true })) {
-      if ((entry.isDirectory() || entry.isSymbolicLink()) && !entry.name.startsWith('.')) {
-        if (platform === 'darwin' && entry.name === 'Library') {
+      if (
+        (entry.isDirectory() || entry.isSymbolicLink()) &&
+        !entry.name.startsWith(".")
+      ) {
+        if (platform === "darwin" && entry.name === "Library") {
           continue;
         }
         const dirPath = path.join(homedir, entry.name);
         const resolvedDir = realpathOrSelf(dirPath);
-        if (!fs.existsSync(resolvedDir) || !fs.statSync(resolvedDir).isDirectory()) {
+        if (
+          !fs.existsSync(resolvedDir) ||
+          !fs.statSync(resolvedDir).isDirectory()
+        ) {
           continue;
         }
-        const protectsRoot = resolvedDir === resolvedRoot || resolvedRoot.startsWith(resolvedDir + path.sep);
-        const protectsExec = resolvedDir === resolvedExec || resolvedExec.startsWith(resolvedDir + path.sep);
+        const protectsRoot =
+          resolvedDir === resolvedRoot ||
+          resolvedRoot.startsWith(resolvedDir + path.sep);
+        const protectsExec =
+          resolvedDir === resolvedExec ||
+          resolvedExec.startsWith(resolvedDir + path.sep);
         const protectsPath = resolvedPathEntries.some(
-          p => p === resolvedDir || p.startsWith(resolvedDir + path.sep)
+          (p) => p === resolvedDir || p.startsWith(resolvedDir + path.sep),
         );
         if (!protectsRoot && !protectsExec && !protectsPath) {
           dirs.push(dirPath);
@@ -97,12 +109,15 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
   } catch {
     // Ignore if homedir cannot be enumerated
   }
-  if (platform === 'linux') {
-    dirs.unshift('/tmp');
+  if (platform === "linux") {
+    dirs.unshift("/tmp");
   } else {
     const euid = process.geteuid?.();
-    const pwCacheDir = process.env.PWTEST_CACHE_DIR
-      || (euid !== undefined ? path.join(os.tmpdir(), `playwright-transform-cache-${euid}`) : undefined);
+    const pwCacheDir =
+      process.env.PWTEST_CACHE_DIR ||
+      (euid !== undefined
+        ? path.join(os.tmpdir(), `playwright-transform-cache-${euid}`)
+        : undefined);
     if (pwCacheDir) {
       fs.mkdirSync(pwCacheDir, { recursive: true });
       dirs.unshift(pwCacheDir);
@@ -122,7 +137,7 @@ export function buildSandboxPolicy(
   homeOrWorkDir: string,
   runType: string,
   repoRoot: string = rootDir,
-  extraHidden: string[] = defaultExtraHiddenPaths()
+  extraHidden: string[] = defaultExtraHiddenPaths(),
 ): SandboxPolicy {
   const hiddenDir = realpathOrSelf(repoRoot);
   const isDir = (p: string) => fs.existsSync(p) && fs.statSync(p).isDirectory();
@@ -131,27 +146,32 @@ export function buildSandboxPolicy(
       extraHidden
         .filter(isDir)
         .map(realpathOrSelf)
-        .filter(p => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep))
+        .filter((p) => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep)),
     ),
   ];
 
   const readOnlyPaths = [
     // Agent CLI binaries (claude/codex/pi) and their pnpm-linked dependencies.
-    path.join(repoRoot, 'node_modules'),
+    path.join(repoRoot, "node_modules"),
   ];
   const writablePaths: string[] = [];
-  if (runType === 'guided') {
+  if (runType === "guided") {
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
-    const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
+    const skillsCliDir = path.join(repoRoot, "dist", "skills-cli");
     readOnlyPaths.push(skillsCliDir);
   }
 
   // When /tmp is mounted as a fresh tmpfs, re-bind the agent's isolated HOME inside /tmp.
-  const tmpRoot = realpathOrSelf('/tmp');
+  const tmpRoot = realpathOrSelf("/tmp");
   const candidate = [homeOrWorkDir, process.env.HOME]
-    .filter((p): p is string => typeof p === 'string' && fs.existsSync(p))
+    .filter((p): p is string => typeof p === "string" && fs.existsSync(p))
     .map(realpathOrSelf)
-    .find(p => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep) && p.startsWith(tmpRoot + path.sep));
+    .find(
+      (p) =>
+        p !== hiddenDir &&
+        !p.startsWith(hiddenDir + path.sep) &&
+        p.startsWith(tmpRoot + path.sep),
+    );
   if (candidate && extraHiddenPaths.includes(tmpRoot)) {
     writablePaths.push(candidate);
   }
@@ -159,9 +179,15 @@ export function buildSandboxPolicy(
   const isInside = (p: string) =>
     p === hiddenDir ||
     p.startsWith(hiddenDir + path.sep) ||
-    extraHiddenPaths.some(h => p.startsWith(h + path.sep));
-  const resolveExisting = (paths: string[]) =>
-    [...new Set(paths.filter(p => fs.existsSync(p)).map(realpathOrSelf).filter(isInside))];
+    extraHiddenPaths.some((h) => p.startsWith(h + path.sep));
+  const resolveExisting = (paths: string[]) => [
+    ...new Set(
+      paths
+        .filter((p) => fs.existsSync(p))
+        .map(realpathOrSelf)
+        .filter(isInside),
+    ),
+  ];
 
   return {
     hiddenDir,
@@ -172,18 +198,18 @@ export function buildSandboxPolicy(
 }
 
 function hasBinary(name: string): boolean {
-  return spawnSync('which', [name], { stdio: 'ignore' }).status === 0;
+  return spawnSync("which", [name], { stdio: "ignore" }).status === 0;
 }
 
 function bindOrSymlink(args: string[], p: string): void {
   try {
     const lst = fs.lstatSync(p);
     if (lst.isSymbolicLink()) {
-      args.push('--symlink', fs.readlinkSync(p), p);
+      args.push("--symlink", fs.readlinkSync(p), p);
     } else {
       // --bind-try: /run entries are transient (pid files, sockets); skip any
       // that vanish between enumeration and mount instead of aborting bwrap.
-      args.push('--bind-try', p, p);
+      args.push("--bind-try", p, p);
     }
   } catch {
     // Ignore transient entries in /run
@@ -199,7 +225,7 @@ function bindOrSymlink(args: string[], p: string): void {
  * current-user entries with mode 0755 makes them owned by the current user
  * inside the namespace while preserving all `/run` entries.
  */
-function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
+function appendRunDirMounts(args: string[], runDir: string = "/run"): void {
   const uid = process.getuid?.();
   if (uid === undefined || !fs.existsSync(runDir)) return;
 
@@ -216,7 +242,7 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
     try {
       if (!fs.lstatSync(p).isDirectory()) continue;
       const subEntries = fs.readdirSync(p);
-      const hasUserEntry = subEntries.some(sub => {
+      const hasUserEntry = subEntries.some((sub) => {
         try {
           return fs.lstatSync(path.join(p, sub)).uid === uid;
         } catch {
@@ -231,12 +257,12 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
 
   if (dirsWithUserEntries.size === 0) return;
 
-  args.push('--perms', '0755', '--tmpfs', runDir);
+  args.push("--perms", "0755", "--tmpfs", runDir);
   for (const name of entries) {
     const p = path.join(runDir, name);
     const subEntries = dirsWithUserEntries.get(name);
     if (subEntries) {
-      args.push('--perms', '0755', '--dir', p);
+      args.push("--perms", "0755", "--dir", p);
       for (const sub of subEntries) {
         bindOrSymlink(args, path.join(p, sub));
       }
@@ -246,14 +272,32 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
   }
 }
 
-export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
-  const args = ['--dev-bind', '/', '/', '--unshare-pid', '--proc', '/proc', '--die-with-parent', '--perms', '0555', '--tmpfs', policy.hiddenDir];
-  for (const p of policy.extraHiddenPaths ?? []) args.push('--tmpfs', p);
-  for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
-  for (const p of policy.writablePaths) args.push('--bind', p, p);
-  for (const f of policy.hiddenFiles ?? []) args.push('--ro-bind', '/dev/null', f);
+export function buildBwrapArgs(
+  command: string,
+  commandArgs: string[],
+  policy: SandboxPolicy,
+  runDir: string = "/run",
+): string[] {
+  const args = [
+    "--dev-bind",
+    "/",
+    "/",
+    "--unshare-pid",
+    "--proc",
+    "/proc",
+    "--die-with-parent",
+    "--perms",
+    "0555",
+    "--tmpfs",
+    policy.hiddenDir,
+  ];
+  for (const p of policy.extraHiddenPaths ?? []) args.push("--tmpfs", p);
+  for (const p of policy.readOnlyPaths) args.push("--ro-bind", p, p);
+  for (const p of policy.writablePaths) args.push("--bind", p, p);
+  for (const f of policy.hiddenFiles ?? [])
+    args.push("--ro-bind", "/dev/null", f);
   appendRunDirMounts(args, runDir);
-  args.push('--', command, ...commandArgs);
+  args.push("--", command, ...commandArgs);
   return args;
 }
 
@@ -271,16 +315,22 @@ function ancestorsWithin(p: string, root: string): string[] {
   return result;
 }
 
-export function buildSeatbeltArgs(command: string, commandArgs: string[], policy: SandboxPolicy): string[] {
-  const params: string[] = ['-D', `HIDDEN=${policy.hiddenDir}`];
+export function buildSeatbeltArgs(
+  command: string,
+  commandArgs: string[],
+  policy: SandboxPolicy,
+): string[] {
+  const params: string[] = ["-D", `HIDDEN=${policy.hiddenDir}`];
   const rules: string[] = [
-    '(version 1)',
-    '(allow default)',
+    "(version 1)",
+    "(allow default)",
     '(deny file-read* file-write* (subpath (param "HIDDEN")))',
   ];
   (policy.extraHiddenPaths ?? []).forEach((p, idx) => {
-    params.push('-D', `XHIDDEN${idx}=${p}`);
-    rules.push(`(deny file-read* file-write* (subpath (param "XHIDDEN${idx}")))`);
+    params.push("-D", `XHIDDEN${idx}=${p}`);
+    rules.push(
+      `(deny file-read* file-write* (subpath (param "XHIDDEN${idx}")))`,
+    );
   });
 
   // Later rules take precedence in SBPL. Allow stat() (but not listing) on the
@@ -295,15 +345,19 @@ export function buildSeatbeltArgs(command: string, commandArgs: string[], policy
   let i = 0;
   const addParam = (value: string) => {
     const name = `P${i++}`;
-    params.push('-D', `${name}=${value}`);
+    params.push("-D", `${name}=${value}`);
     return `(param "${name}")`;
   };
-  for (const a of ancestors) rules.push(`(allow file-read-metadata (literal ${addParam(a)}))`);
-  for (const p of policy.readOnlyPaths) rules.push(`(allow file-read* (subpath ${addParam(p)}))`);
-  for (const p of policy.writablePaths) rules.push(`(allow file-read* file-write* (subpath ${addParam(p)}))`);
-  for (const f of policy.hiddenFiles ?? []) rules.push(`(deny file-read* file-write* (literal ${addParam(f)}))`);
+  for (const a of ancestors)
+    rules.push(`(allow file-read-metadata (literal ${addParam(a)}))`);
+  for (const p of policy.readOnlyPaths)
+    rules.push(`(allow file-read* (subpath ${addParam(p)}))`);
+  for (const p of policy.writablePaths)
+    rules.push(`(allow file-read* file-write* (subpath ${addParam(p)}))`);
+  for (const f of policy.hiddenFiles ?? [])
+    rules.push(`(deny file-read* file-write* (literal ${addParam(f)}))`);
 
-  return [...params, '-p', rules.join('\n'), command, ...commandArgs];
+  return [...params, "-p", rules.join("\n"), command, ...commandArgs];
 }
 
 /**
@@ -314,26 +368,40 @@ export function wrapCommandInSandbox(
   command: string,
   commandArgs: string[],
   policy: SandboxPolicy,
-  platform: NodeJS.Platform = process.platform
+  platform: NodeJS.Platform = process.platform,
 ): { command: string; commandArgs: string[] } {
-  if (process.env[UNSAFE_NO_SANDBOX_ENV] === '1') {
-    console.warn(`⚠️  ${UNSAFE_NO_SANDBOX_ENV}=1: running agent WITHOUT a filesystem sandbox. The agent can read guides and graders.`);
+  if (process.env[UNSAFE_NO_SANDBOX_ENV] === "1") {
+    console.warn(
+      `⚠️  ${UNSAFE_NO_SANDBOX_ENV}=1: running agent WITHOUT a filesystem sandbox. The agent can read guides and graders.`,
+    );
     return { command, commandArgs };
   }
 
-  if (platform === 'linux') {
-    if (!hasBinary('bwrap')) {
-      throw new Error(`bubblewrap (bwrap) is required to sandbox eval agents on Linux. Install it (e.g. 'sudo apt install bubblewrap') or set ${UNSAFE_NO_SANDBOX_ENV}=1 for local debugging.`);
+  if (platform === "linux") {
+    if (!hasBinary("bwrap")) {
+      throw new Error(
+        `bubblewrap (bwrap) is required to sandbox eval agents on Linux. Install it (e.g. 'sudo apt install bubblewrap') or set ${UNSAFE_NO_SANDBOX_ENV}=1 for local debugging.`,
+      );
     }
-    return { command: 'bwrap', commandArgs: buildBwrapArgs(command, commandArgs, policy) };
+    return {
+      command: "bwrap",
+      commandArgs: buildBwrapArgs(command, commandArgs, policy),
+    };
   }
 
-  if (platform === 'darwin') {
-    if (!hasBinary('sandbox-exec')) {
-      throw new Error(`sandbox-exec is required to sandbox eval agents on macOS. Set ${UNSAFE_NO_SANDBOX_ENV}=1 for local debugging.`);
+  if (platform === "darwin") {
+    if (!hasBinary("sandbox-exec")) {
+      throw new Error(
+        `sandbox-exec is required to sandbox eval agents on macOS. Set ${UNSAFE_NO_SANDBOX_ENV}=1 for local debugging.`,
+      );
     }
-    return { command: 'sandbox-exec', commandArgs: buildSeatbeltArgs(command, commandArgs, policy) };
+    return {
+      command: "sandbox-exec",
+      commandArgs: buildSeatbeltArgs(command, commandArgs, policy),
+    };
   }
 
-  throw new Error(`No filesystem sandbox is available on platform '${platform}'. Set ${UNSAFE_NO_SANDBOX_ENV}=1 to run unsandboxed.`);
+  throw new Error(
+    `No filesystem sandbox is available on platform '${platform}'. Set ${UNSAFE_NO_SANDBOX_ENV}=1 to run unsandboxed.`,
+  );
 }

@@ -9,37 +9,45 @@
  * All other `npx` calls fall back to the real system `npx`.
  */
 
-import { spawn, spawnSync } from 'child_process';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { spawn, spawnSync } from "child_process";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
-const invokedBin = path.basename(process.argv[1] || 'npx');
+const invokedBin = path.basename(process.argv[1] || "npx");
 const args = process.argv.slice(2);
-const pkgIdx = args.findIndex(a => /^modern-web-guidance(?:@.*)?$/.test(a));
+const pkgIdx = args.findIndex((a) => /^modern-web-guidance(?:@.*)?$/.test(a));
 
 if (pkgIdx !== -1) {
   const pkgSpec = args[pkgIdx];
   const remainingArgs = args.slice(pkgIdx + 1);
   const localCliPath = "__LOCAL_CLI_PATH__";
   if (!localCliPath || !fs.existsSync(localCliPath)) {
-    console.error(`npm error 404 Not Found - GET https://registry.npmjs.org/${pkgSpec} - Not found`);
+    console.error(
+      `npm error 404 Not Found - GET https://registry.npmjs.org/${pkgSpec} - Not found`,
+    );
     process.exit(1);
   }
 
   // Execute the local CLI instead of fetching from registry
-  const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], { stdio: 'inherit' });
+  const result = spawnSync(process.execPath, [localCliPath, ...remainingArgs], {
+    stdio: "inherit",
+  });
   process.exit(result.status ?? 0);
 }
 
 // Fallback to real binary (npx, pnpx, or pnpm)
-const currentDir = fs.realpathSync(path.dirname(fileURLToPath(import.meta.url)));
+const currentDir = fs.realpathSync(
+  path.dirname(fileURLToPath(import.meta.url)),
+);
 
 // Find all matching binaries in PATH
-const binPaths = spawnSync('which', ['-a', invokedBin], { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
+const binPaths = spawnSync("which", ["-a", invokedBin], { encoding: "utf8" })
+  .stdout.split("\n")
+  .filter(Boolean);
 
 // Find the first one that does not resolve to our shim directory
-const realBin = binPaths.find(p => {
+const realBin = binPaths.find((p) => {
   try {
     return path.dirname(fs.realpathSync(p)) !== currentDir;
   } catch {
@@ -55,41 +63,43 @@ if (!realBin) {
 const env = { ...process.env };
 if (env.PATH) {
   const pathDirs = env.PATH.split(path.delimiter);
-  env.PATH = pathDirs.filter(d => {
-    try {
-      return d !== currentDir && fs.realpathSync(d) !== currentDir;
-    } catch {
-      return d !== currentDir;
-    }
-  }).join(path.delimiter);
+  env.PATH = pathDirs
+    .filter((d) => {
+      try {
+        return d !== currentDir && fs.realpathSync(d) !== currentDir;
+      } catch {
+        return d !== currentDir;
+      }
+    })
+    .join(path.delimiter);
 }
 
 const child = spawn(realBin, args, {
-  stdio: [process.stdin.isTTY ? 'ignore' : 'inherit', 'inherit', 'inherit'],
+  stdio: [process.stdin.isTTY ? "ignore" : "inherit", "inherit", "inherit"],
   env,
-  detached: true
+  detached: true,
 });
 
 const killGroup = () => {
   try {
-    if (child.pid) process.kill(-child.pid, 'SIGKILL');
+    if (child.pid) process.kill(-child.pid, "SIGKILL");
   } catch {
     // Process group already exited
   }
 };
 
-for (const sig of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+for (const sig of ["SIGTERM", "SIGINT", "SIGHUP"]) {
   process.on(sig, () => {
     killGroup();
   });
 }
 
-child.on('error', (err) => {
+child.on("error", (err) => {
   console.error(err);
   process.exit(1);
 });
 
-child.on('exit', (code, signal) => {
+child.on("exit", (code, signal) => {
   killGroup();
   process.exit(code ?? (signal ? 1 : 0));
 });

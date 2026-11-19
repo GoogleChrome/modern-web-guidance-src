@@ -13,6 +13,7 @@ Onboarding tours require overlays that persist while users interact with the hig
 ## Recommended Implementation
 
 ### HTML
+
 ```html
 <div id="feature-target">Highlight this feature</div>
 
@@ -25,6 +26,7 @@ Onboarding tours require overlays that persist while users interact with the hig
 ```
 
 ### CSS
+
 ```css
 #feature-target {
   anchor-name: --feature-target;
@@ -44,8 +46,9 @@ Onboarding tours require overlays that persist while users interact with the hig
 ```
 
 ### JavaScript
+
 ```javascript
-const tourStep = document.getElementById('tour-step');
+const tourStep = document.getElementById("tour-step");
 tourStep.showPopover();
 
 // At this point, as this is an initial onboarding tour popover, set the rest of the document to be inert. Ensure that the onboarding modal popover is not a child of this element, otherwise it too will be rendered inert and therefore inaccessible.
@@ -54,16 +57,16 @@ const main = document.querySelector("main");
 main.inert = true;
 
 // MANDATORY: Programmatically route focus into the non-modal popover so keyboard/assistive technology users immediately perceive the new context
-tourStep.querySelector('button').focus();
+tourStep.querySelector("button").focus();
 ```
 
 ## Implementation Guidelines
 
-* **MANDATORY:** Use `popover="manual"` to prevent the tour step from closing accidentally during user interaction.
-* **MANDATORY:** Mark the container with `role="dialog"` and link its heading via `aria-labelledby`.
-* **MANDATORY:** Shift programmatic focus inside the popover immediately after opening to prevent focus abandonment.
-* **DO** use CSS Anchor Positioning to tether the tour step to the specific feature being explained.
-* **DO** provide an explicit "Close" or "Next" button within the popover that uses `popovertargetaction="hide"`.
+- **MANDATORY:** Use `popover="manual"` to prevent the tour step from closing accidentally during user interaction.
+- **MANDATORY:** Mark the container with `role="dialog"` and link its heading via `aria-labelledby`.
+- **MANDATORY:** Shift programmatic focus inside the popover immediately after opening to prevent focus abandonment.
+- **DO** use CSS Anchor Positioning to tether the tour step to the specific feature being explained.
+- **DO** provide an explicit "Close" or "Next" button within the popover that uses `popovertargetaction="hide"`.
 
 ## Accessibility considerations
 

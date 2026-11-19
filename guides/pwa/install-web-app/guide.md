@@ -22,29 +22,29 @@ Use either the HTML `<install>` element or the JavaScript
 Decide to use either the HTML `<install>` element or the JavaScript
 `navigator.install()` method based on the following considerations.
 
-* `<install>` element:
+- `<install>` element:
   {# Dynamic "Launch" label for installed apps is not currently supported due to installed-state privacy constraints (crbug.com/485281836). #}
-  * Pros:
-    * The browser provides the install control, ensuring a consistent and
+  - Pros:
+    - The browser provides the install control, ensuring a consistent and
       trustworthy installation experience.
-    * Installing another app does not trigger a separate permission prompt
+    - Installing another app does not trigger a separate permission prompt
       before the installation confirmation dialog.
-    * No JavaScript is required to trigger the installation.
-  * Cons:
-    * Visual customization of the button is restricted.
-    * The number of `<install>` elements on a page is capped by user-agent
+    - No JavaScript is required to trigger the installation.
+  - Cons:
+    - Visual customization of the button is restricted.
+    - The number of `<install>` elements on a page is capped by user-agent
       anti-spam limits, making `navigator.install()` a better fit for large app
       catalogs. {# Chromium currently caps install elements at 24 per page. #}
 
-* JavaScript `navigator.install()` method:
+- JavaScript `navigator.install()` method:
 
-  * Pros:
-    * The installation UI can be fully customized to match the look and feel of
+  - Pros:
+    - The installation UI can be fully customized to match the look and feel of
       the website.
-    * The number of installation UI elements is not limited by the browser.
-  * Cons:
-    * Requires JavaScript to trigger the installation.
-    * Installing another app triggers an initial `web-app-installation`
+    - The number of installation UI elements is not limited by the browser.
+  - Cons:
+    - Requires JavaScript to trigger the installation.
+    - Installing another app triggers an initial `web-app-installation`
       permission prompt before the installation confirmation dialog.
 
 ## Prepare the web app
@@ -55,7 +55,7 @@ For installation of the current app, link the manifest from the document.
 
 ```html
 <!-- The current document's manifest is used by the no-argument install APIs. -->
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest" />
 ```
 
 ```json
@@ -140,12 +140,12 @@ installation prompts.
 Listen for the `installresult` event to handle installation success and errors
 and use the `event.result` property to determine the outcome:
 
-* `"success"`: the app was installed, or the user approved an action (such as
+- `"success"`: the app was installed, or the user approved an action (such as
   opening) for an already-installed app. Pages cannot distinguish between these
   two cases.
-* `"aborted"`: the user canceled the installation or a browser condition
+- `"aborted"`: the user canceled the installation or a browser condition
   prevented the installation from completing.
-* `"invalid-data"`: the `manifest` or `manifestid` attribute values, manifest
+- `"invalid-data"`: the `manifest` or `manifestid` attribute values, manifest
   response, or required manifest fields are invalid.
 
 ```html
@@ -188,8 +188,7 @@ call retains the required transient user activation.
 <script type="module">
   const installButton = document.querySelector("#install-app");
   const installStatus = document.querySelector("#install-status");
-  const supportsWebInstall =
-    typeof Navigator.prototype.install === "function";
+  const supportsWebInstall = typeof Navigator.prototype.install === "function";
 
   if (supportsWebInstall) {
     installButton.hidden = false;
@@ -210,7 +209,8 @@ call retains the required transient user activation.
     } catch (error) {
       if (error.name === "AbortError") {
         // Cancellation is an expected user choice; keep the button available to retry.
-        installStatus.textContent = "Installation was canceled or could not complete.";
+        installStatus.textContent =
+          "Installation was canceled or could not complete.";
       } else {
         installStatus.textContent = "Installation could not start.";
         // Surface invalid manifests and unexpected platform failures to developers.
@@ -261,24 +261,24 @@ an already-installed app. Pages cannot distinguish between these two cases.
 The promise rejects with the following errors if the installation fails or is
 canceled:
 
-* `AbortError`:
-  * The user aborted the installation.
-  * The permission was denied.
-  * The environment doesn't support installation.
-  * Multiple concurrent installation attempts.
-  * A page navigation occurred during the installation process.
-* `DataError`:
-  * Missing linked manifest, invalid or unreachable manifest URL, redirect, or non-JSON `Content-Type` header.
-  * Missing required manifest fields, or `start_url` is not same-origin with `manifest`.
-  * The manifest omits `id` and no `manifestId` was provided, or `manifestId` does not match the manifest's processed ID.
-* `NotAllowedError`:
-  * Missing transient user activation.
-* `TypeError`:
-  * An options argument omits `manifest`, or `manifest` or `manifestId` is empty or cannot be parsed as a URL.
-* `InvalidStateError`:
-  * The API was called from a detached document, subframe, or fenced frame.
-* `SecurityError`:
-  * The `web-app-installation` Permissions Policy is disabled or the document is sandboxed.
+- `AbortError`:
+  - The user aborted the installation.
+  - The permission was denied.
+  - The environment doesn't support installation.
+  - Multiple concurrent installation attempts.
+  - A page navigation occurred during the installation process.
+- `DataError`:
+  - Missing linked manifest, invalid or unreachable manifest URL, redirect, or non-JSON `Content-Type` header.
+  - Missing required manifest fields, or `start_url` is not same-origin with `manifest`.
+  - The manifest omits `id` and no `manifestId` was provided, or `manifestId` does not match the manifest's processed ID.
+- `NotAllowedError`:
+  - Missing transient user activation.
+- `TypeError`:
+  - An options argument omits `manifest`, or `manifest` or `manifestId` is empty or cannot be parsed as a URL.
+- `InvalidStateError`:
+  - The API was called from a detached document, subframe, or fenced frame.
+- `SecurityError`:
+  - The `web-app-installation` Permissions Policy is disabled or the document is sandboxed.
 
 ## Fallback strategies
 
@@ -340,8 +340,7 @@ user's choice and hide the button unless a new `beforeinstallprompt` event fires
 ```js
 const installButton = document.querySelector("#install-app");
 const installStatus = document.querySelector("#install-status");
-const supportsWebInstall =
-  typeof Navigator.prototype.install === "function";
+const supportsWebInstall = typeof Navigator.prototype.install === "function";
 let deferredInstallPrompt;
 
 if (supportsWebInstall) {
@@ -389,7 +388,8 @@ installButton.addEventListener("click", async () => {
   } catch (error) {
     if (error.name === "AbortError") {
       // Cancellation is an expected user choice; keep the button available to retry.
-      installStatus.textContent = "Installation was canceled or could not complete.";
+      installStatus.textContent =
+        "Installation was canceled or could not complete.";
     } else {
       installStatus.textContent = "Installation could not start.";
       console.error(error);

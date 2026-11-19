@@ -10,14 +10,22 @@ const { values } = parseArgs({
   options: {
     "base-ref": { type: "string" },
     "baseline-dir": { type: "string" },
-    "output-path": { type: "string" }
-  }
+    "output-path": { type: "string" },
+  },
 });
 
-const TARGET_REF = values["base-ref"] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : "origin/main");
-const BASELINE_DIR = values["baseline-dir"] || process.env.BASELINE_BUILD_DIR || "/tmp/guides-baseline";
+const TARGET_REF =
+  values["base-ref"] ||
+  (process.env.GITHUB_BASE_REF
+    ? `origin/${process.env.GITHUB_BASE_REF}`
+    : "origin/main");
+const BASELINE_DIR =
+  values["baseline-dir"] ||
+  process.env.BASELINE_BUILD_DIR ||
+  "/tmp/guides-baseline";
 const BRANCH_DIR = path.join(outDir, "build/skills-cli/guides");
-const OUTPUT_PATH = values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
+const OUTPUT_PATH =
+  values["output-path"] || process.env.REPORT_OUTPUT_PATH || "";
 const TEMP_REPO_DIR = "/tmp/guides-baseline-repo";
 
 // Decoupled safe execution environment mapping
@@ -25,8 +33,12 @@ const safeEnv = { ...process.env };
 delete safeEnv.GIT_DIR;
 delete safeEnv.GIT_WORK_TREE;
 // Clear any GIT_CONFIG variables that might be set by the environment to prevent interference
-Object.keys(safeEnv).forEach(key => {
-  if (key.startsWith('GIT_CONFIG_') && key !== 'GIT_CONFIG_GLOBAL' && key !== 'GIT_CONFIG_SYSTEM') {
+Object.keys(safeEnv).forEach((key) => {
+  if (
+    key.startsWith("GIT_CONFIG_") &&
+    key !== "GIT_CONFIG_GLOBAL" &&
+    key !== "GIT_CONFIG_SYSTEM"
+  ) {
     delete safeEnv[key];
   }
 });
@@ -36,7 +48,12 @@ delete safeEnv.GIT_PAGER;
 let mergeBase = "";
 
 function runCommand(cmd: string, cwd?: string): string {
-  return execSync(cmd, { cwd, env: safeEnv, encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  return execSync(cmd, {
+    cwd,
+    env: safeEnv,
+    encoding: "utf-8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
 }
 
 function setupBaselineWorkspace() {
@@ -49,18 +66,32 @@ function setupBaselineWorkspace() {
     runCommand(`git worktree add --detach "${TEMP_REPO_DIR}" "${mergeBase}"`);
 
     console.log("Compiling baseline visual guides...");
-    execSync("pnpm install --frozen-lockfile", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
-    execSync("pnpm build", { cwd: TEMP_REPO_DIR, env: safeEnv, stdio: "inherit" });
+    execSync("pnpm install --frozen-lockfile", {
+      cwd: TEMP_REPO_DIR,
+      env: safeEnv,
+      stdio: "inherit",
+    });
+    execSync("pnpm build", {
+      cwd: TEMP_REPO_DIR,
+      env: safeEnv,
+      stdio: "inherit",
+    });
 
     fs.rmSync(BASELINE_DIR, { recursive: true, force: true });
     fs.mkdirSync(BASELINE_DIR, { recursive: true });
-    const baselineGuidesDir = path.join(TEMP_REPO_DIR, "out/build/skills-cli/guides");
+    const baselineGuidesDir = path.join(
+      TEMP_REPO_DIR,
+      "out/build/skills-cli/guides",
+    );
     if (!fs.existsSync(baselineGuidesDir)) {
       throw new Error(`Baseline guides not found at ${baselineGuidesDir}`);
     }
     fs.cpSync(baselineGuidesDir, BASELINE_DIR, { recursive: true });
   } catch (err) {
-    console.error("Fatal: Failed to bootstrap baseline comparison guide assets.", err);
+    console.error(
+      "Fatal: Failed to bootstrap baseline comparison guide assets.",
+      err,
+    );
     process.exit(1);
   } finally {
     try {
@@ -71,14 +102,16 @@ function setupBaselineWorkspace() {
 
 function getModifiedGuides(): string[] {
   try {
-    const modified = Array.from(new Set(
-      runCommand(`git diff --name-only ${mergeBase} HEAD`)
-        .split("\n")
-        .filter(f => f.startsWith("guides/"))
-        .map(f => f.split("/"))
-        .filter(parts => parts.length >= 3 && parts[1] !== "lib")
-        .map(parts => `${parts[1]}/${parts[2]}`)
-    ));
+    const modified = Array.from(
+      new Set(
+        runCommand(`git diff --name-only ${mergeBase} HEAD`)
+          .split("\n")
+          .filter((f) => f.startsWith("guides/"))
+          .map((f) => f.split("/"))
+          .filter((parts) => parts.length >= 3 && parts[1] !== "lib")
+          .map((parts) => `${parts[1]}/${parts[2]}`),
+      ),
+    );
     console.log(`Git detected ${modified.length} modified guides.`);
     return modified;
   } catch (err) {
@@ -87,9 +120,19 @@ function getModifiedGuides(): string[] {
   }
 }
 
-const readOrNull = (p: string): string | null => { try { return fs.readFileSync(p, "utf-8"); } catch { return null; } };
+const readOrNull = (p: string): string | null => {
+  try {
+    return fs.readFileSync(p, "utf-8");
+  } catch {
+    return null;
+  }
+};
 
-export function compareGuides(modifiedGuides: string[], baseline: string = BASELINE_DIR, branch: string = BRANCH_DIR): string {
+export function compareGuides(
+  modifiedGuides: string[],
+  baseline: string = BASELINE_DIR,
+  branch: string = BRANCH_DIR,
+): string {
   let [verbatimCount, editedCount] = [0, 0];
   let [verbatimList, editedList] = ["", ""];
   const diffSections: string[] = [];
@@ -101,23 +144,33 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
 
     const beforeText = readOrNull(beforeFile);
     if (beforeText === null) {
-      diffSections.push(`### 🆕 [NEW] ${guide}\n\nGuide newly created in this PR.\n`);
+      diffSections.push(
+        `### 🆕 [NEW] ${guide}\n\nGuide newly created in this PR.\n`,
+      );
       continue;
     }
 
     const afterText = readOrNull(afterFile);
     if (afterText === null) {
-      diffSections.push(`### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this PR.\n`);
+      diffSections.push(
+        `### 🗑️ [DELETED] ${guide}\n\nGuide deleted in this PR.\n`,
+      );
       continue;
     }
 
-    if (beforeText.replace(/\r\n/g, "\n").trim() === afterText.replace(/\r\n/g, "\n").trim()) {
+    if (
+      beforeText.replace(/\r\n/g, "\n").trim() ===
+      afterText.replace(/\r\n/g, "\n").trim()
+    ) {
       verbatimCount++;
       verbatimList += `- \`${guide}\`\n`;
     } else {
       const anchor = guide.replace(/\//g, "-");
       try {
-        execSync(`git diff --no-index --no-ext-diff --no-color --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`, { env: safeEnv, encoding: "utf-8" });
+        execSync(
+          `git diff --no-index --no-ext-diff --no-color --ignore-space-change --ignore-blank-lines "${beforeFile}" "${afterFile}"`,
+          { env: safeEnv, encoding: "utf-8" },
+        );
         // If no difference is resolved, classify as verbatim changes only
         verbatimCount++;
         verbatimList += `- \`${guide}\` (whitespace changes only)\n`;
@@ -125,9 +178,22 @@ export function compareGuides(modifiedGuides: string[], baseline: string = BASEL
         editedCount++;
         editedList += `- [${guide}](#user-content-${anchor})\n`;
         const diff = err.stdout
-          ? err.stdout.split("\n").slice(4).map((l: string) => l.startsWith("+") && !l.startsWith("+++") ? `+ ${l.slice(1)}` : l.startsWith("-") && !l.startsWith("---") ? `- ${l.slice(1)}` : l).join("\n").replace(/`/g, "`\u200b")
+          ? err.stdout
+              .split("\n")
+              .slice(4)
+              .map((l: string) =>
+                l.startsWith("+") && !l.startsWith("+++")
+                  ? `+ ${l.slice(1)}`
+                  : l.startsWith("-") && !l.startsWith("---")
+                    ? `- ${l.slice(1)}`
+                    : l,
+              )
+              .join("\n")
+              .replace(/`/g, "`\u200b")
           : "Error displaying differences.";
-        diffSections.push(`<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${diff}\n\`\`\`\n`);
+        diffSections.push(
+          `<h3 id="${anchor}">${guide}</h3>\n\n\`\`\`diff\n${diff}\n\`\`\`\n`,
+        );
       }
     }
   }
@@ -168,7 +234,9 @@ function main() {
 
   const modifiedGuides = getModifiedGuides();
   if (modifiedGuides.length === 0) {
-    writeReport("### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.");
+    writeReport(
+      "### 📝 Built Guides Diff Review\n\nNo modified guides detected compared to baseline.",
+    );
     return;
   }
 

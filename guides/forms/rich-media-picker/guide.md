@@ -24,12 +24,20 @@ To implement a rich media picker using the Customizable Select API:
 <label for="role-picker">Select your role</label>
 <select class="custom-select" name="role" id="role-picker">
   <button>
-    <selectedcontent></selectedcontent> <!-- Mirrors the selected option's content automatically so you do not need JS to update the button -->
+    <selectedcontent></selectedcontent>
+    <!-- Mirrors the selected option's content automatically so you do not need JS to update the button -->
   </button>
 
   <!-- Define concise aria-label values on options whose mirrored rich content would otherwise read awkwardly as a concatenated string -->
   <option value="frontend">
-    <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <svg
+      aria-hidden="true"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+    >
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
     </svg>
     <div class="option-text">
@@ -39,7 +47,14 @@ To implement a rich media picker using the Customizable Select API:
   </option>
 
   <option value="backend">
-    <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+    <svg
+      aria-hidden="true"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+    >
       <rect x="2" y="12" width="20" height="14" rx="2" ry="2"></rect>
     </svg>
     <div class="option-text">
@@ -75,7 +90,9 @@ select.custom-select::picker(select) {
   border-radius: 8px;
   padding: 8px;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-  width: anchor-size(width); /* Uses Anchor Positioning API to keep the dropdown precisely aligned to the button trigger width */
+  width: anchor-size(
+    width
+  ); /* Uses Anchor Positioning API to keep the dropdown precisely aligned to the button trigger width */
 }
 
 select.custom-select option {
@@ -125,8 +142,17 @@ Ensure that options have enough context to be understood in isolation, particula
 ```html
 <!-- Rich options -->
 <option value="frontend">
-  <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round">
+  <svg
+    aria-hidden="true"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
     <line x1="8" y1="21" x2="16" y2="21"></line>
     <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -143,8 +169,17 @@ To address this issue, ensure that the content makes sense, regardless of visual
 ```html
 <!-- Rich options -->
 <option value="frontend">
-  <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round">
+  <svg
+    aria-hidden="true"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
     <line x1="8" y1="21" x2="16" y2="21"></line>
     <line x1="12" y1="17" x2="12" y2="21"></line>

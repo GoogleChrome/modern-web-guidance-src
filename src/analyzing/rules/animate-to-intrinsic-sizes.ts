@@ -3,21 +3,35 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-} from '../schema.ts';
+} from "../schema.ts";
 
 const REPLACED_OR_FORM_SELECTOR_REGEX =
   /(?:^|[\s>+~,])(?:img|svg|video|canvas|textarea|input|select)\b/i;
 
-const IGNORED_MAX_HEIGHT_KEYWORDS = new Set(['none', 'initial', 'inherit', 'unset']);
-const PERCENT_OR_VIEWPORT_REGEX = /^\d+(?:\.\d+)?(?:%|vh|dvh|svh|lvh|vw|dvw|svw|lvw|vi|vb)$/i;
+const IGNORED_MAX_HEIGHT_KEYWORDS = new Set([
+  "none",
+  "initial",
+  "inherit",
+  "unset",
+]);
+const PERCENT_OR_VIEWPORT_REGEX =
+  /^\d+(?:\.\d+)?(?:%|vh|dvh|svh|lvh|vw|dvw|svw|lvw|vi|vb)$/i;
 
-function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string): boolean {
-  const lines = stylesheetText.split('\n');
+function isIntrinsicSizeMaxHeight(
+  styleRule: CssRuleView,
+  stylesheetText: string,
+): boolean {
+  const lines = stylesheetText.split("\n");
   const localWindow = lines
-    .slice(Math.max(0, styleRule.line - 21), Math.min(lines.length, styleRule.line + 20))
-    .join('\n');
+    .slice(
+      Math.max(0, styleRule.line - 21),
+      Math.min(lines.length, styleRule.line + 20),
+    )
+    .join("\n");
 
-  const ruleValue = (styleRule.getPropertyValue('max-height') ?? '').trim().toLowerCase();
+  const ruleValue = (styleRule.getPropertyValue("max-height") ?? "")
+    .trim()
+    .toLowerCase();
   const declaredValues = [
     ...(ruleValue ? [ruleValue] : []),
     ...Array.from(
@@ -29,12 +43,15 @@ function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string
     return false;
   }
 
-  const hasZeroDeclared = declaredValues.some((v) => v === '0' || v === '0px');
+  const hasZeroDeclared = declaredValues.some((v) => v === "0" || v === "0px");
   const nonZeroValues = declaredValues.filter(
-    (v) => v !== '0' && v !== '0px' && !IGNORED_MAX_HEIGHT_KEYWORDS.has(v),
+    (v) => v !== "0" && v !== "0px" && !IGNORED_MAX_HEIGHT_KEYWORDS.has(v),
   );
 
-  if (nonZeroValues.length > 0 && nonZeroValues.every((v) => PERCENT_OR_VIEWPORT_REGEX.test(v))) {
+  if (
+    nonZeroValues.length > 0 &&
+    nonZeroValues.every((v) => PERCENT_OR_VIEWPORT_REGEX.test(v))
+  ) {
     return false;
   }
 
@@ -50,59 +67,65 @@ function isIntrinsicSizeMaxHeight(styleRule: CssRuleView, stylesheetText: string
 }
 
 const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
-  kind: 'css',
-  fastTokens: [
-    ['max-height'],
-    ['transition'],
-  ],
+  kind: "css",
+  fastTokens: [["max-height"], ["transition"]],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     // 1. If stylesheet already opts into modern intrinsic sizing interpolation, skip
     if (
-      ctx.stylesheetHasProperty('interpolate-size') ||
-      ctx.stylesheetHasValue('calc-size(')
+      ctx.stylesheetHasProperty("interpolate-size") ||
+      ctx.stylesheetHasValue("calc-size(")
     ) {
       return null;
     }
 
     // 2. Skip scrollable containers where max-height acts as a viewport constraint
-    const overflow = (styleRule.getPropertyValue('overflow') ?? '').toLowerCase();
-    const overflowY = (styleRule.getPropertyValue('overflow-y') ?? '').toLowerCase();
+    const overflow = (
+      styleRule.getPropertyValue("overflow") ?? ""
+    ).toLowerCase();
+    const overflowY = (
+      styleRule.getPropertyValue("overflow-y") ?? ""
+    ).toLowerCase();
     if (
-      overflow === 'auto' ||
-      overflow === 'scroll' ||
-      overflowY === 'auto' ||
-      overflowY === 'scroll'
+      overflow === "auto" ||
+      overflow === "scroll" ||
+      overflowY === "auto" ||
+      overflowY === "scroll"
     ) {
       return null;
     }
 
     // 3. Inspect transition definitions
-    const transition = (styleRule.getPropertyValue('transition') ?? '').toLowerCase();
+    const transition = (
+      styleRule.getPropertyValue("transition") ?? ""
+    ).toLowerCase();
     const transitionProp = (
-      styleRule.getPropertyValue('transition-property') ?? ''
+      styleRule.getPropertyValue("transition-property") ?? ""
     ).toLowerCase();
 
-    if (transition === 'none' || transitionProp === 'none') {
+    if (transition === "none" || transitionProp === "none") {
       return null;
     }
 
-    const maxHeight = (styleRule.getPropertyValue('max-height') ?? '').toLowerCase();
-    if (maxHeight === 'none') {
+    const maxHeight = (
+      styleRule.getPropertyValue("max-height") ?? ""
+    ).toLowerCase();
+    if (maxHeight === "none") {
       return null;
     }
 
     // 4. Check whether max-height is explicitly transitioned, or transitioned via 'all'
     const explicitlyTransitionsMaxHeight =
-      transition.includes('max-height') || transitionProp.includes('max-height');
+      transition.includes("max-height") ||
+      transitionProp.includes("max-height");
     const transitionsAllWithCollapsibleMaxHeight =
       !explicitlyTransitionsMaxHeight &&
-      (transition.includes('all') || transitionProp.includes('all')) &&
-      styleRule.hasProperty('max-height') &&
+      (transition.includes("all") || transitionProp.includes("all")) &&
+      styleRule.hasProperty("max-height") &&
       !REPLACED_OR_FORM_SELECTOR_REGEX.test(styleRule.selectorText) &&
-      (maxHeight === '0' ||
-        maxHeight === '0px' ||
-        overflow.includes('hidden') ||
-        overflowY.includes('hidden'));
+      (maxHeight === "0" ||
+        maxHeight === "0px" ||
+        overflow.includes("hidden") ||
+        overflowY.includes("hidden"));
 
     const transitionsMaxHeight =
       explicitlyTransitionsMaxHeight || transitionsAllWithCollapsibleMaxHeight;
@@ -118,32 +141,30 @@ const animateToIntrinsicSizesCssMatcher: CssRuleMatcher = {
 
     return {
       message:
-        'CSS rule transitions max-height to animate dimensions; use interpolate-size: allow-keywords and animate height or block-size directly (keeping max-height fallback for cross-browser support).',
+        "CSS rule transitions max-height to animate dimensions; use interpolate-size: allow-keywords and animate height or block-size directly (keeping max-height fallback for cross-browser support).",
     };
   },
 };
 
 export const animateToIntrinsicSizesRule: AnalyzerRule = {
-  id: 'animate-to-intrinsic-sizes',
-  guideId: 'animate-to-intrinsic-sizes',
-  guideHash: '1193fea41a0b',
+  id: "animate-to-intrinsic-sizes",
+  guideId: "animate-to-intrinsic-sizes",
+  guideHash: "1193fea41a0b",
   summary:
-    'CSS transition on max-height simulates intrinsic size animation; modernize with interpolate-size: allow-keywords or calc-size().',
+    "CSS transition on max-height simulates intrinsic size animation; modernize with interpolate-size: allow-keywords or calc-size().",
   matcher: animateToIntrinsicSizesCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'The CSS rule animates or transitions max-height (or transitions all alongside a max-height declaration) to simulate accordion, dropdown, drawer, or modal expansion/collapse.',
-      'The element uses max-height as a proxy for natural content height because pure height cannot transition to auto without interpolate-size.',
+      "The CSS rule animates or transitions max-height (or transitions all alongside a max-height declaration) to simulate accordion, dropdown, drawer, or modal expansion/collapse.",
+      "The element uses max-height as a proxy for natural content height because pure height cannot transition to auto without interpolate-size.",
     ],
     dropWhen: [
-      'The container is a scrollable panel with overflow: scroll or overflow: auto where max-height defines a legitimate scrolling boundary.',
-      'The stylesheet already specifies interpolate-size: allow-keywords or uses calc-size().',
-      'The transition property is none or explicitly excludes height/max-height.',
-      'The max-height property is none or an unconstrained reset.',
+      "The container is a scrollable panel with overflow: scroll or overflow: auto where max-height defines a legitimate scrolling boundary.",
+      "The stylesheet already specifies interpolate-size: allow-keywords or uses calc-size().",
+      "The transition property is none or explicitly excludes height/max-height.",
+      "The max-height property is none or an unconstrained reset.",
     ],
   },
 };
 
-export default [
-  animateToIntrinsicSizesRule,
-] satisfies readonly AnalyzerRule[];
+export default [animateToIntrinsicSizesRule] satisfies readonly AnalyzerRule[];

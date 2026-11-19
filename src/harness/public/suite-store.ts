@@ -1,7 +1,7 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { Storage } from '@google-cloud/storage';
-import { mapWithConcurrency } from '../../core/concurrency.ts';
+import fs from "node:fs";
+import path from "node:path";
+import { Storage } from "@google-cloud/storage";
+import { mapWithConcurrency } from "../../core/concurrency.ts";
 
 /**
  * Read-only access to raw eval suites. The builder only needs two operations,
@@ -23,8 +23,8 @@ export interface SuiteRef {
   createdAt: Date;
 }
 
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
+const PROJECT_ID = "chrome-kiwi-air-force-dev";
+const BUCKET_NAME = "guidance-evals";
 
 /** Reads suites from `gs://guidance-evals` using Application Default Credentials. */
 export class GcsSuiteStore implements SuiteStore {
@@ -44,18 +44,29 @@ export class GcsSuiteStore implements SuiteStore {
     const prefixes: string[] = [];
     let pageToken: string | undefined;
     do {
-      const [, nextQuery, apiResponse] = await this.bucket.getFiles({ delimiter: '/', autoPaginate: false, pageToken });
-      prefixes.push(...((apiResponse as { prefixes?: string[] } | undefined)?.prefixes ?? []));
+      const [, nextQuery, apiResponse] = await this.bucket.getFiles({
+        delimiter: "/",
+        autoPaginate: false,
+        pageToken,
+      });
+      prefixes.push(
+        ...((apiResponse as { prefixes?: string[] } | undefined)?.prefixes ??
+          []),
+      );
       pageToken = (nextQuery as { pageToken?: string } | undefined)?.pageToken;
     } while (pageToken);
 
-    const refs = await mapWithConcurrency(prefixes, 64, async prefix => {
+    const refs = await mapWithConcurrency(prefixes, 64, async (prefix) => {
       try {
-        const [metadata] = await this.bucket.file(`${prefix}evals.json`).getMetadata();
+        const [metadata] = await this.bucket
+          .file(`${prefix}evals.json`)
+          .getMetadata();
         return {
-          id: prefix.replace(/\/$/, ''),
-          generation: String(metadata.generation ?? ''),
-          createdAt: metadata.timeCreated ? new Date(String(metadata.timeCreated)) : new Date(0),
+          id: prefix.replace(/\/$/, ""),
+          generation: String(metadata.generation ?? ""),
+          createdAt: metadata.timeCreated
+            ? new Date(String(metadata.timeCreated))
+            : new Date(0),
         };
       } catch (err) {
         if (isNotFound(err)) {
@@ -81,7 +92,11 @@ export class GcsSuiteStore implements SuiteStore {
 }
 
 function isNotFound(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 404;
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === 404
+  );
 }
 
 /** Reads suites from a directory laid out like the bucket (`<root>/<suiteId>/...`). */
@@ -95,10 +110,14 @@ export class LocalSuiteStore implements SuiteStore {
   async listSuites(): Promise<SuiteRef[]> {
     const refs: SuiteRef[] = [];
     for (const entry of fs.readdirSync(this.root, { withFileTypes: true })) {
-      const evalsPath = path.join(this.root, entry.name, 'evals.json');
+      const evalsPath = path.join(this.root, entry.name, "evals.json");
       if (entry.isDirectory() && fs.existsSync(evalsPath)) {
         const stat = fs.statSync(evalsPath);
-        refs.push({ id: entry.name, generation: String(stat.mtimeMs), createdAt: stat.mtime });
+        refs.push({
+          id: entry.name,
+          generation: String(stat.mtimeMs),
+          createdAt: stat.mtime,
+        });
       }
     }
     return refs;

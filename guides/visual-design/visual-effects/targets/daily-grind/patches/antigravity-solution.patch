@@ -16,7 +16,7 @@ index 66c9173..38094d1 100644
 +        --in-oklch: in oklch;
 +      }
      }
- 
+
      * {
 @@ -75,10 +84,14 @@
      /* Hero Section */
@@ -75,11 +75,11 @@ index 66c9173..38094d1 100644
 +      border-radius: 4px;
 +      background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 1em 1em;
      }
- 
+
      /* Content Sections */
 @@ -108,11 +157,17 @@
      }
- 
+
      .card {
 -      background: white;
 -      padding: 20px;
@@ -96,12 +96,12 @@ index 66c9173..38094d1 100644
 +      flex-direction: column;
 +      align-items: center;
      }
- 
+
      .card h3 {
 @@ -120,23 +175,76 @@
        color: var(--primary);
      }
- 
+
 +    /* Flavor Profile Pie Chart */
 +    .flavor-profile {
 +      display: flex;
@@ -162,12 +162,12 @@ index 66c9173..38094d1 100644
 +      margin-top: auto;
 +      transition: background 0.3s, box-shadow 0.3s;
      }
- 
+
      .btn:hover {
 -      background: #3e2723;
 +      background: var(--text);
      }
- 
+
      footer {
 -      background: var(--secondary);
 +      --distance: 2em;
@@ -185,7 +185,7 @@ index 66c9173..38094d1 100644
      <a href="/order-online" class="btn">Order Now</a>
    </header>
 +  <div class="pattern-banner" aria-hidden="true"></div>
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

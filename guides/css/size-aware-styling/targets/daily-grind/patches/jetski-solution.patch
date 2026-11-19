@@ -5,7 +5,7 @@ index 66c9173..23e3ec3 100644
 @@ -107,12 +107,19 @@
        margin-top: 20px;
      }
- 
+
 +    .card-container {
 +      container-type: inline-size;
 +    }
@@ -20,12 +20,12 @@ index 66c9173..23e3ec3 100644
 +      flex-direction: column;
 +      gap: 1rem;
      }
- 
+
      .card h3 {
 @@ -120,6 +127,31 @@
        color: var(--primary);
      }
- 
+
 +    /* Fallback using media queries for older browsers */
 +    @media (min-width: 600px) {
 +      .card {

@@ -27,8 +27,8 @@ Using `from-font` is the most robust approach. It extracts the aspect ratio of t
   /* Automatically extract and apply x-height ratio from MyCustomWebFont */
   font-size-adjust: from-font;
 }
-.content-area span{
-  font-family: "MyOtherCustomWebFont"
+.content-area span {
+  font-family: "MyOtherCustomWebFont";
 }
 ```
 
@@ -37,10 +37,10 @@ Using `from-font` is the most robust approach. It extracts the aspect ratio of t
 When the font to adjust is not a child of the font to base the size on, specify a value to adjust the x-height by.
 
 ```css
-.theme{
+.theme {
   font-family: Verdana, sans-serif;
 }
-.theme.alternate{
+.theme.alternate {
   font-family: Times;
   /* Set to the aspect ratio (x-height / font-size) of the primary font */
   font-size-adjust: 0.51;

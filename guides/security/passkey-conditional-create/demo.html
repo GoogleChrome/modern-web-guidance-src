@@ -14,7 +14,7 @@
 
   <script type="module">
     const statusEl = document.getElementById('status');
-    
+
     // Active conditional get abort controller
     const loginAbortController = new AbortController();
 
@@ -76,7 +76,7 @@
 
         if (credential) {
           const encodedResponse = credential.toJSON();
-          
+
           // 4. POST attestation verification to the server
           try {
             const verifyResponse = await fetch('/api/register/verify', {

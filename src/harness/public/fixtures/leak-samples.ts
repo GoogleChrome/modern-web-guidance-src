@@ -7,10 +7,10 @@
  */
 
 /** A username that does not belong to anyone. */
-export const FAKE_LDAP = 'exampleuser';
-export const OTHER_FAKE_LDAP = 'anotheruser';
+export const FAKE_LDAP = "exampleuser";
+export const OTHER_FAKE_LDAP = "anotheruser";
 /** Stands in for `os.userInfo().username` so tests never depend on who runs them. */
-export const FAKE_OS_USER = 'workstationuser';
+export const FAKE_OS_USER = "workstationuser";
 
 export const CLOUDTOP_HOME = `/usr/local/google/home/${FAKE_LDAP}`;
 export const LINUX_HOME = `/home/${FAKE_LDAP}`;
@@ -28,12 +28,12 @@ export const WSL_HOME = `/mnt/c/Users/${FAKE_LDAP}`;
 export const UNC_HOME = `\\\\home\\\\${FAKE_LDAP}`;
 
 /** Credential shapes. None of these are real keys; they only have the right prefix and length. */
-export const FAKE_GOOGLE_API_KEY = `AIzaSy${'X'.repeat(33)}`;
-export const FAKE_SK_KEY = `sk-${'x'.repeat(24)}`;
-export const FAKE_OAUTH_TOKEN = `ya29.${'a'.repeat(40)}`;
-export const FAKE_GITHUB_TOKEN = `ghp_${'A'.repeat(36)}`;
-export const PRIVATE_KEY_HEADER = '-----BEGIN RSA PRIVATE KEY-----';
-export const FAKE_PRIVATE_KEY_BODY = 'MIIEpAIBAAKCAQEA' + 'A'.repeat(48);
+export const FAKE_GOOGLE_API_KEY = `AIzaSy${"X".repeat(33)}`;
+export const FAKE_SK_KEY = `sk-${"x".repeat(24)}`;
+export const FAKE_OAUTH_TOKEN = `ya29.${"a".repeat(40)}`;
+export const FAKE_GITHUB_TOKEN = `ghp_${"A".repeat(36)}`;
+export const PRIVATE_KEY_HEADER = "-----BEGIN RSA PRIVATE KEY-----";
+export const FAKE_PRIVATE_KEY_BODY = "MIIEpAIBAAKCAQEA" + "A".repeat(48);
 
 export const CLOUDTOP_HOST = `${FAKE_LDAP}.c.googlers.com`;
 export const CORP_HOST = `${FAKE_LDAP}-desk.corp.google.com`;

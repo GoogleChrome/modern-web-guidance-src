@@ -42,8 +42,10 @@ Use semicolons consistently if the project uses them. If not, understand ASI haz
 Use strict equality by default.
 
 ```js
-if (id === selectedId) {}
-if (value !== null) {}
+if (id === selectedId) {
+}
+if (value !== null) {
+}
 ```
 
 Avoid `==` and `!=` except for the deliberate `value == null` pattern when checking both `null` and `undefined`.
@@ -57,9 +59,12 @@ if (value == null) {
 Prefer explicit boolean logic over truthiness when empty string, `0`, or `false` are valid values.
 
 ```js
-if (name !== "") {}
-if (count > 0) {}
-if (enabled === true) {}
+if (name !== "") {
+}
+if (count > 0) {
+}
+if (enabled === true) {
+}
 ```
 
 Use template literals for interpolation and multiline strings.
@@ -296,7 +301,8 @@ Object.assign(target, source);
 Use `Object.keys()`, `Object.values()`, and `Object.entries()` for object iteration.
 
 ```js
-for (const [key, value] of Object.entries(record)) {}
+for (const [key, value] of Object.entries(record)) {
+}
 ```
 
 Use `Object.fromEntries()` to build objects from key-value pairs.
@@ -308,7 +314,8 @@ const byId = Object.fromEntries(users.map((user) => [user.id, user]));
 Use `Object.hasOwn()` instead of `obj.hasOwnProperty()`.
 
 ```js
-if (Object.hasOwn(config, "timeout")) {}
+if (Object.hasOwn(config, "timeout")) {
+}
 ```
 
 Avoid relying on property enumeration order unless the behavior is specifically defined and appropriate.
@@ -392,7 +399,8 @@ const tags = posts.flatMap((post) => post.tags);
 Use `includes()` instead of `indexOf(...) !== -1`.
 
 ```js
-if (allowedRoles.includes(role)) {}
+if (allowedRoles.includes(role)) {
+}
 ```
 
 Use `at()` for relative indexing.
@@ -437,7 +445,8 @@ Use stable identifiers as keys when rendering lists in UI frameworks; do not use
 Use `Array.isArray()` instead of `instanceof Array`.
 
 ```js
-if (Array.isArray(value)) {}
+if (Array.isArray(value)) {
+}
 ```
 
 ## Strings
@@ -451,7 +460,8 @@ const normalized = input.trim();
 Use `startsWith()`, `endsWith()`, and `includes()`.
 
 ```js
-if (path.startsWith("/api/")) {}
+if (path.startsWith("/api/")) {
+}
 ```
 
 Use `replaceAll()` for simple global replacement.
@@ -486,19 +496,22 @@ Use Unicode-aware approaches when user-facing text matters. Avoid assuming `.len
 Use `Number.isNaN()` instead of global `isNaN()`.
 
 ```js
-if (Number.isNaN(value)) {}
+if (Number.isNaN(value)) {
+}
 ```
 
 Use `Number.isFinite()` instead of global `isFinite()`.
 
 ```js
-if (Number.isFinite(value)) {}
+if (Number.isFinite(value)) {
+}
 ```
 
 Use `Number.isInteger()` and `Number.isSafeInteger()` when appropriate.
 
 ```js
-if (!Number.isSafeInteger(id)) {}
+if (!Number.isSafeInteger(id)) {
+}
 ```
 
 Use `Number.parseInt()` and `Number.parseFloat()`.
@@ -542,7 +555,8 @@ const value = new Date().toISOString();
 Use epoch milliseconds for simple comparisons.
 
 ```js
-if (end.getTime() > start.getTime()) {}
+if (end.getTime() > start.getTime()) {
+}
 ```
 
 Avoid parsing ambiguous date strings.
@@ -593,7 +607,8 @@ const pattern = /\p{Letter}+/gu;
 Use `matchAll()` for repeated captures.
 
 ```js
-for (const match of text.matchAll(/#(\w+)/g)) {}
+for (const match of text.matchAll(/#(\w+)/g)) {
+}
 ```
 
 Avoid complex regexes when parsing would be clearer and safer.
@@ -772,10 +787,7 @@ loadData().catch(reportError);
 Use `Promise.all()` for independent concurrent work where all must succeed.
 
 ```js
-const [user, posts] = await Promise.all([
-  fetchUser(id),
-  fetchPosts(id),
-]);
+const [user, posts] = await Promise.all([fetchUser(id), fetchPosts(id)]);
 ```
 
 Use `Promise.allSettled()` when all outcomes matter.
@@ -840,7 +852,8 @@ Prefer APIs with built-in cancellation where available.
 Use `for...of` for iterable values.
 
 ```js
-for (const item of items) {}
+for (const item of items) {
+}
 ```
 
 Use `for...in` only for object property names, and usually prefer `Object.keys()` or `Object.entries()`.
@@ -858,7 +871,8 @@ function* range(start, end) {
 Use async iterators for streaming async data.
 
 ```js
-for await (const chunk of stream) {}
+for await (const chunk of stream) {
+}
 ```
 
 Understand that arrays, strings, maps, sets, NodeLists in modern browsers, and many platform objects are iterable.
@@ -890,7 +904,8 @@ Use `WeakSet` for object membership tracking without retaining objects.
 Prefer `map.has(key)` over checking `map.get(key) !== undefined` when `undefined` can be a stored value.
 
 ```js
-if (cache.has(key)) {}
+if (cache.has(key)) {
+}
 ```
 
 Convert maps and sets when needed.
@@ -1012,7 +1027,8 @@ const row = event.target.closest("[data-row]");
 Use `matches()` for selector checks.
 
 ```js
-if (element.matches(".active")) {}
+if (element.matches(".active")) {
+}
 ```
 
 Avoid layout thrashing by batching reads and writes.
@@ -1225,8 +1241,7 @@ Use proper `name` attributes.
 Use button `type` explicitly.
 
 ```html
-<button type="submit">Save</button>
-<button type="button">Cancel</button>
+<button type="submit">Save</button> <button type="button">Cancel</button>
 ```
 
 Prevent default form submission only when handling submission in JavaScript.
@@ -1262,7 +1277,9 @@ Use `aria-live` for dynamic status updates when needed.
 Respect reduced motion preferences.
 
 ```js
-const prefersReducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const prefersReducedMotion = matchMedia(
+  "(prefers-reduced-motion: reduce)",
+).matches;
 ```
 
 Ensure JavaScript-enhanced experiences still fail gracefully where possible.
@@ -1664,8 +1681,10 @@ Always handle permissions and user gestures for media features.
 Feature-detect APIs before use.
 
 ```js
-if ("clipboard" in navigator) {}
-if ("IntersectionObserver" in window) {}
+if ("clipboard" in navigator) {
+}
+if ("IntersectionObserver" in window) {
+}
 ```
 
 Use fallback behavior.
@@ -1831,7 +1850,8 @@ import fs from "node:fs/promises";
 Avoid accidental assignment in conditionals.
 
 ```js
-if (value === expected) {}
+if (value === expected) {
+}
 ```
 
 Avoid comparing objects by value with `===`.
@@ -1882,9 +1902,7 @@ Prefer this:
 
 ```js
 function getActiveUserNames(users) {
-  return users
-    .filter((user) => user.active)
-    .map((user) => user.name);
+  return users.filter((user) => user.active).map((user) => user.name);
 }
 ```
 

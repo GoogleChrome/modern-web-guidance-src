@@ -27,9 +27,9 @@ index 66c9173..f28be79 100644
 +  <link rel="stylesheet" href="menu.css">
 +  <script src="menu.js" defer></script>
  </head>
- 
+
  <body>
- 
+
 -  <nav>
 +  <nav aria-label="Main navigation">
      <div class="logo">THE DAILY GRIND</div>
@@ -71,7 +71,7 @@ index 66c9173..f28be79 100644
        <li><a href="/account">My Account</a></li>
 @@ -175,27 +207,31 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section id="seasonal">
@@ -99,7 +99,7 @@ index 66c9173..f28be79 100644
      </section>
    </main>
 +  <p id="order-status" class="order-status" role="status" aria-live="polite" aria-atomic="true"></p>
- 
+
    <footer>
      <div class="footer-links">
 diff --git a/menu.css b/menu.css

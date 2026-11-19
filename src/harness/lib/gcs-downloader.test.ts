@@ -1,39 +1,74 @@
-import { test, describe } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import { downloadRunFromGcsIfMissing, downloadSuiteEvalsIfMissing } from './gcs-downloader.ts';
-import { NORMALIZER_VERSION } from './trajectory-normalizer.ts';
-import { resultsDir } from '../../core/paths.ts';
+import { test, describe } from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import {
+  downloadRunFromGcsIfMissing,
+  downloadSuiteEvalsIfMissing,
+} from "./gcs-downloader.ts";
+import { NORMALIZER_VERSION } from "./trajectory-normalizer.ts";
+import { resultsDir } from "../../core/paths.ts";
 
-describe('gcs-downloader', () => {
-  test('downloadRunFromGcsIfMissing returns early when complete directory exists locally', async () => {
+describe("gcs-downloader", () => {
+  test("downloadRunFromGcsIfMissing returns early when complete directory exists locally", async () => {
     const testSuite = `test-gcs-local-${Date.now()}`;
-    const testRunDir = path.join(resultsDir, testSuite, '1', 'details-styling', 'task', 'guided');
+    const testRunDir = path.join(
+      resultsDir,
+      testSuite,
+      "1",
+      "details-styling",
+      "task",
+      "guided",
+    );
     fs.mkdirSync(testRunDir, { recursive: true });
     try {
       // Create local run directory with suite evals.json, _results.json, and raw session log
-      fs.writeFileSync(path.join(resultsDir, testSuite, 'evals.json'), JSON.stringify({ suite: testSuite, agent: 'claude_code' }));
-      fs.writeFileSync(path.join(testRunDir, 'details-styling_results.json'), JSON.stringify({ suites: [] }));
       fs.writeFileSync(
-        path.join(testRunDir, 'session-1.jsonl'),
+        path.join(resultsDir, testSuite, "evals.json"),
+        JSON.stringify({ suite: testSuite, agent: "claude_code" }),
+      );
+      fs.writeFileSync(
+        path.join(testRunDir, "details-styling_results.json"),
+        JSON.stringify({ suites: [] }),
+      );
+      fs.writeFileSync(
+        path.join(testRunDir, "session-1.jsonl"),
         JSON.stringify({
-          role: 'assistant',
-          timestamp: '2026-08-09T21:00:00.000Z',
-          message: { content: [{ type: 'tool_use', id: 'c1', name: 'Bash', input: { command: 'npx modern-web-guidance search "dialog"' } }] }
-        })
+          role: "assistant",
+          timestamp: "2026-08-09T21:00:00.000Z",
+          message: {
+            content: [
+              {
+                type: "tool_use",
+                id: "c1",
+                name: "Bash",
+                input: { command: 'npx modern-web-guidance search "dialog"' },
+              },
+            ],
+          },
+        }),
       );
 
       const result = await downloadRunFromGcsIfMissing(testRunDir);
       assert.strictEqual(result, true);
     } finally {
-      fs.rmSync(path.join(resultsDir, testSuite), { recursive: true, force: true });
+      fs.rmSync(path.join(resultsDir, testSuite), {
+        recursive: true,
+        force: true,
+      });
     }
   });
 
-  test('partial local directory with only trajectory_summary.json (missing _results.json and sentinel) triggers GCS download instead of returning cached true', async () => {
+  test("partial local directory with only trajectory_summary.json (missing _results.json and sentinel) triggers GCS download instead of returning cached true", async () => {
     const testSuite = `test-gcs-partial-${Date.now()}`;
-    const testRunDir = path.join(resultsDir, testSuite, '1', 'details-styling', 'task', 'guided');
+    const testRunDir = path.join(
+      resultsDir,
+      testSuite,
+      "1",
+      "details-styling",
+      "task",
+      "guided",
+    );
     fs.mkdirSync(testRunDir, { recursive: true });
 
     const origFetch = globalThis.fetch;
@@ -41,26 +76,41 @@ describe('gcs-downloader', () => {
     let listApiCalled = false;
 
     try {
-      fs.writeFileSync(path.join(resultsDir, testSuite, 'evals.json'), JSON.stringify({ suite: testSuite }));
+      fs.writeFileSync(
+        path.join(resultsDir, testSuite, "evals.json"),
+        JSON.stringify({ suite: testSuite }),
+      );
       // Only trajectory_summary.json is present (no _results.json, no runtime.json, no .gcs_download_complete)
       fs.writeFileSync(
-        path.join(testRunDir, 'trajectory_summary.json'),
-        JSON.stringify({ normalizerVersion: NORMALIZER_VERSION, agent: 'claude_code', steps: [{ stepNumber: 1 }] })
+        path.join(testRunDir, "trajectory_summary.json"),
+        JSON.stringify({
+          normalizerVersion: NORMALIZER_VERSION,
+          agent: "claude_code",
+          steps: [{ stepNumber: 1 }],
+        }),
       );
 
-      process.env.GD_GCS_TOKEN = 'Bearer mock-test-token';
+      process.env.GD_GCS_TOKEN = "Bearer mock-test-token";
       globalThis.fetch = (async (input: string | URL | Request) => {
         const url = String(input);
-        if (url.includes('prefix=')) {
+        if (url.includes("prefix=")) {
           listApiCalled = true;
           return new Response(JSON.stringify({ items: [] }), { status: 200 });
         }
-        return new Response('Not found', { status: 404 });
+        return new Response("Not found", { status: 404 });
       }) as typeof fetch;
 
       const result = await downloadRunFromGcsIfMissing(testRunDir);
-      assert.strictEqual(listApiCalled, true, 'Expected GCS list API to be invoked for incomplete local run directory');
-      assert.strictEqual(result, false, 'Expected false when GCS returns 0 files for partial directory');
+      assert.strictEqual(
+        listApiCalled,
+        true,
+        "Expected GCS list API to be invoked for incomplete local run directory",
+      );
+      assert.strictEqual(
+        result,
+        false,
+        "Expected false when GCS returns 0 files for partial directory",
+      );
     } finally {
       globalThis.fetch = origFetch;
       if (origToken === undefined) {
@@ -68,11 +118,14 @@ describe('gcs-downloader', () => {
       } else {
         process.env.GD_GCS_TOKEN = origToken;
       }
-      fs.rmSync(path.join(resultsDir, testSuite), { recursive: true, force: true });
+      fs.rmSync(path.join(resultsDir, testSuite), {
+        recursive: true,
+        force: true,
+      });
     }
   });
 
-  test('downloadSuiteEvalsIfMissing deduplicates concurrent downloads for the same suiteName', async () => {
+  test("downloadSuiteEvalsIfMissing deduplicates concurrent downloads for the same suiteName", async () => {
     const testSuite = `test-gcs-dedup-${Date.now()}`;
     const origFetch = globalThis.fetch;
     let fetchCount = 0;
@@ -81,32 +134,46 @@ describe('gcs-downloader', () => {
       globalThis.fetch = (async () => {
         fetchCount++;
         await new Promise((r) => setTimeout(r, 25));
-        return new Response(JSON.stringify({ suite: testSuite, agent: 'claude_code' }), { status: 200 });
+        return new Response(
+          JSON.stringify({ suite: testSuite, agent: "claude_code" }),
+          { status: 200 },
+        );
       }) as typeof fetch;
 
       await Promise.all([
-        downloadSuiteEvalsIfMissing(testSuite, 'Bearer mock-token'),
-        downloadSuiteEvalsIfMissing(testSuite, 'Bearer mock-token'),
-        downloadSuiteEvalsIfMissing(testSuite, 'Bearer mock-token')
+        downloadSuiteEvalsIfMissing(testSuite, "Bearer mock-token"),
+        downloadSuiteEvalsIfMissing(testSuite, "Bearer mock-token"),
+        downloadSuiteEvalsIfMissing(testSuite, "Bearer mock-token"),
       ]);
 
-      assert.strictEqual(fetchCount, 1, 'Expected concurrent evals.json downloads for the same suite to be deduplicated into a single request');
-      assert.ok(fs.existsSync(path.join(resultsDir, testSuite, 'evals.json')));
+      assert.strictEqual(
+        fetchCount,
+        1,
+        "Expected concurrent evals.json downloads for the same suite to be deduplicated into a single request",
+      );
+      assert.ok(fs.existsSync(path.join(resultsDir, testSuite, "evals.json")));
     } finally {
       globalThis.fetch = origFetch;
-      fs.rmSync(path.join(resultsDir, testSuite), { recursive: true, force: true });
+      fs.rmSync(path.join(resultsDir, testSuite), {
+        recursive: true,
+        force: true,
+      });
     }
   });
 
-  test('validates GCS bucket configuration constants', async () => {
-    const gcsModule = await import('./gcs-downloader.ts');
+  test("validates GCS bucket configuration constants", async () => {
+    const gcsModule = await import("./gcs-downloader.ts");
     assert.ok(gcsModule.downloadRunFromGcsIfMissing);
-    assert.strictEqual(typeof gcsModule.downloadRunFromGcsIfMissing, 'function');
+    assert.strictEqual(
+      typeof gcsModule.downloadRunFromGcsIfMissing,
+      "function",
+    );
   });
 
-  test('resolveRunPath resolves both repo-relative and results-relative suite paths', async () => {
-    const { resolveRunPath } = await import('./gcs-downloader.ts');
-    const relativeSuite = 'nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided';
+  test("resolveRunPath resolves both repo-relative and results-relative suite paths", async () => {
+    const { resolveRunPath } = await import("./gcs-downloader.ts");
+    const relativeSuite =
+      "nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided";
 
     // Results-relative path
     const resolved1 = resolveRunPath(relativeSuite);
@@ -121,18 +188,27 @@ describe('gcs-downloader', () => {
     assert.ok(resolved2.absoluteRunDir.endsWith(path.normalize(relativeSuite)));
   });
 
-  test('resolveRunPath handles results/suites paths without prefixing suites/ to relativeRunPath', async () => {
-    const { resolveRunPath } = await import('./gcs-downloader.ts');
-    const suiteRun = 'nightly-2026-09-08_12-00-00-claude_code/1/details-styling/task/guided';
+  test("resolveRunPath handles results/suites paths without prefixing suites/ to relativeRunPath", async () => {
+    const { resolveRunPath } = await import("./gcs-downloader.ts");
+    const suiteRun =
+      "nightly-2026-09-08_12-00-00-claude_code/1/details-styling/task/guided";
 
     const resolved = resolveRunPath(`results/suites/${suiteRun}`);
     assert.ok(resolved);
     assert.strictEqual(resolved.relativeRunPath, suiteRun);
-    assert.ok(resolved.absoluteRunDir.endsWith(path.join('results', 'suites', suiteRun)));
+    assert.ok(
+      resolved.absoluteRunDir.endsWith(
+        path.join("results", "suites", suiteRun),
+      ),
+    );
 
     const resolved2 = resolveRunPath(`harness/results/suites/${suiteRun}`);
     assert.ok(resolved2);
     assert.strictEqual(resolved2.relativeRunPath, suiteRun);
-    assert.ok(resolved2.absoluteRunDir.endsWith(path.join('results', 'suites', suiteRun)));
+    assert.ok(
+      resolved2.absoluteRunDir.endsWith(
+        path.join("results", "suites", suiteRun),
+      ),
+    );
   });
 });

@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -15,12 +15,19 @@ const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/**', async (route) => {
-      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
-      const relPath = requestPath === '/' ? demoName : requestPath.replace(/^\/+/, '');
+    await page.route("http://localhost/**", async (route) => {
+      const requestPath = decodeURIComponent(
+        new URL(route.request().url()).pathname,
+      );
+      const relPath =
+        requestPath === "/" ? demoName : requestPath.replace(/^\/+/, "");
       const localFilePath = path.resolve(targetDir, relPath);
 
-      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      if (
+        localFilePath.startsWith(targetDir + path.sep) &&
+        fs.existsSync(localFilePath) &&
+        fs.statSync(localFilePath).isFile()
+      ) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -30,9 +37,13 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  async function getCssRules(page: import('@playwright/test').Page) {
+  async function getCssRules(page: import("@playwright/test").Page) {
     return page.evaluate(() => {
-      const out: Array<{ selector: string; appearance: string; props: string[] }> = [];
+      const out: Array<{
+        selector: string;
+        appearance: string;
+        props: string[];
+      }> = [];
       const walk = (rules: CSSRuleList | undefined) => {
         if (!rules) return;
         for (const rule of Array.from(rules)) {
@@ -43,7 +54,7 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
               props: Array.from(rule.style),
             });
           }
-          if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+          if ("cssRules" in rule && (rule as CSSGroupingRule).cssRules) {
             walk((rule as CSSGroupingRule).cssRules);
           }
         }
@@ -60,120 +71,161 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
   }
 
   // 1. Style assertions
-  test('The `<select>` element has `appearance: base-select` applied.', async ({ page }) => {
+  test("The `<select>` element has `appearance: base-select` applied.", async ({
+    page,
+  }) => {
     const hasBaseSelect = await page.evaluate(() => {
-      const selects = Array.from(document.querySelectorAll('select'));
-      return selects.some(el => window.getComputedStyle(el).appearance === 'base-select');
+      const selects = Array.from(document.querySelectorAll("select"));
+      return selects.some(
+        (el) => window.getComputedStyle(el).appearance === "base-select",
+      );
     });
     expect(hasBaseSelect).toBe(true);
   });
 
-  test('The `::picker(select)` pseudo-element has `appearance: base-select` applied.', async ({ page }) => {
+  test("The `::picker(select)` pseudo-element has `appearance: base-select` applied.", async ({
+    page,
+  }) => {
     const rules = await getCssRules(page);
     const hasPickerAppearance = rules.some(
-      r => /::picker(?![-\w])/i.test(r.selector) && r.appearance === 'base-select'
+      (r) =>
+        /::picker(?![-\w])/i.test(r.selector) && r.appearance === "base-select",
     );
     expect(hasPickerAppearance).toBe(true);
   });
 
-  test('The `::picker(select)` pseudo-element defines custom styles for the options dropdown container.', async ({ page }) => {
+  test("The `::picker(select)` pseudo-element defines custom styles for the options dropdown container.", async ({
+    page,
+  }) => {
     const rules = await getCssRules(page);
-    const visualContainerProps = /^(?:border|background|padding|box-shadow|border-radius|color|margin|outline|width|min-width|max-height|font)/i;
+    const visualContainerProps =
+      /^(?:border|background|padding|box-shadow|border-radius|color|margin|outline|width|min-width|max-height|font)/i;
     const hasPickerContainerStyles = rules.some(
-      r => /::picker(?![-\w])/i.test(r.selector) && r.props.some(p => visualContainerProps.test(p))
+      (r) =>
+        /::picker(?![-\w])/i.test(r.selector) &&
+        r.props.some((p) => visualContainerProps.test(p)),
     );
     expect(hasPickerContainerStyles).toBe(true);
   });
 
-  test('The implementation uses `select::picker-icon` to customize the drop-down arrow icon.', async ({ page }) => {
+  test("The implementation uses `select::picker-icon` to customize the drop-down arrow icon.", async ({
+    page,
+  }) => {
     const rules = await getCssRules(page);
-    const hasPickerIcon = rules.some(r => /::picker-icon\b/i.test(r.selector) && r.props.length > 0);
+    const hasPickerIcon = rules.some(
+      (r) => /::picker-icon\b/i.test(r.selector) && r.props.length > 0,
+    );
     expect(hasPickerIcon).toBe(true);
   });
 
-  test('The implementation uses `option::checkmark` to customize the checkmark indicator for the selected option.', async ({ page }) => {
+  test("The implementation uses `option::checkmark` to customize the checkmark indicator for the selected option.", async ({
+    page,
+  }) => {
     const rules = await getCssRules(page);
-    const hasCheckmark = rules.some(r => /::checkmark\b/i.test(r.selector) && r.props.length > 0);
+    const hasCheckmark = rules.some(
+      (r) => /::checkmark\b/i.test(r.selector) && r.props.length > 0,
+    );
     expect(hasCheckmark).toBe(true);
   });
 
   // 2. Browser assertions
-  test('The markup includes a `<button>` element inside the `<select>` to replace the default trigger.', async ({ page }) => {
+  test("The markup includes a `<button>` element inside the `<select>` to replace the default trigger.", async ({
+    page,
+  }) => {
     const hasButtonOrVisibleBaseSelect = await page.evaluate(() => {
       const isVisible = (select: HTMLSelectElement) => {
         const style = window.getComputedStyle(select);
         const rect = select.getBoundingClientRect();
         return (
-          style.appearance === 'base-select' &&
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
+          style.appearance === "base-select" &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
           parseFloat(style.opacity) > 0 &&
-          !/^rect\(\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*\)$/i.test(style.clip) &&
+          !/^rect\(\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*\)$/i.test(
+            style.clip,
+          ) &&
           !/inset\(\s*50%\s*\)/i.test(style.clipPath) &&
           rect.width > 10 &&
           rect.height > 10
         );
       };
-      const selects = Array.from(document.querySelectorAll('select'));
-      return selects.some(select => !!select.querySelector(':scope > button') || isVisible(select));
+      const selects = Array.from(document.querySelectorAll("select"));
+      return selects.some(
+        (select) =>
+          !!select.querySelector(":scope > button") || isVisible(select),
+      );
     });
     expect(hasButtonOrVisibleBaseSelect).toBe(true);
   });
 
-  test('The trigger button includes a `<selectedcontent>` element to display the active option.', async ({ page }) => {
+  test("The trigger button includes a `<selectedcontent>` element to display the active option.", async ({
+    page,
+  }) => {
     const hasSelectedContentOrVisibleBaseSelect = await page.evaluate(() => {
       const isVisible = (select: HTMLSelectElement) => {
         const style = window.getComputedStyle(select);
         const rect = select.getBoundingClientRect();
         return (
-          style.appearance === 'base-select' &&
-          style.display !== 'none' &&
-          style.visibility !== 'hidden' &&
+          style.appearance === "base-select" &&
+          style.display !== "none" &&
+          style.visibility !== "hidden" &&
           parseFloat(style.opacity) > 0 &&
-          !/^rect\(\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*\)$/i.test(style.clip) &&
+          !/^rect\(\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*,\s*0(?:px)?\s*\)$/i.test(
+            style.clip,
+          ) &&
           !/inset\(\s*50%\s*\)/i.test(style.clipPath) &&
           rect.width > 10 &&
           rect.height > 10
         );
       };
-      const selects = Array.from(document.querySelectorAll('select'));
-      return selects.some(select =>
-        !!select.querySelector(':scope > button selectedcontent') ||
-        (!select.querySelector(':scope > button') && isVisible(select))
+      const selects = Array.from(document.querySelectorAll("select"));
+      return selects.some(
+        (select) =>
+          !!select.querySelector(":scope > button selectedcontent") ||
+          (!select.querySelector(":scope > button") && isVisible(select)),
       );
     });
     expect(hasSelectedContentOrVisibleBaseSelect).toBe(true);
   });
 
-  test('The trigger button does not contain the legacy `<selectedoption>` element.', async ({ page }) => {
+  test("The trigger button does not contain the legacy `<selectedoption>` element.", async ({
+    page,
+  }) => {
     const hasSelectedOption = await page.evaluate(() => {
-      const selects = Array.from(document.querySelectorAll('select'));
+      const selects = Array.from(document.querySelectorAll("select"));
       if (selects.length === 0) return true;
-      return selects.some(select => !!select.querySelector('selectedoption'));
+      return selects.some((select) => !!select.querySelector("selectedoption"));
     });
     expect(hasSelectedOption).toBe(false);
   });
 
-  test('The colors have a contrast of at least `3:1` with the background color.', async ({ page }) => {
-    const selectLoc = page.locator('select:visible').first();
+  test("The colors have a contrast of at least `3:1` with the background color.", async ({
+    page,
+  }) => {
+    const selectLoc = page.locator("select:visible").first();
     if (await selectLoc.isVisible().catch(() => false)) {
       await selectLoc.click({ timeout: 1000 }).catch(() => {});
     }
 
     const measurements = await page.evaluate(() => {
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = 1;
       canvas.height = 1;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error('2d context unavailable');
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) throw new Error("2d context unavailable");
 
       const srgbToLinear = (c: number) => {
         const s = c / 255;
         return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
       };
       const luminance = (r: number, g: number, b: number) =>
-        0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
-      const contrastRatio = (a: [number, number, number], b: [number, number, number]) => {
+        0.2126 * srgbToLinear(r) +
+        0.7152 * srgbToLinear(g) +
+        0.0722 * srgbToLinear(b);
+      const contrastRatio = (
+        a: [number, number, number],
+        b: [number, number, number],
+      ) => {
         const l1 = luminance(a[0], a[1], a[2]);
         const l2 = luminance(b[0], b[1], b[2]);
         return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
@@ -204,22 +256,26 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
           return false;
         }
         const ancestors: Element[] = [];
-        for (let cur: Element | null = el.parentElement; cur; cur = cur.parentElement) {
+        for (
+          let cur: Element | null = el.parentElement;
+          cur;
+          cur = cur.parentElement
+        ) {
           ancestors.unshift(cur);
         }
         let coveredByImage = false;
         for (const ancestor of ancestors) {
           const cs = getComputedStyle(ancestor);
-          if (cs.backgroundImage !== 'none') coveredByImage = true;
+          if (cs.backgroundImage !== "none") coveredByImage = true;
           if (colorAlpha(cs.backgroundColor) >= 250) coveredByImage = false;
         }
         return coveredByImage;
       };
 
       const resolveBgBehind = (el: Element): [number, number, number] => {
-        const probe = document.createElement('div');
-        probe.style.backgroundColor = 'Canvas';
-        probe.style.display = 'none';
+        const probe = document.createElement("div");
+        probe.style.backgroundColor = "Canvas";
+        probe.style.display = "none";
         const host = el.parentElement ?? document.documentElement;
         host.appendChild(probe);
         const canvasBg = getComputedStyle(probe).backgroundColor;
@@ -235,10 +291,13 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
         ];
 
         // <option> renders inside the top-layer ::picker(select) backdrop rather than <select>'s box.
-        if (el.tagName === 'OPTION') {
-          const parentSelect = el.closest('select');
+        if (el.tagName === "OPTION") {
+          const parentSelect = el.closest("select");
           if (parentSelect) {
-            const pickerBg = getComputedStyle(parentSelect, '::picker(select)').backgroundColor;
+            const pickerBg = getComputedStyle(
+              parentSelect,
+              "::picker(select)",
+            ).backgroundColor;
             if (pickerBg) bg = compositeColorOver(bg, pickerBg);
             bg = compositeColorOver(bg, getComputedStyle(el).backgroundColor);
             return bg;
@@ -258,7 +317,11 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
       const isVisible = (el: Element): boolean => {
         for (let cur: Element | null = el; cur; cur = cur.parentElement) {
           const cs = getComputedStyle(cur);
-          if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) {
+          if (
+            cs.display === "none" ||
+            cs.visibility === "hidden" ||
+            parseFloat(cs.opacity) === 0
+          ) {
             return false;
           }
         }
@@ -274,8 +337,8 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
       );
       for (const el of textEls) {
         if (!isVisible(el)) continue;
-        if (el.tagName === 'OPTION') {
-          const parentSelect = el.closest('select');
+        if (el.tagName === "OPTION") {
+          const parentSelect = el.closest("select");
           if (!parentSelect || !isVisible(parentSelect)) continue;
         } else if (hasUncoveredAncestorImage(el)) {
           continue;
@@ -283,13 +346,19 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
         const cs = getComputedStyle(el);
         const bg = resolveBgBehind(el);
         const fg = compositeColorOver(bg, cs.color);
-        results.push({ target: `${el.tagName.toLowerCase()} text`, ratio: contrastRatio(fg, bg) });
+        results.push({
+          target: `${el.tagName.toLowerCase()} text`,
+          ratio: contrastRatio(fg, bg),
+        });
       }
 
       return results;
     });
 
-    expect(measurements.length, 'No visible elements found for contrast measurement').toBeGreaterThan(0);
+    expect(
+      measurements.length,
+      "No visible elements found for contrast measurement",
+    ).toBeGreaterThan(0);
     for (const item of measurements) {
       expect(
         item.ratio,
@@ -298,32 +367,38 @@ test.describe(`Branded Select Styling Expectations: ${demoName}`, () => {
     }
   });
 
-  test('The implementation does not use JavaScript as the primary mechanism for toggling the dropdown.', async ({ page }) => {
+  test("The implementation does not use JavaScript as the primary mechanism for toggling the dropdown.", async ({
+    page,
+  }) => {
     // Check if the select is hidden (common in JS-based custom selects)
-    const select = await page.$('select');
+    const select = await page.$("select");
     if (!select) {
-      throw new Error('Select element not found');
+      throw new Error("Select element not found");
     }
     const isVisible = await select.isVisible();
-    
+
     // Check for common JS-based trigger patterns if select is hidden
-    const hasCustomTrigger = await page.$('[onclick*="toggle"], [class*="trigger"]');
-    
+    const hasCustomTrigger = await page.$(
+      '[onclick*="toggle"], [class*="trigger"]',
+    );
+
     if (!isVisible && hasCustomTrigger) {
-      throw new Error('JS used for toggling instead of native base-select');
+      throw new Error("JS used for toggling instead of native base-select");
     }
     expect(isVisible).toBe(true);
   });
 
-  test('The `<select>` element has a `name` attribute.', async ({ page }) => {
-    const select = await page.$('select');
-    const name = await select?.getAttribute('name');
+  test("The `<select>` element has a `name` attribute.", async ({ page }) => {
+    const select = await page.$("select");
+    const name = await select?.getAttribute("name");
     expect(name).toBeTruthy();
   });
 
-  test('The `<select>` element has an associated `<label>`.', async ({ page }) => {
-    const select = await page.$('select');
-    const id = await select?.getAttribute('id');
+  test("The `<select>` element has an associated `<label>`.", async ({
+    page,
+  }) => {
+    const select = await page.$("select");
+    const id = await select?.getAttribute("id");
     if (!id) {
       // If no ID, it might be nested in a label, but requirement says "associated label"
       // and usually implies for/id or nesting.

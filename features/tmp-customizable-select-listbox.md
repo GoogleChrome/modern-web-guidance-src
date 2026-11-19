@@ -24,5 +24,6 @@ To test specifically for customizable listbox, use that as a gate, and if it ret
 and check if the second select is rendered with different dimensions.
 
 **Fallback strategies:** Depending on the use case:
+
 1. If a regular listbox with limited/no styling is acceptable, just use this as a progressive enhancement.
 2. Otherwise, do not use customizable select at all.

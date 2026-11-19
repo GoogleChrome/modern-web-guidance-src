@@ -1,14 +1,14 @@
-import fs from 'node:fs';
-import { features, groups } from 'web-features';
-import bcd from '@mdn/browser-compat-data' with { type: 'json' };
-import type { Browsers, BrowserName } from '@mdn/browser-compat-data';
-import pendingWebFeatures from '../../features/pending-web-features.json' with { type: 'json' };
+import fs from "node:fs";
+import { features, groups } from "web-features";
+import bcd from "@mdn/browser-compat-data" with { type: "json" };
+import type { Browsers, BrowserName } from "@mdn/browser-compat-data";
+import pendingWebFeatures from "../../features/pending-web-features.json" with { type: "json" };
 
-export type BaselineStatus = 'Limited' | `Baseline since ${string}`;
-export const BASELINE_TARGETS = ['widely', 'newly', 'limited'] as const;
+export type BaselineStatus = "Limited" | `Baseline since ${string}`;
+export const BASELINE_TARGETS = ["widely", "newly", "limited"] as const;
 export type BaselineTarget = (typeof BASELINE_TARGETS)[number];
 
-type Feature = typeof features[string];
+type Feature = (typeof features)[string];
 
 /**
  * A `tmp-*` feature awaiting an upstream web-features ID. Optional fields
@@ -20,62 +20,68 @@ export interface PendingWebFeature {
   compat_features?: string | string[];
 }
 
-export const pendingFeatures: Record<string, PendingWebFeature> = pendingWebFeatures;
+export const pendingFeatures: Record<string, PendingWebFeature> =
+  pendingWebFeatures;
 
 /**
  * Result of a feature validation check.
  */
 export interface FeatureValidationResult {
   isValid: boolean;
-  error?: 'not_found' | 'invalid_kind' | 'unregistered_temp_feature';
+  error?: "not_found" | "invalid_kind" | "unregistered_temp_feature";
   kind?: string;
   suggestion?: string;
   errorMessage?: string;
 }
 
 export interface DetailedBaselineStatus {
-  baseline: 'low' | 'high' | false;
+  baseline: "low" | "high" | false;
   baseline_low_date?: string;
-  shortLabel: string;   // e.g. "Newly", "Widely", "Limited"
-  releaseDate: string;  // The date the feature first became Baseline (Interoperable)
+  shortLabel: string; // e.g. "Newly", "Widely", "Limited"
+  releaseDate: string; // The date the feature first became Baseline (Interoperable)
 }
 /**
  * Gets the detailed Baseline status for a specific feature, resolving redirects/splits.
  */
-export function getFeatureStatus(featureId: string): DetailedBaselineStatus | undefined {
+export function getFeatureStatus(
+  featureId: string,
+): DetailedBaselineStatus | undefined {
   const resolvedIds = resolveFeatureId(featureId);
   if (resolvedIds.length === 0) return;
 
   let latestLowDate = "0000-00-00";
-  let overallBaseline: 'low' | 'high' | false = 'high';
+  let overallBaseline: "low" | "high" | false = "high";
 
   for (const id of resolvedIds) {
     const feature = features[id] as Feature;
-    if (feature.kind !== 'feature' || !feature.status) {
+    if (feature.kind !== "feature" || !feature.status) {
       overallBaseline = false;
       continue;
     }
 
     const status = feature.status;
     if (status.baseline === false) overallBaseline = false;
-    else if (status.baseline === 'low' && overallBaseline === 'high') overallBaseline = 'low';
+    else if (status.baseline === "low" && overallBaseline === "high")
+      overallBaseline = "low";
 
     if (status.baseline_low_date && status.baseline_low_date > latestLowDate) {
       latestLowDate = status.baseline_low_date;
     }
   }
 
-  const baseline_low_date = latestLowDate === "0000-00-00" ? undefined : latestLowDate;
+  const baseline_low_date =
+    latestLowDate === "0000-00-00" ? undefined : latestLowDate;
 
   const shortLabel = mapBaseline(overallBaseline);
 
-  const releaseDate = (overallBaseline !== false && baseline_low_date) ? baseline_low_date : '-';
+  const releaseDate =
+    overallBaseline !== false && baseline_low_date ? baseline_low_date : "-";
 
   return {
     baseline: overallBaseline,
     baseline_low_date,
     shortLabel,
-    releaseDate
+    releaseDate,
   };
 }
 
@@ -84,7 +90,9 @@ export function getFeatureStatus(featureId: string): DetailedBaselineStatus | un
  * @param featureId - The ID of the web feature
  * @returns The detailed status of the feature
  */
-export function getDetailedBaselineStatus(featureId: string): DetailedBaselineStatus | undefined {
+export function getDetailedBaselineStatus(
+  featureId: string,
+): DetailedBaselineStatus | undefined {
   return getFeatureStatus(featureId);
 }
 
@@ -103,10 +111,12 @@ export function mapBaseline(baseline: string | boolean | undefined): string {
  * @param featureId - The ID of the web feature
  * @returns The Baseline status of the feature ('Limited availability' or 'Baseline since YYYY-MM-DD')
  */
-export function getBaselineStatus(featureId: string): BaselineStatus | undefined {
+export function getBaselineStatus(
+  featureId: string,
+): BaselineStatus | undefined {
   const status = getFeatureStatus(featureId);
   if (!status) return;
-  if (status.baseline === false) return 'Limited';
+  if (status.baseline === false) return "Limited";
   return `Baseline since ${status.releaseDate}`;
 }
 
@@ -129,7 +139,7 @@ export function checkBaseline(target: string, featureId: string): boolean {
   const normalizedTarget = target.toLowerCase();
 
   // 1. Handle "Limited" - matches everything
-  if (normalizedTarget.includes('limited')) {
+  if (normalizedTarget.includes("limited")) {
     return true;
   }
 
@@ -140,10 +150,15 @@ export function checkBaseline(target: string, featureId: string): boolean {
 
   // 2. Handle specific historical checks first (Yearly or specific "Widely available on" dates)
   const yearMatch = target.trim().match(/^(?:baseline\s+)?(\d{4})$/i);
-  const dateMatch = target.match(/^baseline widely available on (\d{4}-\d{2}-\d{2})$/i);
+  const dateMatch = target.match(
+    /^baseline widely available on (\d{4}-\d{2}-\d{2})$/i,
+  );
 
   if (yearMatch || dateMatch) {
-    if (baselineStatus.baseline === false || !baselineStatus.baseline_low_date) {
+    if (
+      baselineStatus.baseline === false ||
+      !baselineStatus.baseline_low_date
+    ) {
       return false;
     }
 
@@ -160,12 +175,18 @@ export function checkBaseline(target: string, featureId: string): boolean {
   }
 
   // 3. Handle relative targets (Newly, Widely) strictly against the package status
-  if (normalizedTarget.includes('widely')) {
-    return baselineStatus.baseline === 'high';
+  if (normalizedTarget.includes("widely")) {
+    return baselineStatus.baseline === "high";
   }
-  if (normalizedTarget.includes('newly') || normalizedTarget === 'baseline' || normalizedTarget === 'baseline newly available') {
+  if (
+    normalizedTarget.includes("newly") ||
+    normalizedTarget === "baseline" ||
+    normalizedTarget === "baseline newly available"
+  ) {
     // "Baseline" or "Newly available" are both satisfied by low or high baseline status
-    return baselineStatus.baseline === 'low' || baselineStatus.baseline === 'high';
+    return (
+      baselineStatus.baseline === "low" || baselineStatus.baseline === "high"
+    );
   }
 
   return false;
@@ -201,7 +222,7 @@ export function resolveFeatureId(featureId: string): string[] {
 export function getFeatureName(featureId: string): string {
   const feature = features[featureId] as Feature | undefined;
   if (!feature) {
-    if (featureId.startsWith('tmp-')) {
+    if (featureId.startsWith("tmp-")) {
       return featureId.slice(4);
     }
     return featureId;
@@ -213,7 +234,11 @@ export function getFeatureName(featureId: string): string {
 export function getAncestorGroups(group: string): string[] {
   const chain: string[] = [];
   // Walk up the parent chain; the seen-check guards cycles.
-  for (let g: string | undefined = group; g && !chain.includes(g); g = (groups as any)[g]?.parent) {
+  for (
+    let g: string | undefined = group;
+    g && !chain.includes(g);
+    g = (groups as any)[g]?.parent
+  ) {
     chain.push(g);
   }
   return chain;
@@ -229,7 +254,9 @@ export function getFeatureGroups(featureId: string): string[] {
   if (!feature || !feature.group) {
     return [];
   }
-  const immediate: string[] = Array.isArray(feature.group) ? feature.group : [feature.group];
+  const immediate: string[] = Array.isArray(feature.group)
+    ? feature.group
+    : [feature.group];
   return [...new Set(immediate.flatMap(getAncestorGroups))];
 }
 
@@ -239,11 +266,19 @@ export function getFeatureGroups(featureId: string): string[] {
  * in none of the groups are omitted.
  * @param ownedGroups - The group tags to index features by
  */
-export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string, string[]> {
+export function getOwnedFeatureToGroups(
+  ownedGroups: Set<string>,
+): Record<string, string[]> {
   return Object.fromEntries(
-    [...Object.keys(features), ...Object.keys(pendingFeatures)].sort()
-      .map(fid => [fid, getFeatureGroups(fid).filter(group => ownedGroups.has(group)).sort()])
-      .filter(([, featureGroups]) => featureGroups.length > 0)
+    [...Object.keys(features), ...Object.keys(pendingFeatures)]
+      .sort()
+      .map((fid) => [
+        fid,
+        getFeatureGroups(fid)
+          .filter((group) => ownedGroups.has(group))
+          .sort(),
+      ])
+      .filter(([, featureGroups]) => featureGroups.length > 0),
   ) as Record<string, string[]>;
 }
 
@@ -251,12 +286,12 @@ export function getOwnedFeatureToGroups(ownedGroups: Set<string>): Record<string
  * Validates a feature ID.
  */
 export function validateFeature(id: string): FeatureValidationResult {
-  if (id.startsWith('tmp-')) {
+  if (id.startsWith("tmp-")) {
     if (!(id in pendingFeatures)) {
       return {
         isValid: false,
-        error: 'unregistered_temp_feature',
-        errorMessage: `Temporary web feature ID "${id}" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.`
+        error: "unregistered_temp_feature",
+        errorMessage: `Temporary web feature ID "${id}" is not registered in features/pending-web-features.json. Please register it with an upstream issue link.`,
       };
     }
     return { isValid: true };
@@ -266,26 +301,26 @@ export function validateFeature(id: string): FeatureValidationResult {
   if (!feature) {
     return {
       isValid: false,
-      error: 'not_found',
-      errorMessage: `Web feature ID "${id}" not found in web-features package. Use "gd baselinestatus <keyword>" to find the correct ID.`
+      error: "not_found",
+      errorMessage: `Web feature ID "${id}" not found in web-features package. Use "gd baselinestatus <keyword>" to find the correct ID.`,
     };
   }
-  if (feature.kind !== 'feature') {
+  if (feature.kind !== "feature") {
     let suggestion: string | undefined;
-    let suggestionStr = '';
-    if (feature.kind === 'moved') {
+    let suggestionStr = "";
+    if (feature.kind === "moved") {
       suggestion = feature.redirect_target;
       suggestionStr = ` (It has been moved to "${suggestion}")`;
-    } else if (feature.kind === 'split') {
-      suggestion = feature.redirect_targets.join(', ');
+    } else if (feature.kind === "split") {
+      suggestion = feature.redirect_targets.join(", ");
       suggestionStr = ` (It has been split into: ${suggestion})`;
     }
     return {
       isValid: false,
-      error: 'invalid_kind',
+      error: "invalid_kind",
       kind: feature.kind,
       suggestion,
-      errorMessage: `Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestionStr}`
+      errorMessage: `Web feature ID "${id}" is a ${feature.kind} record, not a primary feature${suggestionStr}`,
     };
   }
   return { isValid: true };
@@ -298,18 +333,30 @@ export function validateFeature(id: string): FeatureValidationResult {
  * are strictly designed for maximum resilience—invoking them in minimal environments lacking
  * extra locale data never throws exceptions, but instead gracefully defaults to root/English rules.
  */
-const dateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
-const listFormatter = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const listFormatter = new Intl.ListFormat("en-US", {
+  style: "long",
+  type: "conjunction",
+});
 
 function formatBrowserTitle(key: string): string {
   return key
-    .split('_')
-    .map(word => word === 'ios' ? 'iOS' : word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .split("_")
+    .map((word) =>
+      word === "ios" ? "iOS" : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
 }
 
-function formatVersionWithMonth(browserKey: BrowserName, version: string): string {
-  if (!version || version === '-') return '';
+function formatVersionWithMonth(
+  browserKey: BrowserName,
+  version: string,
+): string {
+  if (!version || version === "-") return "";
   const release = (bcd.browsers as Browsers)[browserKey]?.releases?.[version];
   if (release?.release_date) {
     const formattedDate = dateFormatter.format(new Date(release.release_date));
@@ -326,29 +373,29 @@ function formatVersionWithMonth(browserKey: BrowserName, version: string): strin
  * when identical maximizes token density, dynamically splitting them out only upon divergence.
  */
 function formatSupportMap(support: Record<string, any> | undefined): string {
-  if (!support) return '';
+  if (!support) return "";
   const supportedParts: string[] = [];
   const unsupportedParts: string[] = [];
 
-  const keys = ['chrome', 'edge', 'firefox', 'safari'] as BrowserName[];
+  const keys = ["chrome", "edge", "firefox", "safari"] as BrowserName[];
   if (support.safari_ios && support.safari_ios !== support.safari) {
-    keys.push('safari_ios' as BrowserName);
+    keys.push("safari_ios" as BrowserName);
   }
 
   for (const key of keys) {
     const label = formatBrowserTitle(key);
     const ver = support[key];
-    if (ver && ver !== '-') {
+    if (ver && ver !== "-") {
       const formatted = formatVersionWithMonth(key, String(ver));
       supportedParts.push(`${label} ${formatted}`);
     } else {
-      if (key !== 'safari_ios') {
+      if (key !== "safari_ios") {
         unsupportedParts.push(label);
       }
     }
   }
 
-  let res = '';
+  let res = "";
   if (supportedParts.length > 0) {
     res += `\nSupported by: ${listFormatter.format(supportedParts)}.`;
     if (unsupportedParts.length > 0) {
@@ -363,16 +410,25 @@ function formatSupportMap(support: Record<string, any> | undefined): string {
 /**
  * Internal helper to format status messages consistently.
  */
-function formatStatusMessage(featureName: string, status: { baseline?: string | boolean; baseline_low_date?: string; shortLabel?: string; releaseDate?: string; support?: Record<string, any> }): string {
+function formatStatusMessage(
+  featureName: string,
+  status: {
+    baseline?: string | boolean;
+    baseline_low_date?: string;
+    shortLabel?: string;
+    releaseDate?: string;
+    support?: Record<string, any>;
+  },
+): string {
   const { baseline, releaseDate, shortLabel, support } = status;
-  const resolvedSupport = (baseline === false && !support) ? {} : support;
+  const resolvedSupport = baseline === false && !support ? {} : support;
   const supportStr = formatSupportMap(resolvedSupport);
 
   if (baseline !== false && releaseDate && releaseDate !== "-") {
     return `Baseline status for ${featureName}: ${shortLabel}. It's been Baseline since ${releaseDate}.${supportStr}`;
   }
 
-  if (supportStr === '\nNot natively supported by any major browser yet.') {
+  if (supportStr === "\nNot natively supported by any major browser yet.") {
     return `${featureName} is not natively supported by any major browser yet.`;
   }
 
@@ -382,7 +438,10 @@ function formatStatusMessage(featureName: string, status: { baseline?: string | 
 /**
  * Gets a formatted status message for a feature or a specific BCD key.
  */
-export function getStatusMessage(featureId: string, bcdKey?: string): string | undefined {
+export function getStatusMessage(
+  featureId: string,
+  bcdKey?: string,
+): string | undefined {
   if (bcdKey) {
     const status = getStatus(featureId, bcdKey);
     if (!status) return;
@@ -391,8 +450,8 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
     const mapped = {
       baseline: status.baseline,
       shortLabel: mapBaseline(status.baseline),
-      releaseDate: status.baseline_low_date || '-',
-      support: status.support
+      releaseDate: status.baseline_low_date || "-",
+      support: status.support,
     };
     return formatStatusMessage(`the ${bcdKey} capability`, mapped);
   }
@@ -407,17 +466,17 @@ export function getStatusMessage(featureId: string, bcdKey?: string): string | u
   let support: Record<string, any> | undefined;
   for (const id of resolvedIds) {
     const f = features[id] as Feature;
-    if (f?.kind === 'feature' && f.status?.support) {
+    if (f?.kind === "feature" && f.status?.support) {
       support = f.status.support;
       break;
     }
   }
 
-  const subject = feature.kind === 'feature' ? feature.name : featureId;
+  const subject = feature.kind === "feature" ? feature.name : featureId;
 
   const mapped = {
     ...baselineStatus,
-    support
+    support,
   };
 
   if (baselineStatus.baseline === false) {
@@ -450,7 +509,7 @@ export function getStatus(
     }
     for (const resolvedFeatureId of resolvedFeatureIds) {
       const feature = features[resolvedFeatureId] as Feature;
-      if (feature.kind === 'feature') {
+      if (feature.kind === "feature") {
         const compatStatus = feature.status?.by_compat_key?.[bcdKey];
         if (compatStatus) {
           return compatStatus;
@@ -471,20 +530,28 @@ export function getStatus(
 }
 
 function getFeatureOrBcdStatus(
-  token: string
-): { baseline: 'high' | 'low' | false; baseline_low_date?: string } | undefined {
+  token: string,
+):
+  { baseline: "high" | "low" | false; baseline_low_date?: string } | undefined {
   const trimmed = token.trim();
   if (!trimmed) return undefined;
 
-  if (trimmed.includes(':') || trimmed.includes('.')) {
-    const [featureId, bcdKey] = trimmed.includes(':') ? trimmed.split(':', 2) : [undefined, trimmed];
+  if (trimmed.includes(":") || trimmed.includes(".")) {
+    const [featureId, bcdKey] = trimmed.includes(":")
+      ? trimmed.split(":", 2)
+      : [undefined, trimmed];
     if (!bcdKey) return undefined;
     if (featureId && !validateFeature(featureId).isValid) return undefined;
     const compat = getStatus(featureId, bcdKey);
-    return compat ? { baseline: compat.baseline, baseline_low_date: compat.baseline_low_date } : undefined;
+    return compat
+      ? {
+          baseline: compat.baseline,
+          baseline_low_date: compat.baseline_low_date,
+        }
+      : undefined;
   }
 
-  if (trimmed.startsWith('tmp-')) {
+  if (trimmed.startsWith("tmp-")) {
     return validateFeature(trimmed).isValid ? { baseline: false } : undefined;
   }
 
@@ -501,10 +568,16 @@ function getFeatureOrBcdStatus(
  * pending `tmp-*` feature ID, BCD key, or `feature-id:bcd.key` pair.
  * Returns `undefined` if the token is not a recognized feature or BCD key.
  */
-export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | false | undefined {
+export function resolveFeatureOrBcdBaseline(
+  token: string,
+): "high" | "low" | false | undefined {
   const trimmed = token.trim();
   if (!trimmed) return undefined;
-  if (!trimmed.includes(':') && !trimmed.includes('.') && !validateFeature(trimmed).isValid) {
+  if (
+    !trimmed.includes(":") &&
+    !trimmed.includes(".") &&
+    !validateFeature(trimmed).isValid
+  ) {
     return undefined;
   }
   return getFeatureOrBcdStatus(trimmed)?.baseline;
@@ -515,27 +588,30 @@ export function resolveFeatureOrBcdBaseline(token: string): 'high' | 'low' | fal
  * and returns the sorted list of additional Baseline targets (`'newly'`, `'limited'`)
  * that should be evaluated alongside `'widely'`.
  */
-export function getBaselineTargetsForGrader(graderPath: string): BaselineTarget[] {
+export function getBaselineTargetsForGrader(
+  graderPath: string,
+): BaselineTarget[] {
   if (!fs.existsSync(graderPath)) return [];
-  const content = fs.readFileSync(graderPath, 'utf8');
+  const content = fs.readFileSync(graderPath, "utf8");
   const extraTargets = new Set<BaselineTarget>();
-  const skipUnlessRegex = /\bskipUnless\s*\(\s*\{\s*unsupported\s*:\s*(['"])([\s\S]*?)\1\s*,?\s*\}\s*\)/g;
+  const skipUnlessRegex =
+    /\bskipUnless\s*\(\s*\{\s*unsupported\s*:\s*(['"])([\s\S]*?)\1\s*,?\s*\}\s*\)/g;
   let match: RegExpExecArray | null;
   while ((match = skipUnlessRegex.exec(content)) !== null) {
     const tokens = match[2]
-      .split(',')
-      .map(t => t.trim())
+      .split(",")
+      .map((t) => t.trim())
       .filter(Boolean);
     for (const token of tokens) {
       const status = resolveFeatureOrBcdBaseline(token);
-      if (status === 'low') {
-        extraTargets.add('newly');
+      if (status === "low") {
+        extraTargets.add("newly");
       } else if (status === false) {
-        extraTargets.add('limited');
+        extraTargets.add("limited");
       }
     }
   }
-  return (['newly', 'limited'] as const).filter(t => extraTargets.has(t));
+  return (["newly", "limited"] as const).filter((t) => extraTargets.has(t));
 }
 
 /**
@@ -547,5 +623,5 @@ export function getBaselineTargetsForGrader(graderPath: string): BaselineTarget[
 function subtractMonths(dateStr: string, months: number): string {
   const date = new Date(dateStr);
   date.setMonth(date.getMonth() - months);
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 }

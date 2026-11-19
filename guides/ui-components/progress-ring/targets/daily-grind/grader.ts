@@ -5,8 +5,8 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import { SyntaxKind, type Project } from "ts-morph";
 import {
   CSSStyleRule,
   CSSMediaRule,
@@ -16,7 +16,7 @@ import {
   CSSNestedDeclarations,
   type CSSRule,
   type CSSStyleDeclaration,
-} from 'cssomnom';
+} from "cssomnom";
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright's ESM loader
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -32,7 +32,9 @@ function getAllRules(rules: Iterable<CSSRule>): CSSRule[] {
   return result;
 }
 
-function getAllStyleDeclarations(rules: Iterable<CSSRule>): CSSStyleDeclaration[] {
+function getAllStyleDeclarations(
+  rules: Iterable<CSSRule>,
+): CSSStyleDeclaration[] {
   const decls: CSSStyleDeclaration[] = [];
   for (const rule of getAllRules(rules)) {
     if (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations) {
@@ -44,13 +46,13 @@ function getAllStyleDeclarations(rules: Iterable<CSSRule>): CSSStyleDeclaration[
 
 function getBackgroundValues(style: CSSStyleDeclaration): string[] {
   const values: string[] = [];
-  const bg = style.getPropertyValue('background');
-  const bgImg = style.getPropertyValue('background-image');
+  const bg = style.getPropertyValue("background");
+  const bgImg = style.getPropertyValue("background-image");
   if (bg) values.push(bg);
   if (bgImg) values.push(bgImg);
 
   // Fallback to style.cssText if shorthand serialization fails (e.g. alongside background-clip: border-area)
-  const cssText = style.cssText || '';
+  const cssText = style.cssText || "";
   if (cssText) {
     values.push(cssText);
   }
@@ -66,8 +68,8 @@ function extractConicGradientInner(str: string): string[] {
     let depth = 1;
     let i = start;
     while (i < str.length && depth > 0) {
-      if (str[i] === '(') depth++;
-      else if (str[i] === ')') depth--;
+      if (str[i] === "(") depth++;
+      else if (str[i] === ")") depth--;
       i++;
     }
     if (depth === 0) {
@@ -80,13 +82,13 @@ function extractConicGradientInner(str: string): string[] {
 function splitTopLevelCommas(str: string): string[] {
   const parts: string[] = [];
   let depth = 0;
-  let current = '';
+  let current = "";
   for (const ch of str) {
-    if (ch === '(') depth++;
-    else if (ch === ')') depth--;
-    if (ch === ',' && depth === 0) {
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    if (ch === "," && depth === 0) {
       if (current.trim()) parts.push(current.trim());
-      current = '';
+      current = "";
     } else {
       current += ch;
     }
@@ -95,24 +97,26 @@ function splitTopLevelCommas(str: string): string[] {
   return parts;
 }
 
-test.describe('progress-ring Target Grader', () => {
+test.describe("progress-ring Target Grader", () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
 
-  test('The component contains a native HTML <progress> element', () => {
+  test("The component contains a native HTML <progress> element", () => {
     const docs = getHtmlDocuments(targetFiles);
     const progressElements = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('progress')),
+      Array.from(d.document.querySelectorAll("progress")),
     );
     expect(progressElements.length).toBeGreaterThan(0);
   });
 
-  test('The visual progress ring is implemented using a CSS conic-gradient', () => {
+  test("The visual progress ring is implemented using a CSS conic-gradient", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const declarations = getAllStyleDeclarations(stylesheet.cssRules);
     expect(declarations.length).toBeGreaterThan(0);
 
     const hasConicGradient = declarations.some((style) =>
-      getBackgroundValues(style).some((val) => /\bconic-gradient\s*\(/i.test(val)),
+      getBackgroundValues(style).some((val) =>
+        /\bconic-gradient\s*\(/i.test(val),
+      ),
     );
     expect(hasConicGradient).toBe(true);
   });
@@ -123,9 +127,10 @@ test.describe('progress-ring Target Grader', () => {
     expect(declarations.length).toBeGreaterThan(0);
 
     const hasBorderAreaClip = declarations.some((style) => {
-      const bgClip = style.getPropertyValue('background-clip') || '';
-      const webkitBgClip = style.getPropertyValue('-webkit-background-clip') || '';
-      const bg = style.getPropertyValue('background') || '';
+      const bgClip = style.getPropertyValue("background-clip") || "";
+      const webkitBgClip =
+        style.getPropertyValue("-webkit-background-clip") || "";
+      const bg = style.getPropertyValue("background") || "";
       return (
         /\bborder-area\b/i.test(bgClip) ||
         /\bborder-area\b/i.test(webkitBgClip) ||
@@ -135,7 +140,7 @@ test.describe('progress-ring Target Grader', () => {
     expect(hasBorderAreaClip).toBe(true);
   });
 
-  test('When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask', () => {
+  test("When background-clip: border-area is not supported, the center of the ring is hollowed out with a radial gradient mask", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
     const supportsRules = allRules.filter(
@@ -152,10 +157,11 @@ test.describe('progress-ring Target Grader', () => {
       ...getAllStyleDeclarations(sr.cssRules),
     ]);
     const hasRadialGradientMask = fallbackDecls.some((style) => {
-      const maskImage = style.getPropertyValue('mask-image') || '';
-      const webkitMaskImage = style.getPropertyValue('-webkit-mask-image') || '';
-      const mask = style.getPropertyValue('mask') || '';
-      const webkitMask = style.getPropertyValue('-webkit-mask') || '';
+      const maskImage = style.getPropertyValue("mask-image") || "";
+      const webkitMaskImage =
+        style.getPropertyValue("-webkit-mask-image") || "";
+      const mask = style.getPropertyValue("mask") || "";
+      const webkitMask = style.getPropertyValue("-webkit-mask") || "";
       return [maskImage, webkitMaskImage, mask, webkitMask].some((val) =>
         /\bradial-gradient\s*\(/i.test(val),
       );
@@ -163,7 +169,7 @@ test.describe('progress-ring Target Grader', () => {
     expect(hasRadialGradientMask).toBe(true);
   });
 
-  test('The value attribute on <progress> is used to drive the visual progress of the ring using attr()', () => {
+  test("The value attribute on <progress> is used to drive the visual progress of the ring using attr()", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const declarations = getAllStyleDeclarations(stylesheet.cssRules);
     expect(declarations.length).toBeGreaterThan(0);
@@ -172,7 +178,7 @@ test.describe('progress-ring Target Grader', () => {
       for (let i = 0; i < style.length; i++) {
         const propName = style.item(i);
         if (!propName) continue;
-        const propValue = style.getPropertyValue(propName) || '';
+        const propValue = style.getPropertyValue(propName) || "";
         if (/\battr\s*\(\s*value\b/i.test(propValue)) {
           return true;
         }
@@ -182,14 +188,16 @@ test.describe('progress-ring Target Grader', () => {
     expect(hasAttrValue).toBe(true);
   });
 
-  test('When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property', () => {
+  test("When using attr() on non-content properties is not supported, a MutationObserver monitors the value attribute and updates the --value custom property", () => {
     const project: Project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     expect(sourceFiles.length).toBeGreaterThan(0);
 
-    const newExprs = sourceFiles.flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
+    const newExprs = sourceFiles.flatMap((sf) =>
+      sf.getDescendantsOfKind(SyntaxKind.NewExpression),
+    );
     const hasMutationObserver = newExprs.some(
-      (ne) => ne.getExpression().getText() === 'MutationObserver',
+      (ne) => ne.getExpression().getText() === "MutationObserver",
     );
     expect(hasMutationObserver).toBe(true);
 
@@ -199,25 +207,31 @@ test.describe('progress-ring Target Grader', () => {
     const observesAttributes = callExprs.some((ce) => {
       const expr = ce.getExpression();
       if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
-      if (expr.getName() !== 'observe') return false;
+      if (expr.getName() !== "observe") return false;
       const args = ce.getArguments();
       if (args.length < 2) return false;
       const configText = args[1].getText();
-      return /\battributes\s*:\s*true\b/.test(configText) || /\bvalue\b/.test(configText);
+      return (
+        /\battributes\s*:\s*true\b/.test(configText) ||
+        /\bvalue\b/.test(configText)
+      );
     });
     expect(observesAttributes).toBe(true);
 
     const updatesValueProperty = callExprs.some((ce) => {
       const expr = ce.getExpression();
       if (!expr.isKind(SyntaxKind.PropertyAccessExpression)) return false;
-      if (expr.getName() !== 'setProperty') return false;
+      if (expr.getName() !== "setProperty") return false;
       const firstArg = ce.getArguments()[0];
-      return Boolean(firstArg && /^['"`]--[a-zA-Z0-9_-]+['"`]$/.test(firstArg.getText().trim()));
+      return Boolean(
+        firstArg &&
+        /^['"`]--[a-zA-Z0-9_-]+['"`]$/.test(firstArg.getText().trim()),
+      );
     });
     expect(updatesValueProperty).toBe(true);
   });
 
-  test('The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)', () => {
+  test("The ring smoothly transitions between values when the --value property is updated (requiring @property support in the browser)", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
     expect(allRules.length).toBeGreaterThan(0);
@@ -225,7 +239,7 @@ test.describe('progress-ring Target Grader', () => {
     const propertyRules = allRules.filter(
       (r): r is CSSPropertyRule =>
         r instanceof CSSPropertyRule &&
-        r.name.startsWith('--') &&
+        r.name.startsWith("--") &&
         (/<number>/i.test(r.syntax) || /<percentage>/i.test(r.syntax)),
     );
     expect(propertyRules.length).toBeGreaterThan(0);
@@ -233,8 +247,9 @@ test.describe('progress-ring Target Grader', () => {
 
     const declarations = getAllStyleDeclarations(stylesheet.cssRules);
     const transitionsValue = declarations.some((style) => {
-      const transition = style.getPropertyValue('transition') || '';
-      const transitionProp = style.getPropertyValue('transition-property') || '';
+      const transition = style.getPropertyValue("transition") || "";
+      const transitionProp =
+        style.getPropertyValue("transition-property") || "";
       return registeredNames.some(
         (name) => transition.includes(name) || transitionProp.includes(name),
       );
@@ -242,10 +257,12 @@ test.describe('progress-ring Target Grader', () => {
     expect(transitionsValue).toBe(true);
   });
 
-  test('The <progress> element includes an aria-label for accessibility', () => {
+  test("The <progress> element includes an aria-label for accessibility", () => {
     const docs = getHtmlDocuments(targetFiles);
     const candidates = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('progress, [role="progressbar"]')).map((el: any) => ({
+      Array.from(
+        d.document.querySelectorAll('progress, [role="progressbar"]'),
+      ).map((el: any) => ({
         el,
         document: d.document,
       })),
@@ -253,21 +270,31 @@ test.describe('progress-ring Target Grader', () => {
     expect(candidates.length).toBeGreaterThan(0);
 
     const hasAriaLabel = candidates.some(({ el, document }) => {
-      const label = el.getAttribute('aria-label')?.trim() ?? '';
-      const valueText = el.getAttribute('aria-valuetext')?.trim() ?? '';
-      const labelledBy = el.getAttribute('aria-labelledby')?.trim() ?? '';
+      const label = el.getAttribute("aria-label")?.trim() ?? "";
+      const valueText = el.getAttribute("aria-valuetext")?.trim() ?? "";
+      const labelledBy = el.getAttribute("aria-labelledby")?.trim() ?? "";
       const hasValidLabelledBy =
         labelledBy.length > 0 &&
         labelledBy
           .split(/\s+/)
-          .some((id: string) => Boolean(document.getElementById(id)?.textContent?.trim()));
-      const id = el.getAttribute('id')?.trim() ?? '';
-      const explicitLabel = id ? document.querySelector(`label[for="${id}"]`) : null;
-      const wrappingLabel = el.closest?.('label');
+          .some((id: string) =>
+            Boolean(document.getElementById(id)?.textContent?.trim()),
+          );
+      const id = el.getAttribute("id")?.trim() ?? "";
+      const explicitLabel = id
+        ? document.querySelector(`label[for="${id}"]`)
+        : null;
+      const wrappingLabel = el.closest?.("label");
       const hasAssociatedLabel = Boolean(
-        explicitLabel?.textContent?.trim() || wrappingLabel?.textContent?.trim(),
+        explicitLabel?.textContent?.trim() ||
+        wrappingLabel?.textContent?.trim(),
       );
-      return label.length > 0 || valueText.length > 0 || hasValidLabelledBy || hasAssociatedLabel;
+      return (
+        label.length > 0 ||
+        valueText.length > 0 ||
+        hasValidLabelledBy ||
+        hasAssociatedLabel
+      );
     });
     expect(hasAriaLabel).toBe(true);
   });
@@ -296,7 +323,7 @@ test.describe('progress-ring Target Grader', () => {
     expect(hasDistinctTrack).toBe(true);
   });
 
-  test('The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition', () => {
+  test("The progress ring respects prefers-reduced-motion by changing to a new value immediately, rather than having a smooth transition", () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
     expect(allRules.length).toBeGreaterThan(0);
@@ -309,45 +336,49 @@ test.describe('progress-ring Target Grader', () => {
 
     const allDeclarations = getAllStyleDeclarations(stylesheet.cssRules);
     const hasRingAnimation =
-      allRules.some((r) => r.constructor.name === 'CSSKeyframesRule') ||
+      allRules.some((r) => r.constructor.name === "CSSKeyframesRule") ||
       allDeclarations.some((style) => {
-        const trans = `${style.getPropertyValue('transition')} ${style.getPropertyValue('transition-property')}`;
-        return /--[a-zA-Z0-9_-]+|stroke-dashoffset|stroke-dasharray/i.test(trans);
+        const trans = `${style.getPropertyValue("transition")} ${style.getPropertyValue("transition-property")}`;
+        return /--[a-zA-Z0-9_-]+|stroke-dashoffset|stroke-dasharray/i.test(
+          trans,
+        );
       });
     if (!hasRingAnimation) return;
 
     const mediaRules = allRules.filter(
       (r): r is CSSMediaRule =>
-        r instanceof CSSMediaRule && /\bprefers-reduced-motion\b/i.test(r.conditionText),
+        r instanceof CSSMediaRule &&
+        /\bprefers-reduced-motion\b/i.test(r.conditionText),
     );
     expect(mediaRules.length).toBeGreaterThan(0);
     const transitionReferencedVars = new Set<string>();
     for (const style of allDeclarations) {
-      for (const prop of ['transition', 'transition-duration']) {
-        const val = style.getPropertyValue(prop) || '';
+      for (const prop of ["transition", "transition-duration"]) {
+        const val = style.getPropertyValue(prop) || "";
         for (const match of val.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g)) {
           transitionReferencedVars.add(match[1]);
         }
       }
     }
 
-    const nonZeroTimeRegex = /(?:^|[\s,(])(?:0?\.\d*[1-9]\d*|[1-9]\d*(?:\.\d+)?)m?s\b/i;
+    const nonZeroTimeRegex =
+      /(?:^|[\s,(])(?:0?\.\d*[1-9]\d*|[1-9]\d*(?:\.\d+)?)m?s\b/i;
     const zeroOrNoneRegex = /\b(?:0s|0ms|none)\b/i;
 
     const getTransitionCandidates = (style: CSSStyleDeclaration): string[] => {
       const vals = [
-        style.getPropertyValue('transition-duration') || '',
-        style.getPropertyValue('transition') || '',
+        style.getPropertyValue("transition-duration") || "",
+        style.getPropertyValue("transition") || "",
       ];
       for (let i = 0; i < style.length; i++) {
         const propName = style.item(i);
         if (
           propName &&
-          propName.startsWith('--') &&
+          propName.startsWith("--") &&
           (transitionReferencedVars.has(propName) ||
             /duration|transition|motion|speed/i.test(propName))
         ) {
-          vals.push(style.getPropertyValue(propName) || '');
+          vals.push(style.getPropertyValue(propName) || "");
         }
       }
       return vals;
@@ -358,13 +389,17 @@ test.describe('progress-ring Target Grader', () => {
       if (/\bno-preference\b/i.test(mr.conditionText)) {
         // Default duration is 0s (or via CSS variable), and prefers-reduced-motion: no-preference enables positive duration
         return decls.some((style) =>
-          getTransitionCandidates(style).some((val) => nonZeroTimeRegex.test(val)),
+          getTransitionCandidates(style).some((val) =>
+            nonZeroTimeRegex.test(val),
+          ),
         );
       }
       if (/\breduce\b/i.test(mr.conditionText)) {
         // Default has transition, and prefers-reduced-motion: reduce disables it or sets 0s
         return decls.some((style) =>
-          getTransitionCandidates(style).some((val) => zeroOrNoneRegex.test(val)),
+          getTransitionCandidates(style).some((val) =>
+            zeroOrNoneRegex.test(val),
+          ),
         );
       }
       return false;
@@ -374,13 +409,13 @@ test.describe('progress-ring Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
 
-    test('The component is visible on the page', async ({ page }) => {
-      const progress = page.locator('progress').first();
+    test("The component is visible on the page", async ({ page }) => {
+      const progress = page.locator("progress").first();
       await expect(progress).toBeVisible();
       const box = await progress.boundingBox();
       expect(box).not.toBeNull();
@@ -388,10 +423,10 @@ test.describe('progress-ring Target Grader', () => {
       expect(box!.height).toBeGreaterThan(0);
     });
 
-    test('The component supports displaying text content (e.g., the percentage) in the center of the ring', async ({
+    test("The component supports displaying text content (e.g., the percentage) in the center of the ring", async ({
       page,
     }) => {
-      const progress = page.locator('progress').first();
+      const progress = page.locator("progress").first();
       await expect(progress).toBeVisible();
 
       const centerContentInfo = await progress.evaluate((progEl) => {
@@ -402,11 +437,11 @@ test.describe('progress-ring Target Grader', () => {
         const parent = progEl.parentElement;
         if (!parent) return null;
 
-        const candidates = Array.from(parent.querySelectorAll('*')).filter(
+        const candidates = Array.from(parent.querySelectorAll("*")).filter(
           (el) => el !== progEl && !progEl.contains(el),
         );
         for (const sib of candidates) {
-          const text = (sib.textContent || '').trim();
+          const text = (sib.textContent || "").trim();
           if (!text) continue;
           const sibRect = sib.getBoundingClientRect();
           if (sibRect.width === 0 || sibRect.height === 0) continue;

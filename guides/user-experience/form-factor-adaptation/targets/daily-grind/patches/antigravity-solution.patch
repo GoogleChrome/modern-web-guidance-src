@@ -3,7 +3,7 @@ index 66c9173..dd71cbc 100644
 --- a/index.html
 +++ b/index.html
 @@ -3,7 +3,7 @@
- 
+
  <head>
    <meta charset="UTF-8">
 -  <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,7 +23,7 @@ index 66c9173..dd71cbc 100644
 +        --target-size: 44px;
 +      }
      }
- 
+
      * {
 @@ -25,16 +32,57 @@
        line-height: 1.6;
@@ -67,7 +67,7 @@ index 66c9173..dd71cbc 100644
 +    :where(nav > :not(button, input, select, textarea, a, [role="button"], label), .toolbar > :not(button, input, select, textarea, a, [role="button"], label)) {
 +      min-inline-size: 0;
      }
- 
+
      /* Navigation */
      nav {
        background: var(--primary);
@@ -95,7 +95,7 @@ index 66c9173..dd71cbc 100644
 +      align-items: center;
 +      gap: 0.5rem 1.25rem;
      }
- 
+
      nav a {
        color: white;
        text-decoration: none;
@@ -103,9 +103,9 @@ index 66c9173..dd71cbc 100644
 +      padding: 0.25rem 0.5rem;
        transition: color 0.3s;
      }
- 
+
 @@ -74,7 +121,7 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -124,13 +124,13 @@ index 66c9173..dd71cbc 100644
 +      padding-right: max(20px, env(safe-area-inset-right, 0px));
 +      container: hero / inline-size;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: 2rem;
        margin-bottom: 1rem;
      }
- 
+
 +    @container hero (inline-size > 40rem) {
 +      .hero h1 {
 +        font-size: 3rem;
@@ -146,7 +146,7 @@ index 66c9173..dd71cbc 100644
 +      padding-right: max(20px, env(safe-area-inset-right, 0px));
 +      container: main-content / inline-size;
      }
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -155,7 +155,7 @@ index 66c9173..dd71cbc 100644
        margin-top: 20px;
 +      container: favorites / inline-size;
      }
- 
+
      .card {
 @@ -113,6 +173,22 @@
        border-radius: 8px;
@@ -178,11 +178,11 @@ index 66c9173..dd71cbc 100644
 +        grid-template-columns: repeat(3, 1fr);
 +      }
      }
- 
+
      .card h3 {
 @@ -121,7 +197,6 @@
      }
- 
+
      .btn {
 -      display: inline-block;
        background: var(--primary);
@@ -200,7 +200,7 @@ index 66c9173..dd71cbc 100644
        margin-top: 40px;
 +      container: site-footer / inline-size;
      }
- 
+
      .footer-links {
 +      display: flex;
 +      justify-content: center;
@@ -208,7 +208,7 @@ index 66c9173..dd71cbc 100644
 +      gap: 0.5rem 0.75rem;
        margin-bottom: 20px;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      padding: 0.25rem 0.5rem;

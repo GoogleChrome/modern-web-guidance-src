@@ -31,13 +31,7 @@ To participate as a verifying site (relying party):
      Cache-Control: no-store -->
 <form method="POST" action="/api/verify-email">
   <label for="email">Email address:</label>
-  <input
-    type="email"
-    id="email"
-    name="email"
-    autocomplete="email"
-    required
-  />
+  <input type="email" id="email" name="email" autocomplete="email" required />
 
   <!-- MANDATORY: Must be in the same <form> as the email input.
        The nonce value must be freshly generated on the server per form render. -->
@@ -58,12 +52,12 @@ When the form is submitted, treat the `token` field as untrusted input. Atomical
 
 ```javascript
 // Replace with your public relying-party origin
-const RP_ORIGIN = 'https://rp.example.com';
+const RP_ORIGIN = "https://rp.example.com";
 
 export async function handleSignupSubmission(request) {
   const formData = await request.formData();
-  const submittedEmail = String(formData.get('email') || '').trim();
-  const rawToken = String(formData.get('token') || '').trim();
+  const submittedEmail = String(formData.get("email") || "").trim();
+  const rawToken = String(formData.get("token") || "").trim();
   // Atomically read and delete the single-use nonce from server-side session state
   const expectedNonce = await consumeSessionNonce(request);
 
@@ -79,7 +73,7 @@ export async function handleSignupSubmission(request) {
       return completeAccountCreation(submittedEmail);
     } catch (err) {
       // Log token verification failures before falling back to standard email verification.
-      console.error('Email verification token check failed:', err);
+      console.error("Email verification token check failed:", err);
     }
   }
 
@@ -93,27 +87,35 @@ Always use established SD-JWT and JOSE/JWT libraries for your backend platform (
 ### Step 1: Parse the SD-JWT claims and validate the email address
 
 After consuming the single-use `expectedNonce` from server-side session storage, decode the SD-JWT presentation (`EVT + KB-JWT`) and verify that:
+
 - Both the issuer JWT (`jwt`) and Key Binding JWT (`kbJwt`) are present, along with the issuer claim (`iss`).
 - `evtPayload.email_verified === true`.
 - `evtPayload.email` matches the submitted form email using a **case-insensitive comparison** (`toLowerCase()`).
 
 ```javascript
-import { createHash } from 'node:crypto';
-import { decodeSdJwtSync } from '@sd-jwt/core';
+import { createHash } from "node:crypto";
+import { decodeSdJwtSync } from "@sd-jwt/core";
 
 const hasher = (data, alg) =>
-  createHash(alg === 'sha-256' ? 'sha256' : alg).update(data).digest();
+  createHash(alg === "sha-256" ? "sha256" : alg)
+    .update(data)
+    .digest();
 
 const decoded = decodeSdJwtSync(rawToken, hasher);
 const evtPayload = decoded.jwt.payload;
 const iss = evtPayload.iss;
 
-if (!expectedNonce || !decoded.kbJwt || !iss || evtPayload.email_verified !== true) {
-  throw new Error('Missing nonce, KB-JWT, issuer, or email_verified !== true.');
+if (
+  !expectedNonce ||
+  !decoded.kbJwt ||
+  !iss ||
+  evtPayload.email_verified !== true
+) {
+  throw new Error("Missing nonce, KB-JWT, issuer, or email_verified !== true.");
 }
 // MANDATORY: Compare email addresses case-insensitively
 if (evtPayload.email?.toLowerCase() !== submittedEmail.toLowerCase()) {
-  throw new Error('Submitted email does not match the EVT email claim.');
+  throw new Error("Submitted email does not match the EVT email claim.");
 }
 ```
 
@@ -124,20 +126,27 @@ Before making any network request to `iss`, verify that the submitted email's do
 > **Note on `kid` handling:** Some major email providers (such as Gmail) omit `kid` from the EVT header. When `kid` is absent and the JWKS contains multiple keys, `jose` throws `ERR_JWKS_MULTIPLE_MATCHING_KEYS` (an `AsyncIterable` of matching `CryptoKey`s)—iterate `for await (const publicKey of err)` to trial-verify each key, as shown in Step 3.
 
 ```javascript
-import dns from 'node:dns/promises';
-import { createRemoteJWKSet } from 'jose';
+import dns from "node:dns/promises";
+import { createRemoteJWKSet } from "jose";
 
-const domain = submittedEmail.split('@')[1];
-const txtRecords = (await dns.resolveTxt(`_email-verification.${domain}`)).map((r) => r.join(''));
-if (!txtRecords.some((txt) => txt.startsWith('iss=') && `https://${txt.slice(4).trim()}` === iss)) {
+const domain = submittedEmail.split("@")[1];
+const txtRecords = (await dns.resolveTxt(`_email-verification.${domain}`)).map(
+  (r) => r.join(""),
+);
+if (
+  !txtRecords.some(
+    (txt) => txt.startsWith("iss=") && `https://${txt.slice(4).trim()}` === iss,
+  )
+) {
   throw new Error(`Issuer "${iss}" is not delegated via DNS for "${domain}".`);
 }
 
-const discoveryUrl = new URL('/.well-known/email-verification', iss);
-if (discoveryUrl.protocol !== 'https:') throw new Error('Issuer must use HTTPS.');
+const discoveryUrl = new URL("/.well-known/email-verification", iss);
+if (discoveryUrl.protocol !== "https:")
+  throw new Error("Issuer must use HTTPS.");
 const metadata = await (await fetch(discoveryUrl)).json();
-if (metadata.issuer !== iss || !metadata.jwks_uri?.startsWith('https://')) {
-  throw new Error('Invalid issuer metadata or non-HTTPS jwks_uri.');
+if (metadata.issuer !== iss || !metadata.jwks_uri?.startsWith("https://")) {
+  throw new Error("Invalid issuer metadata or non-HTTPS jwks_uri.");
 }
 const issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
 ```
@@ -145,24 +154,25 @@ const issuerJwks = createRemoteJWKSet(new URL(metadata.jwks_uri));
 ### Step 3: Verify the EVT signature and Key Binding JWT (`KB-JWT`)
 
 Finally, verify both signatures and the cryptographic binding between the two tokens using the explicit asymmetric algorithm allowlist (`['Ed25519', 'EdDSA', 'ES256']`):
+
 1. **EVT signature (`verifier`):** Verify against `issuerJwks` (catching `ERR_JWKS_MULTIPLE_MATCHING_KEYS` to iterate candidate keys when `kid` is omitted), enforcing `iss` and a tight freshness window (`maxTokenAge: '5m'`, `clockTolerance: '1m'`).
 2. **Holder binding (`kbVerifier` and `sdJwt.verify` options):** Extract the browser's ephemeral public key from `evtPayload.cnf.jwk`, confirm both `cnf.jwk.alg` and `decoded.kbJwt.header.alg` are in `ALLOWED_ALGS` and match (treating `'Ed25519'` and `'EdDSA'` as equivalent while Origin Trial implementations transition to RFC 9864 `'Ed25519'`), and verify the `KB-JWT` signature with `typ: 'kb+jwt'`. Pass `keyBindingNonce: expectedNonce`, `expectedKeyBindingAudience: expectedAudience`, and `keyBindingMaxAgeSeconds: 300` to `sdJwt.verify()`—`@sd-jwt/core` only invokes `kbVerifier` and validates `nonce`, `aud`, `iat`, and `sd_hash` when `keyBindingNonce` is supplied.
 
 ```javascript
-import { SDJwtInstance } from '@sd-jwt/core';
-import { importJWK, jwtVerify } from 'jose';
+import { SDJwtInstance } from "@sd-jwt/core";
+import { importJWK, jwtVerify } from "jose";
 
 // IETF draft-hardt-email-verification-02 (§3.3, §5.1.1) specifies RFC 9864 'Ed25519' and 'ES256'.
 // TODO: Remove 'EdDSA' once live issuers (e.g. Gmail) and Chrome Origin Trial builds finish
 // transitioning from 'EdDSA' (with crv: 'Ed25519') to 'Ed25519'.
-const ALLOWED_ALGS = ['Ed25519', 'EdDSA', 'ES256'];
-const normalizeAlg = (alg) => (alg === 'Ed25519' ? 'EdDSA' : alg);
+const ALLOWED_ALGS = ["Ed25519", "EdDSA", "ES256"];
+const normalizeAlg = (alg) => (alg === "Ed25519" ? "EdDSA" : alg);
 const evtOptions = {
-  typ: 'ev+sd-jwt',
+  typ: "ev+sd-jwt",
   issuer: iss,
   algorithms: ALLOWED_ALGS,
-  maxTokenAge: '5m',
-  clockTolerance: '1m',
+  maxTokenAge: "5m",
+  clockTolerance: "1m",
 };
 
 const sdJwt = new SDJwtInstance({
@@ -174,7 +184,7 @@ const sdJwt = new SDJwtInstance({
     } catch (err) {
       // When `kid` is omitted (e.g. Gmail) and multiple keys match in the JWKS,
       // jose throws JWKSMultipleMatchingKeys, which yields each matching CryptoKey.
-      if (err?.code !== 'ERR_JWKS_MULTIPLE_MATCHING_KEYS') throw err;
+      if (err?.code !== "ERR_JWKS_MULTIPLE_MATCHING_KEYS") throw err;
       let matched = false;
       for await (const publicKey of err) {
         try {
@@ -198,22 +208,22 @@ const sdJwt = new SDJwtInstance({
       !ALLOWED_ALGS.includes(kbAlg) ||
       normalizeAlg(kbAlg) !== normalizeAlg(holderAlg)
     ) {
-      throw new Error('Missing, disallowed, or mismatched KB-JWT algorithm.');
+      throw new Error("Missing, disallowed, or mismatched KB-JWT algorithm.");
     }
     const holderKey = await importJWK(holderJwk, kbAlg);
     await jwtVerify(`${data}.${sig}`, holderKey, {
-      typ: 'kb+jwt',
+      typ: "kb+jwt",
       audience: expectedAudience,
       algorithms: [kbAlg],
-      maxTokenAge: '5m',
-      clockTolerance: '1m',
+      maxTokenAge: "5m",
+      clockTolerance: "1m",
     });
     return true;
   },
 });
 
 const verified = await sdJwt.verify(rawToken, {
-  requiredClaimKeys: ['email', 'email_verified'],
+  requiredClaimKeys: ["email", "email_verified"],
   keyBindingNonce: expectedNonce,
   expectedKeyBindingAudience: expectedAudience,
   keyBindingMaxAgeSeconds: 300,

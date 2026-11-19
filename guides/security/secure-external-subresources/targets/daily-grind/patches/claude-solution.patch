@@ -16,7 +16,7 @@ index 66c9173..38c6e80 100644
 @@ -27,6 +31,24 @@
        background-color: var(--light);
      }
- 
+
 +    @font-face {
 +      font-family: "Playfair Display";
 +      font-weight: 700;
@@ -64,7 +64,7 @@ index 66c9173..38c6e80 100644
        display: flex;
 @@ -89,6 +124,7 @@
      }
- 
+
      .hero h1 {
 +      font-family: 'Playfair Display', Georgia, serif;
        font-size: 3rem;
@@ -73,7 +73,7 @@ index 66c9173..38c6e80 100644
 @@ -115,6 +151,59 @@
        text-align: center;
      }
- 
+
 +    .card-img {
 +      height: 180px;
 +      margin: -20px -20px 15px;
@@ -132,7 +132,7 @@ index 66c9173..38c6e80 100644
        color: var(--primary);
 @@ -169,7 +258,7 @@
    </nav>
- 
+
    <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 +    <h1 class="animate__animated animate__fadeInDown">Wake Up Your Senses</h1>
@@ -171,6 +171,6 @@ index 66c9173..38c6e80 100644
 +      VanillaTilt.init(document.querySelectorAll('.card'), { max: 5, speed: 400 });
 +    }
 +  </script>
- 
+
  </body>
- 
+

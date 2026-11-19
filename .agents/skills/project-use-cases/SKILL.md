@@ -17,65 +17,62 @@ The primary goal of this stage is to translate a technical web platform feature 
 
 A "use case" in this project is not a description of a feature; it's a task that the user is trying to implement, or a problem they're trying to solve. The feature is only relevant in the sense that it's part of the recommended solution for the use case.
 
-* **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
-* **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
-* **Balance Generality and Distinctness**: The use case **description** should be general enough to capture the overall intent and match a wide range of user prompts. However, to leverage the vector search effectively, ensure the guide uses **clear, descriptive headings**. The RAG system chunks content by heading, making specific parts of your guide discoverable for specific prompts. The implementation details within those chunks must remain **distinct and specific** to ensure the agent receives an unambiguous solution. For example, instead of saying "Fade an image in/out..." in the description, say "Smoothly hide/show a component...".
-* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. Default to omitting specific API methods, properties, or the target feature name in the description unless retrieval genuinely needs it (and note that `gd dev` task generation strips feature and API names when building `task.md`). For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
-* **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
-* **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
-* **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
-* **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
-* **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage or an isolated prerequisite step. If a feature only addresses one facet or prerequisite of a broader workflow, fold it into the guide for that broader goal; if the implementation across proposed use cases is 90% identical, consolidate them.
-* **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline guide.
-* **Avoid Standalone Guides for Single-Line Progressive Enhancements**: If a feature amounts to a single declaration or one-line progressive enhancement, do not create a 1:1 micro-guide whose entire solution is that single line. Instead, fold the feature and its guidance into a broader existing discipline or topic guide where it applies.
-* **Granular Guide Decomposition (Avoid Monoliths)**: Break discipline-level guidance into focused subguides rather than monolithic guides, with a conceptual hub routing to subguides via `{{ GUIDE_REF("guide-slug") }}` (see [`project-discipline-guides`](../project-discipline-guides/SKILL.md)).
-
-
-
+- **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
+- **Bridge the knowledge gap**: Assume the developer knows _what_ they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know _which_ modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
+- **Balance Generality and Distinctness**: The use case **description** should be general enough to capture the overall intent and match a wide range of user prompts. However, to leverage the vector search effectively, ensure the guide uses **clear, descriptive headings**. The RAG system chunks content by heading, making specific parts of your guide discoverable for specific prompts. The implementation details within those chunks must remain **distinct and specific** to ensure the agent receives an unambiguous solution. For example, instead of saying "Fade an image in/out..." in the description, say "Smoothly hide/show a component...".
+- **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. Default to omitting specific API methods, properties, or the target feature name in the description unless retrieval genuinely needs it (and note that `gd dev` task generation strips feature and API names when building `task.md`). For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+- **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
+- **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
+- **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
+- **Break down complex features**: Conversely, do not cram multi-step, intricate features (like passkeys) into a single generic guide. Split them into logical, detailed use cases.
+- **UX-Driven, Not Feature-Driven**: Do not simply list every method, property, or option of an API as a separate use case. A use case must represent a distinct user experience goal or a distinct developer problem, not just a variation in API usage or an isolated prerequisite step. If a feature only addresses one facet or prerequisite of a broader workflow, fold it into the guide for that broader goal; if the implementation across proposed use cases is 90% identical, consolidate them.
+- **Avoid Forcing Use Cases on Low-Level Utilities**: If a feature is a low-level utility (like a new Promise method or a general object cloning function) that primarily acts as a drop-in replacement for legacy patterns, avoid forcing it into multiple outcome-oriented use cases. Instead, consider recommending a single 'Fundamental Guide' (e.g., "Deep cloning complex objects") or placing it in a top-level discipline guide.
+- **Avoid Standalone Guides for Single-Line Progressive Enhancements**: If a feature amounts to a single declaration or one-line progressive enhancement, do not create a 1:1 micro-guide whose entire solution is that single line. Instead, fold the feature and its guidance into a broader existing discipline or topic guide where it applies.
+- **Granular Guide Decomposition (Avoid Monoliths)**: Break discipline-level guidance into focused subguides rather than monolithic guides, with a conceptual hub routing to subguides via `{{ GUIDE_REF("guide-slug") }}` (see [`project-discipline-guides`](../project-discipline-guides/SKILL.md)).
 
 ## Minimizing overlap
 
 This guidance is ultimately served through a RAG (Retrieval-Augmented Generation) search system. If multiple guides have significant overlap, coding agents may struggle to select the most relevant one, leading to confusing or contradictory advice.
 
-* **Check existing guides**: Before creating a new use case, review existing guides in the same discipline.
-* **Search by web-feature-id**: Each guide lists the web features it relies on in the `web-feature-ids` metadata field. Search for the ID of the feature you're writing about in existing guides and open PRs to see how it's being used.
-* **Merge or differentiate**: If your proposed use case is substantially similar to an existing one, do not create a duplicate. Instead, consider how the existing guide should be updated to include your new scenario as a variation or a specific directive.
-* **Distinct value proposition**: Every new guide must offer a distinct solution to a distinct problem.
+- **Check existing guides**: Before creating a new use case, review existing guides in the same discipline.
+- **Search by web-feature-id**: Each guide lists the web features it relies on in the `web-feature-ids` metadata field. Search for the ID of the feature you're writing about in existing guides and open PRs to see how it's being used.
+- **Merge or differentiate**: If your proposed use case is substantially similar to an existing one, do not create a duplicate. Instead, consider how the existing guide should be updated to include your new scenario as a variation or a specific directive.
+- **Distinct value proposition**: Every new guide must offer a distinct solution to a distinct problem.
 
 ## Implementation and scaffolding
 
 The following steps are REQUIRED for creating a new use case:
 
-* **Step 1: Describe the use case**
+- **Step 1: Describe the use case**
 
   You MUST choose a short (max 1024 characters), action-oriented `description` of the problem the feature solves. The description must be a single sentence, start with an imperative verb, and answer the question: "What is the user trying to DO?"
-  
+
   For example, a use case of the `fetch-priority` feature is "Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests."
 
   **Match the scope of the guide ID and description.** Ensure `name` and `description` cover the exact same scope; do not pair a narrow guide ID with a broad description or vice versa.
 
-* **Step 2: Choose a category**
+- **Step 2: Choose a category**
 
   Use cases MUST live under the [`guides/`](/guides) directory, organized into a single, high-level category such as [`motion`](/guides/motion) or [`performance`](/guides/performance). List the current subdirectories under `guides/` and choose the most appropriate one.
 
-  **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: *could someone who understands the use case but can't write the code file it correctly?* If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
+  **Categorize by the use case, not the implementation.** This is the "WHAT not HOW" principle applied to taxonomy: a category should name the user's goal (`motion`, `overlays`, `datetime`, `typography`), not the technology used to achieve it. Quick test: _could someone who understands the use case but can't write the code file it correctly?_ If the only way to know where a guide belongs is to know which API it uses, the category is implementation-shaped. Two guides solving the same goal with different tech (e.g. a tab underline that morphs via anchor positioning vs. view transitions) belong in the **same** category.
 
   For UI guides, match the category to the granularity of the use case: [`ui-components`](/guides/ui-components) is for complete, common UI components, while [`ui-behaviors`](/guides/ui-behaviors) and [`ui-atoms`](/guides/ui-atoms) are for individual behavioral patterns or atomic primitives.
 
   Some categories are named after a technology domain (`css`, `html`, `canvas`) because they are anchored by a comprehensive reference guide for that technology (e.g. `html/html/guide.md`). These are valid homes for use cases genuinely about that technology, or that don't yet have enough siblings to form a use-case cluster.
 
-  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are *verticals* nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. For example, `user-experience` holds only the holistic UX pillar guides rather than acting as a catch-all: individual components and behaviors belong in their own categories, such as `ui-components`, `ui-behaviors`, or `ui-atoms`.
+  **File by primary goal; cover cross-cutting concerns inline.** Performance, accessibility, privacy, security, and UX are _verticals_ nearly every guide touches. File a guide by what it is primarily trying to accomplish and address secondary concerns in the `guide.md` body, not via category. A scroll-driven animation with a rendering cost still belongs in `motion` or `scroll`, with its performance notes in the guide, not in `performance`. For example, `user-experience` holds only the holistic UX pillar guides rather than acting as a catch-all: individual components and behaviors belong in their own categories, such as `ui-components`, `ui-behaviors`, or `ui-atoms`.
 
-* **Step 3: Mint the guide ID and subdirectory**
+- **Step 3: Mint the guide ID and subdirectory**
 
   Create `guides/<category>/<guide-id>/`. The directory name and frontmatter `name` are the guide ID. It is surfaced directly to developers when coding agents disclose applied guides ([`guides/modern-web-guidance/SKILL.md`](../../../guides/modern-web-guidance/SKILL.md)), in release notes and `README.md`, and across eval grading UIs. Split the jobs cleanly between the two fields: **`description` is an imperative task sentence; the guide ID is a concise, self-explanatory noun phrase naming the subject.**
 
-  * **2-4 word noun phrases or `-ing` gerunds, never imperative verbs or full clauses.** Save verbs (`optimize-`, `prevent-`, `defer-`, `avoid-`, `style-`, `create-`) and articles (`-a-`, `-the-`) for `description`: ~~`deprioritize-background-fetches`~~ `background-fetch-priority`, ~~`prevent-page-scroll-under-modal-dialog`~~ `modal-scroll-lock`, ~~`light-dismiss-a-dialog`~~ `dialog-light-dismiss`, ~~`form-fields-automatically-fit-contents`~~ `autosizing-form-fields`.
-  * **Name the user pattern or domain concept, not the API.** Keep CSS selectors, JS methods, file formats, and spec names out of use-case IDs unless the technology itself is the subject of a reference hub: ~~`style-parent-with-has`~~ `invalid-field-container-styling`, ~~`anchor-positioning-tab-underline`~~ `sliding-tab-indicator`, ~~`css-custom-highlights`~~ `highlight-text-ranges`.
-  * **Calibrate specificity so the ID stands on its own.** Avoid 1-word labels that hide what aspect is covered (`drag` vs `drag-and-drop` -> `free-element-dragging` vs `drag-to-reorder`), mock business scenarios, or abstractions that drop the domain noun entirely (~~`capture-location-agnostic-data`~~ `timezone-agnostic-dates`).
-  * **Cut aspirational filler.** Drop quality adjectives that apply to every guide, such as `resilient-`, `faster-`, `modern-`, `smart-`, `efficient-`, and `proper-`.
+  - **2-4 word noun phrases or `-ing` gerunds, never imperative verbs or full clauses.** Save verbs (`optimize-`, `prevent-`, `defer-`, `avoid-`, `style-`, `create-`) and articles (`-a-`, `-the-`) for `description`: ~~`deprioritize-background-fetches`~~ `background-fetch-priority`, ~~`prevent-page-scroll-under-modal-dialog`~~ `modal-scroll-lock`, ~~`light-dismiss-a-dialog`~~ `dialog-light-dismiss`, ~~`form-fields-automatically-fit-contents`~~ `autosizing-form-fields`.
+  - **Name the user pattern or domain concept, not the API.** Keep CSS selectors, JS methods, file formats, and spec names out of use-case IDs unless the technology itself is the subject of a reference hub: ~~`style-parent-with-has`~~ `invalid-field-container-styling`, ~~`anchor-positioning-tab-underline`~~ `sliding-tab-indicator`, ~~`css-custom-highlights`~~ `highlight-text-ranges`.
+  - **Calibrate specificity so the ID stands on its own.** Avoid 1-word labels that hide what aspect is covered (`drag` vs `drag-and-drop` -> `free-element-dragging` vs `drag-to-reorder`), mock business scenarios, or abstractions that drop the domain noun entirely (~~`capture-location-agnostic-data`~~ `timezone-agnostic-dates`).
+  - **Cut aspirational filler.** Drop quality adjectives that apply to every guide, such as `resilient-`, `faster-`, `modern-`, `smart-`, `efficient-`, and `proper-`.
 
-* **Step 4: Create the `guide.md` stub**
+- **Step 4: Create the `guide.md` stub**
 
   Create a `guide.md` file in the new subdirectory. For now, the guide should only contain metadata about the use case. The actual content of the guide will be filled in later after peer review.
 
@@ -97,11 +94,11 @@ The following steps are REQUIRED for creating a new use case:
   ---
   ```
 
-* **Step 5: Validate the use case stub**
+- **Step 5: Validate the use case stub**
 
   Run `pnpm test` to validate the use case directory structure and frontmatter metadata.
 
-* **Step 6: Get the use case approved**
+- **Step 6: Get the use case approved**
 
   Submit the use case for review by creating a Pull Request with the `guide.md` frontmatter stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)) for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md).
 

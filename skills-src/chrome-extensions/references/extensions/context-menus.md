@@ -13,22 +13,22 @@ Create in the service worker, typically in `onInstalled` (menus persist, but re-
 ```js
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: 'save-link',
-    title: 'Save to Reading List',
-    contexts: ['link']        // Only show on right-click of links
+    id: "save-link",
+    title: "Save to Reading List",
+    contexts: ["link"], // Only show on right-click of links
   });
 
   chrome.contextMenus.create({
-    id: 'translate-selection',
-    title: 'Translate "%s"',   // %s = selected text
-    contexts: ['selection']
+    id: "translate-selection",
+    title: 'Translate "%s"', // %s = selected text
+    contexts: ["selection"],
   });
 
   // M150+: Context menu for the tab strip (right-clicking a tab)
   chrome.contextMenus.create({
-    id: 'duplicate-tab',
-    title: 'Custom Duplicate Tab',
-    contexts: ['tab']
+    id: "duplicate-tab",
+    title: "Custom Duplicate Tab",
+    contexts: ["tab"],
   });
 });
 ```
@@ -38,13 +38,13 @@ chrome.runtime.onInstalled.addListener(() => {
 ```js
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   switch (info.menuItemId) {
-    case 'save-link':
+    case "save-link":
       saveLink(info.linkUrl, info.selectionText || info.linkUrl);
       break;
-    case 'translate-selection':
+    case "translate-selection":
       translateText(info.selectionText, tab.id);
       break;
-    case 'duplicate-tab':
+    case "duplicate-tab":
       chrome.tabs.duplicate(tab.id); // 'tab' parameter is the clicked tab
       break;
   }
@@ -58,15 +58,29 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 ## Submenus
 
 ```js
-chrome.contextMenus.create({ id: 'parent', title: 'My Extension', contexts: ['page'] });
-chrome.contextMenus.create({ id: 'child1', parentId: 'parent', title: 'Option 1', contexts: ['page'] });
-chrome.contextMenus.create({ id: 'child2', parentId: 'parent', title: 'Option 2', contexts: ['page'] });
+chrome.contextMenus.create({
+  id: "parent",
+  title: "My Extension",
+  contexts: ["page"],
+});
+chrome.contextMenus.create({
+  id: "child1",
+  parentId: "parent",
+  title: "Option 1",
+  contexts: ["page"],
+});
+chrome.contextMenus.create({
+  id: "child2",
+  parentId: "parent",
+  title: "Option 2",
+  contexts: ["page"],
+});
 ```
 
 ## Dynamic Updates
 
 ```js
-chrome.contextMenus.update('save-link', { title: 'New Title' });
-chrome.contextMenus.remove('save-link');
+chrome.contextMenus.update("save-link", { title: "New Title" });
+chrome.contextMenus.remove("save-link");
 chrome.contextMenus.removeAll();
 ```

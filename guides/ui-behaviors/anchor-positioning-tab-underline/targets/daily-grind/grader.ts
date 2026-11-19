@@ -5,10 +5,10 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
-import type { Document } from 'linkedom';
-import type { Page } from '@playwright/test';
+} from "../../../../../src/grading/test-fixture.ts";
+import { SyntaxKind, type Project } from "ts-morph";
+import type { Document } from "linkedom";
+import type { Page } from "@playwright/test";
 import {
   CSSStyleRule,
   CSSMediaRule,
@@ -17,25 +17,32 @@ import {
   type CSSRule,
   type CSSStyleSheet,
   type CSSStyleDeclaration,
-} from 'cssomnom';
+} from "cssomnom";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function collectActiveCssRules(ruleList: Iterable<CSSRule>): CSSRule[] {
   const collected: CSSRule[] = [];
   for (const rule of ruleList) {
-    if (rule instanceof CSSSupportsRule && /^\s*not\b/i.test(rule.conditionText)) {
+    if (
+      rule instanceof CSSSupportsRule &&
+      /^\s*not\b/i.test(rule.conditionText)
+    ) {
       continue;
     }
     collected.push(rule);
-    if ('cssRules' in rule && rule.cssRules) {
-      collected.push(...collectActiveCssRules(rule.cssRules as Iterable<CSSRule>));
+    if ("cssRules" in rule && rule.cssRules) {
+      collected.push(
+        ...collectActiveCssRules(rule.cssRules as Iterable<CSSRule>),
+      );
     }
   }
   return collected;
 }
 
-function getActiveStyleDeclarations(stylesheet: CSSStyleSheet): CSSStyleDeclaration[] {
+function getActiveStyleDeclarations(
+  stylesheet: CSSStyleSheet,
+): CSSStyleDeclaration[] {
   return collectActiveCssRules(stylesheet.cssRules)
     .filter(
       (rule): rule is CSSStyleRule | CSSNestedDeclarations =>
@@ -65,15 +72,21 @@ interface NavUnderlineMetrics {
   };
 }
 
-async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderlineMetrics | null> {
+async function getNavUnderlineAndActiveMetrics(
+  page: Page,
+): Promise<NavUnderlineMetrics | null> {
   return page.evaluate(() => {
-    const nav = document.querySelector('nav');
+    const nav = document.querySelector("nav");
     if (!nav) return null;
 
-    const navElements = Array.from(nav.querySelectorAll<HTMLElement>('*'));
+    const navElements = Array.from(nav.querySelectorAll<HTMLElement>("*"));
     const activeEl: HTMLElement | null =
       navElements.find((el) =>
-        window.getComputedStyle(el).getPropertyValue('anchor-name').trim().startsWith('--'),
+        window
+          .getComputedStyle(el)
+          .getPropertyValue("anchor-name")
+          .trim()
+          .startsWith("--"),
       ) ??
       nav.querySelector<HTMLElement>(
         'li.active, a[aria-current="page"], [aria-selected="true"], .active',
@@ -82,44 +95,47 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
     if (!activeEl) return null;
     const activeRect = activeEl.getBoundingClientRect();
 
-    const parseMaxDuration = (durationStr: string, propertyStr: string): number => {
-      if (propertyStr.trim() === 'none') return 0;
+    const parseMaxDuration = (
+      durationStr: string,
+      propertyStr: string,
+    ): number => {
+      if (propertyStr.trim() === "none") return 0;
       const durations = durationStr
-        .split(',')
+        .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
         .map((s) => {
-          if (s.endsWith('ms')) return parseFloat(s) / 1000;
-          if (s.endsWith('s')) return parseFloat(s);
+          if (s.endsWith("ms")) return parseFloat(s) / 1000;
+          if (s.endsWith("s")) return parseFloat(s);
           return parseFloat(s) || 0;
         });
       return durations.length > 0 ? Math.max(...durations) : 0;
     };
 
     const candidateHosts: HTMLElement[] = [
-      ...Array.from(nav.querySelectorAll<HTMLElement>('ul, ol')),
+      ...Array.from(nav.querySelectorAll<HTMLElement>("ul, ol")),
       nav,
       ...navElements,
     ];
 
-    let underlineInfo: NavUnderlineMetrics['underline'] | null = null;
+    let underlineInfo: NavUnderlineMetrics["underline"] | null = null;
 
     for (const host of candidateHosts) {
-      for (const pseudo of ['::before', '::after'] as const) {
+      for (const pseudo of ["::before", "::after"] as const) {
         const style = window.getComputedStyle(host, pseudo);
         const content = style.content;
         if (
           content &&
-          content !== 'none' &&
-          content !== 'normal' &&
-          (style.position === 'absolute' || style.position === 'fixed')
+          content !== "none" &&
+          content !== "normal" &&
+          (style.position === "absolute" || style.position === "fixed")
         ) {
           let cbLeft = 0;
           let cbTop = 0;
-          if (style.position === 'absolute') {
+          if (style.position === "absolute") {
             let cb: HTMLElement | null = host;
             while (cb && cb !== document.documentElement) {
-              if (window.getComputedStyle(cb).position !== 'static') break;
+              if (window.getComputedStyle(cb).position !== "static") break;
               cb = cb.parentElement;
             }
             const cbEl = cb ?? document.documentElement;
@@ -136,17 +152,23 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
           const borderTopWidth = parseFloat(style.borderTopWidth) || 0;
           const rawHeight = parseFloat(style.height) || 0;
           const height =
-            style.boxSizing === 'border-box'
+            style.boxSizing === "border-box"
               ? Math.max(rawHeight, borderBottomWidth + borderTopWidth)
               : rawHeight + borderBottomWidth + borderTopWidth;
           const bg = style.backgroundColor;
           const hasColor =
-            (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
+            (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") ||
             borderBottomWidth > 0 ||
             borderTopWidth > 0 ||
-            style.backgroundImage !== 'none';
+            style.backgroundImage !== "none";
 
-          if (Number.isFinite(left) && Number.isFinite(top) && width > 0 && height > 0 && hasColor) {
+          if (
+            Number.isFinite(left) &&
+            Number.isFinite(top) &&
+            width > 0 &&
+            height > 0 &&
+            hasColor
+          ) {
             underlineInfo = {
               left,
               right: left + width,
@@ -159,9 +181,9 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
                 style.transitionProperty,
               ),
               isVisible:
-                style.display !== 'none' &&
-                style.visibility !== 'hidden' &&
-                parseFloat(style.opacity || '1') > 0,
+                style.display !== "none" &&
+                style.visibility !== "hidden" &&
+                parseFloat(style.opacity || "1") > 0,
             };
             break;
           }
@@ -172,7 +194,11 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
 
     if (!underlineInfo) {
       const anchoredEl = navElements.find((el) =>
-        window.getComputedStyle(el).getPropertyValue('position-anchor').trim().startsWith('--'),
+        window
+          .getComputedStyle(el)
+          .getPropertyValue("position-anchor")
+          .trim()
+          .startsWith("--"),
       );
       if (anchoredEl) {
         const style = window.getComputedStyle(anchoredEl);
@@ -180,9 +206,9 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
         const bg = style.backgroundColor;
         const borderBottomWidth = parseFloat(style.borderBottomWidth) || 0;
         const hasColor =
-          (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
+          (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") ||
           borderBottomWidth > 0 ||
-          style.backgroundImage !== 'none';
+          style.backgroundImage !== "none";
 
         if (rect.width > 0 && rect.height > 0 && hasColor) {
           underlineInfo = {
@@ -197,9 +223,9 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
               style.transitionProperty,
             ),
             isVisible:
-              style.display !== 'none' &&
-              style.visibility !== 'hidden' &&
-              parseFloat(style.opacity || '1') > 0,
+              style.display !== "none" &&
+              style.visibility !== "hidden" &&
+              parseFloat(style.opacity || "1") > 0,
           };
         }
       }
@@ -221,11 +247,12 @@ async function getNavUnderlineAndActiveMetrics(page: Page): Promise<NavUnderline
   });
 }
 
-test.describe('anchor-positioning-tab-underline Target Grader', () => {
+test.describe("anchor-positioning-tab-underline Target Grader", () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
-  test('HTML marks an initial active navigation tab item', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+  test("HTML marks an initial active navigation tab item", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
     const hasActiveNavItem = docs.some((d) =>
       Boolean(
         d.document.querySelector(
@@ -236,91 +263,107 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
     expect(hasActiveNavItem).toBe(true);
   });
 
-  test('CSS tethers the underline element to the active tab item via anchor-name and position-anchor', () => {
+  test("CSS tethers the underline element to the active tab item via anchor-name and position-anchor", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styles = getActiveStyleDeclarations(stylesheet);
     const anchorNames = styles
-      .map((s) => s.getPropertyValue('anchor-name').trim())
-      .filter((val) => val.startsWith('--'));
+      .map((s) => s.getPropertyValue("anchor-name").trim())
+      .filter((val) => val.startsWith("--"));
     const hasTetheredUnderline = anchorNames.some((anchorName) =>
-      styles.some((s) => s.getPropertyValue('position-anchor').trim() === anchorName),
+      styles.some(
+        (s) => s.getPropertyValue("position-anchor").trim() === anchorName,
+      ),
     );
     expect(hasTetheredUnderline).toBe(true);
   });
 
-  test('CSS positions the underline inline start edge using anchor()', () => {
+  test("CSS positions the underline inline start edge using anchor()", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styles = getActiveStyleDeclarations(stylesheet);
     const hasInlineStartAnchor = styles.some((s) => {
       const val =
-        s.getPropertyValue('inset-inline-start') ||
-        s.getPropertyValue('left') ||
-        s.getPropertyValue('inset-inline') ||
-        s.getPropertyValue('inset');
-      return val.includes('anchor(') && /\b(left|start|self-start|inline-start)\b/.test(val);
+        s.getPropertyValue("inset-inline-start") ||
+        s.getPropertyValue("left") ||
+        s.getPropertyValue("inset-inline") ||
+        s.getPropertyValue("inset");
+      return (
+        val.includes("anchor(") &&
+        /\b(left|start|self-start|inline-start)\b/.test(val)
+      );
     });
     expect(hasInlineStartAnchor).toBe(true);
   });
 
-  test('CSS positions the underline inline end edge using anchor()', () => {
+  test("CSS positions the underline inline end edge using anchor()", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styles = getActiveStyleDeclarations(stylesheet);
     const hasInlineEndAnchor = styles.some((s) => {
       const val =
-        s.getPropertyValue('inset-inline-end') ||
-        s.getPropertyValue('right') ||
-        s.getPropertyValue('inset-inline') ||
-        s.getPropertyValue('inset') ||
-        s.getPropertyValue('inline-size') ||
-        s.getPropertyValue('width');
+        s.getPropertyValue("inset-inline-end") ||
+        s.getPropertyValue("right") ||
+        s.getPropertyValue("inset-inline") ||
+        s.getPropertyValue("inset") ||
+        s.getPropertyValue("inline-size") ||
+        s.getPropertyValue("width");
       return (
-        (val.includes('anchor(') && /\b(right|end|self-end|inline-end)\b/.test(val)) ||
-        val.includes('anchor-size(')
+        (val.includes("anchor(") &&
+          /\b(right|end|self-end|inline-end)\b/.test(val)) ||
+        val.includes("anchor-size(")
       );
     });
     expect(hasInlineEndAnchor).toBe(true);
   });
 
-  test('CSS positions the underline block start edge below the active tab item using anchor()', () => {
+  test("CSS positions the underline block start edge below the active tab item using anchor()", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const styles = getActiveStyleDeclarations(stylesheet);
     const hasBlockStartAnchor = styles.some((s) => {
       const val =
-        s.getPropertyValue('inset-block-start') ||
-        s.getPropertyValue('top') ||
-        s.getPropertyValue('inset-block') ||
-        s.getPropertyValue('inset');
-      return val.includes('anchor(') && /\b(bottom|end|self-end|block-end|outside)\b/.test(val);
+        s.getPropertyValue("inset-block-start") ||
+        s.getPropertyValue("top") ||
+        s.getPropertyValue("inset-block") ||
+        s.getPropertyValue("inset");
+      return (
+        val.includes("anchor(") &&
+        /\b(bottom|end|self-end|block-end|outside)\b/.test(val)
+      );
     });
     expect(hasBlockStartAnchor).toBe(true);
   });
 
-  test('CSS declares underline transition inside a prefers-reduced-motion: no-preference media query', () => {
+  test("CSS declares underline transition inside a prefers-reduced-motion: no-preference media query", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = collectActiveCssRules(stylesheet.cssRules);
     const mediaRules = allRules.filter(
       (r): r is CSSMediaRule =>
         r instanceof CSSMediaRule &&
-        r.conditionText.includes('prefers-reduced-motion') &&
-        r.conditionText.includes('no-preference'),
+        r.conditionText.includes("prefers-reduced-motion") &&
+        r.conditionText.includes("no-preference"),
     );
     const hasMotionTransition = mediaRules.some((mediaRule) => {
       const nestedRules = collectActiveCssRules(mediaRule.cssRules);
       return nestedRules.some((r) => {
-        if (!(r instanceof CSSStyleRule || r instanceof CSSNestedDeclarations)) return false;
-        const transition = r.style.getPropertyValue('transition').trim();
-        const transitionProp = r.style.getPropertyValue('transition-property').trim();
-        const transitionDur = r.style.getPropertyValue('transition-duration').trim();
+        if (!(r instanceof CSSStyleRule || r instanceof CSSNestedDeclarations))
+          return false;
+        const transition = r.style.getPropertyValue("transition").trim();
+        const transitionProp = r.style
+          .getPropertyValue("transition-property")
+          .trim();
+        const transitionDur = r.style
+          .getPropertyValue("transition-duration")
+          .trim();
         return (
-          (Boolean(transition) && transition !== 'none') ||
-          (Boolean(transitionProp) && Boolean(transitionDur) && transitionDur !== '0s')
+          (Boolean(transition) && transition !== "none") ||
+          (Boolean(transitionProp) &&
+            Boolean(transitionDur) &&
+            transitionDur !== "0s")
         );
       });
     });
     expect(hasMotionTransition).toBe(true);
   });
 
-  test('JavaScript handles navigation item clicks to update the active tab item', () => {
+  test("JavaScript handles navigation item clicks to update the active tab item", () => {
     const project: Project = getJsProject(targetFiles);
     const callExpressions = project
       .getSourceFiles()
@@ -329,7 +372,7 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       const exprText = call.getExpression().getText();
       const args = call.getArguments();
       return (
-        exprText.endsWith('addEventListener') &&
+        exprText.endsWith("addEventListener") &&
         args.length >= 2 &&
         /^['"`]click['"`]$/.test(args[0].getText())
       );
@@ -343,19 +386,27 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (E2E) ---
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
 
-    test('There is an underline element visible under the active tab item', async ({ page }) => {
+    test("There is an underline element visible under the active tab item", async ({
+      page,
+    }) => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
-      expect(Boolean(metrics && metrics.underline.isVisible && metrics.underline.height > 0)).toBe(
-        true,
-      );
+      expect(
+        Boolean(
+          metrics &&
+          metrics.underline.isVisible &&
+          metrics.underline.height > 0,
+        ),
+      ).toBe(true);
     });
 
-    test('The underline element is the width of the active tab item', async ({ page }) => {
+    test("The underline element is the width of the active tab item", async ({
+      page,
+    }) => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
       const widthDiff = metrics
         ? Math.abs(metrics.underline.width - metrics.active.width)
@@ -367,7 +418,9 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       page,
     }) => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
-      const startDiff = metrics ? Math.abs(metrics.underline.left - metrics.active.left) : Infinity;
+      const startDiff = metrics
+        ? Math.abs(metrics.underline.left - metrics.active.left)
+        : Infinity;
       expect(startDiff).toBeLessThanOrEqual(2);
     });
 
@@ -375,7 +428,9 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       page,
     }) => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
-      const endDiff = metrics ? Math.abs(metrics.underline.right - metrics.active.right) : Infinity;
+      const endDiff = metrics
+        ? Math.abs(metrics.underline.right - metrics.active.right)
+        : Infinity;
       expect(endDiff).toBeLessThanOrEqual(2);
     });
 
@@ -383,33 +438,37 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       page,
     }) => {
       const metrics = await getNavUnderlineAndActiveMetrics(page);
-      const offsetBelow = metrics ? metrics.underline.top - metrics.active.bottom : -Infinity;
+      const offsetBelow = metrics
+        ? metrics.underline.top - metrics.active.bottom
+        : -Infinity;
       expect(offsetBelow).toBeGreaterThanOrEqual(0);
     });
 
-    test('The underline is drawn with a border, not a background or box-shadow, so it remains visible with forced-colors: active emulated', async ({
+    test("The underline is drawn with a border, not a background or box-shadow, so it remains visible with forced-colors: active emulated", async ({
       page,
     }) => {
       const checkUnderlineUsesBorder = async () =>
         page.evaluate(() => {
-          const nav = document.querySelector('nav');
+          const nav = document.querySelector("nav");
           if (!nav) return null;
-          const navElements = Array.from(nav.querySelectorAll<HTMLElement>('*'));
+          const navElements = Array.from(
+            nav.querySelectorAll<HTMLElement>("*"),
+          );
           const hosts: HTMLElement[] = [
-            ...Array.from(nav.querySelectorAll<HTMLElement>('ul, ol')),
+            ...Array.from(nav.querySelectorAll<HTMLElement>("ul, ol")),
             nav,
             ...navElements,
           ];
 
           for (const host of hosts) {
-            for (const pseudo of ['::before', '::after'] as const) {
+            for (const pseudo of ["::before", "::after"] as const) {
               const style = window.getComputedStyle(host, pseudo);
               const content = style.content;
               if (
                 content &&
-                content !== 'none' &&
-                content !== 'normal' &&
-                (style.position === 'absolute' || style.position === 'fixed')
+                content !== "none" &&
+                content !== "normal" &&
+                (style.position === "absolute" || style.position === "fixed")
               ) {
                 const borderMax = Math.max(
                   parseFloat(style.borderTopWidth) || 0,
@@ -419,10 +478,13 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
                 );
                 const bg = style.backgroundColor;
                 const hasBg =
-                  (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
-                  style.backgroundImage !== 'none';
-                const hasBoxShadow = style.boxShadow !== 'none';
-                if (parseFloat(style.width) > 0 && (borderMax > 0 || hasBg || hasBoxShadow)) {
+                  (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") ||
+                  style.backgroundImage !== "none";
+                const hasBoxShadow = style.boxShadow !== "none";
+                if (
+                  parseFloat(style.width) > 0 &&
+                  (borderMax > 0 || hasBg || hasBoxShadow)
+                ) {
                   return { borderMax, hasBg, hasBoxShadow };
                 }
               }
@@ -430,7 +492,11 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
           }
 
           const anchoredEl = navElements.find((el) =>
-            window.getComputedStyle(el).getPropertyValue('position-anchor').trim().startsWith('--'),
+            window
+              .getComputedStyle(el)
+              .getPropertyValue("position-anchor")
+              .trim()
+              .startsWith("--"),
           );
           if (anchoredEl) {
             const style = window.getComputedStyle(anchoredEl);
@@ -442,9 +508,9 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
             );
             const bg = style.backgroundColor;
             const hasBg =
-              (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') ||
-              style.backgroundImage !== 'none';
-            const hasBoxShadow = style.boxShadow !== 'none';
+              (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") ||
+              style.backgroundImage !== "none";
+            const hasBoxShadow = style.boxShadow !== "none";
             return { borderMax, hasBg, hasBoxShadow };
           }
           return null;
@@ -456,46 +522,50 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       expect(normalStyle!.hasBg).toBe(false);
       expect(normalStyle!.hasBoxShadow).toBe(false);
 
-      await page.emulateMedia({ forcedColors: 'active' });
+      await page.emulateMedia({ forcedColors: "active" });
       const forcedStyle = await checkUnderlineUsesBorder();
       expect(forcedStyle).not.toBeNull();
       expect(forcedStyle!.borderMax).toBeGreaterThan(0);
     });
 
-    test('Changing the active page moves the underline element to be positioned underneath the new active tab item', async ({
+    test("Changing the active page moves the underline element to be positioned underneath the new active tab item", async ({
       page,
     }) => {
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.emulateMedia({ reducedMotion: "reduce" });
       const initialMetrics = await getNavUnderlineAndActiveMetrics(page);
-      const secondLink = page.locator('nav ul li:nth-child(2) a');
+      const secondLink = page.locator("nav ul li:nth-child(2) a");
       await secondLink.click();
       const updatedMetrics = await getNavUnderlineAndActiveMetrics(page);
-      const secondTabBox = await page.locator('nav ul li:nth-child(2)').boundingBox();
+      const secondTabBox = await page
+        .locator("nav ul li:nth-child(2)")
+        .boundingBox();
 
       const movedUnderNewTab = Boolean(
         initialMetrics &&
-          updatedMetrics &&
-          secondTabBox &&
-          Math.abs(updatedMetrics.underline.left - initialMetrics.underline.left) > 5 &&
-          Math.abs(updatedMetrics.underline.left - secondTabBox.x) <= 2 &&
-          Math.abs(updatedMetrics.underline.width - secondTabBox.width) <= 2,
+        updatedMetrics &&
+        secondTabBox &&
+        Math.abs(
+          updatedMetrics.underline.left - initialMetrics.underline.left,
+        ) > 5 &&
+        Math.abs(updatedMetrics.underline.left - secondTabBox.x) <= 2 &&
+        Math.abs(updatedMetrics.underline.width - secondTabBox.width) <= 2,
       );
       expect(movedUnderNewTab).toBe(true);
     });
 
-    test('When prefers-reduced-motion: reduce is enabled, there is no animation', async ({
+    test("When prefers-reduced-motion: reduce is enabled, there is no animation", async ({
       page,
     }) => {
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.emulateMedia({ reducedMotion: "reduce" });
       const metrics = await getNavUnderlineAndActiveMetrics(page);
       const duration = metrics ? metrics.underline.maxTransitionDuration : null;
       expect(duration).toBe(0);
     });
 
-    test('When prefers-reduced-motion: no-preference is enabled, the underline animates', async ({
+    test("When prefers-reduced-motion: no-preference is enabled, the underline animates", async ({
       page,
     }) => {
-      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.emulateMedia({ reducedMotion: "no-preference" });
       const metrics = await getNavUnderlineAndActiveMetrics(page);
       const duration = metrics ? metrics.underline.maxTransitionDuration : 0;
       expect(duration).toBeGreaterThan(0);

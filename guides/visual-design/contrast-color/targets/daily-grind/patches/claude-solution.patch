@@ -9,10 +9,10 @@ index 66c9173..0ff6634 100644
 +      /* Highest lightness threshold that passes WCAG for the RCS fallback */
 +      --contrast-threshold: 0.623;
      }
- 
+
      * {
 @@ -29,7 +31,9 @@
- 
+
      /* Navigation */
      nav {
 -      background: var(--primary);
@@ -24,7 +24,7 @@ index 66c9173..0ff6634 100644
        display: flex;
 @@ -56,14 +60,18 @@
      }
- 
+
      nav a {
 -      color: white;
 +      /* Inherit the nav's contrasting color so links stay readable in every state */
@@ -36,18 +36,18 @@ index 66c9173..0ff6634 100644
 +      text-decoration-color: var(--accent);
 +      text-decoration-thickness: 2px;
      }
- 
+
 -    nav a:hover {
 -      color: var(--accent);
 +    nav a:hover,
 +    nav a:focus-visible {
 +      text-decoration-line: underline;
      }
- 
+
      .logout-link {
 @@ -121,8 +129,10 @@
      }
- 
+
      .btn {
 +      --btn-bg: var(--primary);
        display: inline-block;
@@ -60,7 +60,7 @@ index 66c9173..0ff6634 100644
 @@ -131,12 +141,17 @@
        transition: background 0.3s;
      }
- 
+
 -    .btn:hover {
 -      background: #3e2723;
 +    .btn:hover,
@@ -68,7 +68,7 @@ index 66c9173..0ff6634 100644
 +      /* Only the background variable changes; the text color follows it automatically */
 +      --btn-bg: color-mix(in srgb, var(--primary), black 20%);
      }
- 
+
      footer {
 -      background: var(--secondary);
 +      --footer-bg: var(--secondary);
@@ -79,7 +79,7 @@ index 66c9173..0ff6634 100644
        padding: 40px 20px;
        margin-top: 40px;
 @@ -148,10 +163,43 @@
- 
+
      .footer-links a {
        margin: 0 10px;
 -      color: var(--text);
@@ -122,4 +122,4 @@ index 66c9173..0ff6634 100644
 +    }
    </style>
  </head>
- 
+

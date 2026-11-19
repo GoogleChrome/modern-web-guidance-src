@@ -8,10 +8,13 @@ web-feature-ids:
 # Required Field Feedback
 
 ## The Problem
+
 Marking required fields with an error state immediately upon page load can be confusing. Ideally, a required field should only look "invalid" if the user has attempted to fill it out and failed.
 
 ## The Solution
+
 The `:user-invalid` pseudo-class solves this perfectly. For a required field, it will not match on page load. It will only match if:
+
 1.  The user interacts with the field (e.g., types a character and deletes it) and then leaves it (blur), leaving it empty.
 2.  The user attempts to submit the form while the field is empty.
 
@@ -26,6 +29,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 ## Implementation Guide
 
 ### 1. HTML Structure
+
 ```html
 <form id="feedback-form">
   <div class="field">
@@ -37,7 +41,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
       name="full-name"
       required
       data-error="name-error"
-    >
+    />
     <!-- MANDATORY: Include an icon or distinct non-color indicator alongside error text -->
     <div id="name-error" class="error-msg">
       <span role="img" aria-label="Error">❌</span> This field is required.
@@ -47,6 +51,7 @@ The `:user-invalid` pseudo-class solves this perfectly. For a required field, it
 ```
 
 ### 2. CSS
+
 ```css
 .error-msg {
   display: none;
@@ -87,5 +92,5 @@ MANDATORY: Because `:user-invalid` is a visual state, you MUST provide a JavaScr
 
 ## Other Considerations
 
-1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect *before* they interact. Explain the asterisk once before the form (for example, "Fields marked * are required."), and wrap it in `<span aria-hidden="true">*</span>`, because the `required` attribute already makes screen readers announce "required".
+1.  **Asterisks**: It is still best practice to indicate required fields visually (e.g., with an asterisk `*`) in the label, so users know what to expect _before_ they interact. Explain the asterisk once before the form (for example, "Fields marked * are required."), and wrap it in `<span aria-hidden="true">*</span>`, because the `required` attribute already makes screen readers announce "required".
 2.  **Submit Buttons**: Unlike `disabled` buttons, keep your submit button enabled. If the user clicks it, the browser will automatically trigger `:user-invalid` on all empty required fields and focus the first one. This is excellent for accessibility and UX.

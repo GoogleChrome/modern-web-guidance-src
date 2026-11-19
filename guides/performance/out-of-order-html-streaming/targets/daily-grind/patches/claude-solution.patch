@@ -5,7 +5,7 @@ index 66c9173..0d489c7 100644
 @@ -142,6 +142,21 @@
        margin-top: 40px;
      }
- 
+
 +    .skeleton {
 +      background: linear-gradient(90deg, #eee, #f6f6f6, #eee);
 +      min-height: 150px;
@@ -69,7 +69,7 @@ index 66c9173..0d489c7 100644
        </div>
      </section>
    </main>
- 
+
 +  <!-- Content streamed later in the same document (out-of-order) -->
 +  <template for="seasonal-cards">
 +    <?start name="seasonal-cards">

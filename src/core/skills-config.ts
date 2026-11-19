@@ -1,6 +1,6 @@
 /**
  * Central configuration for skills bundling and publishing.
- * 💡 TIP: Run `node src/build/audit-build.ts` 
+ * 💡 TIP: Run `node src/build/audit-build.ts`
  * to preview exactly how this configuration maps across the repository files.
  */
 export interface StandaloneSkill {
@@ -24,18 +24,18 @@ export interface SkillsConfiguration {
 
 export const config: SkillsConfiguration = {
   monoskill: {
-    name: "modern-web-guidance"
+    name: "modern-web-guidance",
   },
   standaloneSkills: [
     // Proposal A: Standalone, not bundled
     {
       name: "chrome-extensions",
-      sourcePath: "skills-src/chrome-extensions/SKILL.md"
+      sourcePath: "skills-src/chrome-extensions/SKILL.md",
     },
     // Primary monoskill itself is also published as a skill definition
     {
       name: "modern-web-guidance",
-      sourcePath: "guides/modern-web-guidance/SKILL.md"
-    }
-  ]
+      sourcePath: "guides/modern-web-guidance/SKILL.md",
+    },
+  ],
 };

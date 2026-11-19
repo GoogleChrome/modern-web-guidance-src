@@ -8,7 +8,7 @@ index 66c9173..30aefaf 100644
        z-index: 1000;
 +      scroll-target-group: auto;
      }
- 
+
      .logo {
 @@ -49,6 +50,7 @@
      nav ul {
@@ -16,7 +16,7 @@ index 66c9173..30aefaf 100644
        list-style: none;
 +      scroll-target-group: auto;
      }
- 
+
      nav ul li {
 @@ -59,13 +61,27 @@
        color: white;
@@ -27,11 +27,11 @@ index 66c9173..30aefaf 100644
 +      border-bottom: 2px solid transparent;
 +      transition: color 0.3s, border-bottom-color 0.3s;
      }
- 
+
      nav a:hover {
        color: var(--accent);
      }
- 
+
 +    nav a:target-current {
 +      color: var(--accent, #007bff);
 +      border-bottom-color: var(--accent, #007bff);
@@ -50,7 +50,7 @@ index 66c9173..30aefaf 100644
 @@ -100,6 +116,30 @@
        padding: 0 20px;
      }
- 
+
 +    main section {
 +      min-height: 75vh;
 +      padding: 60px 0;
@@ -100,7 +100,7 @@ index 66c9173..30aefaf 100644
 -    <a href="/order-online" class="btn">Order Now</a>
 +    <a href="#menu" class="btn">Order Now</a>
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -195,12 +195,12 @@ index 66c9173..30aefaf 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +314,39 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    const supportsScrollTargetGroup = CSS.supports('scroll-target-group: auto');
 +
@@ -235,5 +235,5 @@ index 66c9173..30aefaf 100644
 +  </script>
 +
  </body>
- 
+
  </html>

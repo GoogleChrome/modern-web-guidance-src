@@ -26,7 +26,7 @@ When an element moves in or out of the top layer, it must transition the `overla
 
 ### 3. Entry Animations with `@starting-style`
 
-Use the `@starting-style` at-rule to define the styles an element should transition *from* when it is first rendered or its `display` changes from `none`.
+Use the `@starting-style` at-rule to define the styles an element should transition _from_ when it is first rendered or its `display` changes from `none`.
 
 ### 4. Animating the Backdrop
 
@@ -154,12 +154,12 @@ Exit animations require both `overlay` and discrete `display` transition support
 // Evaluate lazily: canTransitionDisplay() needs document.body, so a top-level
 // const would be permanently false if this script runs in <head>.
 function supportsTopLayerExit() {
-  return window.CSS?.supports?.('overlay', 'auto') && canTransitionDisplay();
+  return window.CSS?.supports?.("overlay", "auto") && canTransitionDisplay();
 }
 
 async function closeTopLayer(element) {
   if (!supportsTopLayerExit()) {
-    element.setAttribute('data-closing', '');
+    element.setAttribute("data-closing", "");
     const animations = element.getAnimations({ subtree: true });
     if (animations.length > 0) {
       await Promise.race([
@@ -167,8 +167,8 @@ async function closeTopLayer(element) {
         new Promise((r) => setTimeout(r, 2000)),
       ]);
     }
-    if (!element.hasAttribute('data-closing')) return;
-    element.removeAttribute('data-closing');
+    if (!element.hasAttribute("data-closing")) return;
+    element.removeAttribute("data-closing");
   }
 
   element.close();
@@ -178,7 +178,7 @@ async function closeTopLayer(element) {
 
 // Route native close requests (Esc, closedby light dismiss) through the same
 // helper so they animate too, instead of closing instantly.
-dialog.addEventListener('cancel', (event) => {
+dialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   closeTopLayer(dialog);
 });

@@ -52,7 +52,7 @@ index 66c9173..2b356e7 100644
 @@ -93,6 +95,27 @@
        margin-bottom: 1rem;
      }
- 
+
 +    .hero-actions {
 +      display: flex;
 +      flex-wrap: wrap;
@@ -88,12 +88,12 @@ index 66c9173..2b356e7 100644
 +    </div>
 +    <p id="install-status" role="status"></p>
    </header>
- 
+
    <main class="container">
 @@ -207,6 +234,27 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    const installControl = document.getElementById('install-app');
 +    const installStatus = document.getElementById('install-status');
@@ -116,7 +116,7 @@ index 66c9173..2b356e7 100644
 +  </script>
 +
  </body>
- 
+
  </html>
 diff --git a/manifest.webmanifest b/manifest.webmanifest
 new file mode 100644

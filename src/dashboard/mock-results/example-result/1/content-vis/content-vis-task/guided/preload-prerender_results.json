@@ -14,11 +14,7 @@
       "actualWorkers": 1
     },
     "preserveOutput": "always",
-    "reporter": [
-      [
-        "json"
-      ]
-    ],
+    "reporter": [["json"]],
     "reportSlowTests": {
       "max": 5,
       "threshold": 300000
@@ -36,9 +32,7 @@
         "name": "chromium",
         "testDir": "/Users/micahjo/guidance/use-cases",
         "testIgnore": [],
-        "testMatch": [
-          "**/*.grader.js"
-        ],
+        "testMatch": ["**/*.grader.js"],
         "timeout": 30000
       }
     ],

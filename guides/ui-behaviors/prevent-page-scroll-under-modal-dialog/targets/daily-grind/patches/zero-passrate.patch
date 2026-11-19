@@ -21,11 +21,11 @@ diff --git a/index.html b/index.html
 +    }
    </style>
  </head>
- 
+
 @@ -197,6 +211,13 @@
      </section>
    </main>
- 
+
 +
 +  <dialog id="notice-dialog">
 +    <h2>Special Notice</h2>
@@ -39,7 +39,7 @@ diff --git a/index.html b/index.html
 @@ -207,6 +228,14 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const noticeDialog = document.getElementById("notice-dialog");
 +    if (noticeDialog) {
@@ -49,5 +49,5 @@ diff --git a/index.html b/index.html
 +    }
 +  </script>
  </body>
- 
+
  </html>

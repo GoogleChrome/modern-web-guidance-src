@@ -21,7 +21,7 @@ index 66c9173..f4df6f5 100644
 @@ -131,6 +133,23 @@
        transition: background 0.3s;
      }
- 
+
 +    .hero-actions {
 +      display: flex;
 +      flex-wrap: wrap;
@@ -53,7 +53,7 @@ index 66c9173..f4df6f5 100644
 +    </div>
 +    <p id="install-status" role="status"></p>
    </header>
- 
+
 +  <script type="module">
 +    const installElement = document.querySelector("install");
 +    const installStatus = document.querySelector("#install-status");

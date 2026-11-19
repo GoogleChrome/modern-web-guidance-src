@@ -6,14 +6,14 @@ import {
   type CallExpression,
   type NewExpression,
   type SourceFile,
-} from 'ts-morph';
+} from "ts-morph";
 import type {
   AnalyzerMatch,
   FastTokenSpec,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
-import { isProtectedByFeatureGuard } from './ast-helpers.ts';
+} from "../schema.ts";
+import { isProtectedByFeatureGuard } from "./ast-helpers.ts";
 
 /**
  * Creates an ephemeral in-memory ts-morph Project optimized for AST scanning.
@@ -101,9 +101,11 @@ export interface JsCallMatcherConfig {
  * Builds a `JsRuleMatcher` that walks `CallExpression` and/or `NewExpression` descendants
  * in AST order, applying optional file-level skips, feature-guard checks, and per-line deduplication.
  */
-export function createJsCallMatcher(config: JsCallMatcherConfig): JsRuleMatcher {
+export function createJsCallMatcher(
+  config: JsCallMatcherConfig,
+): JsRuleMatcher {
   return {
-    kind: 'js',
+    kind: "js",
     fastTokens: config.fastTokens ?? [],
     matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
       if (config.shouldSkipFile?.(sourceFile, ctx)) {

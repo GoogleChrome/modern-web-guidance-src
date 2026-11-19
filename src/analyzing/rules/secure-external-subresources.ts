@@ -3,9 +3,9 @@ import type {
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const SECURE_EXTERNAL_SUBRESOURCES_GUIDE_HASH = 'dfe6b556317c';
+export const SECURE_EXTERNAL_SUBRESOURCES_GUIDE_HASH = "dfe6b556317c";
 
 const MAX_HTML_LINE_LENGTH = 1200;
 const matchedContexts = new WeakSet<DomMatcherContext>();
@@ -23,7 +23,7 @@ const SRI_DIGEST_PREFIX_REGEX = /\bsha(?:256|384|512)-[A-Za-z0-9+/=]+/;
 
 export function isVersionedPublicCdnSubresourceUrl(
   rawUrl: string,
-  tagName: 'script' | 'link',
+  tagName: "script" | "link",
 ): boolean {
   const url = rawUrl.trim();
   if (!KNOWN_PUBLIC_CDN_HOST_REGEX.test(url)) {
@@ -35,74 +35,81 @@ export function isVersionedPublicCdnSubresourceUrl(
   if (!EXACT_VERSION_SEGMENT_REGEX.test(url)) {
     return false;
   }
-  if (tagName === 'script') {
+  if (tagName === "script") {
     return /\.(?:js|mjs)$/i.test(url);
   }
   return /\.css$/i.test(url);
 }
 
 export const secureExternalSubresourcesMatcher: DomRuleMatcher = {
-  kind: 'dom',
+  kind: "dom",
   selector: 'script[src], link[rel="stylesheet"][href]',
   fastTokens: [
-    'https://cdnjs.cloudflare.com/',
-    'https://cdn.jsdelivr.net/',
-    'https://unpkg.com/',
-    'https://code.jquery.com/',
-    'https://maxcdn.bootstrapcdn.com/',
-    'https://stackpath.bootstrapcdn.com/',
-    'https://ajax.googleapis.com/',
-    'integrity',
+    "https://cdnjs.cloudflare.com/",
+    "https://cdn.jsdelivr.net/",
+    "https://unpkg.com/",
+    "https://code.jquery.com/",
+    "https://maxcdn.bootstrapcdn.com/",
+    "https://stackpath.bootstrapcdn.com/",
+    "https://ajax.googleapis.com/",
+    "integrity",
   ],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['integrity', 'crossorigin', 'crossOrigin', 'src', 'href'],
+  skipIfDynamicAttributes: [
+    "integrity",
+    "crossorigin",
+    "crossOrigin",
+    "src",
+    "href",
+  ],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     if (matchedContexts.has(ctx)) {
       return null;
     }
 
     const tag = element.tagName;
-    if (tag !== 'script' && tag !== 'link') {
+    if (tag !== "script" && tag !== "link") {
       return null;
     }
 
     if (
-      element.hasAttribute('importance') ||
-      element.hasDynamicAttribute?.('importance') ||
-      element.hasDynamicAttribute?.('integrity') ||
-      element.hasDynamicAttribute?.('crossorigin') ||
-      element.hasDynamicAttribute?.('crossOrigin')
+      element.hasAttribute("importance") ||
+      element.hasDynamicAttribute?.("importance") ||
+      element.hasDynamicAttribute?.("integrity") ||
+      element.hasDynamicAttribute?.("crossorigin") ||
+      element.hasDynamicAttribute?.("crossOrigin")
     ) {
       return null;
     }
 
-    if (tag === 'link') {
-      const rel = (element.getAttribute('rel') ?? '').trim().toLowerCase();
-      if (rel !== 'stylesheet') {
+    if (tag === "link") {
+      const rel = (element.getAttribute("rel") ?? "").trim().toLowerCase();
+      if (rel !== "stylesheet") {
         return null;
       }
     }
 
-    const urlAttr = tag === 'script' ? 'src' : 'href';
+    const urlAttr = tag === "script" ? "src" : "href";
     if (element.hasDynamicAttribute?.(urlAttr)) {
       return null;
     }
 
-    const rawUrl = (element.getAttribute(urlAttr) ?? '').trim();
-    const lineText = ctx.documentText.split('\n')[element.line - 1] ?? '';
+    const rawUrl = (element.getAttribute(urlAttr) ?? "").trim();
+    const lineText = ctx.documentText.split("\n")[element.line - 1] ?? "";
     if (lineText.length > MAX_HTML_LINE_LENGTH) {
       return null;
     }
 
-    const hasIntegrity = element.hasAttribute('integrity');
+    const hasIntegrity = element.hasAttribute("integrity");
     const hasCrossOrigin =
-      element.hasAttribute('crossorigin') || element.hasAttribute('crossOrigin');
+      element.hasAttribute("crossorigin") ||
+      element.hasAttribute("crossOrigin");
 
     if (hasIntegrity) {
       if (hasCrossOrigin) {
         return null;
       }
-      const integrityVal = (element.getAttribute('integrity') ?? '').trim();
+      const integrityVal = (element.getAttribute("integrity") ?? "").trim();
       if (
         !SRI_DIGEST_PREFIX_REGEX.test(integrityVal) ||
         !/^https:\/\//i.test(rawUrl)
@@ -128,8 +135,8 @@ export const secureExternalSubresourcesMatcher: DomRuleMatcher = {
 };
 
 export const secureExternalSubresourcesRule: AnalyzerRule = {
-  id: 'secure-external-subresources',
-  guideId: 'secure-external-subresources',
+  id: "secure-external-subresources",
+  guideId: "secure-external-subresources",
   guideHash: SECURE_EXTERNAL_SUBRESOURCES_GUIDE_HASH,
   summary:
     'Add Subresource Integrity (integrity="sha384-..."), crossorigin="anonymous", and referrerpolicy="no-referrer" to versioned third-party CDN <script> and <link rel="stylesheet"> elements.',
@@ -141,7 +148,7 @@ export const secureExternalSubresourcesRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The <script> or <link> element already includes both an integrity="sha256-... | sha384-... | sha512-..." attribute and a crossorigin attribute.',
-      'The URL points to a mutable/unversioned endpoint (such as analytics tags, live widgets, or Google Fonts CSS) or a first-party same-origin asset.',
+      "The URL points to a mutable/unversioned endpoint (such as analytics tags, live widgets, or Google Fonts CSS) or a first-party same-origin asset.",
     ],
   },
 };

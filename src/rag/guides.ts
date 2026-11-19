@@ -1,6 +1,9 @@
 import { promises as fs, readFileSync, existsSync } from "fs";
 import path from "path";
-import type { OriginTrialMetadata, VolatileFeatureMetadata } from "../core/feature-gates.ts";
+import type {
+  OriginTrialMetadata,
+  VolatileFeatureMetadata,
+} from "../core/feature-gates.ts";
 import { resolveSkillsCliDataDir } from "./data-dir.ts";
 
 export { resolveSkillsCliDataDir };
@@ -17,11 +20,13 @@ export interface UseCase {
 
 function loadUseCases(): UseCase[] {
   const dataDir = resolveSkillsCliDataDir();
-  const guidesJsonPath = path.join(dataDir, 'gen/guides.json');
+  const guidesJsonPath = path.join(dataDir, "gen/guides.json");
   if (!existsSync(guidesJsonPath)) {
-    throw new Error(`guides.json not found at ${guidesJsonPath}. Run 'pnpm build' first.`);
+    throw new Error(
+      `guides.json not found at ${guidesJsonPath}. Run 'pnpm build' first.`,
+    );
   }
-  return JSON.parse(readFileSync(guidesJsonPath, 'utf-8'));
+  return JSON.parse(readFileSync(guidesJsonPath, "utf-8"));
 }
 
 export const USE_CASES: UseCase[] = loadUseCases();
@@ -39,7 +44,12 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
   const useCase = getUseCase(useCaseId);
   if (!useCase) return null;
   const dataDir = resolveSkillsCliDataDir();
-  const filePath = path.join(dataDir, "guides", useCase.category, `${useCaseId}.md`);
+  const filePath = path.join(
+    dataDir,
+    "guides",
+    useCase.category,
+    `${useCaseId}.md`,
+  );
 
   try {
     const content = await fs.readFile(filePath, "utf-8");
@@ -52,4 +62,3 @@ export async function getGuide(useCaseId: string): Promise<string | null> {
     throw error;
   }
 }
-

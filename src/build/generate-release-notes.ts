@@ -1,7 +1,7 @@
-import fs from 'node:fs';
-import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import { rootDir } from '../core/paths.ts';
+import fs from "node:fs";
+import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { rootDir } from "../core/paths.ts";
 export interface ReleaseNotesOptions {
   previousTag: string;
   newVersion: string;
@@ -17,36 +17,38 @@ import {
   getExactDistributionDiff,
   getConsumerFacingDiff,
   formatGuideBoldLink,
-} from './release-notes-diff.ts';
+} from "./release-notes-diff.ts";
 import {
   buildBaselineBullets,
   buildReleaseNotesMarkdown,
   generateFallbackReleaseNotes,
   linkifyGuideBullets,
-} from './release-notes-markdown.ts';
+} from "./release-notes-markdown.ts";
 import {
   generateNewGuideSummariesWithGemini,
   generateUpdatedGuideSummariesWithGemini,
   generateEcosystemSummariesWithGemini,
-} from './release-notes-gemini.ts';
+} from "./release-notes-gemini.ts";
 
 // Re-export all sub-modules for full backward compatibility
-export * from './release-notes-diff.ts';
-export * from './release-notes-markdown.ts';
-export * from './release-notes-gemini.ts';
+export * from "./release-notes-diff.ts";
+export * from "./release-notes-markdown.ts";
+export * from "./release-notes-gemini.ts";
 
 /**
  * Generates consumer-facing release notes using Gemini for guide summaries
  * while deterministically building structure, headings, tables, and changelogs.
  */
-export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<string> {
+export async function generateReleaseNotes(
+  opts: ReleaseNotesOptions,
+): Promise<string> {
   const {
     previousTag,
     newVersion,
-    target = 'HEAD',
+    target = "HEAD",
     publishCliDir,
     apiKey = process.env.GEMINI_API_KEY,
-    model = process.env.GEMINI_MODEL || 'gemini-3.7-flash',
+    model = process.env.GEMINI_MODEL || "gemini-3.7-flash",
   } = opts;
 
   const {
@@ -66,7 +68,7 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       ? getExactDistributionDiff(previousTag, publishCliDir)
       : getConsumerFacingDiff(previousTag, target);
 
-  const targetTag = newVersion.startsWith('v') ? newVersion : `v${newVersion}`;
+  const targetTag = newVersion.startsWith("v") ? newVersion : `v${newVersion}`;
   const pluginFiles = changedFiles.filter(isPluginFile);
   const baselineBullets = buildBaselineBullets(baselineUpdates, targetTag);
 
@@ -78,7 +80,9 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       pluginFiles.length > 0 ||
       baselineUpdates.length > 0
     ) {
-      console.log('No GEMINI_API_KEY found. Generating fallback release notes...');
+      console.log(
+        "No GEMINI_API_KEY found. Generating fallback release notes...",
+      );
     }
     return generateFallbackReleaseNotes(
       previousTag,
@@ -91,7 +95,7 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
         modifiedGuideNames,
         removedGuideNames,
         guideDescriptions,
-      }
+      },
     );
   }
 
@@ -104,10 +108,16 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
       model,
     });
     if (generatedNewBullets) {
-      newGuideBullets = linkifyGuideBullets(generatedNewBullets, addedGuideNames, targetTag);
+      newGuideBullets = linkifyGuideBullets(
+        generatedNewBullets,
+        addedGuideNames,
+        targetTag,
+      );
     } else {
-      console.log('Falling back to default new guide release notes generator...');
-      newGuideBullets = addedGuideNames.map(g => {
+      console.log(
+        "Falling back to default new guide release notes generator...",
+      );
+      newGuideBullets = addedGuideNames.map((g) => {
         const desc = guideDescriptions[g];
         const link = formatGuideBoldLink(g, targetTag);
         return desc
@@ -119,46 +129,59 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
 
   let updatedGuideBullets: string[] = [];
   if (modifiedGuideNames.length > 0) {
-    const generatedUpdatedBullets = await generateUpdatedGuideSummariesWithGemini({
-      guideDiff: modifiedGuidesDiff,
-      guideNames: modifiedGuideNames,
-      apiKey,
-      model,
-    });
+    const generatedUpdatedBullets =
+      await generateUpdatedGuideSummariesWithGemini({
+        guideDiff: modifiedGuidesDiff,
+        guideNames: modifiedGuideNames,
+        apiKey,
+        model,
+      });
     if (generatedUpdatedBullets) {
-      updatedGuideBullets = linkifyGuideBullets(generatedUpdatedBullets, modifiedGuideNames, targetTag);
+      updatedGuideBullets = linkifyGuideBullets(
+        generatedUpdatedBullets,
+        modifiedGuideNames,
+        targetTag,
+      );
     } else {
-      console.log('Falling back to default updated guide release notes generator...');
+      console.log(
+        "Falling back to default updated guide release notes generator...",
+      );
       updatedGuideBullets = modifiedGuideNames.map(
-        g => `* ${formatGuideBoldLink(g, targetTag)}: Updates and improvements to web platform guidance.`
+        (g) =>
+          `* ${formatGuideBoldLink(g, targetTag)}: Updates and improvements to web platform guidance.`,
       );
     }
   }
 
   for (const rename of renamedGuides) {
     if (!modifiedGuideNames.includes(rename.newName)) {
-      updatedGuideBullets.push(`* Renamed **${rename.oldName}** to ${formatGuideBoldLink(rename.newName, targetTag)}.`);
+      updatedGuideBullets.push(
+        `* Renamed **${rename.oldName}** to ${formatGuideBoldLink(rename.newName, targetTag)}.`,
+      );
     }
   }
 
   const removedGuideBullets: string[] = removedGuideNames.map(
-    g => `* Removed the **${g}** guide.`
+    (g) => `* Removed the **${g}** guide.`,
   );
 
   let ecosystemBullets: string[] = [];
   if (pluginFiles.length > 0) {
-    const generatedEcosystemBullets = await generateEcosystemSummariesWithGemini({
-      pluginDiff,
-      pluginFiles,
-      apiKey,
-      model,
-    });
+    const generatedEcosystemBullets =
+      await generateEcosystemSummariesWithGemini({
+        pluginDiff,
+        pluginFiles,
+        apiKey,
+        model,
+      });
     if (generatedEcosystemBullets) {
       ecosystemBullets = generatedEcosystemBullets;
     } else {
-      console.log('Falling back to default ecosystem release notes generator...');
+      console.log(
+        "Falling back to default ecosystem release notes generator...",
+      );
       ecosystemBullets = pluginFiles.map(
-        file => `* **${file}**: Updates to agent plugin configuration.`
+        (file) => `* **${file}**: Updates to agent plugin configuration.`,
       );
     }
   }
@@ -176,17 +199,20 @@ export async function generateReleaseNotes(opts: ReleaseNotesOptions): Promise<s
 }
 
 export async function main(): Promise<void> {
-  const args = process.argv.slice(2).filter(arg => !arg.startsWith('--'));
-  const shouldCreateRelease = process.argv.includes('--create-release');
+  const args = process.argv.slice(2).filter((arg) => !arg.startsWith("--"));
+  const shouldCreateRelease = process.argv.includes("--create-release");
 
   let targetTag = args[0];
   let prevTag = args[1];
 
   if (!targetTag) {
-    const latest = execSync('git tag -l "v*.*.*" --sort=-v:refname | head -n 1', {
-      encoding: 'utf8',
-      cwd: rootDir,
-    }).trim();
+    const latest = execSync(
+      'git tag -l "v*.*.*" --sort=-v:refname | head -n 1',
+      {
+        encoding: "utf8",
+        cwd: rootDir,
+      },
+    ).trim();
     targetTag = latest;
   }
 
@@ -194,9 +220,11 @@ export async function main(): Promise<void> {
     prevTag = getPreviousTag(targetTag);
   }
 
-  const version = targetTag.startsWith('v') ? targetTag.slice(1) : targetTag;
+  const version = targetTag.startsWith("v") ? targetTag.slice(1) : targetTag;
 
-  console.log(`Generating release notes for ${targetTag} (comparing against ${prevTag})...\n`);
+  console.log(
+    `Generating release notes for ${targetTag} (comparing against ${prevTag})...\n`,
+  );
 
   try {
     const notes = await generateReleaseNotes({
@@ -205,20 +233,29 @@ export async function main(): Promise<void> {
       target: targetTag,
     });
 
-    console.log('============================== RELEASE NOTES ==============================');
+    console.log(
+      "============================== RELEASE NOTES ==============================",
+    );
     console.log(notes);
-    console.log('===========================================================================\n');
+    console.log(
+      "===========================================================================\n",
+    );
 
     if (shouldCreateRelease) {
-      console.log(`Creating GitHub release ${targetTag} on GoogleChrome/modern-web-guidance...`);
-      execSync(`gh release create "${targetTag}" -R GoogleChrome/modern-web-guidance --title "${targetTag}" --notes-file -`, {
-        input: notes,
-        stdio: ['pipe', 'inherit', 'inherit'],
-      });
+      console.log(
+        `Creating GitHub release ${targetTag} on GoogleChrome/modern-web-guidance...`,
+      );
+      execSync(
+        `gh release create "${targetTag}" -R GoogleChrome/modern-web-guidance --title "${targetTag}" --notes-file -`,
+        {
+          input: notes,
+          stdio: ["pipe", "inherit", "inherit"],
+        },
+      );
       console.log(`✅ GitHub release ${targetTag} created!`);
     }
   } catch (err) {
-    console.error('Failed to generate release notes:', err);
+    console.error("Failed to generate release notes:", err);
     process.exit(1);
   }
 }

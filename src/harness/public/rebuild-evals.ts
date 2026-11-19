@@ -1,10 +1,10 @@
-import { Agents } from '../config.ts';
-import { calculateMetrics } from '../lib/metrics.ts';
-import type { EvalsReport, RunResult, ScenarioCheck } from '../lib/metrics.ts';
-import { sanitizeReasoningEffort } from '../lib/reasoning-effort.ts';
-import type { ReasoningEffort } from '../lib/reasoning-effort.ts';
-import { assertClean, scrubValue } from './scrub.ts';
-import type { LeakOptions } from './scrub.ts';
+import { Agents } from "../config.ts";
+import { calculateMetrics } from "../lib/metrics.ts";
+import type { EvalsReport, RunResult, ScenarioCheck } from "../lib/metrics.ts";
+import { sanitizeReasoningEffort } from "../lib/reasoning-effort.ts";
+import type { ReasoningEffort } from "../lib/reasoning-effort.ts";
+import { assertClean, scrubValue } from "./scrub.ts";
+import type { LeakOptions } from "./scrub.ts";
 
 /**
  * What of a suite is public, and how its public `evals.json` is built.
@@ -35,38 +35,38 @@ export const PUBLIC_AGENTS: ReadonlySet<string> = new Set<string>([
 
 /** Suite-level fields copied from `evals.json`. `summary` and `stats` are recomputed, not copied. */
 export const PUBLIC_SUITE_FIELDS = [
-  'timestamp',
-  'agent',
-  'model',
-  'totalRuntime',
+  "timestamp",
+  "agent",
+  "model",
+  "totalRuntime",
 ] as const;
 
 /** Per-run fields copied from each entry in `evals.json#results`. `runtime` and `tokenUsage` are picked field-by-field. */
 export const PUBLIC_RUN_FIELDS = [
-  'runNumber',
-  'baseApp',
-  'taskName',
-  'guideName',
-  'discipline',
-  'prompt',
-  'guidesUsed',
-  'guidanceToolsUsed',
-  'retrievedGuides',
-  'fileReadGuides',
-  'expectedToolPrefixes',
+  "runNumber",
+  "baseApp",
+  "taskName",
+  "guideName",
+  "discipline",
+  "prompt",
+  "guidesUsed",
+  "guidanceToolsUsed",
+  "retrievedGuides",
+  "fileReadGuides",
+  "expectedToolPrefixes",
 ] as const;
 
 /** Per-assertion fields copied from each run's `results` array. */
 export const PUBLIC_ASSERTION_FIELDS = [
-  'id',
-  'passed',
-  'message',
-  'isEarlyFailure',
-  'failureReason',
-  'error',
-  'errorLocation',
-  'pageSnapshot',
-  'browserErrors',
+  "id",
+  "passed",
+  "message",
+  "isEarlyFailure",
+  "failureReason",
+  "error",
+  "errorLocation",
+  "pageSnapshot",
+  "browserErrors",
 ] as const;
 
 /**
@@ -74,7 +74,13 @@ export const PUBLIC_ASSERTION_FIELDS = [
  * not. `suite-id` means the id itself failed the leak check, so it must not be
  * recorded anywhere either.
  */
-export type SkipCode = 'non-public-agent' | 'unreleased-model' | 'leak' | 'suite-id' | 'override' | 'no-evals';
+export type SkipCode =
+  | "non-public-agent"
+  | "unreleased-model"
+  | "leak"
+  | "suite-id"
+  | "override"
+  | "no-evals";
 
 /** Thrown when a suite must not be published at all (wrong agent or unreleased model). */
 export class NotPublishableError extends Error {
@@ -82,7 +88,7 @@ export class NotPublishableError extends Error {
 
   constructor(code: SkipCode, reason: string) {
     super(reason);
-    this.name = 'NotPublishableError';
+    this.name = "NotPublishableError";
     this.code = code;
   }
 }
@@ -97,10 +103,16 @@ export function assertPublishable(
   releasedModels: readonly string[],
 ): void {
   if (suite.agent === undefined || !PUBLIC_AGENTS.has(suite.agent)) {
-    throw new NotPublishableError('non-public-agent', `agent ${JSON.stringify(suite.agent)} is not public`);
+    throw new NotPublishableError(
+      "non-public-agent",
+      `agent ${JSON.stringify(suite.agent)} is not public`,
+    );
   }
   if (suite.model === undefined || !releasedModels.includes(suite.model)) {
-    throw new NotPublishableError('unreleased-model', `model ${JSON.stringify(suite.model)} is not on the released-models list`);
+    throw new NotPublishableError(
+      "unreleased-model",
+      `model ${JSON.stringify(suite.model)} is not on the released-models list`,
+    );
   }
 }
 
@@ -110,7 +122,7 @@ export function assertPublishable(
 export class OverrideError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'OverrideError';
+    this.name = "OverrideError";
   }
 }
 
@@ -124,14 +136,19 @@ export type ResultsByKey = Record<string, RunResult[]>;
  * the middle part. Throws on any other shape rather than guessing, so a
  * malformed entry cannot slip past an exclusion.
  */
-export function guideOfResultKey(key: string, runs: readonly RunResult[] = []): string {
+export function guideOfResultKey(
+  key: string,
+  runs: readonly RunResult[] = [],
+): string {
   const recorded = runs[0]?.guideName;
   if (recorded) {
     return recorded;
   }
-  const parts = key.split(' - ');
+  const parts = key.split(" - ");
   if (parts.length !== 3) {
-    throw new OverrideError(`Malformed result key (expected "<task> - <guide> - <runType>"): ${JSON.stringify(key)}`);
+    throw new OverrideError(
+      `Malformed result key (expected "<task> - <guide> - <runType>"): ${JSON.stringify(key)}`,
+    );
   }
   return parts[1];
 }
@@ -141,7 +158,10 @@ export function guideOfResultKey(key: string, runs: readonly RunResult[] = []): 
  * `guides`. Throws `OverrideError` if a listed guide matches nothing, since
  * that almost always means a typo and silently publishing would defeat the point.
  */
-export function withoutGuides(results: ResultsByKey, guides: readonly string[]): ResultsByKey {
+export function withoutGuides(
+  results: ResultsByKey,
+  guides: readonly string[],
+): ResultsByKey {
   const excluded = new Set(guides);
   const matched = new Set<string>();
   const kept: ResultsByKey = {};
@@ -155,9 +175,11 @@ export function withoutGuides(results: ResultsByKey, guides: readonly string[]):
     }
   }
 
-  const unmatched = guides.filter(guide => !matched.has(guide));
+  const unmatched = guides.filter((guide) => !matched.has(guide));
   if (unmatched.length > 0) {
-    throw new OverrideError(`excludeGuides lists guides not present in this suite: ${unmatched.join(', ')}`);
+    throw new OverrideError(
+      `excludeGuides lists guides not present in this suite: ${unmatched.join(", ")}`,
+    );
   }
   return kept;
 }
@@ -170,7 +192,7 @@ export interface RebuildOptions {
   /** Guides to leave out entirely. */
   excludeGuides?: readonly string[];
   /** Extra tokens (e.g. operator LDAPs) that must not appear anywhere in the output. */
-  forbiddenTokens?: LeakOptions['forbiddenTokens'];
+  forbiddenTokens?: LeakOptions["forbiddenTokens"];
   /** Whether this suite is a curated baseline run. */
   curated?: boolean;
 }
@@ -180,7 +202,10 @@ type RunField = (typeof PUBLIC_RUN_FIELDS)[number];
 type AssertionField = (typeof PUBLIC_ASSERTION_FIELDS)[number];
 
 /** The shape of a published `evals.json`. */
-export type PublicEvals = Pick<EvalsReport, SuiteField | 'summary' | 'stats'> & {
+export type PublicEvals = Pick<
+  EvalsReport,
+  SuiteField | "summary" | "stats"
+> & {
   reasoningEffort?: ReasoningEffort;
   curated?: boolean;
   results: Record<string, PublicRun[]>;
@@ -197,7 +222,10 @@ export type PublicRun = Pick<RunResult, RunField> & {
 export type PublicCheck = Pick<ScenarioCheck, AssertionField>;
 
 /** Returns a new, scrubbed, allowlist-only copy of `raw`. Never mutates its input. */
-export function rebuildEvals(raw: EvalsReport, options: RebuildOptions): PublicEvals {
+export function rebuildEvals(
+  raw: EvalsReport,
+  options: RebuildOptions,
+): PublicEvals {
   assertPublishable(raw, options.releasedModels);
 
   const keptResults = withoutGuides(raw.results, options.excludeGuides ?? []);
@@ -220,28 +248,40 @@ export function rebuildEvals(raw: EvalsReport, options: RebuildOptions): PublicE
     results,
   });
 
-  assertClean(rebuilt, `public evals for ${raw.agent}/${raw.model} @ ${raw.timestamp}`, {
-    forbiddenTokens: options.forbiddenTokens,
-  });
+  assertClean(
+    rebuilt,
+    `public evals for ${raw.agent}/${raw.model} @ ${raw.timestamp}`,
+    {
+      forbiddenTokens: options.forbiddenTokens,
+    },
+  );
   return rebuilt;
 }
 
 function rebuildRun(run: RunResult): PublicRun {
   const publicRun: PublicRun = {
     ...pickFields(run, PUBLIC_RUN_FIELDS),
-    results: run.results.map(check => pickFields(check, PUBLIC_ASSERTION_FIELDS)),
+    results: run.results.map((check) =>
+      pickFields(check, PUBLIC_ASSERTION_FIELDS),
+    ),
   };
   if (run.runtime) {
-    publicRun.runtime = pickFields(run.runtime, ['agentRuntime', 'graderRuntime']);
+    publicRun.runtime = pickFields(run.runtime, [
+      "agentRuntime",
+      "graderRuntime",
+    ]);
   }
   if (run.tokenUsage) {
-    publicRun.tokenUsage = pickFields(run.tokenUsage, ['total', 'cached']);
+    publicRun.tokenUsage = pickFields(run.tokenUsage, ["total", "cached"]);
   }
   return publicRun;
 }
 
 /** Copies only `fields` from `source`, skipping fields that are `undefined` or `null` so the output stays compact. */
-function pickFields<T extends object, K extends keyof T>(source: T, fields: readonly K[]): Pick<T, K> {
+function pickFields<T extends object, K extends keyof T>(
+  source: T,
+  fields: readonly K[],
+): Pick<T, K> {
   const picked = {} as Pick<T, K>;
   for (const field of fields) {
     const value = source[field];

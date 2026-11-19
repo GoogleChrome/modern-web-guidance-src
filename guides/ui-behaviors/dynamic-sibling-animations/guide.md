@@ -43,10 +43,10 @@ If your Baseline target does not support `sibling-index()`, feature-detect suppo
 For dynamic lists (or new implementations), use JavaScript to set a 1-based `--sibling-index` custom property on each child element. **MANDATORY:** Wrap this in a `!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')` check to avoid running unnecessary JavaScript in supporting browsers.
 
 ```js
-if (!CSS.supports('animation-delay: calc(sibling-index() * 0.1s)')) {
-  const staggerList = document.getElementById('stagger-list');
+if (!CSS.supports("animation-delay: calc(sibling-index() * 0.1s)")) {
+  const staggerList = document.getElementById("stagger-list");
   [...staggerList.children].forEach((el, index) => {
-    el.style.setProperty('--sibling-index', index + 1);
+    el.style.setProperty("--sibling-index", index + 1);
   });
 }
 ```
@@ -85,8 +85,14 @@ When refactoring an existing `:nth-child()` stagger stylesheet in an environment
 
 /* Gate :nth-child() so its higher specificity doesn't override sibling-index() */
 @supports not (animation-delay: calc(sibling-index() * 0.1s)) {
-  #stagger-list > .item:nth-child(1) { animation-delay: 0.1s; }
-  #stagger-list > .item:nth-child(2) { animation-delay: 0.2s; }
-  #stagger-list > .item:nth-child(3) { animation-delay: 0.3s; }
+  #stagger-list > .item:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+  #stagger-list > .item:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+  #stagger-list > .item:nth-child(3) {
+    animation-delay: 0.3s;
+  }
 }
 ```

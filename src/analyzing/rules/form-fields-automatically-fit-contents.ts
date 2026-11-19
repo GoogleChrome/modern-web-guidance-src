@@ -4,82 +4,73 @@ import {
   type BinaryExpression,
   type CallExpression,
   type SourceFile,
-} from 'ts-morph';
+} from "ts-morph";
 import {
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
+} from "../scanners/ast-helpers.ts";
 import type {
   AnalyzerMatch,
   AnalyzerRule,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const FORM_FIELDS_AUTOMATICALLY_FIT_GUIDE_HASH = '54a6341c988f';
+export const FORM_FIELDS_AUTOMATICALLY_FIT_GUIDE_HASH = "54a6341c988f";
 
-const FEATURE_GUARD_TOKENS = [
-  'field-sizing',
-  'fieldSizing',
-] as const;
+const FEATURE_GUARD_TOKENS = ["field-sizing", "fieldSizing"] as const;
 
-const INPUT_EVENTS = new Set([
-  'input',
-  'keyup',
-  'keydown',
-  'change',
-  'text',
-]);
+const INPUT_EVENTS = new Set(["input", "keyup", "keydown", "change", "text"]);
 
 const FORM_FIELD_KEYWORDS = [
-  'textarea',
-  'tarea',
-  'input',
-  'autogrow',
-  'autosize',
-  'autoexpand',
-  'adjust_height',
-  'adjustheight',
-  'resizetextarea',
-  'field',
+  "textarea",
+  "tarea",
+  "input",
+  "autogrow",
+  "autosize",
+  "autoexpand",
+  "adjust_height",
+  "adjustheight",
+  "resizetextarea",
+  "field",
 ] as const;
 
 const NON_FORM_CONTAINER_KEYWORDS = [
-  'dialog',
-  'modal',
-  'canvas',
-  'virtual',
-  'window',
-  'table',
-  'chart',
-  'thumb',
-  'scrollbar',
-  'iframe',
-  'accordion',
-  'slidedown',
-  'readmore',
-  'progress',
+  "dialog",
+  "modal",
+  "canvas",
+  "virtual",
+  "window",
+  "table",
+  "chart",
+  "thumb",
+  "scrollbar",
+  "iframe",
+  "accordion",
+  "slidedown",
+  "readmore",
+  "progress",
 ] as const;
 
 function isAutosizeCall(call: CallExpression): boolean {
   const expr = unwrapExpression(call.getExpression());
   if (Node.isIdentifier(expr)) {
-    return expr.getText() === 'autosize';
+    return expr.getText() === "autosize";
   }
   if (Node.isPropertyAccessExpression(expr)) {
-    if (expr.getName() !== 'autosize') {
+    if (expr.getName() !== "autosize") {
       return false;
     }
     const receiver = unwrapExpression(expr.getExpression());
     const receiverText = receiver.getText().toLowerCase();
     // Must be jQuery-like receiver or reference a form field
     return (
-      receiverText.startsWith('$') ||
-      receiverText.includes('textarea') ||
-      receiverText.includes('input') ||
-      receiverText.includes('tarea') ||
-      receiverText.includes('field')
+      receiverText.startsWith("$") ||
+      receiverText.includes("textarea") ||
+      receiverText.includes("input") ||
+      receiverText.includes("tarea") ||
+      receiverText.includes("field")
     );
   }
   return false;
@@ -94,24 +85,34 @@ function isStyleDimensionAssignment(node: BinaryExpression): boolean {
     return false;
   }
   const prop = left.getName();
-  if (prop !== 'height' && prop !== 'width') {
+  if (prop !== "height" && prop !== "width") {
     return false;
   }
   const targetObj = unwrapExpression(left.getExpression());
   if (!Node.isPropertyAccessExpression(targetObj)) {
     return false;
   }
-  return targetObj.getName() === 'style';
+  return targetObj.getName() === "style";
 }
 
 function refersToScrollDimension(node: Node): boolean {
   const text = node.getText();
-  return text.includes('scrollHeight') || text.includes('scrollWidth');
+  return text.includes("scrollHeight") || text.includes("scrollWidth");
 }
 
 function isResetValue(node: Node): boolean {
-  const text = unwrapExpression(node).getText().replace(/['"]/g, '').trim().toLowerCase();
-  return text === 'auto' || text === '0px' || text === '1px' || text === '0' || text === '';
+  const text = unwrapExpression(node)
+    .getText()
+    .replace(/['"]/g, "")
+    .trim()
+    .toLowerCase();
+  return (
+    text === "auto" ||
+    text === "0px" ||
+    text === "1px" ||
+    text === "0" ||
+    text === ""
+  );
 }
 
 function expressionDerivesFromScrollDimension(node: Node): boolean {
@@ -139,7 +140,7 @@ function isInputEventCall(call: CallExpression): boolean {
     return false;
   }
   const method = callExpr.getName();
-  if (method !== 'addEventListener' && method !== 'on' && method !== 'bind') {
+  if (method !== "addEventListener" && method !== "on" && method !== "bind") {
     return false;
   }
   const args = call.getArguments();
@@ -163,8 +164,11 @@ function isEnclosedInInputHandlerOrHelper(node: Node): boolean {
       return true;
     }
 
-    if (Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)) {
-      const name = (current.getName() ?? '').toLowerCase();
+    if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      const name = (current.getName() ?? "").toLowerCase();
       if (FORM_FIELD_KEYWORDS.some((kw) => name.includes(kw))) {
         return true;
       }
@@ -196,7 +200,7 @@ function hasPrecedingStyleReset(node: Node): boolean {
     blockText.includes('style.height = "0px"') ||
     blockText.includes("style.height = '1px'") ||
     blockText.includes('style.height = "1px"') ||
-    blockText.includes('style.height = 0') ||
+    blockText.includes("style.height = 0") ||
     blockText.includes("style.height = ''");
 
   return assignsAutoOrZero;
@@ -232,22 +236,21 @@ function isAutoSizingFormField(node: BinaryExpression): boolean {
 }
 
 const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
-  kind: 'js',
-  fastTokens: [
-    'autosize',
-    'scrollHeight',
-    'scrollWidth',
-  ],
-  matchFile: (sourceFile: SourceFile, _ctx: JsMatcherContext): AnalyzerMatch[] => {
+  kind: "js",
+  fastTokens: ["autosize", "scrollHeight", "scrollWidth"],
+  matchFile: (
+    sourceFile: SourceFile,
+    _ctx: JsMatcherContext,
+  ): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const visitedLines = new Set<number>();
 
     sourceFile.forEachDescendant((node) => {
       const message =
         Node.isCallExpression(node) && isAutosizeCall(node)
-          ? 'Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content.'
+          ? "Library autosize() call auto-expands textarea/input fields; modernize with CSS field-sizing: content."
           : Node.isBinaryExpression(node) && isAutoSizingFormField(node)
-            ? 'JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content.'
+            ? "JavaScript dynamic scrollHeight calculation resizes form field; replace with declarative CSS field-sizing: content."
             : null;
 
       if (!message || isProtectedByFeatureGuard(node, FEATURE_GUARD_TOKENS)) {
@@ -265,22 +268,22 @@ const formFieldsAutomaticallyFitContentsMatcher: JsRuleMatcher = {
 };
 
 export const formFieldsAutomaticallyFitContentsRule: AnalyzerRule = {
-  id: 'form-fields-automatically-fit-contents',
-  guideId: 'form-fields-automatically-fit-contents',
+  id: "form-fields-automatically-fit-contents",
+  guideId: "form-fields-automatically-fit-contents",
   guideHash: FORM_FIELDS_AUTOMATICALLY_FIT_GUIDE_HASH,
   summary:
-    'Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.',
+    "Imperative JavaScript auto-resizing of textareas and inputs using scrollHeight or autosize() should be replaced with CSS field-sizing: content.",
   matcher: formFieldsAutomaticallyFitContentsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.',
+      "A keyup, input, change, or keydown event listener dynamically recalculates a textarea or text input height/width using scrollHeight or scrollWidth to auto-expand the field as the user types.",
       'A helper function resets .style.height to "auto", "0px", or "1px" and sets it to scrollHeight to fit contents.',
-      'The application invokes the autosize() library on a textarea or input collection.',
+      "The application invokes the autosize() library on a textarea or input collection.",
     ],
     dropWhen: [
       'The code is guarded by a feature query checking CSS.supports("field-sizing", "content") or field-sizing support.',
-      'The scrollHeight measurement calculates scrollbar thumb sizes, virtual scroll windowing, or scroll progress in a long document/dialog.',
-      'The element being resized is a canvas, iframe, or modal container rather than a form input or textarea.',
+      "The scrollHeight measurement calculates scrollbar thumb sizes, virtual scroll windowing, or scroll progress in a long document/dialog.",
+      "The element being resized is a canvas, iframe, or modal container rather than a form input or textarea.",
     ],
   },
 };

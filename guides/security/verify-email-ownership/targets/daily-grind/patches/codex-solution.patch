@@ -57,7 +57,7 @@ index 66c9173..3462abd 100644
 @@ -135,6 +135,24 @@
        background: #3e2723;
      }
- 
+
 +    .verification { max-width: 560px; margin: 40px auto; text-align: left; }
 +    .verification label { display: block; margin-top: 16px; font-weight: 600; }
 +    .verification input:not([type="hidden"]) {
@@ -89,7 +89,7 @@ index 66c9173..3462abd 100644
 +      <!--VERIFICATION_CONTENT-->
 +    </section>
    </main>
- 
+
    <footer>
 diff --git a/package.json b/package.json
 index 2bd4d77..38ba138 100644

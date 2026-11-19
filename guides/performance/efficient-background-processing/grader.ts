@@ -1,61 +1,73 @@
-import { test, expect, expectNever } from '../../test-fixture.ts';
+import { test, expect, expectNever } from "../../test-fixture.ts";
 
 // Helper function to check if a string contains any non-zero length/size value
 const hasNonZeroSize = (val: string | null): boolean => {
   if (!val) return false;
-  if (val === 'none') return false;
+  if (val === "none") return false;
   const numbers = val.match(/\d+(\.\d+)?/g);
   if (!numbers) return false;
-  return numbers.some(n => parseFloat(n) > 0);
+  return numbers.some((n) => parseFloat(n) > 0);
 };
 
-test.describe('Efficient Background Processing Grader', () => {
-
-  test('The target element must have content-visibility: auto applied in its computed styles', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+test.describe("Efficient Background Processing Grader", () => {
+  test("The target element must have content-visibility: auto applied in its computed styles", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const hasElement = await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      return allElements.some(el => {
+      const allElements = Array.from(document.querySelectorAll("*"));
+      return allElements.some((el) => {
         const style = window.getComputedStyle(el);
-        return style.contentVisibility === 'auto';
+        return style.contentVisibility === "auto";
       });
     });
 
     expect(hasElement).toBe(true);
   });
 
-  test('The target element must have a non-zero contain-intrinsic-size applied to provide a placeholder height', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+  test("The target element must have a non-zero contain-intrinsic-size applied to provide a placeholder height", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     const containIntrinsicSize = await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      const target = allElements.find(el => {
+      const allElements = Array.from(document.querySelectorAll("*"));
+      const target = allElements.find((el) => {
         const style = window.getComputedStyle(el);
-        return style.contentVisibility === 'auto';
+        return style.contentVisibility === "auto";
       });
       if (!target) return null;
       const style = window.getComputedStyle(target);
-      return style.containIntrinsicSize || style.getPropertyValue('contain-intrinsic-size');
+      return (
+        style.containIntrinsicSize ||
+        style.getPropertyValue("contain-intrinsic-size")
+      );
     });
 
     expect(containIntrinsicSize).not.toBeNull();
     expect(hasNonZeroSize(containIntrinsicSize)).toBe(true);
   });
 
-  test('The application must respond to the contentvisibilityautostatechange event', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+  test("The application must respond to the contentvisibilityautostatechange event", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
 
     // Register a spy for the contentvisibilityautostatechange event
     await page.addInitScript(() => {
       let registered = false;
       const originalAddEventListener = EventTarget.prototype.addEventListener;
-      EventTarget.prototype.addEventListener = function(type, listener, options) {
-        if (type === 'contentvisibilityautostatechange') {
+      EventTarget.prototype.addEventListener = function (
+        type,
+        listener,
+        options,
+      ) {
+        if (type === "contentvisibilityautostatechange") {
           registered = true;
         }
         return originalAddEventListener.call(this, type, listener, options);
@@ -64,151 +76,190 @@ test.describe('Efficient Background Processing Grader', () => {
     });
 
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
-    const registered = await page.evaluate(() => (window as any).__hasRegisteredCvEvent());
+    const registered = await page.evaluate(() =>
+      (window as any).__hasRegisteredCvEvent(),
+    );
     expect(registered).toBe(true);
   });
 
-  test('The application must pause active canvas animations or high-frequency tasks when the contentvisibilityautostatechange event reports skipped: true', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+  test("The application must pause active canvas animations or high-frequency tasks when the contentvisibilityautostatechange event reports skipped: true", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
 
     await page.addInitScript(() => {
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
-      window.requestAnimationFrame = function(callback) {
-        const cbStr = callback ? callback.toString() : '';
-        if (!cbStr.includes('clearTimeout(timer)')) {
+      window.requestAnimationFrame = function (callback) {
+        const cbStr = callback ? callback.toString() : "";
+        if (!cbStr.includes("clearTimeout(timer)")) {
           rafCalls++;
         }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
-      (window as any).__resetRafCalls = () => { rafCalls = 0; };
+      (window as any).__resetRafCalls = () => {
+        rafCalls = 0;
+      };
     });
 
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Trigger skipped: true on the content-visibility element
     await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      const target = allElements.find(el => {
+      const allElements = Array.from(document.querySelectorAll("*"));
+      const target = allElements.find((el) => {
         const style = window.getComputedStyle(el);
-        return style.contentVisibility === 'auto';
+        return style.contentVisibility === "auto";
       });
       if (target) {
-        const event = new Event('contentvisibilityautostatechange');
-        Object.defineProperty(event, 'skipped', { value: true, enumerable: true });
+        const event = new Event("contentvisibilityautostatechange");
+        Object.defineProperty(event, "skipped", {
+          value: true,
+          enumerable: true,
+        });
         target.dispatchEvent(event);
       }
     });
 
     // Let any in-flight frame complete, then reset
-    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
 
     // Verify that RAF is not ticking
-    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, {
+      forMs: 300,
+    });
   });
 
-  test('The application must resume active canvas animations or high-frequency tasks when the contentvisibilityautostatechange event reports skipped: false', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+  test("The application must resume active canvas animations or high-frequency tasks when the contentvisibilityautostatechange event reports skipped: false", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
 
     await page.addInitScript(() => {
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
-      window.requestAnimationFrame = function(callback) {
-        const cbStr = callback ? callback.toString() : '';
-        if (!cbStr.includes('clearTimeout(timer)')) {
+      window.requestAnimationFrame = function (callback) {
+        const cbStr = callback ? callback.toString() : "";
+        if (!cbStr.includes("clearTimeout(timer)")) {
           rafCalls++;
         }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
-      (window as any).__resetRafCalls = () => { rafCalls = 0; };
+      (window as any).__resetRafCalls = () => {
+        rafCalls = 0;
+      };
     });
 
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Step 1: Force pause state off-screen initially
     await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      const target = allElements.find(el => {
+      const allElements = Array.from(document.querySelectorAll("*"));
+      const target = allElements.find((el) => {
         const style = window.getComputedStyle(el);
-        return style.contentVisibility === 'auto';
+        return style.contentVisibility === "auto";
       });
       if (target) {
-        const event = new Event('contentvisibilityautostatechange');
-        Object.defineProperty(event, 'skipped', { value: true, enumerable: true });
+        const event = new Event("contentvisibilityautostatechange");
+        Object.defineProperty(event, "skipped", {
+          value: true,
+          enumerable: true,
+        });
         target.dispatchEvent(event);
       }
     });
 
-    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, {
+      forMs: 300,
+    });
 
     // Step 2: Trigger skipped: false to resume rendering
     await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      const target = allElements.find(el => {
+      const allElements = Array.from(document.querySelectorAll("*"));
+      const target = allElements.find((el) => {
         const style = window.getComputedStyle(el);
-        return style.contentVisibility === 'auto';
+        return style.contentVisibility === "auto";
       });
       if (target) {
-        target.scrollIntoView({ behavior: 'instant' as ScrollBehavior });
-        const event = new Event('contentvisibilityautostatechange');
-        Object.defineProperty(event, 'skipped', { value: false, enumerable: true });
+        target.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+        const event = new Event("contentvisibilityautostatechange");
+        Object.defineProperty(event, "skipped", {
+          value: false,
+          enumerable: true,
+        });
         target.dispatchEvent(event);
       }
     });
 
     // Step 3: Verify it resumed and is ticking
     await page.evaluate(() => (window as any).__resetRafCalls());
-    await expect.poll(async () => {
-      return await page.evaluate(() => (window as any).__getRafCalls());
-    }, { timeout: 2000 }).toBeGreaterThanOrEqual(5);
+    await expect
+      .poll(
+        async () => {
+          return await page.evaluate(() => (window as any).__getRafCalls());
+        },
+        { timeout: 2000 },
+      )
+      .toBeGreaterThanOrEqual(5);
   });
 
-  test('If content-visibility is not supported, the application must use IntersectionObserver to pause tasks when the element leaves the viewport', async ({ page }) => {
-    const targetPath = process.env.TARGET_FILE || '';
+  test("If content-visibility is not supported, the application must use IntersectionObserver to pause tasks when the element leaves the viewport", async ({
+    page,
+  }) => {
+    const targetPath = process.env.TARGET_FILE || "";
 
     await page.addInitScript(() => {
       delete (window as any).ContentVisibilityAutoStateChangeEvent;
       if (window.CSS && window.CSS.supports) {
         const origSupports = window.CSS.supports;
-        window.CSS.supports = function(...args: any[]) {
-          const str = args.join(' ');
-          if (str.includes('content-visibility')) return false;
+        window.CSS.supports = function (...args: any[]) {
+          const str = args.join(" ");
+          if (str.includes("content-visibility")) return false;
           return (origSupports as any).apply(this, args);
         };
       }
 
       // Simulate lack of support using a Proxy on HTMLElement.prototype.style
-      const originalStyleDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style');
+      const originalStyleDesc = Object.getOwnPropertyDescriptor(
+        HTMLElement.prototype,
+        "style",
+      );
       if (originalStyleDesc && originalStyleDesc.get) {
         const originalStyleGetter = originalStyleDesc.get;
-        Object.defineProperty(HTMLElement.prototype, 'style', {
+        Object.defineProperty(HTMLElement.prototype, "style", {
           get() {
             const originalStyle = originalStyleGetter.call(this);
             return new Proxy(originalStyle, {
               has(target, prop) {
-                if (prop === 'contentVisibility' || prop === 'content-visibility') {
+                if (
+                  prop === "contentVisibility" ||
+                  prop === "content-visibility"
+                ) {
                   return false;
                 }
                 return Reflect.has(target, prop);
               },
               get(target, prop) {
-                if (prop === 'contentVisibility' || prop === 'content-visibility') {
+                if (
+                  prop === "contentVisibility" ||
+                  prop === "content-visibility"
+                ) {
                   return undefined;
                 }
                 return Reflect.get(target, prop);
-              }
+              },
             });
           },
-          configurable: true
+          configurable: true,
         });
       }
 
@@ -217,41 +268,44 @@ test.describe('Efficient Background Processing Grader', () => {
       const observerInstances: any[] = [];
       (window as any)._observerInstances = observerInstances;
 
-      window.IntersectionObserver = class SpiedIntersectionObserver extends OriginalIntersectionObserver {
-        callback: any;
-        options: any;
-        observedElements: Element[];
+      window.IntersectionObserver =
+        class SpiedIntersectionObserver extends OriginalIntersectionObserver {
+          callback: any;
+          options: any;
+          observedElements: Element[];
 
-        constructor(callback: any, options: any) {
-          super(callback, options);
-          this.callback = callback;
-          this.options = options;
-          this.observedElements = [];
-          observerInstances.push(this);
-        }
+          constructor(callback: any, options: any) {
+            super(callback, options);
+            this.callback = callback;
+            this.options = options;
+            this.observedElements = [];
+            observerInstances.push(this);
+          }
 
-        observe(target: Element) {
-          super.observe(target);
-          this.observedElements.push(target);
-        }
-      } as any;
+          observe(target: Element) {
+            super.observe(target);
+            this.observedElements.push(target);
+          }
+        } as any;
 
       // Spy on requestAnimationFrame
       let rafCalls = 0;
       const originalRaf = window.requestAnimationFrame;
-      window.requestAnimationFrame = function(callback) {
-        const cbStr = callback ? callback.toString() : '';
-        if (!cbStr.includes('clearTimeout(timer)')) {
+      window.requestAnimationFrame = function (callback) {
+        const cbStr = callback ? callback.toString() : "";
+        if (!cbStr.includes("clearTimeout(timer)")) {
           rafCalls++;
         }
         return originalRaf.call(this, callback);
       };
       (window as any).__getRafCalls = () => rafCalls;
-      (window as any).__resetRafCalls = () => { rafCalls = 0; };
+      (window as any).__resetRafCalls = () => {
+        rafCalls = 0;
+      };
     });
 
     await page.goto(`file://${targetPath}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState("networkidle");
 
     // Verify IntersectionObserver is registered and observes an element
     const observerData = await page.evaluate(() => {
@@ -261,7 +315,7 @@ test.describe('Efficient Background Processing Grader', () => {
       if (!inst) return null;
       return {
         observedCount: inst.observedElements.length,
-        observedTags: inst.observedElements.map((el: any) => el.tagName)
+        observedTags: inst.observedElements.map((el: any) => el.tagName),
       };
     });
 
@@ -275,16 +329,18 @@ test.describe('Efficient Background Processing Grader', () => {
         const entry = {
           isIntersecting: false,
           intersectionRatio: 0,
-          target: inst.observedElements[0]
+          target: inst.observedElements[0],
         };
         inst.callback([entry], inst);
       }
     });
 
-    await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
     await page.evaluate(() => (window as any).__resetRafCalls());
     // Expect tasks to be paused
-    await expectNever(page, () => (window as any).__getRafCalls() > 1, { forMs: 300 });
+    await expectNever(page, () => (window as any).__getRafCalls() > 1, {
+      forMs: 300,
+    });
 
     // Trigger IntersectionObserver callback with isIntersecting: true
     await page.evaluate(() => {
@@ -294,7 +350,7 @@ test.describe('Efficient Background Processing Grader', () => {
         const entry = {
           isIntersecting: true,
           intersectionRatio: 1,
-          target: inst.observedElements[0]
+          target: inst.observedElements[0],
         };
         inst.callback([entry], inst);
       }
@@ -302,9 +358,13 @@ test.describe('Efficient Background Processing Grader', () => {
 
     await page.evaluate(() => (window as any).__resetRafCalls());
     // Expect tasks to be running
-    await expect.poll(async () => {
-      return await page.evaluate(() => (window as any).__getRafCalls());
-    }, { timeout: 2000 }).toBeGreaterThanOrEqual(5);
+    await expect
+      .poll(
+        async () => {
+          return await page.evaluate(() => (window as any).__getRafCalls());
+        },
+        { timeout: 2000 },
+      )
+      .toBeGreaterThanOrEqual(5);
   });
-
 });

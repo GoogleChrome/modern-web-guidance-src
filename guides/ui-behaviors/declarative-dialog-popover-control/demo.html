@@ -95,8 +95,8 @@
 
   <section>
     <h2>Popover Toggle</h2>
-    <!-- 
-      Invoker button to toggle the popover. 
+    <!--
+      Invoker button to toggle the popover.
     -->
     <button id="popover-toggle-btn" commandfor="my-popover" command="toggle-popover">
       Toggle Popover
@@ -115,7 +115,7 @@
       Show Popover
     </button>
 
-    <!-- 
+    <!--
       The explicit popover target.
       MANDATORY: Use popover="manual" for explicit controls to avoid light-dismiss interference.
     -->
@@ -161,8 +161,8 @@
     const hasPopoverSupport = 'popover' in HTMLElement.prototype;
 
     /**
-     * DYNAMIC FALLBACK STRATEGY: 
-     * We use an async IIFE to ensure the polyfills are loaded conditionally 
+     * DYNAMIC FALLBACK STRATEGY:
+     * We use an async IIFE to ensure the polyfills are loaded conditionally
      * while avoiding top-level await for older browser compatibility.
      */
     (async () => {
@@ -196,11 +196,11 @@
 
     /**
      * ACCESSIBILITY & COMMAND MANAGEMENT:
-     * MANDATORY: We attach the 'command' event listener directly to each target 
+     * MANDATORY: We attach the 'command' event listener directly to each target
      * element because the native 'command' event does not bubble.
      */
     const targets = document.querySelectorAll('#my-popover, #my-explicit-popover, #my-dialog');
-    
+
     targets.forEach(target => {
       target.addEventListener('command', (event) => {
         if (hasInvokerSupport) return;
@@ -247,7 +247,7 @@
         });
       }
     });
-    
+
   </script>
 </body>
 </html>

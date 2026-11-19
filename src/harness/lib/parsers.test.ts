@@ -1,24 +1,31 @@
-import test from 'node:test';
-import assert from 'node:assert';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import { extractTokenUsageFromResults, extractModelFromResults } from './collection.ts';
+import test from "node:test";
+import assert from "node:assert";
+import fs from "fs";
+import path from "path";
+import os from "os";
+import {
+  extractTokenUsageFromResults,
+  extractModelFromResults,
+} from "./collection.ts";
 import {
   collectClaudeToolsFromTrajectory,
   collectClaudeGuidesFromTrajectory,
   collectCodexToolsFromTrajectory,
   collectCodexGuidesFromTrajectory,
   collectJetskiCliToolsFromTrajectory,
-  collectJetskiCliGuidesFromTrajectory
-} from './trajectory-normalizer.ts';
+  collectJetskiCliGuidesFromTrajectory,
+} from "./trajectory-normalizer.ts";
 
-function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string[] {
+function getMostRecentFiles(
+  baseDir: string,
+  pattern: string,
+  count = 5,
+): string[] {
   if (!fs.existsSync(baseDir)) return [];
   try {
     const files = fs.globSync(pattern, { cwd: baseDir });
     return files
-      .map(f => {
+      .map((f) => {
         try {
           return { path: f, mtime: fs.statSync(path.join(baseDir, f)).mtimeMs };
         } catch {
@@ -28,14 +35,14 @@ function getMostRecentFiles(baseDir: string, pattern: string, count = 5): string
       .filter(Boolean)
       .sort((a, b) => b!.mtime - a!.mtime)
       .slice(0, count)
-      .map(x => path.join(baseDir, x!.path));
+      .map((x) => path.join(baseDir, x!.path));
   } catch {
     return [];
   }
 }
 
 function setupTempSessionDir(srcFiles: string[]): string {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'parser-test-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "parser-test-"));
   for (let i = 0; i < srcFiles.length; i++) {
     const src = srcFiles[i];
     const ext = path.extname(src);
@@ -54,12 +61,14 @@ function cleanupTempDir(dir: string) {
   }
 }
 
-test('Jetski CLI real trajectory parsing sanity check', async (t) => {
-  const baseDir = path.join(os.homedir(), '.gemini', 'jetski', 'conversations');
-  const recentFiles = getMostRecentFiles(baseDir, '*.db');
+test("Jetski CLI real trajectory parsing sanity check", async (t) => {
+  const baseDir = path.join(os.homedir(), ".gemini", "jetski", "conversations");
+  const recentFiles = getMostRecentFiles(baseDir, "*.db");
 
   if (recentFiles.length === 0) {
-    t.skip('No recent Jetski CLI trajectories found in ~/.gemini/jetski/conversations');
+    t.skip(
+      "No recent Jetski CLI trajectories found in ~/.gemini/jetski/conversations",
+    );
     return;
   }
 
@@ -67,27 +76,35 @@ test('Jetski CLI real trajectory parsing sanity check', async (t) => {
   try {
     const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
-      assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
-      assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
-      assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
+      assert.ok(
+        usage.total >= 0,
+        `Total tokens should be non-negative (got ${usage.total})`,
+      );
+      assert.ok(
+        usage.cached <= usage.total,
+        "Cached tokens cannot exceed total",
+      );
+      assert.ok(usage.cached >= 0, "Cached tokens should be non-negative");
     }
 
     const model = extractModelFromResults(tempDir);
-    assert.ok(typeof model === 'string', 'Model extracted as string');
+    assert.ok(typeof model === "string", "Model extracted as string");
 
     assert.doesNotThrow(() => collectJetskiCliToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectJetskiCliGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () =>
+      collectJetskiCliGuidesFromTrajectory(tempDir),
+    );
   } finally {
     cleanupTempDir(tempDir);
   }
 });
 
-test('Claude Code real trajectory parsing sanity check', async (t) => {
-  const baseDir = path.join(os.homedir(), '.claude', 'projects');
-  const recentFiles = getMostRecentFiles(baseDir, '**/*.jsonl');
+test("Claude Code real trajectory parsing sanity check", async (t) => {
+  const baseDir = path.join(os.homedir(), ".claude", "projects");
+  const recentFiles = getMostRecentFiles(baseDir, "**/*.jsonl");
 
   if (recentFiles.length === 0) {
-    t.skip('No recent Claude Code trajectories found in ~/.claude/projects');
+    t.skip("No recent Claude Code trajectories found in ~/.claude/projects");
     return;
   }
 
@@ -95,27 +112,35 @@ test('Claude Code real trajectory parsing sanity check', async (t) => {
   try {
     const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
-      assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
-      assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
-      assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
+      assert.ok(
+        usage.total >= 0,
+        `Total tokens should be non-negative (got ${usage.total})`,
+      );
+      assert.ok(
+        usage.cached <= usage.total,
+        "Cached tokens cannot exceed total",
+      );
+      assert.ok(usage.cached >= 0, "Cached tokens should be non-negative");
     }
 
     const model = extractModelFromResults(tempDir);
-    assert.ok(typeof model === 'string', 'Model extracted as string');
+    assert.ok(typeof model === "string", "Model extracted as string");
 
     assert.doesNotThrow(() => collectClaudeToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectClaudeGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () =>
+      collectClaudeGuidesFromTrajectory(tempDir),
+    );
   } finally {
     cleanupTempDir(tempDir);
   }
 });
 
-test('Codex CLI real trajectory parsing sanity check', async (t) => {
-  const baseDir = path.join(os.homedir(), '.codex', 'sessions');
-  const recentFiles = getMostRecentFiles(baseDir, '**/*.jsonl');
+test("Codex CLI real trajectory parsing sanity check", async (t) => {
+  const baseDir = path.join(os.homedir(), ".codex", "sessions");
+  const recentFiles = getMostRecentFiles(baseDir, "**/*.jsonl");
 
   if (recentFiles.length === 0) {
-    t.skip('No recent Codex CLI trajectories found in ~/.codex/sessions');
+    t.skip("No recent Codex CLI trajectories found in ~/.codex/sessions");
     return;
   }
 
@@ -123,16 +148,24 @@ test('Codex CLI real trajectory parsing sanity check', async (t) => {
   try {
     const usage = extractTokenUsageFromResults(tempDir);
     if (usage) {
-      assert.ok(usage.total >= 0, `Total tokens should be non-negative (got ${usage.total})`);
-      assert.ok(usage.cached <= usage.total, 'Cached tokens cannot exceed total');
-      assert.ok(usage.cached >= 0, 'Cached tokens should be non-negative');
+      assert.ok(
+        usage.total >= 0,
+        `Total tokens should be non-negative (got ${usage.total})`,
+      );
+      assert.ok(
+        usage.cached <= usage.total,
+        "Cached tokens cannot exceed total",
+      );
+      assert.ok(usage.cached >= 0, "Cached tokens should be non-negative");
     }
 
     const model = extractModelFromResults(tempDir);
-    assert.ok(typeof model === 'string', 'Model extracted as string');
+    assert.ok(typeof model === "string", "Model extracted as string");
 
     assert.doesNotThrow(() => collectCodexToolsFromTrajectory(tempDir));
-    await assert.doesNotReject(async () => collectCodexGuidesFromTrajectory(tempDir));
+    await assert.doesNotReject(async () =>
+      collectCodexGuidesFromTrajectory(tempDir),
+    );
   } finally {
     cleanupTempDir(tempDir);
   }

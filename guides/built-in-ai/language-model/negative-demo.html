@@ -16,7 +16,7 @@
 
     runBtn.onclick = async () => {
       const model = await window.ai.languageModel.capabilities();
-      
+
       const session = await window.ai.languageModel.create({
         topK: 1,
         temperature: 0
@@ -36,7 +36,7 @@
           responseFormat: "json"
         }
       );
-      
+
       const structuredData = JSON.stringify(rawJson);
       outputEl.innerHTML += "<span>" + structuredData + "</span>";
 

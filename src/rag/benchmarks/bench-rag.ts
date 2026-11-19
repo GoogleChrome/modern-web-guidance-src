@@ -23,9 +23,9 @@ import {
 import type { EmbedderLike, UseCaseResult } from "../search.ts";
 
 /** Calibrated ~5pp below main's 0.849 to catch ranking regressions without tripping on minor token drift. */
-const AGENT_SANITY_NDCG_FLOOR = 0.80;
+const AGENT_SANITY_NDCG_FLOOR = 0.8;
 const AGENT_SANITY_HIT1_FLOOR = 0.75;
-const HARNESS_SANITY_NDCG_FLOOR = 0.80;
+const HARNESS_SANITY_NDCG_FLOOR = 0.8;
 
 interface TargetSpec {
   ref: string;
@@ -49,7 +49,7 @@ interface SearchModule {
     query: string,
     limit?: number,
     minSimilarity?: number,
-    embedder?: EmbedderLike
+    embedder?: EmbedderLike,
   ) => Promise<UseCaseResult[]>;
 }
 
@@ -58,7 +58,11 @@ function getSafeGitEnv(): NodeJS.ProcessEnv {
   delete env.GIT_DIR;
   delete env.GIT_WORK_TREE;
   for (const key of Object.keys(env)) {
-    if (key.startsWith("GIT_CONFIG_") && key !== "GIT_CONFIG_GLOBAL" && key !== "GIT_CONFIG_SYSTEM") {
+    if (
+      key.startsWith("GIT_CONFIG_") &&
+      key !== "GIT_CONFIG_GLOBAL" &&
+      key !== "GIT_CONFIG_SYSTEM"
+    ) {
       delete env[key];
     }
   }
@@ -122,14 +126,23 @@ export function computeEmbedderHash(worktreePath = rootDir): string {
   return hash.digest("hex").slice(0, 12);
 }
 
-function runEmbeddingWorker(targetDir: string, queries: string[]): Record<string, number[]> {
+function runEmbeddingWorker(
+  targetDir: string,
+  queries: string[],
+): Record<string, number[]> {
   const ragDir = resolveRagDir(targetDir);
   const isStatic = fs.existsSync(path.join(ragDir, "static-embedder.ts"));
   const embedderFile = isStatic ? "static-embedder.ts" : "tfjs-embedder.ts";
   const embedderExport = isStatic ? "StaticEmbedder" : "TfjsEmbedder";
   const embedderPath = path.join(ragDir, embedderFile);
-  const tmpInput = path.join(os.tmpdir(), `rag-bench-queries-${process.pid}-${Date.now()}.json`);
-  const tmpOutput = path.join(os.tmpdir(), `rag-bench-vectors-${process.pid}-${Date.now()}.json`);
+  const tmpInput = path.join(
+    os.tmpdir(),
+    `rag-bench-queries-${process.pid}-${Date.now()}.json`,
+  );
+  const tmpOutput = path.join(
+    os.tmpdir(),
+    `rag-bench-vectors-${process.pid}-${Date.now()}.json`,
+  );
   fs.writeFileSync(tmpInput, JSON.stringify(queries), "utf-8");
 
   const workerScript = `
@@ -145,11 +158,15 @@ function runEmbeddingWorker(targetDir: string, queries: string[]): Record<string
   `;
 
   try {
-    execFileSync(process.execPath, ["--input-type=module", "-e", workerScript], {
-      cwd: targetDir,
-      env: getSafeGitEnv(),
-      stdio: ["ignore", "inherit", "inherit"],
-    });
+    execFileSync(
+      process.execPath,
+      ["--input-type=module", "-e", workerScript],
+      {
+        cwd: targetDir,
+        env: getSafeGitEnv(),
+        stdio: ["ignore", "inherit", "inherit"],
+      },
+    );
     const parsed: unknown = JSON.parse(fs.readFileSync(tmpOutput, "utf-8"));
     const out: Record<string, number[]> = {};
     if (isRecord(parsed)) {
@@ -164,7 +181,10 @@ function runEmbeddingWorker(targetDir: string, queries: string[]): Record<string
   }
 }
 
-function ensureQueryEmbeddings(targetDir: string, queries: string[]): Map<string, number[]> {
+function ensureQueryEmbeddings(
+  targetDir: string,
+  queries: string[],
+): Map<string, number[]> {
   const embedHash = computeEmbedderHash(targetDir);
   const cacheDir = path.join(outDir, "benchmarks");
   fs.mkdirSync(cacheDir, { recursive: true });
@@ -182,9 +202,13 @@ function ensureQueryEmbeddings(targetDir: string, queries: string[]): Map<string
     // Cache miss or unreadable cache file
   }
 
-  const uniqueMissing = [...new Set(queries)].filter((q) => !Array.isArray(cached[q]));
+  const uniqueMissing = [...new Set(queries)].filter(
+    (q) => !Array.isArray(cached[q]),
+  );
   if (uniqueMissing.length > 0) {
-    console.log(`Embedding ${uniqueMissing.length} uncached queries (embedder ${embedHash})...`);
+    console.log(
+      `Embedding ${uniqueMissing.length} uncached queries (embedder ${embedHash})...`,
+    );
     Object.assign(cached, runEmbeddingWorker(targetDir, uniqueMissing));
     fs.writeFileSync(cacheFile, JSON.stringify(cached), "utf-8");
   }
@@ -200,7 +224,10 @@ function ensureQueryEmbeddings(targetDir: string, queries: string[]): Map<string
 
 function ensureWorktreeBuilt(targetDir: string, seedFromRoot = true): void {
   const modernBuildScript = path.join(targetDir, "src/build/build-guides.ts");
-  const legacyBuildScript = path.join(targetDir, "serving/scripts/build-guides.ts");
+  const legacyBuildScript = path.join(
+    targetDir,
+    "serving/scripts/build-guides.ts",
+  );
 
   if (fs.existsSync(modernBuildScript)) {
     const targetNodeModules = path.join(targetDir, "node_modules");
@@ -222,7 +249,12 @@ function ensureWorktreeBuilt(targetDir: string, seedFromRoot = true): void {
 
     const targetCacheDir = path.join(targetDir, "out/build/skills-cli");
     const rootCacheDir = path.join(rootDir, "out/build/skills-cli");
-    if (seedFromRoot && targetDir !== rootDir && !fs.existsSync(targetCacheDir) && fs.existsSync(rootCacheDir)) {
+    if (
+      seedFromRoot &&
+      targetDir !== rootDir &&
+      !fs.existsSync(targetCacheDir) &&
+      fs.existsSync(rootCacheDir)
+    ) {
       fs.mkdirSync(path.dirname(targetCacheDir), { recursive: true });
       fs.cpSync(rootCacheDir, targetCacheDir, { recursive: true });
     }
@@ -252,8 +284,12 @@ function linkNodeModules(targetDir: string): void {
 
   const candidates = [
     path.join(targetDir, "node_modules"),
-    ...(fs.existsSync(path.join(targetDir, "serving")) ? [path.join(targetDir, "serving/node_modules")] : []),
-    ...(fs.existsSync(path.join(targetDir, "lib")) ? [path.join(targetDir, "lib/node_modules")] : []),
+    ...(fs.existsSync(path.join(targetDir, "serving"))
+      ? [path.join(targetDir, "serving/node_modules")]
+      : []),
+    ...(fs.existsSync(path.join(targetDir, "lib"))
+      ? [path.join(targetDir, "lib/node_modules")]
+      : []),
   ];
   for (const dest of candidates) {
     try {
@@ -267,9 +303,15 @@ function linkNodeModules(targetDir: string): void {
 async function evaluateTarget(
   spec: TargetSpec,
   datasets: LoadedDataset[],
-  options: EvaluateTargetOptions
-): Promise<{ label: string; commit: string; summaries: Map<string, DatasetSummary> }> {
-  const allQueryStrings = datasets.flatMap((d) => d.queries.map((q) => q.query));
+  options: EvaluateTargetOptions,
+): Promise<{
+  label: string;
+  commit: string;
+  summaries: Map<string, DatasetSummary>;
+}> {
+  const allQueryStrings = datasets.flatMap((d) =>
+    d.queries.map((q) => q.query),
+  );
 
   const isWorktree = spec.ref === "WORKTREE";
   let targetDir = rootDir;
@@ -317,7 +359,10 @@ async function evaluateTarget(
     for (const ds of datasets) {
       const resultsByQid = new Map<string, UseCaseResult[]>();
       for (const q of ds.queries) {
-        resultsByQid.set(q.qid, await mod.searchUseCases(q.query, options.limit, undefined, embedder));
+        resultsByQid.set(
+          q.qid,
+          await mod.searchUseCases(q.query, options.limit, undefined, embedder),
+        );
       }
       summaries.set(ds.name, summarizeDataset(ds, resultsByQid, options.limit));
     }
@@ -339,11 +384,19 @@ function fmtTok(v: number | undefined): string {
   return v === undefined ? "—" : `${Math.round(v).toLocaleString("en-US")}`;
 }
 
-function fmtSigned(diff: number, fmtAbs: (v: number) => string, suffix = ""): string {
+function fmtSigned(
+  diff: number,
+  fmtAbs: (v: number) => string,
+  suffix = "",
+): string {
   return `${diff >= 0 ? "+" : "-"}${fmtAbs(Math.abs(diff))}${suffix}`;
 }
 
-function fmtBootstrapDelta(d: BootstrapDelta, fmtVal: (v: number) => string, suffix = ""): string {
+function fmtBootstrapDelta(
+  d: BootstrapDelta,
+  fmtVal: (v: number) => string,
+  suffix = "",
+): string {
   const main = fmtSigned(d.delta, fmtVal, suffix);
   const low = fmtSigned(d.ciLow, fmtVal);
   const high = fmtSigned(d.ciHigh, fmtVal);
@@ -353,7 +406,7 @@ function fmtBootstrapDelta(d: BootstrapDelta, fmtVal: (v: number) => string, suf
 export function renderSingleMarkdown(
   label: string,
   summaries: DatasetSummary[],
-  datasets?: LoadedDataset[]
+  datasets?: LoadedDataset[],
 ): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark — \`${label}\``);
@@ -361,8 +414,12 @@ export function renderSingleMarkdown(
     const provLines = datasets
       .filter((d) => d.manifest)
       .map((d) => {
-        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
-        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) =>
+          k.endsWith("qrels.jsonl"),
+        );
+        const qrelsSha = qrelsKey
+          ? d.manifest?.files[qrelsKey]?.sha256
+          : undefined;
         return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
       });
     if (provLines.length > 0) {
@@ -372,10 +429,10 @@ export function renderSingleMarkdown(
   }
   lines.push("");
   lines.push(
-    "| Dataset | Queries (Ans / OOS) | nDCG@5 | Success@1 | Hit@1 (g=2) | MRR@5 | Recall@5 | LeafRecall@5 | Disc@1 | Expected@1 | Avg Guides | Avg Tokens (Ans) | Empty% (Ans) | OOS Admit% (Near / Far) | Avg OOS Tokens | Unjudged% |"
+    "| Dataset | Queries (Ans / OOS) | nDCG@5 | Success@1 | Hit@1 (g=2) | MRR@5 | Recall@5 | LeafRecall@5 | Disc@1 | Expected@1 | Avg Guides | Avg Tokens (Ans) | Empty% (Ans) | OOS Admit% (Near / Far) | Avg OOS Tokens | Unjudged% |",
   );
   lines.push(
-    "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |"
+    "| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |",
   );
 
   for (const s of summaries) {
@@ -386,7 +443,7 @@ export function renderSingleMarkdown(
           : fmtPct(s.oosAdmitRate)
         : "—";
     lines.push(
-      `| **${s.dataset}** | ${s.totalQueries} (${s.answerableQueries} / ${s.oosQueries}) | **${s.answerableQueries > 0 ? fmtNum(s.ndcg5) : "—"}** | ${s.answerableQueries > 0 ? fmtPct(s.success1) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.hit1) : "—"} | ${s.answerableQueries > 0 ? fmtNum(s.mrr5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.recall5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.leafRecall5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.disciplineTop1Rate) : "—"} | ${fmtPct(s.expectedHit1)} | ${s.answerableQueries > 0 ? s.avgReturnedCount.toFixed(2) : "—"} | ${s.answerableQueries > 0 ? fmtTok(s.avgTokensAnswerable) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.answerableEmptyRate) : "—"} | ${oosDetail} | ${s.oosQueries > 0 ? fmtTok(s.avgOosTokens) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.unjudgedRate) : "—"} |`
+      `| **${s.dataset}** | ${s.totalQueries} (${s.answerableQueries} / ${s.oosQueries}) | **${s.answerableQueries > 0 ? fmtNum(s.ndcg5) : "—"}** | ${s.answerableQueries > 0 ? fmtPct(s.success1) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.hit1) : "—"} | ${s.answerableQueries > 0 ? fmtNum(s.mrr5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.recall5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.leafRecall5) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.disciplineTop1Rate) : "—"} | ${fmtPct(s.expectedHit1)} | ${s.answerableQueries > 0 ? s.avgReturnedCount.toFixed(2) : "—"} | ${s.answerableQueries > 0 ? fmtTok(s.avgTokensAnswerable) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.answerableEmptyRate) : "—"} | ${oosDetail} | ${s.oosQueries > 0 ? fmtTok(s.avgOosTokens) : "—"} | ${s.answerableQueries > 0 ? fmtPct(s.unjudgedRate) : "—"} |`,
     );
   }
   return lines.join("\n");
@@ -396,7 +453,7 @@ export function renderComparisonMarkdown(
   baseLabel: string,
   headLabel: string,
   comparisons: DatasetComparison[],
-  datasets?: LoadedDataset[]
+  datasets?: LoadedDataset[],
 ): string {
   const lines: string[] = [];
   lines.push(`### RAG Benchmark A/B — \`${baseLabel}\` → \`${headLabel}\``);
@@ -404,8 +461,12 @@ export function renderComparisonMarkdown(
     const provLines = datasets
       .filter((d) => d.manifest)
       .map((d) => {
-        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) => k.endsWith("qrels.jsonl"));
-        const qrelsSha = qrelsKey ? d.manifest?.files[qrelsKey]?.sha256 : undefined;
+        const qrelsKey = Object.keys(d.manifest?.files ?? {}).find((k) =>
+          k.endsWith("qrels.jsonl"),
+        );
+        const qrelsSha = qrelsKey
+          ? d.manifest?.files[qrelsKey]?.sha256
+          : undefined;
         return `- **${d.name}**: version \`${d.manifest?.version}\`${qrelsSha ? `, qrels SHA-256: \`${qrelsSha}\`` : ""}${d.manifest?.window ? `, window: \`${d.manifest?.window}\`` : ""}${d.manifest?.dateRange ? `, date range: \`${d.manifest?.dateRange}\`` : ""}`;
       });
     if (provLines.length > 0) {
@@ -423,40 +484,83 @@ export function renderComparisonMarkdown(
   for (const c of comparisons) {
     const b = c.base;
     const h = c.head;
-    lines.push(`#### Dataset: \`${c.dataset}\` (${b.totalQueries} queries: ${b.answerableQueries} answerable, ${b.oosQueries} OOS)`);
+    lines.push(
+      `#### Dataset: \`${c.dataset}\` (${b.totalQueries} queries: ${b.answerableQueries} answerable, ${b.oosQueries} OOS)`,
+    );
     lines.push("");
-    lines.push(`| Metric | Base (\`${baseLabel}\`) | Head (\`${headLabel}\`) | Delta (95% Bootstrap CI) |`);
+    lines.push(
+      `| Metric | Base (\`${baseLabel}\`) | Head (\`${headLabel}\`) | Delta (95% Bootstrap CI) |`,
+    );
     lines.push("| :--- | :---: | :---: | :---: |");
     if (b.answerableQueries > 0) {
-      lines.push(`| **nDCG@5** | ${fmtNum(b.ndcg5)} | **${fmtNum(h.ndcg5)}** | ${fmtBootstrapDelta(c.ndcg5Delta, num3Fmt)} |`);
-      lines.push(`| **Success@1 (grade ≥ 1)** | ${fmtPct(b.success1)} | **${fmtPct(h.success1)}** | ${fmtBootstrapDelta(c.success1Delta, ppFmt, "pp")} |`);
-      lines.push(`| **Hit@1 (grade = 2)** | ${fmtPct(b.hit1)} | **${fmtPct(h.hit1)}** | ${fmtSigned(h.hit1 - b.hit1, ppFmt, "pp")} |`);
-      lines.push(`| **MRR@5** | ${fmtNum(b.mrr5)} | **${fmtNum(h.mrr5)}** | ${fmtSigned(h.mrr5 - b.mrr5, num3Fmt)} |`);
-      lines.push(`| **Recall@5** | ${fmtPct(b.recall5)} | **${fmtPct(h.recall5)}** | ${fmtSigned(h.recall5 - b.recall5, ppFmt, "pp")} |`);
+      lines.push(
+        `| **nDCG@5** | ${fmtNum(b.ndcg5)} | **${fmtNum(h.ndcg5)}** | ${fmtBootstrapDelta(c.ndcg5Delta, num3Fmt)} |`,
+      );
+      lines.push(
+        `| **Success@1 (grade ≥ 1)** | ${fmtPct(b.success1)} | **${fmtPct(h.success1)}** | ${fmtBootstrapDelta(c.success1Delta, ppFmt, "pp")} |`,
+      );
+      lines.push(
+        `| **Hit@1 (grade = 2)** | ${fmtPct(b.hit1)} | **${fmtPct(h.hit1)}** | ${fmtSigned(h.hit1 - b.hit1, ppFmt, "pp")} |`,
+      );
+      lines.push(
+        `| **MRR@5** | ${fmtNum(b.mrr5)} | **${fmtNum(h.mrr5)}** | ${fmtSigned(h.mrr5 - b.mrr5, num3Fmt)} |`,
+      );
+      lines.push(
+        `| **Recall@5** | ${fmtPct(b.recall5)} | **${fmtPct(h.recall5)}** | ${fmtSigned(h.recall5 - b.recall5, ppFmt, "pp")} |`,
+      );
       if (c.leafRecall5Delta) {
-        lines.push(`| **LeafRecall@5** | ${fmtPct(b.leafRecall5)} | **${fmtPct(h.leafRecall5)}** | ${fmtBootstrapDelta(c.leafRecall5Delta, ppFmt, "pp")} |`);
+        lines.push(
+          `| **LeafRecall@5** | ${fmtPct(b.leafRecall5)} | **${fmtPct(h.leafRecall5)}** | ${fmtBootstrapDelta(c.leafRecall5Delta, ppFmt, "pp")} |`,
+        );
       } else if (b.leafRecall5 !== undefined && h.leafRecall5 !== undefined) {
-        lines.push(`| **LeafRecall@5** | ${fmtPct(b.leafRecall5)} | **${fmtPct(h.leafRecall5)}** | ${fmtSigned(h.leafRecall5 - b.leafRecall5, ppFmt, "pp")} |`);
+        lines.push(
+          `| **LeafRecall@5** | ${fmtPct(b.leafRecall5)} | **${fmtPct(h.leafRecall5)}** | ${fmtSigned(h.leafRecall5 - b.leafRecall5, ppFmt, "pp")} |`,
+        );
       }
-      lines.push(`| **Disc@1** | ${fmtPct(b.disciplineTop1Rate)} | **${fmtPct(h.disciplineTop1Rate)}** | ${fmtBootstrapDelta(c.disciplineTop1Delta, ppFmt, "pp")} |`);
+      lines.push(
+        `| **Disc@1** | ${fmtPct(b.disciplineTop1Rate)} | **${fmtPct(h.disciplineTop1Rate)}** | ${fmtBootstrapDelta(c.disciplineTop1Delta, ppFmt, "pp")} |`,
+      );
       if (b.expectedHit1 !== undefined && h.expectedHit1 !== undefined) {
-        lines.push(`| **Expected Guide@1** | ${fmtPct(b.expectedHit1)} | **${fmtPct(h.expectedHit1)}** | ${fmtSigned(h.expectedHit1 - b.expectedHit1, ppFmt, "pp")} |`);
+        lines.push(
+          `| **Expected Guide@1** | ${fmtPct(b.expectedHit1)} | **${fmtPct(h.expectedHit1)}** | ${fmtSigned(h.expectedHit1 - b.expectedHit1, ppFmt, "pp")} |`,
+        );
       }
-      lines.push(`| **Avg Guides Returned (Ans)** | ${b.avgReturnedCount.toFixed(2)} | ${h.avgReturnedCount.toFixed(2)} | ${fmtSigned(h.avgReturnedCount - b.avgReturnedCount, num2Fmt)} |`);
-      lines.push(`| **Avg Tokens / Query (Ans)** | ${fmtTok(b.avgTokensAnswerable)} | **${fmtTok(h.avgTokensAnswerable)}** | ${fmtBootstrapDelta(c.tokensAnswerableDelta, tokFmt)} |`);
-      lines.push(`| **Answerable → Empty (\`[]\`)** | ${fmtPct(b.answerableEmptyRate)} | **${fmtPct(h.answerableEmptyRate)}** | ${fmtSigned(h.answerableEmptyRate - b.answerableEmptyRate, ppFmt, "pp")} |`);
-      lines.push(`| **Unjudged Returned Rate** | ${fmtPct(b.unjudgedRate)} | ${fmtPct(h.unjudgedRate)} | ${fmtSigned(h.unjudgedRate - b.unjudgedRate, ppFmt, "pp")} |`);
-      lines.push(`| **Query Wins / Losses / Ties** (ΔnDCG ≥ 0.05) | — | — | **+${c.wins}W / -${c.losses}L / ${c.ties}T** |`);
+      lines.push(
+        `| **Avg Guides Returned (Ans)** | ${b.avgReturnedCount.toFixed(2)} | ${h.avgReturnedCount.toFixed(2)} | ${fmtSigned(h.avgReturnedCount - b.avgReturnedCount, num2Fmt)} |`,
+      );
+      lines.push(
+        `| **Avg Tokens / Query (Ans)** | ${fmtTok(b.avgTokensAnswerable)} | **${fmtTok(h.avgTokensAnswerable)}** | ${fmtBootstrapDelta(c.tokensAnswerableDelta, tokFmt)} |`,
+      );
+      lines.push(
+        `| **Answerable → Empty (\`[]\`)** | ${fmtPct(b.answerableEmptyRate)} | **${fmtPct(h.answerableEmptyRate)}** | ${fmtSigned(h.answerableEmptyRate - b.answerableEmptyRate, ppFmt, "pp")} |`,
+      );
+      lines.push(
+        `| **Unjudged Returned Rate** | ${fmtPct(b.unjudgedRate)} | ${fmtPct(h.unjudgedRate)} | ${fmtSigned(h.unjudgedRate - b.unjudgedRate, ppFmt, "pp")} |`,
+      );
+      lines.push(
+        `| **Query Wins / Losses / Ties** (ΔnDCG ≥ 0.05) | — | — | **+${c.wins}W / -${c.losses}L / ${c.ties}T** |`,
+      );
     }
     if (b.oosQueries > 0 && c.oosAdmitDelta) {
-      lines.push(`| **OOS Admitted (False Positive %)** | ${fmtPct(b.oosAdmitRate)} | **${fmtPct(h.oosAdmitRate)}** | ${fmtBootstrapDelta(c.oosAdmitDelta, ppFmt, "pp")} |`);
-      if (b.oosNearAdmitRate !== undefined && h.oosNearAdmitRate !== undefined) {
-        lines.push(`| **OOS Near-Miss Admitted %** | ${fmtPct(b.oosNearAdmitRate)} | **${fmtPct(h.oosNearAdmitRate)}** | ${fmtSigned(h.oosNearAdmitRate - b.oosNearAdmitRate, ppFmt, "pp")} |`);
+      lines.push(
+        `| **OOS Admitted (False Positive %)** | ${fmtPct(b.oosAdmitRate)} | **${fmtPct(h.oosAdmitRate)}** | ${fmtBootstrapDelta(c.oosAdmitDelta, ppFmt, "pp")} |`,
+      );
+      if (
+        b.oosNearAdmitRate !== undefined &&
+        h.oosNearAdmitRate !== undefined
+      ) {
+        lines.push(
+          `| **OOS Near-Miss Admitted %** | ${fmtPct(b.oosNearAdmitRate)} | **${fmtPct(h.oosNearAdmitRate)}** | ${fmtSigned(h.oosNearAdmitRate - b.oosNearAdmitRate, ppFmt, "pp")} |`,
+        );
       }
       if (b.oosFarAdmitRate !== undefined && h.oosFarAdmitRate !== undefined) {
-        lines.push(`| **OOS Far Admitted %** | ${fmtPct(b.oosFarAdmitRate)} | **${fmtPct(h.oosFarAdmitRate)}** | ${fmtSigned(h.oosFarAdmitRate - b.oosFarAdmitRate, ppFmt, "pp")} |`);
+        lines.push(
+          `| **OOS Far Admitted %** | ${fmtPct(b.oosFarAdmitRate)} | **${fmtPct(h.oosFarAdmitRate)}** | ${fmtSigned(h.oosFarAdmitRate - b.oosFarAdmitRate, ppFmt, "pp")} |`,
+        );
       }
-      lines.push(`| **Avg Wasted Tokens / OOS Query** | ${fmtTok(b.avgOosTokens)} | **${fmtTok(h.avgOosTokens)}** | ${fmtSigned(h.avgOosTokens - b.avgOosTokens, tokFmt)} |`);
+      lines.push(
+        `| **Avg Wasted Tokens / OOS Query** | ${fmtTok(b.avgOosTokens)} | **${fmtTok(h.avgOosTokens)}** | ${fmtSigned(h.avgOosTokens - b.avgOosTokens, tokFmt)} |`,
+      );
     }
     lines.push("");
 
@@ -464,7 +568,7 @@ export function renderComparisonMarkdown(
       lines.push(`Top query improvements (\`${c.dataset}\`):`);
       for (const w of c.topWins) {
         lines.push(
-          `- \`${w.qid}\` (${fmtNum(w.baseNdcg5)} → **${fmtNum(w.headNdcg5)}**, Δ+${fmtNum(w.deltaNdcg5)}): "${w.query}" — \`[${w.baseIds.slice(0, 3).join(", ")}]\` → \`[${w.headIds.slice(0, 3).join(", ")}]\``
+          `- \`${w.qid}\` (${fmtNum(w.baseNdcg5)} → **${fmtNum(w.headNdcg5)}**, Δ+${fmtNum(w.deltaNdcg5)}): "${w.query}" — \`[${w.baseIds.slice(0, 3).join(", ")}]\` → \`[${w.headIds.slice(0, 3).join(", ")}]\``,
         );
       }
       lines.push("");
@@ -473,7 +577,7 @@ export function renderComparisonMarkdown(
       lines.push(`Top query regressions (\`${c.dataset}\`):`);
       for (const l of c.topLosses) {
         lines.push(
-          `- \`${l.qid}\` (${fmtNum(l.baseNdcg5)} → **${fmtNum(l.headNdcg5)}**, Δ${fmtNum(l.deltaNdcg5)}): "${l.query}" — \`[${l.baseIds.slice(0, 3).join(", ")}]\` → \`[${l.headIds.slice(0, 3).join(", ")}]\``
+          `- \`${l.qid}\` (${fmtNum(l.baseNdcg5)} → **${fmtNum(l.headNdcg5)}**, Δ${fmtNum(l.deltaNdcg5)}): "${l.query}" — \`[${l.baseIds.slice(0, 3).join(", ")}]\` → \`[${l.headIds.slice(0, 3).join(", ")}]\``,
         );
       }
       lines.push("");
@@ -486,7 +590,7 @@ export function renderComparisonMarkdown(
 async function loadRequestedDatasets(
   names: string[],
   explicitWild: boolean,
-  options: { wildVersion?: string; split?: "dev" | "test" | "all" } = {}
+  options: { wildVersion?: string; split?: "dev" | "test" | "all" } = {},
 ): Promise<LoadedDataset[]> {
   const loaded: LoadedDataset[] = [];
   for (const name of names) {
@@ -503,18 +607,21 @@ async function loadRequestedDatasets(
       } catch (err) {
         if (explicitWild) throw err;
         console.warn(
-          `[benchmark:rag] Skipping private 'wild' dataset (${err instanceof Error ? err.message : String(err)}). Running public datasets only.`
+          `[benchmark:rag] Skipping private 'wild' dataset (${err instanceof Error ? err.message : String(err)}). Running public datasets only.`,
         );
         continue;
       }
       const supportsSplit =
-        wild.queries.length > 0 && wild.queries.every((q) => q.split === "dev" || q.split === "test");
+        wild.queries.length > 0 &&
+        wild.queries.every((q) => q.split === "dev" || q.split === "test");
       if (options.split && options.split !== "all" && supportsSplit) {
         wild = filterDatasetBySplit(wild, options.split);
       }
       loaded.push(wild);
     } else {
-      throw new Error(`Unknown dataset "${name}". Expected one of: wild, agent, harness, oos.`);
+      throw new Error(
+        `Unknown dataset "${name}". Expected one of: wild, agent, harness, oos.`,
+      );
     }
   }
   return loaded;
@@ -539,14 +646,26 @@ async function main(): Promise<void> {
   });
 
   const rawSplit = values.split;
-  if (rawSplit !== undefined && rawSplit !== "dev" && rawSplit !== "test" && rawSplit !== "all") {
-    throw new Error(`Invalid --split "${rawSplit}". Expected "dev", "test", or "all".`);
+  if (
+    rawSplit !== undefined &&
+    rawSplit !== "dev" &&
+    rawSplit !== "test" &&
+    rawSplit !== "all"
+  ) {
+    throw new Error(
+      `Invalid --split "${rawSplit}". Expected "dev", "test", or "all".`,
+    );
   }
   const split = (rawSplit ?? "dev") as "dev" | "test" | "all";
 
   const rawWildVersion = values["wild-version"];
-  if (rawWildVersion !== undefined && (!rawWildVersion.trim() || rawWildVersion.includes("/"))) {
-    throw new Error(`Invalid --wild-version "${rawWildVersion}". Expected non-empty version name.`);
+  if (
+    rawWildVersion !== undefined &&
+    (!rawWildVersion.trim() || rawWildVersion.includes("/"))
+  ) {
+    throw new Error(
+      `Invalid --wild-version "${rawWildVersion}". Expected non-empty version name.`,
+    );
   }
 
   const evalOpts: EvaluateTargetOptions = {
@@ -556,9 +675,14 @@ async function main(): Promise<void> {
   const maxUnjudged = parseFloat(values["max-unjudged"] ?? "0.10");
   const isPublicOnly = Boolean(values["public-only"] || values.ci);
   const explicitDatasets = values.datasets
-    ? values.datasets.split(",").map((s) => s.trim()).filter(Boolean)
+    ? values.datasets
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : undefined;
-  const datasetNames = explicitDatasets ?? (isPublicOnly ? ["agent", "oos"] : ["wild", "agent", "oos"]);
+  const datasetNames =
+    explicitDatasets ??
+    (isPublicOnly ? ["agent", "oos"] : ["wild", "agent", "oos"]);
   const explicitWild = Boolean(explicitDatasets?.includes("wild"));
 
   const datasets = await loadRequestedDatasets(datasetNames, explicitWild, {
@@ -576,11 +700,19 @@ async function main(): Promise<void> {
     await runSingleBenchmark(headSpec, datasets, evalOpts, values, maxUnjudged);
   } else {
     const baseSpec: TargetSpec = { ref: values.base, label: values.base };
-    await runComparisonBenchmark(baseSpec, headSpec, datasets, evalOpts, values);
+    await runComparisonBenchmark(
+      baseSpec,
+      headSpec,
+      datasets,
+      evalOpts,
+      values,
+    );
   }
 }
 
-function stripPerQuery(summary: DatasetSummary): Omit<DatasetSummary, "perQuery"> {
+function stripPerQuery(
+  summary: DatasetSummary,
+): Omit<DatasetSummary, "perQuery"> {
   const { perQuery: _pq, ...rest } = summary;
   return rest;
 }
@@ -590,7 +722,7 @@ async function runSingleBenchmark(
   datasets: LoadedDataset[],
   evalOpts: EvaluateTargetOptions,
   values: { markdown?: string; json?: string; ci?: boolean },
-  maxUnjudged: number
+  maxUnjudged: number,
 ): Promise<void> {
   const headEval = await evaluateTarget(headSpec, datasets, evalOpts);
   const summaries = datasets.map((d) => {
@@ -608,8 +740,12 @@ async function runSingleBenchmark(
   if (values.json) {
     fs.writeFileSync(
       values.json,
-      JSON.stringify({ target: headEval.label, summaries: summaries.map(stripPerQuery) }, null, 2),
-      "utf-8"
+      JSON.stringify(
+        { target: headEval.label, summaries: summaries.map(stripPerQuery) },
+        null,
+        2,
+      ),
+      "utf-8",
     );
   }
 
@@ -618,24 +754,24 @@ async function runSingleBenchmark(
     for (const s of summaries) {
       if (s.answerableQueries > 0 && s.unjudgedRate > maxUnjudged) {
         failures.push(
-          `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`
+          `Dataset '${s.dataset}' unjudged rate ${(s.unjudgedRate * 100).toFixed(1)}% exceeds max ${(maxUnjudged * 100).toFixed(1)}%. Run 'node src/rag/benchmarks/judge-fill.ts' to grade newly surfaced guides.`,
         );
       }
       if (s.dataset === "agent" || s.dataset.startsWith("agent-")) {
         if (s.ndcg5 < AGENT_SANITY_NDCG_FLOOR) {
           failures.push(
-            `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`
+            `Dataset '${s.dataset}' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${AGENT_SANITY_NDCG_FLOOR.toFixed(3)}.`,
           );
         }
         if (s.hit1 < AGENT_SANITY_HIT1_FLOOR) {
           failures.push(
-            `Dataset '${s.dataset}' Hit@1 (${(s.hit1 * 100).toFixed(1)}%) fell below sanity floor ${(AGENT_SANITY_HIT1_FLOOR * 100).toFixed(1)}%.`
+            `Dataset '${s.dataset}' Hit@1 (${(s.hit1 * 100).toFixed(1)}%) fell below sanity floor ${(AGENT_SANITY_HIT1_FLOOR * 100).toFixed(1)}%.`,
           );
         }
       }
       if (s.dataset === "harness" && s.ndcg5 < HARNESS_SANITY_NDCG_FLOOR) {
         failures.push(
-          `Dataset 'harness' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${HARNESS_SANITY_NDCG_FLOOR.toFixed(3)}.`
+          `Dataset 'harness' nDCG@5 (${s.ndcg5.toFixed(3)}) fell below sanity floor ${HARNESS_SANITY_NDCG_FLOOR.toFixed(3)}.`,
         );
       }
     }
@@ -651,7 +787,7 @@ async function runComparisonBenchmark(
   headSpec: TargetSpec,
   datasets: LoadedDataset[],
   evalOpts: EvaluateTargetOptions,
-  values: { markdown?: string; json?: string }
+  values: { markdown?: string; json?: string },
 ): Promise<void> {
   const baseEval = await evaluateTarget(baseSpec, datasets, evalOpts);
   const headEval = await evaluateTarget(headSpec, datasets, evalOpts);
@@ -664,7 +800,12 @@ async function runComparisonBenchmark(
     comparisons.push(compareDatasetSummaries(b, h));
   }
 
-  const md = renderComparisonMarkdown(baseEval.label, headEval.label, comparisons, datasets);
+  const md = renderComparisonMarkdown(
+    baseEval.label,
+    headEval.label,
+    comparisons,
+    datasets,
+  );
   console.log(`\n${md}\n`);
 
   if (values.markdown) {
@@ -684,9 +825,9 @@ async function runComparisonBenchmark(
           })),
         },
         null,
-        2
+        2,
       ),
-      "utf-8"
+      "utf-8",
     );
   }
 }

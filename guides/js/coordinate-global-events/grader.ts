@@ -1,9 +1,12 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
-const targetFileRaw = process.env.TARGET_FILE || path.join(process.cwd(), 'demo.html');
-const targetFile = path.isAbsolute(targetFileRaw) ? targetFileRaw : path.resolve(process.cwd(), targetFileRaw);
+const targetFileRaw =
+  process.env.TARGET_FILE || path.join(process.cwd(), "demo.html");
+const targetFile = path.isAbsolute(targetFileRaw)
+  ? targetFileRaw
+  : path.resolve(process.cwd(), targetFileRaw);
 const targetDir = path.dirname(targetFile);
 const targetFileName = path.basename(targetFile);
 const targetUrl = `http://localhost/${targetFileName}`;
@@ -13,11 +16,18 @@ let polyfillRequested = false;
 test.beforeEach(async ({ page }) => {
   polyfillRequested = false;
 
-  await page.route('http://localhost/**', async route => {
-    const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
-    const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+  await page.route("http://localhost/**", async (route) => {
+    const requestPath = decodeURIComponent(
+      new URL(route.request().url()).pathname,
+    );
+    const relPath =
+      requestPath === "/" ? targetFileName : requestPath.replace(/^\/+/, "");
     const localFilePath = path.resolve(targetDir, relPath);
-    if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+    if (
+      localFilePath.startsWith(targetDir + path.sep) &&
+      fs.existsSync(localFilePath) &&
+      fs.statSync(localFilePath).isFile()
+    ) {
       await route.fulfill({ path: localFilePath });
     } else {
       await route.continue();
@@ -25,10 +35,13 @@ test.beforeEach(async ({ page }) => {
   });
 
   // Intercept the polyfill request to record if it's requested, but continue
-  await page.route(/.*(temporal-polyfill|@js-temporal\/polyfill).*/, async route => {
-    polyfillRequested = true;
-    await route.continue();
-  });
+  await page.route(
+    /.*(temporal-polyfill|@js-temporal\/polyfill).*/,
+    async (route) => {
+      polyfillRequested = true;
+      await route.continue();
+    },
+  );
 
   // Inject the Temporal spy/interceptor before the page loads
   await page.addInitScript(() => {
@@ -38,10 +51,14 @@ test.beforeEach(async ({ page }) => {
       plainDateTimeAddCalled: 0,
       withTimeZoneCalled: 0,
       disambiguationOptions: [],
-      mutationsAttempted: 0
+      mutationsAttempted: 0,
     };
 
-    let realTemporal = (window as any).__nativeTemporalMock || (typeof (window as any).Temporal !== 'undefined' ? (window as any).Temporal : undefined);
+    let realTemporal =
+      (window as any).__nativeTemporalMock ||
+      (typeof (window as any).Temporal !== "undefined"
+        ? (window as any).Temporal
+        : undefined);
     if (realTemporal) {
       monkeypatchTemporal(realTemporal);
     }
@@ -51,24 +68,35 @@ test.beforeEach(async ({ page }) => {
       T.__patched = true;
 
       // 1. ZonedDateTime.from
-      if (T.ZonedDateTime && typeof T.ZonedDateTime.from === 'function') {
+      if (T.ZonedDateTime && typeof T.ZonedDateTime.from === "function") {
         const originalZonedDateTimeFrom = T.ZonedDateTime.from;
-        T.ZonedDateTime.from = function(this: any, ...args: any[]) {
+        T.ZonedDateTime.from = function (this: any, ...args: any[]) {
           (window as any).__temporalSpies.zonedDateTimeFromCalled++;
           if (args[1] && args[1].disambiguation) {
-            (window as any).__temporalSpies.disambiguationOptions.push(args[1].disambiguation);
+            (window as any).__temporalSpies.disambiguationOptions.push(
+              args[1].disambiguation,
+            );
           }
           return originalZonedDateTimeFrom.apply(this, args);
         };
       }
 
       // PlainDateTime.prototype.toZonedDateTime
-      if (T.PlainDateTime && T.PlainDateTime.prototype && typeof T.PlainDateTime.prototype.toZonedDateTime === 'function') {
+      if (
+        T.PlainDateTime &&
+        T.PlainDateTime.prototype &&
+        typeof T.PlainDateTime.prototype.toZonedDateTime === "function"
+      ) {
         const origToZdt = T.PlainDateTime.prototype.toZonedDateTime;
-        T.PlainDateTime.prototype.toZonedDateTime = function(this: any, ...args: any[]) {
+        T.PlainDateTime.prototype.toZonedDateTime = function (
+          this: any,
+          ...args: any[]
+        ) {
           (window as any).__temporalSpies.zonedDateTimeFromCalled++;
           if (args[1] && args[1].disambiguation) {
-            (window as any).__temporalSpies.disambiguationOptions.push(args[1].disambiguation);
+            (window as any).__temporalSpies.disambiguationOptions.push(
+              args[1].disambiguation,
+            );
           }
           return origToZdt.apply(this, args);
         };
@@ -77,8 +105,11 @@ test.beforeEach(async ({ page }) => {
       // 2. ZonedDateTime.prototype.withTimeZone
       if (T.ZonedDateTime && T.ZonedDateTime.prototype) {
         const originalWithTimeZone = T.ZonedDateTime.prototype.withTimeZone;
-        if (typeof originalWithTimeZone === 'function') {
-          T.ZonedDateTime.prototype.withTimeZone = function(this: any, ...args: any[]) {
+        if (typeof originalWithTimeZone === "function") {
+          T.ZonedDateTime.prototype.withTimeZone = function (
+            this: any,
+            ...args: any[]
+          ) {
             (window as any).__temporalSpies.withTimeZoneCalled++;
             return originalWithTimeZone.apply(this, args);
           };
@@ -86,55 +117,76 @@ test.beforeEach(async ({ page }) => {
       }
 
       // 3. PlainDateTime.from and PlainDateTime.prototype.add
-      if (T.PlainDateTime && typeof T.PlainDateTime.from === 'function') {
+      if (T.PlainDateTime && typeof T.PlainDateTime.from === "function") {
         const originalPlainDateTimeFrom = T.PlainDateTime.from;
-        T.PlainDateTime.from = function(this: any, ...args: any[]) {
+        T.PlainDateTime.from = function (this: any, ...args: any[]) {
           (window as any).__temporalSpies.plainDateTimeFromCalled++;
           return originalPlainDateTimeFrom.apply(this, args);
         };
       }
-      if (T.PlainDateTime && T.PlainDateTime.prototype && typeof T.PlainDateTime.prototype.add === 'function') {
+      if (
+        T.PlainDateTime &&
+        T.PlainDateTime.prototype &&
+        typeof T.PlainDateTime.prototype.add === "function"
+      ) {
         const originalPlainDateTimeAdd = T.PlainDateTime.prototype.add;
-        T.PlainDateTime.prototype.add = function(this: any, ...args: any[]) {
+        T.PlainDateTime.prototype.add = function (this: any, ...args: any[]) {
           (window as any).__temporalSpies.plainDateTimeAddCalled++;
           return originalPlainDateTimeAdd.apply(this, args);
         };
       }
 
       // 4. Setters for properties on prototypes (to detect direct mutations)
-      const propsToTrack = ['year', 'month', 'day', 'hour', 'minute', 'second', 'millisecond', 'microsecond', 'nanosecond'];
-      [T.PlainDateTime?.prototype, T.ZonedDateTime?.prototype].forEach(proto => {
-        if (!proto) return;
-        propsToTrack.forEach(prop => {
-          try {
-            const desc = Object.getOwnPropertyDescriptor(proto, prop);
-            if (desc) {
-              Object.defineProperty(proto, prop, {
-                configurable: true,
-                enumerable: true,
-                get: desc.get,
-                set(val) {
-                  (window as any).__temporalSpies.mutationsAttempted++;
-                  if (desc.set) {
-                    desc.set.call(this, val);
-                  } else {
-                    throw new TypeError(`Cannot set property ${prop} of ${this} which has only a getter`);
-                  }
-                }
-              });
+      const propsToTrack = [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "second",
+        "millisecond",
+        "microsecond",
+        "nanosecond",
+      ];
+      [T.PlainDateTime?.prototype, T.ZonedDateTime?.prototype].forEach(
+        (proto) => {
+          if (!proto) return;
+          propsToTrack.forEach((prop) => {
+            try {
+              const desc = Object.getOwnPropertyDescriptor(proto, prop);
+              if (desc) {
+                Object.defineProperty(proto, prop, {
+                  configurable: true,
+                  enumerable: true,
+                  get: desc.get,
+                  set(val) {
+                    (window as any).__temporalSpies.mutationsAttempted++;
+                    if (desc.set) {
+                      desc.set.call(this, val);
+                    } else {
+                      throw new TypeError(
+                        `Cannot set property ${prop} of ${this} which has only a getter`,
+                      );
+                    }
+                  },
+                });
+              }
+            } catch (e) {
+              // Silence any non-configurable descriptors if any
             }
-          } catch (e) {
-            // Silence any non-configurable descriptors if any
-          }
-        });
-      });
+          });
+        },
+      );
     }
 
-    Object.defineProperty(window, 'Temporal', {
+    Object.defineProperty(window, "Temporal", {
       configurable: true,
       enumerable: true,
       get() {
-        if ((window as any).__nativeTemporalMock && realTemporal !== (window as any).__nativeTemporalMock) {
+        if (
+          (window as any).__nativeTemporalMock &&
+          realTemporal !== (window as any).__nativeTemporalMock
+        ) {
           realTemporal = (window as any).__nativeTemporalMock;
           monkeypatchTemporal(realTemporal);
         }
@@ -145,22 +197,24 @@ test.beforeEach(async ({ page }) => {
           monkeypatchTemporal(val);
         }
         realTemporal = val;
-      }
+      },
     });
   });
 });
 
-test('The implementation conditionally loads the Temporal polyfill only if native support is absent', async ({ page }) => {
+test("The implementation conditionally loads the Temporal polyfill only if native support is absent", async ({
+  page,
+}) => {
   // Inject the native mock BEFORE loading the page so that typeof Temporal !== 'undefined'
   await page.addInitScript(() => {
     const mockZdt = {
       withTimeZone: () => ({
-        toString: () => '2025-07-01T14:00:00-04:00[UTC]',
-        offset: '+00:00',
-        toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
+        toString: () => "2025-07-01T14:00:00-04:00[UTC]",
+        offset: "+00:00",
+        toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true }),
       }),
-      offset: '+00:00',
-      toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true })
+      offset: "+00:00",
+      toPlainTime: () => ({ hour: 14, minute: 0, equals: () => true }),
     };
     (window as any).__nativeTemporalMock = {
       ZonedDateTime: {
@@ -168,80 +222,143 @@ test('The implementation conditionally loads the Temporal polyfill only if nativ
         compare: () => 0,
         prototype: {
           withTimeZone: mockZdt.withTimeZone,
-          toPlainTime: mockZdt.toPlainTime
-        }
-      }
+          toPlainTime: mockZdt.toPlainTime,
+        },
+      },
     };
   });
 
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    return await page.evaluate(() => typeof (window as any).Temporal !== 'undefined');
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        return await page.evaluate(
+          () => typeof (window as any).Temporal !== "undefined",
+        );
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 
   // Assert that polyfill was NOT requested when native Temporal was present
   expect(polyfillRequested).toBe(false);
 });
 
-test('The implementation uses Temporal.ZonedDateTime as the primary type for scheduling and managing events', async ({ page }) => {
+test("The implementation uses Temporal.ZonedDateTime as the primary type for scheduling and managing events", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    const spies = await page.evaluate(() => (window as any).__temporalSpies);
-    return spies?.zonedDateTimeFromCalled > 0;
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const spies = await page.evaluate(
+          () => (window as any).__temporalSpies,
+        );
+        return spies?.zonedDateTimeFromCalled > 0;
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 });
 
-test('The implementation does not use Temporal.PlainDateTime for scheduling global events', async ({ page }) => {
+test("The implementation does not use Temporal.PlainDateTime for scheduling global events", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    const spies = await page.evaluate(() => (window as any).__temporalSpies);
-    return spies?.zonedDateTimeFromCalled > 0;
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const spies = await page.evaluate(
+          () => (window as any).__temporalSpies,
+        );
+        return spies?.zonedDateTimeFromCalled > 0;
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 
   const spies = await page.evaluate(() => (window as any).__temporalSpies);
-  const usedZonedDateTime = spies.zonedDateTimeFromCalled > 0 && spies.withTimeZoneCalled > 0;
-  expect(spies.plainDateTimeAddCalled === 0 && (spies.plainDateTimeFromCalled === 0 || usedZonedDateTime)).toBe(true);
+  const usedZonedDateTime =
+    spies.zonedDateTimeFromCalled > 0 && spies.withTimeZoneCalled > 0;
+  expect(
+    spies.plainDateTimeAddCalled === 0 &&
+      (spies.plainDateTimeFromCalled === 0 || usedZonedDateTime),
+  ).toBe(true);
 });
 
-test('The implementation uses disambiguation: reject option in Temporal.ZonedDateTime.from() or toZonedDateTime() for conflict detection', async ({ page }) => {
+test("The implementation uses disambiguation: reject option in Temporal.ZonedDateTime.from() or toZonedDateTime() for conflict detection", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    const spies = await page.evaluate(() => (window as any).__temporalSpies);
-    return spies?.disambiguationOptions?.includes('reject');
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const spies = await page.evaluate(
+          () => (window as any).__temporalSpies,
+        );
+        return spies?.disambiguationOptions?.includes("reject");
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 });
 
-test('The implementation uses the .withTimeZone() method to convert a ZonedDateTime instance to another time zone', async ({ page }) => {
+test("The implementation uses the .withTimeZone() method to convert a ZonedDateTime instance to another time zone", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    const spies = await page.evaluate(() => (window as any).__temporalSpies);
-    return spies?.withTimeZoneCalled > 0;
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const spies = await page.evaluate(
+          () => (window as any).__temporalSpies,
+        );
+        return spies?.withTimeZoneCalled > 0;
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 });
 
-test('The implementation does not attempt to modify Temporal instances directly as they are immutable', async ({ page }) => {
+test("The implementation does not attempt to modify Temporal instances directly as they are immutable", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
-  await expect.poll(async () => {
-    const spies = await page.evaluate(() => (window as any).__temporalSpies);
-    return spies?.zonedDateTimeFromCalled > 0;
-  }, { timeout: 2000 }).toBe(true);
+  await expect
+    .poll(
+      async () => {
+        const spies = await page.evaluate(
+          () => (window as any).__temporalSpies,
+        );
+        return spies?.zonedDateTimeFromCalled > 0;
+      },
+      { timeout: 2000 },
+    )
+    .toBe(true);
 
   const spies = await page.evaluate(() => (window as any).__temporalSpies);
   expect(spies.mutationsAttempted).toBe(0);
 });
 
-test('The implementation displays correct DST-aware converted time for Tokyo', async ({ page }) => {
+test("The implementation displays correct DST-aware converted time for Tokyo", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
 
   // Input meeting details on active DST date (July 1, 2025) at 14:00, host America/New_York
-  await page.fill('#dateInput', '2025-07-01');
-  await page.fill('#timeInput', '14:00');
-  await page.selectOption('#hostTzSelect', 'America/New_York');
+  await page.fill("#dateInput", "2025-07-01");
+  await page.fill("#timeInput", "14:00");
+  await page.selectOption("#hostTzSelect", "America/New_York");
 
-  const tokyoCard = page.locator('#grid > *', { hasText: 'Tokyo' }).first();
-  await expect.poll(async () => {
-    const cardText = await tokyoCard.innerText().catch(() => '');
-    const match = cardText.match(/(\d+:\d+\s*(?:AM|PM))/i);
-    return match ? match[1].toUpperCase().replace(/\s+/g, '') : '';
-  }, { timeout: 2000 }).toBe('3:00AM');
+  const tokyoCard = page.locator("#grid > *", { hasText: "Tokyo" }).first();
+  await expect
+    .poll(
+      async () => {
+        const cardText = await tokyoCard.innerText().catch(() => "");
+        const match = cardText.match(/(\d+:\d+\s*(?:AM|PM))/i);
+        return match ? match[1].toUpperCase().replace(/\s+/g, "") : "";
+      },
+      { timeout: 2000 },
+    )
+    .toBe("3:00AM");
 });

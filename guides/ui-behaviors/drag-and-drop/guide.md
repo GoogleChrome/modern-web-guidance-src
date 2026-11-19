@@ -74,15 +74,19 @@ For any approach, announce the item and its new position in a polite live region
 Keep the DOM and keyboard focus order understandable in relation to the visual layout. If reordering is provided through separate controls, ensure the item's context is available before or alongside those controls. If the drag handle is focusable, give it an accessible name that identifies the item and its reordering function. Position controls to suit the layout and writing direction without making the resulting reading or focus order confusing.
 
 For complex layouts where visual and DOM order cannot naturally align, use the **`reading-flow`** CSS property inside grid/flex containers to instruct the browser's tab order to follow visual coordinates rather than DOM source order:
+
 ```css
 .task {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto; /* minmax(0, ...) lets the middle column shrink at narrow widths */
+  grid-template-columns:
+    auto minmax(0, 1fr)
+    auto; /* minmax(0, ...) lets the middle column shrink at narrow widths */
   reading-flow: grid-rows; /* Follows visual layout and tab order by row */
 }
 ```
 
 ### Disable boundaries and safeguard focus
+
 Keep moves within valid destinations. If items can move between containers, make those destinations available to keyboard users too. At the boundary of a container, prevent further movement only when there is no valid destination in that direction.
 
 After moving an item, keep focus on its handle. If the implementation uses separate movement buttons instead, keep focus on the activated button or shift it to the alternative movement control on the same item when the activated control becomes disabled.

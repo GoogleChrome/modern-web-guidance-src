@@ -1,13 +1,15 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
-import { checkboxCssMatcher } from './checkbox.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanCss } from "../scanners/css-scanner.ts";
+import { checkboxCssMatcher } from "./checkbox.ts";
 
 const matcher = checkboxCssMatcher;
 
-void test('checkbox: positive brownfield matches', async (t) => {
-  await t.test('flags [type="checkbox"] with opacity: 0 and sibling replacement', () => {
-    const css = `
+void test("checkbox: positive brownfield matches", async (t) => {
+  await t.test(
+    'flags [type="checkbox"] with opacity: 0 and sibling replacement',
+    () => {
+      const css = `
       [type="checkbox"]:not(:checked),
       [type="checkbox"]:checked {
         position: absolute;
@@ -19,13 +21,14 @@ void test('checkbox: positive brownfield matches', async (t) => {
         padding-left: 25px;
       }
     `;
-    const matches = scanCss('material.css', css, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-    assert.match(matches[0]?.message ?? '', /accent-color/);
-  });
+      const matches = scanCss("material.css", css, [matcher]);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.line, 2);
+      assert.match(matches[0]?.message ?? "", /accent-color/);
+    },
+  );
 
-  await t.test('flags custom checkbox pseudo-element checkmark styling', () => {
+  await t.test("flags custom checkbox pseudo-element checkmark styling", () => {
     const css = `
       input:checked + label::before {
         content: "✓";
@@ -33,25 +36,27 @@ void test('checkbox: positive brownfield matches', async (t) => {
         border-color: #007bff;
       }
     `;
-    const matches = scanCss('custom-check.css', css, [matcher]);
+    const matches = scanCss("custom-check.css", css, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 
-  await t.test('flags .custom-checkbox with appearance: none', () => {
+  await t.test("flags .custom-checkbox with appearance: none", () => {
     const css = `
       .custom-checkbox {
         appearance: none;
         border: 2px solid #333;
       }
     `;
-    const matches = scanCss('custom.css', css, [matcher]);
+    const matches = scanCss("custom.css", css, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 
-  await t.test('flags [type="checkbox"] with appearance: none alongside sibling replacement', () => {
-    const css = `
+  await t.test(
+    'flags [type="checkbox"] with appearance: none alongside sibling replacement',
+    () => {
+      const css = `
       [type="checkbox"] {
         appearance: none;
       }
@@ -59,13 +64,16 @@ void test('checkbox: positive brownfield matches', async (t) => {
         content: "✓";
       }
     `;
-    const matches = scanCss('custom.css', css, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-  });
+      const matches = scanCss("custom.css", css, [matcher]);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.line, 2);
+    },
+  );
 
-  await t.test('flags checkboxes inside accordion, panel, or tab containers', () => {
-    const css = `
+  await t.test(
+    "flags checkboxes inside accordion, panel, or tab containers",
+    () => {
+      const css = `
       .accordion [type="checkbox"]:checked + label::before {
         content: "✓";
       }
@@ -73,12 +81,15 @@ void test('checkbox: positive brownfield matches', async (t) => {
         content: "✓";
       }
     `;
-    const matches = scanCss('containers.css', css, [matcher]);
-    assert.equal(matches.length, 2);
-  });
+      const matches = scanCss("containers.css", css, [matcher]);
+      assert.equal(matches.length, 2);
+    },
+  );
 
-  await t.test('flags comma-grouped checkbox and radio rules with opacity: 0 and sibling pseudo-element box', () => {
-    const css = `
+  await t.test(
+    "flags comma-grouped checkbox and radio rules with opacity: 0 and sibling pseudo-element box",
+    () => {
+      const css = `
       input[type="checkbox"],
       input[type="radio"] {
         opacity: 0;
@@ -94,35 +105,42 @@ void test('checkbox: positive brownfield matches', async (t) => {
         content: "✓";
       }
     `;
-    const matches = scanCss('grouped-controls.css', css, [matcher]);
-    assert.equal(matches.length, 2);
-    assert.equal(matches[0]?.line, 2);
-    assert.equal(matches[1]?.line, 12);
-  });
+      const matches = scanCss("grouped-controls.css", css, [matcher]);
+      assert.equal(matches.length, 2);
+      assert.equal(matches[0]?.line, 2);
+      assert.equal(matches[1]?.line, 12);
+    },
+  );
 });
 
-void test('checkbox: negative / exempt cases', async (t) => {
-  await t.test('exempts bare input[type="checkbox"] with display: none without visual replacement', () => {
-    const css = `
+void test("checkbox: negative / exempt cases", async (t) => {
+  await t.test(
+    'exempts bare input[type="checkbox"] with display: none without visual replacement',
+    () => {
+      const css = `
       input[type="checkbox"] {
         display: none;
       }
     `;
-    const matches = scanCss('checkbox.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("checkbox.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts bare opacity: 0 without sibling custom-box replacement', () => {
-    const css = `
+  await t.test(
+    "exempts bare opacity: 0 without sibling custom-box replacement",
+    () => {
+      const css = `
       input[type="checkbox"] {
         opacity: 0;
       }
     `;
-    const matches = scanCss('hidden.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("hidden.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts stylesheets already using accent-color', () => {
+  await t.test("exempts stylesheets already using accent-color", () => {
     const css = `
       :root {
         accent-color: #007bff;
@@ -131,12 +149,14 @@ void test('checkbox: negative / exempt cases', async (t) => {
         display: none;
       }
     `;
-    const matches = scanCss('modern.css', css, [matcher]);
+    const matches = scanCss("modern.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts screen-reader utility classes (.sr-only, .visually-hidden)', () => {
-    const css = `
+  await t.test(
+    "exempts screen-reader utility classes (.sr-only, .visually-hidden)",
+    () => {
+      const css = `
       .sr-only input[type="checkbox"] {
         position: absolute;
         opacity: 0;
@@ -145,23 +165,26 @@ void test('checkbox: negative / exempt cases', async (t) => {
         display: none;
       }
     `;
-    const matches = scanCss('a11y.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("a11y.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts unrelated input rules', () => {
+  await t.test("exempts unrelated input rules", () => {
     const css = `
       input[type="text"] {
         display: block;
         width: 100%;
       }
     `;
-    const matches = scanCss('text.css', css, [matcher]);
+    const matches = scanCss("text.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts custom toggle-switch components (.switch, .toggle)', () => {
-    const css = `
+  await t.test(
+    "exempts custom toggle-switch components (.switch, .toggle)",
+    () => {
+      const css = `
       .switch input[type="checkbox"] {
         opacity: 0;
         width: 0;
@@ -171,24 +194,30 @@ void test('checkbox: negative / exempt cases', async (t) => {
         position: relative;
       }
     `;
-    const matches = scanCss('switch.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("switch.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts design system form resets stripping appearance without visual replacement', () => {
-    const css = `
+  await t.test(
+    "exempts design system form resets stripping appearance without visual replacement",
+    () => {
+      const css = `
       input[type="checkbox"], input[type="radio"] {
         appearance: none;
         -webkit-appearance: none;
         margin: 0;
       }
     `;
-    const matches = scanCss('reset.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("reset.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts modern appearance: none directly on input[type="checkbox"] (recommended technique)', () => {
-    const css = `
+  await t.test(
+    'exempts modern appearance: none directly on input[type="checkbox"] (recommended technique)',
+    () => {
+      const css = `
       .clearfix::after {
         content: "";
         display: table;
@@ -212,12 +241,15 @@ void test('checkbox: negative / exempt cases', async (t) => {
         cursor: pointer;
       }
     `;
-    const matches = scanCss('modern-checkbox.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("modern-checkbox.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts CSS-only accordion/tab disclosure hacks and multi-widget resets', () => {
-    const css = `
+  await t.test(
+    "exempts CSS-only accordion/tab disclosure hacks and multi-widget resets",
+    () => {
+      const css = `
       input.accordion[type="checkbox"]:checked + label::after {
         content: "-";
       }
@@ -245,11 +277,12 @@ void test('checkbox: negative / exempt cases', async (t) => {
         -webkit-appearance: none;
       }
     `;
-    const matches = scanCss('disclosures-and-resets.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("disclosures-and-resets.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts radio and star rating pseudo elements', () => {
+  await t.test("exempts radio and star rating pseudo elements", () => {
     const css = `
       input[type="radio"]:checked + label::before {
         content: "";
@@ -274,12 +307,14 @@ void test('checkbox: negative / exempt cases', async (t) => {
         display: inline-block;
       }
     `;
-    const matches = scanCss('radio-star.css', css, [matcher]);
+    const matches = scanCss("radio-star.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts general toggle buttons and non-checkbox appearance: none', () => {
-    const css = `
+  await t.test(
+    "exempts general toggle buttons and non-checkbox appearance: none",
+    () => {
+      const css = `
       .toggle-button {
         appearance: none;
         border: 1px solid #ccc;
@@ -291,11 +326,12 @@ void test('checkbox: negative / exempt cases', async (t) => {
         appearance: none;
       }
     `;
-    const matches = scanCss('toggles.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("toggles.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts rules inside @supports (accent-color: ...)', () => {
+  await t.test("exempts rules inside @supports (accent-color: ...)", () => {
     const css = `
       @supports (accent-color: red) {
         .custom-checkbox {
@@ -303,12 +339,14 @@ void test('checkbox: negative / exempt cases', async (t) => {
         }
       }
     `;
-    const matches = scanCss('fallback.css', css, [matcher]);
+    const matches = scanCss("fallback.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts commented/excluded sibling rules and non-subject opacity: 0 on ::before or descendants', () => {
-    const commentedAndExcludedSiblingCss = `
+  await t.test(
+    "exempts commented/excluded sibling rules and non-subject opacity: 0 on ::before or descendants",
+    () => {
+      const commentedAndExcludedSiblingCss = `
       /* input[type="checkbox"] + label::before { content: "✓"; } */
       .switch input[type="checkbox"] + span::before {
         content: "";
@@ -326,9 +364,14 @@ void test('checkbox: negative / exempt cases', async (t) => {
         opacity: 1;
       }
     `;
-    assert.equal(scanCss('modern-with-comment.css', commentedAndExcludedSiblingCss, [matcher]).length, 0);
+      assert.equal(
+        scanCss("modern-with-comment.css", commentedAndExcludedSiblingCss, [
+          matcher,
+        ]).length,
+        0,
+      );
 
-    const nonSubjectOpacityCss = `
+      const nonSubjectOpacityCss = `
       input[type="checkbox"] + label {
         cursor: pointer;
       }
@@ -339,6 +382,10 @@ void test('checkbox: negative / exempt cases', async (t) => {
         opacity: 0;
       }
     `;
-    assert.equal(scanCss('non-subject.css', nonSubjectOpacityCss, [matcher]).length, 0);
-  });
+      assert.equal(
+        scanCss("non-subject.css", nonSubjectOpacityCss, [matcher]).length,
+        0,
+      );
+    },
+  );
 });

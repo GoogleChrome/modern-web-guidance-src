@@ -5,7 +5,7 @@ index 66c9173..4a11316 100644
 @@ -120,6 +120,63 @@
        color: var(--primary);
      }
- 
+
 +    .sort-controls {
 +      display: flex;
 +      flex-wrap: wrap;
@@ -67,7 +67,7 @@ index 66c9173..4a11316 100644
        display: inline-block;
        background: var(--primary);
 @@ -176,19 +233,28 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -103,10 +103,10 @@ index 66c9173..4a11316 100644
 @@ -207,6 +273,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script src="./seasonal-sort.js" defer></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..e1dfaf3 100644

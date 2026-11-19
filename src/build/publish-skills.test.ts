@@ -1,86 +1,115 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { getNextVersion, parsePublishOptions, validate, type DistTag } from './publish-skills.ts';
-import { processSkills } from './build-dist.ts';
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  getNextVersion,
+  parsePublishOptions,
+  validate,
+  type DistTag,
+} from "./publish-skills.ts";
+import { processSkills } from "./build-dist.ts";
 
-test('getNextVersion derive from git tag', async () => {
-  const mockGetTag = () => 'v0.0.22';
-  
+test("getNextVersion derive from git tag", async () => {
+  const mockGetTag = () => "v0.0.22";
+
   const version = await getNextVersion(mockGetTag);
-  assert.strictEqual(version, '0.0.23');
+  assert.strictEqual(version, "0.0.23");
 });
 
-test('parsePublishOptions handles flags, env vars, and validation', () => {
+test("parsePublishOptions handles flags, env vars, and validation", () => {
   assert.deepStrictEqual(parsePublishOptions([], {}), {
-    distTag: 'latest',
+    distTag: "latest",
     explicitVersion: undefined,
   });
 
-  assert.deepStrictEqual(parsePublishOptions(['--tag', 'next'], {}), {
-    distTag: 'next',
+  assert.deepStrictEqual(parsePublishOptions(["--tag", "next"], {}), {
+    distTag: "next",
     explicitVersion: undefined,
   });
 
   assert.deepStrictEqual(
-    parsePublishOptions(['--tag=latest', '--version=v1.0.0'], {}),
+    parsePublishOptions(["--tag=latest", "--version=v1.0.0"], {}),
     {
-      distTag: 'latest',
-      explicitVersion: '1.0.0',
+      distTag: "latest",
+      explicitVersion: "1.0.0",
     },
   );
 
   assert.deepStrictEqual(
-    parsePublishOptions([], { DIST_TAG: 'next', RELEASE_VERSION: '1.0.0' }),
+    parsePublishOptions([], { DIST_TAG: "next", RELEASE_VERSION: "1.0.0" }),
     {
-      distTag: 'next',
-      explicitVersion: '1.0.0',
+      distTag: "next",
+      explicitVersion: "1.0.0",
     },
   );
 
   assert.deepStrictEqual(
-    parsePublishOptions([], { NPM_DIST_TAG: 'next', RELEASE_VERSION: '1.0.0' }),
+    parsePublishOptions([], { NPM_DIST_TAG: "next", RELEASE_VERSION: "1.0.0" }),
     {
-      distTag: 'next',
-      explicitVersion: '1.0.0',
+      distTag: "next",
+      explicitVersion: "1.0.0",
     },
   );
 
-  assert.throws(() => parsePublishOptions(['--tag', 'canary'], {}), /Invalid dist-tag/);
-  assert.throws(() => parsePublishOptions(['--version', '1.0'], {}), /Invalid explicit version/);
+  assert.throws(
+    () => parsePublishOptions(["--tag", "canary"], {}),
+    /Invalid dist-tag/,
+  );
+  assert.throws(
+    () => parsePublishOptions(["--version", "1.0"], {}),
+    /Invalid explicit version/,
+  );
 });
 
-test('processSkills rewrites modern-web-guidance@latest to @next when distTag is next', async () => {
-  const tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mwg-process-skills-'));
+test("processSkills rewrites modern-web-guidance@latest to @next when distTag is next", async () => {
+  const tmpRoot = await fs.mkdtemp(
+    path.join(os.tmpdir(), "mwg-process-skills-"),
+  );
   try {
-    processSkills(tmpRoot, 'next');
+    processSkills(tmpRoot, "next");
     const nextSkillMd = await fs.readFile(
-      path.join(tmpRoot, 'skills/modern-web-guidance/SKILL.md'),
-      'utf8',
+      path.join(tmpRoot, "skills/modern-web-guidance/SKILL.md"),
+      "utf8",
     );
-    assert.ok(nextSkillMd.includes('modern-web-guidance@next search'), 'Should rewrite search to @next');
-    assert.ok(!nextSkillMd.includes('modern-web-guidance@latest'), 'Should not retain @latest in next build');
+    assert.ok(
+      nextSkillMd.includes("modern-web-guidance@next search"),
+      "Should rewrite search to @next",
+    );
+    assert.ok(
+      !nextSkillMd.includes("modern-web-guidance@latest"),
+      "Should not retain @latest in next build",
+    );
 
-    processSkills(tmpRoot, 'latest');
+    processSkills(tmpRoot, "latest");
     const latestSkillMd = await fs.readFile(
-      path.join(tmpRoot, 'skills/modern-web-guidance/SKILL.md'),
-      'utf8',
+      path.join(tmpRoot, "skills/modern-web-guidance/SKILL.md"),
+      "utf8",
     );
-    assert.ok(latestSkillMd.includes('modern-web-guidance@latest search'), 'Should keep @latest for latest build');
-    assert.ok(!latestSkillMd.includes('modern-web-guidance@next'), 'Should not contain @next in latest build');
+    assert.ok(
+      latestSkillMd.includes("modern-web-guidance@latest search"),
+      "Should keep @latest for latest build",
+    );
+    assert.ok(
+      !latestSkillMd.includes("modern-web-guidance@next"),
+      "Should not contain @next in latest build",
+    );
   } finally {
     await fs.rm(tmpRoot, { recursive: true, force: true });
   }
 });
 
-test('validate dry-run checks without throwing and allows uncached chunk fallback in buildDist', async () => {
+test("validate dry-run checks without throwing and allows uncached chunk fallback in buildDist", async () => {
   const embedCalls: Array<{ check?: boolean } | undefined> = [];
-  const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean; distTag?: DistTag }> = [];
+  const buildCalls: Array<{
+    version?: string;
+    failOnMissingVectors?: boolean;
+    distTag?: DistTag;
+  }> = [];
   let distTestsRan = 0;
 
-  await validate('0.0.198', {
+  await validate("0.0.198", {
     dryRun: true,
     embedChunks: async (opts) => {
       embedCalls.push(opts);
@@ -91,10 +120,10 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
         prunedCount: 0,
         missing: [
           {
-            guideId: 'example-guide',
-            category: 'css',
-            embeddedText: 'chunk',
-            hash: 'abc',
+            guideId: "example-guide",
+            category: "css",
+            embeddedText: "chunk",
+            hash: "abc",
           },
         ],
       };
@@ -105,7 +134,7 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
         failOnMissingVectors: opts.failOnMissingVectors,
         distTag: opts.distTag,
       });
-      return { skillsCount: 1, skillNames: ['modern-web-guidance'] };
+      return { skillsCount: 1, skillNames: ["modern-web-guidance"] };
     },
     runDistTests: () => {
       distTestsRan++;
@@ -113,17 +142,24 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
   });
 
   assert.deepStrictEqual(embedCalls, [{ check: true }]);
-  assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: false, distTag: 'latest' }]);
+  assert.deepStrictEqual(buildCalls, [
+    { version: "0.0.198", failOnMissingVectors: false, distTag: "latest" },
+  ]);
   assert.strictEqual(distTestsRan, 1);
 });
 
-test('validate release embeds missing chunks with prune: true and enforces failOnMissingVectors and distTag', async () => {
-  const embedCalls: Array<{ check?: boolean; prune?: boolean } | undefined> = [];
-  const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean; distTag?: DistTag }> = [];
+test("validate release embeds missing chunks with prune: true and enforces failOnMissingVectors and distTag", async () => {
+  const embedCalls: Array<{ check?: boolean; prune?: boolean } | undefined> =
+    [];
+  const buildCalls: Array<{
+    version?: string;
+    failOnMissingVectors?: boolean;
+    distTag?: DistTag;
+  }> = [];
 
-  await validate('0.0.198', {
+  await validate("0.0.198", {
     dryRun: false,
-    distTag: 'next',
+    distTag: "next",
     embedChunks: async (opts) => {
       embedCalls.push(opts);
       return {
@@ -140,13 +176,13 @@ test('validate release embeds missing chunks with prune: true and enforces failO
         failOnMissingVectors: opts.failOnMissingVectors,
         distTag: opts.distTag,
       });
-      return { skillsCount: 1, skillNames: ['modern-web-guidance'] };
+      return { skillsCount: 1, skillNames: ["modern-web-guidance"] };
     },
     runDistTests: () => {},
   });
 
   assert.deepStrictEqual(embedCalls, [{ prune: true }]);
-  assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: true, distTag: 'next' }]);
+  assert.deepStrictEqual(buildCalls, [
+    { version: "0.0.198", failOnMissingVectors: true, distTag: "next" },
+  ]);
 });
-
-

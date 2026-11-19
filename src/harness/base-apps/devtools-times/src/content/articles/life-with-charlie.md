@@ -12,5 +12,3 @@ prompt_comment: "Prompt: Why is this network request failing?\n    Request:4PBdB
 ---
 
 Charlie the Griffon looks like he woke up on the wrong side of the bed, every single day. With his famous upturned nose, a perpetually judgmental pout, and a wiry beard that defies gravity, he resembles a grumpy Victorian gentleman shrank down to ten pounds. But looks are entirely deceiving. Underneath that adorably scruffy exterior beats the heart of a dedicated cuddle-bug who views an empty lap as a personal insult.
-
-

@@ -8,7 +8,16 @@ import { Agents } from "../../harness/config.ts";
 export type Grade = 0 | 1 | 2;
 export type QueryScope = "in_domain" | "out_of_domain";
 export type PublicDatasetName = "agent" | "harness" | "oos";
-export type QueryStratum = "traffic" | "lowsim" | "head" | "tail" | "traffic2" | "far" | "near" | Agents | (string & {});
+export type QueryStratum =
+  | "traffic"
+  | "lowsim"
+  | "head"
+  | "tail"
+  | "traffic2"
+  | "far"
+  | "near"
+  | Agents
+  | (string & {});
 
 export interface QueryRecord {
   qid: string;
@@ -65,11 +74,20 @@ export interface LoadedDataset {
 }
 
 export const DEFAULT_WILD_VERSION = "v2";
-export const DEFAULT_RAG_EVALS_BUCKET = process.env.RAG_EVALS_BUCKET || "guidance-rag-evals";
-export const DEFAULT_GCP_PROJECT = process.env.RAG_EVALS_GCP_PROJECT || "chrome-kiwi-air-force-dev";
-export const DEFAULT_PUBLIC_DATA_DIR = path.join(rootDir, "src/rag/benchmarks/data");
+export const DEFAULT_RAG_EVALS_BUCKET =
+  process.env.RAG_EVALS_BUCKET || "guidance-rag-evals";
+export const DEFAULT_GCP_PROJECT =
+  process.env.RAG_EVALS_GCP_PROJECT || "chrome-kiwi-air-force-dev";
+export const DEFAULT_PUBLIC_DATA_DIR = path.join(
+  rootDir,
+  "src/rag/benchmarks/data",
+);
 export const DEFAULT_WILD_CACHE_DIR = path.join(outDir, "benchmarks/wild");
-export const WILD_DATASET_FILES = ["manifest.json", "wild-queries.jsonl", "wild-qrels.jsonl"] as const;
+export const WILD_DATASET_FILES = [
+  "manifest.json",
+  "wild-queries.jsonl",
+  "wild-qrels.jsonl",
+] as const;
 
 const VALID_AGENTS = new Set<string>(Object.values(Agents));
 
@@ -102,14 +120,15 @@ export function normalizeQuery(query: string): string {
 }
 
 export function createQueryRecord(
-  fields: Omit<QueryRecord, "words"> & { words?: number }
+  fields: Omit<QueryRecord, "words"> & { words?: number },
 ): QueryRecord {
   const rec: QueryRecord = {
     ...fields,
     words: fields.words ?? countWords(fields.query),
   };
   if (fields.split !== undefined) rec.split = fields.split;
-  if (fields.expectedGuides !== undefined) rec.expectedGuides = fields.expectedGuides;
+  if (fields.expectedGuides !== undefined)
+    rec.expectedGuides = fields.expectedGuides;
   return rec;
 }
 
@@ -127,37 +146,58 @@ export function createPrng(seed: number): () => number {
 export function validateQueryRecord(
   raw: unknown,
   sourceLabel = "queries.jsonl",
-  line?: number
+  line?: number,
 ): QueryRecord {
   const loc = line !== undefined ? `${sourceLabel}:${line}` : sourceLabel;
-  if (!isRecord(raw) || typeof raw.qid !== "string" || !raw.qid || typeof raw.query !== "string" || !raw.query.trim()) {
+  if (
+    !isRecord(raw) ||
+    typeof raw.qid !== "string" ||
+    !raw.qid ||
+    typeof raw.query !== "string" ||
+    !raw.query.trim()
+  ) {
     throw new Error(`Invalid query record at ${loc}: missing qid or query`);
   }
   if (raw.agent !== undefined && !isAgent(raw.agent)) {
     throw new Error(`Invalid agent "${String(raw.agent)}" at ${loc}`);
   }
   if (raw.split !== undefined && raw.split !== "dev" && raw.split !== "test") {
-    throw new Error(`Invalid split "${String(raw.split)}" at ${loc}: expected "dev" or "test"`);
+    throw new Error(
+      `Invalid split "${String(raw.split)}" at ${loc}: expected "dev" or "test"`,
+    );
   }
   if (raw.calledList !== undefined && typeof raw.calledList !== "boolean") {
     throw new Error(`Invalid calledList at ${loc}: expected boolean`);
   }
-  if (raw.retriedSearch !== undefined && typeof raw.retriedSearch !== "boolean") {
+  if (
+    raw.retriedSearch !== undefined &&
+    typeof raw.retriedSearch !== "boolean"
+  ) {
     throw new Error(`Invalid retriedSearch at ${loc}: expected boolean`);
   }
   if (
     raw.retrievedGuides !== undefined &&
     (!Array.isArray(raw.retrievedGuides) ||
-      !raw.retrievedGuides.every((guide: unknown) => typeof guide === "string" && guide.trim().length > 0))
+      !raw.retrievedGuides.every(
+        (guide: unknown) =>
+          typeof guide === "string" && guide.trim().length > 0,
+      ))
   ) {
-    throw new Error(`Invalid retrievedGuides at ${loc}: expected array of non-empty strings`);
+    throw new Error(
+      `Invalid retrievedGuides at ${loc}: expected array of non-empty strings`,
+    );
   }
   if (
     raw.expectedGuides !== undefined &&
     (!Array.isArray(raw.expectedGuides) ||
-      !raw.expectedGuides.every((guide: unknown) => typeof guide === "string" && guide.trim().length > 0))
+      !raw.expectedGuides.every(
+        (guide: unknown) =>
+          typeof guide === "string" && guide.trim().length > 0,
+      ))
   ) {
-    throw new Error(`Invalid expectedGuides at ${loc}: expected array of non-empty strings`);
+    throw new Error(
+      `Invalid expectedGuides at ${loc}: expected array of non-empty strings`,
+    );
   }
 
   const fields: Omit<QueryRecord, "words"> & { words?: number } = {
@@ -166,14 +206,18 @@ export function validateQueryRecord(
     stratum: typeof raw.stratum === "string" ? raw.stratum : undefined,
     freq: typeof raw.freq === "number" ? raw.freq : undefined,
     words: typeof raw.words === "number" ? raw.words : undefined,
-    expectedGuide: typeof raw.expectedGuide === "string" ? raw.expectedGuide : undefined,
-    expectedGuides: Array.isArray(raw.expectedGuides) ? raw.expectedGuides.map(String) : undefined,
+    expectedGuide:
+      typeof raw.expectedGuide === "string" ? raw.expectedGuide : undefined,
+    expectedGuides: Array.isArray(raw.expectedGuides)
+      ? raw.expectedGuides.map(String)
+      : undefined,
     agent: raw.agent,
     runDate: typeof raw.runDate === "string" ? raw.runDate : undefined,
     split: raw.split === "dev" || raw.split === "test" ? raw.split : undefined,
   };
   if (typeof raw.calledList === "boolean") fields.calledList = raw.calledList;
-  if (typeof raw.retriedSearch === "boolean") fields.retriedSearch = raw.retriedSearch;
+  if (typeof raw.retriedSearch === "boolean")
+    fields.retriedSearch = raw.retriedSearch;
   if (Array.isArray(raw.retrievedGuides)) {
     fields.retrievedGuides = raw.retrievedGuides.map((guide) => String(guide));
   }
@@ -181,7 +225,10 @@ export function validateQueryRecord(
   return createQueryRecord(fields);
 }
 
-export function parseQueriesJsonl(content: string, sourceLabel = "queries.jsonl"): QueryRecord[] {
+export function parseQueriesJsonl(
+  content: string,
+  sourceLabel = "queries.jsonl",
+): QueryRecord[] {
   const lines = content.trim().split("\n").filter(Boolean);
   const seenQids = new Set<string>();
   const records: QueryRecord[] = [];
@@ -190,7 +237,9 @@ export function parseQueriesJsonl(content: string, sourceLabel = "queries.jsonl"
     const raw: unknown = JSON.parse(lines[i]);
     const record = validateQueryRecord(raw, sourceLabel, i + 1);
     if (seenQids.has(record.qid)) {
-      throw new Error(`Duplicate qid "${record.qid}" at ${sourceLabel}:${i + 1}`);
+      throw new Error(
+        `Duplicate qid "${record.qid}" at ${sourceLabel}:${i + 1}`,
+      );
     }
     seenQids.add(record.qid);
     records.push(record);
@@ -199,7 +248,10 @@ export function parseQueriesJsonl(content: string, sourceLabel = "queries.jsonl"
   return records;
 }
 
-export function parseQrelsJsonl(content: string, sourceLabel = "qrels.jsonl"): Map<string, QrelRecord> {
+export function parseQrelsJsonl(
+  content: string,
+  sourceLabel = "qrels.jsonl",
+): Map<string, QrelRecord> {
   const lines = content.trim().split("\n").filter(Boolean);
   const qrels = new Map<string, QrelRecord>();
 
@@ -224,11 +276,20 @@ export function parseQrelsJsonl(content: string, sourceLabel = "qrels.jsonl"): M
 
     const seenGuides = new Set<string>();
     const grades: GuideGrade[] = raw.grades.map((g: unknown) => {
-      if (!isRecord(g) || typeof g.id !== "string" || !g.id || !isGrade(g.grade)) {
-        throw new Error(`Invalid grade entry for qid "${raw.qid}" at ${sourceLabel}:${i + 1}`);
+      if (
+        !isRecord(g) ||
+        typeof g.id !== "string" ||
+        !g.id ||
+        !isGrade(g.grade)
+      ) {
+        throw new Error(
+          `Invalid grade entry for qid "${raw.qid}" at ${sourceLabel}:${i + 1}`,
+        );
       }
       if (seenGuides.has(g.id)) {
-        throw new Error(`Duplicate grade for guide "${g.id}" in qid "${raw.qid}" at ${sourceLabel}:${i + 1}`);
+        throw new Error(
+          `Duplicate grade for guide "${g.id}" in qid "${raw.qid}" at ${sourceLabel}:${i + 1}`,
+        );
       }
       seenGuides.add(g.id);
       return {
@@ -239,7 +300,10 @@ export function parseQrelsJsonl(content: string, sourceLabel = "qrels.jsonl"): M
     });
 
     const needs = raw.needs.map((n: unknown) => {
-      if (typeof n !== "string") throw new Error(`Invalid need entry for qid "${raw.qid}" at ${sourceLabel}:${i + 1}`);
+      if (typeof n !== "string")
+        throw new Error(
+          `Invalid need entry for qid "${raw.qid}" at ${sourceLabel}:${i + 1}`,
+        );
       return n;
     });
 
@@ -257,7 +321,10 @@ export function parseQrelsJsonl(content: string, sourceLabel = "qrels.jsonl"): M
   return qrels;
 }
 
-export function parseManifestJson(content: string, sourceLabel = "manifest.json"): DatasetManifest {
+export function parseManifestJson(
+  content: string,
+  sourceLabel = "manifest.json",
+): DatasetManifest {
   const raw: unknown = JSON.parse(content);
   if (
     !isRecord(raw) ||
@@ -271,7 +338,11 @@ export function parseManifestJson(content: string, sourceLabel = "manifest.json"
   }
   const files: Record<string, DatasetFileEntry> = {};
   for (const [name, entry] of Object.entries(raw.files)) {
-    if (!isRecord(entry) || typeof entry.rows !== "number" || typeof entry.sha256 !== "string") {
+    if (
+      !isRecord(entry) ||
+      typeof entry.rows !== "number" ||
+      typeof entry.sha256 !== "string"
+    ) {
       throw new Error(`Invalid file entry "${name}" in ${sourceLabel}`);
     }
     files[name] = { rows: entry.rows, sha256: entry.sha256 };
@@ -298,13 +369,23 @@ export function serializeQrelsJsonl(records: Iterable<QrelRecord>): string {
   return serializeJsonl(records);
 }
 
-export function loadDatasetFromFiles(name: string, queriesPath: string, qrelsPath: string): LoadedDataset {
-  const queries = parseQueriesJsonl(fs.readFileSync(queriesPath, "utf8"), queriesPath);
+export function loadDatasetFromFiles(
+  name: string,
+  queriesPath: string,
+  qrelsPath: string,
+): LoadedDataset {
+  const queries = parseQueriesJsonl(
+    fs.readFileSync(queriesPath, "utf8"),
+    queriesPath,
+  );
   const qrels = parseQrelsJsonl(fs.readFileSync(qrelsPath, "utf8"), qrelsPath);
   return { name, queries, qrels };
 }
 
-export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUBLIC_DATA_DIR): LoadedDataset {
+export function loadPublicDataset(
+  name: PublicDatasetName,
+  dataDir = DEFAULT_PUBLIC_DATA_DIR,
+): LoadedDataset {
   const queriesPath = path.join(dataDir, `${name}-queries.jsonl`);
   const qrelsPath = path.join(dataDir, `${name}-qrels.jsonl`);
   const queriesContent = fs.readFileSync(queriesPath, "utf8");
@@ -315,9 +396,14 @@ export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUB
   let manifest: DatasetManifest | undefined;
   if (name === "agent") {
     const manifestPath = path.join(dataDir, "agent-manifest.json");
-    manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
+    manifest = parseManifestJson(
+      fs.readFileSync(manifestPath, "utf8"),
+      manifestPath,
+    );
     if (manifest.version !== "v1") {
-      throw new Error(`Manifest version mismatch in ${manifestPath}: expected "v1", got "${manifest.version}"`);
+      throw new Error(
+        `Manifest version mismatch in ${manifestPath}: expected "v1", got "${manifest.version}"`,
+      );
     }
     const expQueriesHash = manifest.files["agent-queries.jsonl"]?.sha256;
     const expQrelsHash = manifest.files["agent-qrels.jsonl"]?.sha256;
@@ -330,7 +416,7 @@ export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUB
     for (let i = 0; i < queries.length; i++) {
       if (queries[i].split !== "dev" && queries[i].split !== "test") {
         throw new Error(
-          `Invalid agent query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`
+          `Invalid agent query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`,
         );
       }
     }
@@ -339,14 +425,22 @@ export function loadPublicDataset(name: PublicDatasetName, dataDir = DEFAULT_PUB
   return { name, queries, qrels, manifest };
 }
 
-function verifyAndLoadWildCache(versionDir: string, version: string): LoadedDataset {
+function verifyAndLoadWildCache(
+  versionDir: string,
+  version: string,
+): LoadedDataset {
   const manifestPath = path.join(versionDir, "manifest.json");
   const queriesPath = path.join(versionDir, "wild-queries.jsonl");
   const qrelsPath = path.join(versionDir, "wild-qrels.jsonl");
 
-  const manifest = parseManifestJson(fs.readFileSync(manifestPath, "utf8"), manifestPath);
+  const manifest = parseManifestJson(
+    fs.readFileSync(manifestPath, "utf8"),
+    manifestPath,
+  );
   if (manifest.version !== version) {
-    throw new Error(`Manifest version mismatch in ${manifestPath}: expected "${version}", got "${manifest.version}"`);
+    throw new Error(
+      `Manifest version mismatch in ${manifestPath}: expected "${version}", got "${manifest.version}"`,
+    );
   }
   const queriesContent = fs.readFileSync(queriesPath, "utf8");
   const qrelsContent = fs.readFileSync(qrelsPath, "utf8");
@@ -367,7 +461,7 @@ function verifyAndLoadWildCache(versionDir: string, version: string): LoadedData
     for (let i = 0; i < queries.length; i++) {
       if (queries[i].split !== "dev" && queries[i].split !== "test") {
         throw new Error(
-          `Invalid wild-v2 query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`
+          `Invalid wild-v2 query record at ${queriesPath}:${i + 1}: missing or invalid split (found "${String(queries[i].split)}")`,
         );
       }
     }
@@ -381,14 +475,19 @@ function verifyAndLoadWildCache(versionDir: string, version: string): LoadedData
   };
 }
 
-export function filterDatasetBySplit(dataset: LoadedDataset, split: "dev" | "test"): LoadedDataset {
+export function filterDatasetBySplit(
+  dataset: LoadedDataset,
+  split: "dev" | "test",
+): LoadedDataset {
   if (split !== "dev" && split !== "test") {
-    throw new Error(`Invalid split "${String(split)}": expected "dev" or "test"`);
+    throw new Error(
+      `Invalid split "${String(split)}": expected "dev" or "test"`,
+    );
   }
   for (const q of dataset.queries) {
     if (q.split !== "dev" && q.split !== "test") {
       throw new Error(
-        `Dataset "${dataset.name}" query "${q.qid}" does not have a valid split (found "${String(q.split)}"). Dataset does not support split filtering.`
+        `Dataset "${dataset.name}" query "${q.qid}" does not have a valid split (found "${String(q.split)}"). Dataset does not support split filtering.`,
       );
     }
   }
@@ -413,7 +512,12 @@ export function filterDatasetBySplit(dataset: LoadedDataset, split: "dev" | "tes
  */
 export async function ensureWildDataset(
   version = DEFAULT_WILD_VERSION,
-  options: { cacheDir?: string; bucketName?: string; projectId?: string; allowDownload?: boolean } = {}
+  options: {
+    cacheDir?: string;
+    bucketName?: string;
+    projectId?: string;
+    allowDownload?: boolean;
+  } = {},
 ): Promise<LoadedDataset> {
   const cacheDir = options.cacheDir ?? DEFAULT_WILD_CACHE_DIR;
   const bucketName = options.bucketName ?? DEFAULT_RAG_EVALS_BUCKET;

@@ -81,10 +81,10 @@ index 66c9173..0bb731f 100644
 +      <li><a href="#account" id="logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
 @@ -175,6 +177,37 @@
    </header>
- 
+
    <main class="container">
 +    <section id="account" class="account-panel" aria-labelledby="account-heading">
 +      <p class="eyebrow">YOUR DAILY GRIND ACCOUNT</p>
@@ -123,7 +123,7 @@ index 66c9173..0bb731f 100644
 @@ -197,6 +230,25 @@
      </section>
    </main>
- 
+
 +  <dialog id="rename-dialog" aria-labelledby="rename-heading">
 +    <form id="rename-form">
 +      <h2 id="rename-heading">Rename passkey</h2>

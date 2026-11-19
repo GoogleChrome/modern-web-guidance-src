@@ -3,17 +3,17 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const COMPLEX_SHAPES_GUIDE_HASH = '15e7ef5f6ab6';
+export const COMPLEX_SHAPES_GUIDE_HASH = "15e7ef5f6ab6";
 
 const WEBKIT_TO_STANDARD_PAIRS: readonly (readonly [string, string])[] = [
-  ['-webkit-mask', 'mask'],
-  ['-webkit-mask-image', 'mask-image'],
-  ['-webkit-mask-size', 'mask-size'],
-  ['-webkit-mask-repeat', 'mask-repeat'],
-  ['-webkit-mask-position', 'mask-position'],
-  ['-webkit-mask-composite', 'mask-composite'],
+  ["-webkit-mask", "mask"],
+  ["-webkit-mask-image", "mask-image"],
+  ["-webkit-mask-size", "mask-size"],
+  ["-webkit-mask-repeat", "mask-repeat"],
+  ["-webkit-mask-position", "mask-position"],
+  ["-webkit-mask-composite", "mask-composite"],
 ];
 
 const SAFARI_BORDER_RADIUS_WORKAROUND_REGEX =
@@ -31,32 +31,36 @@ function isMaskResetValue(value: string): boolean {
 }
 
 const complexShapesCssMatcher: CssRuleMatcher = {
-  kind: 'css',
-  fastTokens: ['-webkit-mask'],
+  kind: "css",
+  fastTokens: ["-webkit-mask"],
   matchRule: (styleRule: CssRuleView, _ctx: CssMatcherContext) => {
     // 1. If rule already provides standard mask or mask-image, skip
-    if (styleRule.hasProperty('mask') || styleRule.hasProperty('mask-image')) {
+    if (styleRule.hasProperty("mask") || styleRule.hasProperty("mask-image")) {
       return null;
     }
 
     // 2. Match on the first declared -webkit-mask* property that is not a reset, Safari workaround, or paired with its standard counterpart
     for (const [webkitProp, standardProp] of WEBKIT_TO_STANDARD_PAIRS) {
-      if (!styleRule.hasProperty(webkitProp) || styleRule.hasProperty(standardProp)) {
+      if (
+        !styleRule.hasProperty(webkitProp) ||
+        styleRule.hasProperty(standardProp)
+      ) {
         continue;
       }
-      const val = styleRule.getPropertyValue(webkitProp) ?? '';
+      const val = styleRule.getPropertyValue(webkitProp) ?? "";
       if (isMaskResetValue(val)) {
         continue;
       }
       if (
-        (webkitProp === '-webkit-mask' || webkitProp === '-webkit-mask-image') &&
+        (webkitProp === "-webkit-mask" ||
+          webkitProp === "-webkit-mask-image") &&
         isSafariBorderRadiusWorkaround(val)
       ) {
         continue;
       }
       return {
         message:
-          'CSS rule declares vendor-prefixed -webkit-mask properties without standard mask/mask-image; modernize using CSS Masking Module Level 1 standard mask properties.',
+          "CSS rule declares vendor-prefixed -webkit-mask properties without standard mask/mask-image; modernize using CSS Masking Module Level 1 standard mask properties.",
       };
     }
 
@@ -65,20 +69,20 @@ const complexShapesCssMatcher: CssRuleMatcher = {
 };
 
 export const complexShapesRule: AnalyzerRule = {
-  id: 'complex-shapes',
-  guideId: 'complex-shapes',
+  id: "complex-shapes",
+  guideId: "complex-shapes",
   guideHash: COMPLEX_SHAPES_GUIDE_HASH,
   summary:
-    'CSS masking using -webkit-mask properties without standard mask/mask-image should be modernized with standard CSS Masking Module Level 1.',
+    "CSS masking using -webkit-mask properties without standard mask/mask-image should be modernized with standard CSS Masking Module Level 1.",
   matcher: complexShapesCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'A CSS rule declares -webkit-mask, -webkit-mask-image, -webkit-mask-size, or other -webkit-mask-* properties without declaring the corresponding standard unprefixed mask or mask-image property.',
-      'An element is clipped to an image, gradient, or SVG mask using only legacy WebKit mask properties.',
+      "A CSS rule declares -webkit-mask, -webkit-mask-image, -webkit-mask-size, or other -webkit-mask-* properties without declaring the corresponding standard unprefixed mask or mask-image property.",
+      "An element is clipped to an image, gradient, or SVG mask using only legacy WebKit mask properties.",
     ],
     dropWhen: [
-      'The rule already declares standard mask or mask-image alongside -webkit-mask for progressive enhancement.',
-      'The declaration is the legacy Safari border-radius and overflow: hidden compositing bug workaround using -webkit-mask-image: -webkit-radial-gradient(white, black) or radial-gradient(circle, white 100%, black 100%).',
+      "The rule already declares standard mask or mask-image alongside -webkit-mask for progressive enhancement.",
+      "The declaration is the legacy Safari border-radius and overflow: hidden compositing bug workaround using -webkit-mask-image: -webkit-radial-gradient(white, black) or radial-gradient(circle, white 100%, black 100%).",
       'The styling uses CSS clip-path or inline SVG <mask id="..."> definitions rather than CSS mask properties.',
     ],
   },

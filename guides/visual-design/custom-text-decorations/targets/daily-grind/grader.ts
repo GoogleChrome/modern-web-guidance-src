@@ -4,7 +4,7 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 import {
   getCascadedStyle,
   closestRule,
@@ -14,27 +14,30 @@ import {
   CSSKeyframesRule,
   type CSSRule,
   type CSSStyleDeclaration,
-} from 'cssomnom';
-import type { Document, Element } from 'linkedom';
+} from "cssomnom";
+import type { Document, Element } from "linkedom";
 
 // @ts-ignore - package.json omits "type": "module", causing tsc nodenext to infer CJS
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function getBaseStyleRules(files: string[]): CSSStyleRule[] {
   return getRules(files, CSSStyleRule).filter(
-    (rule) => !closestRule(rule, CSSMediaRule) && !closestRule(rule, CSSStyleRule),
+    (rule) =>
+      !closestRule(rule, CSSMediaRule) && !closestRule(rule, CSSStyleRule),
   );
 }
 
 function getRulesWithoutInsetSupport(files: string[]): CSSStyleRule[] {
   return getRules(files, CSSStyleRule).filter((rule) => {
-    if (closestRule(rule, CSSMediaRule) || closestRule(rule, CSSStyleRule)) return false;
+    if (closestRule(rule, CSSMediaRule) || closestRule(rule, CSSStyleRule))
+      return false;
     for (
       let curr = closestRule(rule, CSSSupportsRule);
       curr;
       curr = closestRule(curr, CSSSupportsRule)
     ) {
-      if (curr.conditionText.toLowerCase().includes('text-decoration-inset')) return false;
+      if (curr.conditionText.toLowerCase().includes("text-decoration-inset"))
+        return false;
     }
     return true;
   });
@@ -48,7 +51,10 @@ function getReducedMotionStyleRules(files: string[]): CSSStyleRule[] {
       curr = closestRule(curr, CSSMediaRule)
     ) {
       const cond = curr.conditionText.toLowerCase();
-      if (cond.includes('prefers-reduced-motion') && cond.includes('no-preference')) {
+      if (
+        cond.includes("prefers-reduced-motion") &&
+        cond.includes("no-preference")
+      ) {
         return false;
       }
     }
@@ -59,13 +65,13 @@ function getReducedMotionStyleRules(files: string[]): CSSStyleRule[] {
 function splitSelectorList(selectorText: string): string[] {
   const parts: string[] = [];
   let depth = 0;
-  let current = '';
+  let current = "";
   for (const ch of selectorText) {
-    if (ch === '(') depth++;
-    else if (ch === ')' && depth > 0) depth--;
-    if (ch === ',' && depth === 0) {
+    if (ch === "(") depth++;
+    else if (ch === ")" && depth > 0) depth--;
+    if (ch === "," && depth === 0) {
       if (current.trim()) parts.push(current.trim());
-      current = '';
+      current = "";
     } else {
       current += ch;
     }
@@ -83,15 +89,15 @@ function tryMatches(el: Element, selector: string): boolean {
 }
 
 function stripWhereClauses(selector: string): string {
-  let out = '';
+  let out = "";
   let i = 0;
   while (i < selector.length) {
-    if (selector.slice(i).toLowerCase().startsWith(':where(')) {
-      i += ':where('.length;
+    if (selector.slice(i).toLowerCase().startsWith(":where(")) {
+      i += ":where(".length;
       let depth = 1;
       while (i < selector.length && depth > 0) {
-        if (selector[i] === '(') depth++;
-        else if (selector[i] === ')') depth--;
+        if (selector[i] === "(") depth++;
+        else if (selector[i] === ")") depth--;
         i++;
       }
     } else {
@@ -104,21 +110,21 @@ function stripWhereClauses(selector: string): string {
 
 function isZeroSpecificityWhereBranch(branch: string): boolean {
   const trimmed = branch.trim();
-  if (!trimmed.toLowerCase().includes(':where(')) return false;
-  const remainder = stripWhereClauses(trimmed).replace(/[\s>+~]+/g, '');
+  if (!trimmed.toLowerCase().includes(":where(")) return false;
+  const remainder = stripWhereClauses(trimmed).replace(/[\s>+~]+/g, "");
   return remainder.length === 0;
 }
 
 function stripVarExpressions(value: string): string {
-  let out = '';
+  let out = "";
   let i = 0;
   while (i < value.length) {
-    if (value.slice(i).toLowerCase().startsWith('var(')) {
-      i += 'var('.length;
+    if (value.slice(i).toLowerCase().startsWith("var(")) {
+      i += "var(".length;
       let depth = 1;
       while (i < value.length && depth > 0) {
-        if (value[i] === '(') depth++;
-        else if (value[i] === ')') depth--;
+        if (value[i] === "(") depth++;
+        else if (value[i] === ")") depth--;
         i++;
       }
     } else {
@@ -130,52 +136,66 @@ function stripVarExpressions(value: string): string {
 }
 
 function getEffectiveDecorationLine(style: CSSStyleDeclaration): string {
-  const line = style.getPropertyValue('text-decoration-line').trim();
-  if (line && line !== 'none') return line;
-  const shorthand = style.getPropertyValue('text-decoration').trim();
-  const matches = shorthand.match(/\b(underline|overline|line-through|none)\b/g);
-  return matches ? matches.join(' ') : line;
+  const line = style.getPropertyValue("text-decoration-line").trim();
+  if (line && line !== "none") return line;
+  const shorthand = style.getPropertyValue("text-decoration").trim();
+  const matches = shorthand.match(
+    /\b(underline|overline|line-through|none)\b/g,
+  );
+  return matches ? matches.join(" ") : line;
 }
 
 function getEffectiveDecorationStyle(style: CSSStyleDeclaration): string {
-  const decoStyle = style.getPropertyValue('text-decoration-style').trim();
+  const decoStyle = style.getPropertyValue("text-decoration-style").trim();
   if (decoStyle) return decoStyle;
-  const shorthand = style.getPropertyValue('text-decoration').trim();
+  const shorthand = style.getPropertyValue("text-decoration").trim();
   const match = shorthand.match(/\b(solid|double|dotted|dashed|wavy)\b/);
-  return match ? match[1] : '';
+  return match ? match[1] : "";
 }
 
 function getEffectiveDecorationThickness(style: CSSStyleDeclaration): string {
-  const thickness = style.getPropertyValue('text-decoration-thickness').trim();
+  const thickness = style.getPropertyValue("text-decoration-thickness").trim();
   if (thickness) return thickness;
-  const shorthand = style.getPropertyValue('text-decoration').trim();
+  const shorthand = style.getPropertyValue("text-decoration").trim();
   const maxMinClamp = shorthand.match(/\b(?:max|min|clamp|calc)\([^)]+\)/);
   if (maxMinClamp) return maxMinClamp[0];
-  const lengthMatch = shorthand.match(/(?:\b\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh|rem|px)\b|%)|\b(?:from-font|auto)\b)/i);
-  return lengthMatch ? lengthMatch[0] : '';
+  const lengthMatch = shorthand.match(
+    /(?:\b\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh|rem|px)\b|%)|\b(?:from-font|auto)\b)/i,
+  );
+  return lengthMatch ? lengthMatch[0] : "";
 }
 
 function getEffectiveDecorationColor(style: CSSStyleDeclaration): string {
-  const color = style.getPropertyValue('text-decoration-color').trim();
+  const color = style.getPropertyValue("text-decoration-color").trim();
   if (color) return color;
-  const shorthand = style.getPropertyValue('text-decoration').trim();
-  if (!shorthand) return '';
-  if (/\b(?:color-mix|light-dark|rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\(/i.test(shorthand)) {
+  const shorthand = style.getPropertyValue("text-decoration").trim();
+  if (!shorthand) return "";
+  if (
+    /\b(?:color-mix|light-dark|rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\(/i.test(
+      shorthand,
+    )
+  ) {
     return shorthand;
   }
-  if (shorthand.includes('var(')) return 'var(...)';
+  if (shorthand.includes("var(")) return "var(...)";
   const hexMatch = shorthand.match(/#[0-9a-f]{3,8}\b/i);
   if (hexMatch) return hexMatch[0];
-  if (/\bcurrentcolor\b/i.test(shorthand)) return 'currentColor';
+  if (/\bcurrentcolor\b/i.test(shorthand)) return "currentColor";
   const stripped = shorthand
-    .replace(/\b(?:max|min|clamp|calc)\([^)]*\)/gi, ' ')
-    .replace(/\b\d*\.?\d+(?:em|ex|cap|ch|ic|lh|rem|px|%)/gi, ' ')
-    .replace(/\b(?:underline|overline|line-through|none|blink|solid|double|dotted|dashed|wavy|auto|from-font)\b/gi, ' ')
+    .replace(/\b(?:max|min|clamp|calc)\([^)]*\)/gi, " ")
+    .replace(/\b\d*\.?\d+(?:em|ex|cap|ch|ic|lh|rem|px|%)/gi, " ")
+    .replace(
+      /\b(?:underline|overline|line-through|none|blink|solid|double|dotted|dashed|wavy|auto|from-font)\b/gi,
+      " ",
+    )
     .trim();
   return stripped;
 }
 
-function hasCustomizableDecorationProps(el: Element, rules: CSSStyleRule[]): {
+function hasCustomizableDecorationProps(
+  el: Element,
+  rules: CSSStyleRule[],
+): {
   style: boolean;
   color: boolean;
   thickness: boolean;
@@ -188,29 +208,37 @@ function hasCustomizableDecorationProps(el: Element, rules: CSSStyleRule[]): {
 
   for (const r of rules) {
     const branches = splitSelectorList(r.selectorText).filter(
-      (b) => !/:(?:hover|focus-visible|focus|active)\b/i.test(b) && tryMatches(el, b)
+      (b) =>
+        !/:(?:hover|focus-visible|focus|active)\b/i.test(b) &&
+        tryMatches(el, b),
     );
     if (branches.length === 0) continue;
 
     const isWhere = branches.some((b) => isZeroSpecificityWhereBranch(b));
-    const shorthand = r.style.getPropertyValue('text-decoration').trim();
-    const decoStyle = r.style.getPropertyValue('text-decoration-style').trim();
-    const decoColor = r.style.getPropertyValue('text-decoration-color').trim();
-    const decoThickness = r.style.getPropertyValue('text-decoration-thickness').trim();
-    const offset = r.style.getPropertyValue('text-underline-offset').trim();
+    const shorthand = r.style.getPropertyValue("text-decoration").trim();
+    const decoStyle = r.style.getPropertyValue("text-decoration-style").trim();
+    const decoColor = r.style.getPropertyValue("text-decoration-color").trim();
+    const decoThickness = r.style
+      .getPropertyValue("text-decoration-thickness")
+      .trim();
+    const offset = r.style.getPropertyValue("text-underline-offset").trim();
 
     if (isWhere) {
       if (getEffectiveDecorationStyle(r.style).length > 0) hasStyle = true;
       if (getEffectiveDecorationColor(r.style).length > 0) hasColor = true;
-      if (getEffectiveDecorationThickness(r.style).length > 0) hasThickness = true;
+      if (getEffectiveDecorationThickness(r.style).length > 0)
+        hasThickness = true;
       if (offset.length > 0) hasOffset = true;
     } else {
-      if (decoStyle.includes('var(--')) hasStyle = true;
-      if (decoColor.includes('var(--')) hasColor = true;
-      if (decoThickness.includes('var(--') || /\b(?:max|min|clamp|calc)\([^)]*var\(--/i.test(shorthand)) {
+      if (decoStyle.includes("var(--")) hasStyle = true;
+      if (decoColor.includes("var(--")) hasColor = true;
+      if (
+        decoThickness.includes("var(--") ||
+        /\b(?:max|min|clamp|calc)\([^)]*var\(--/i.test(shorthand)
+      ) {
         hasThickness = true;
       }
-      if (offset.includes('var(--')) hasOffset = true;
+      if (offset.includes("var(--")) hasOffset = true;
 
       const varCount = (shorthand.match(/\bvar\(--/gi) || []).length;
       if (varCount > 0) {
@@ -220,30 +248,40 @@ function hasCustomizableDecorationProps(el: Element, rules: CSSStyleRule[]): {
           hasThickness = true;
         } else {
           const shorthandNoVars = stripVarExpressions(shorthand);
-          const literalStyle = /\b(solid|double|dotted|dashed|wavy)\b/i.test(shorthandNoVars);
+          const literalStyle = /\b(solid|double|dotted|dashed|wavy)\b/i.test(
+            shorthandNoVars,
+          );
           const literalThickness =
             /\b(?:max|min|clamp|calc)\([^)]+\)|(?:\b\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh|rem|px)\b|%)|\b(?:from-font|auto)\b)/i.test(
-              shorthandNoVars
+              shorthandNoVars,
             );
           const literalColor =
             /\bcurrentcolor\b|#[0-9a-f]{3,8}\b|\b(?:color-mix|light-dark|rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\(/i.test(
-              shorthandNoVars
+              shorthandNoVars,
             );
-          const nonLiteralSlots: Array<'style' | 'color' | 'thickness'> = [];
-          if (!literalStyle) nonLiteralSlots.push('style');
-          if (!literalColor) nonLiteralSlots.push('color');
-          if (!literalThickness) nonLiteralSlots.push('thickness');
-          if (nonLiteralSlots.length > 0 && varCount >= nonLiteralSlots.length) {
-            if (nonLiteralSlots.includes('style')) hasStyle = true;
-            if (nonLiteralSlots.includes('color')) hasColor = true;
-            if (nonLiteralSlots.includes('thickness')) hasThickness = true;
+          const nonLiteralSlots: Array<"style" | "color" | "thickness"> = [];
+          if (!literalStyle) nonLiteralSlots.push("style");
+          if (!literalColor) nonLiteralSlots.push("color");
+          if (!literalThickness) nonLiteralSlots.push("thickness");
+          if (
+            nonLiteralSlots.length > 0 &&
+            varCount >= nonLiteralSlots.length
+          ) {
+            if (nonLiteralSlots.includes("style")) hasStyle = true;
+            if (nonLiteralSlots.includes("color")) hasColor = true;
+            if (nonLiteralSlots.includes("thickness")) hasThickness = true;
           }
         }
       }
     }
   }
 
-  return { style: hasStyle, color: hasColor, thickness: hasThickness, offset: hasOffset };
+  return {
+    style: hasStyle,
+    color: hasColor,
+    thickness: hasThickness,
+    offset: hasOffset,
+  };
 }
 
 function resolveDecoratedElement(el: Element, rules: CSSRule[]): Element {
@@ -251,12 +289,12 @@ function resolveDecoratedElement(el: Element, rules: CSSRule[]): Element {
   if (/\b(underline|overline|line-through)\b/.test(directLine)) {
     return el;
   }
-  const targetText = el.textContent?.trim() || '';
+  const targetText = el.textContent?.trim() || "";
   if (!targetText) return el;
-  const descendants = Array.from(el.querySelectorAll('*')) as Element[];
+  const descendants = Array.from(el.querySelectorAll("*")) as Element[];
   for (const desc of descendants) {
-    if ((desc.textContent?.trim() || '') !== targetText) continue;
-    if (desc.getAttribute('aria-hidden') === 'true') continue;
+    if ((desc.textContent?.trim() || "") !== targetText) continue;
+    if (desc.getAttribute("aria-hidden") === "true") continue;
     const descLine = getEffectiveDecorationLine(getCascadedStyle(desc, rules));
     if (/\b(underline|overline|line-through)\b/.test(descLine)) {
       return desc;
@@ -265,15 +303,30 @@ function resolveDecoratedElement(el: Element, rules: CSSRule[]): Element {
   return el;
 }
 
-function getTargetElements(docs: Array<{ file: string; document: Document }>, rules: CSSRule[]) {
+function getTargetElements(
+  docs: Array<{ file: string; document: Document }>,
+  rules: CSSRule[],
+) {
   for (const { document } of docs) {
-    const navLinks = Array.from(document.querySelectorAll('nav a:not(.logout-link)')) as Element[];
-    const footerLinks = Array.from(document.querySelectorAll('.footer-links a, footer a')) as Element[];
-    const rawHeadings = Array.from(document.querySelectorAll('main h2, section h2')) as Element[];
-    const rawCardTitles = Array.from(document.querySelectorAll('.card h3')) as Element[];
+    const navLinks = Array.from(
+      document.querySelectorAll("nav a:not(.logout-link)"),
+    ) as Element[];
+    const footerLinks = Array.from(
+      document.querySelectorAll(".footer-links a, footer a"),
+    ) as Element[];
+    const rawHeadings = Array.from(
+      document.querySelectorAll("main h2, section h2"),
+    ) as Element[];
+    const rawCardTitles = Array.from(
+      document.querySelectorAll(".card h3"),
+    ) as Element[];
     if (navLinks.length > 0 && footerLinks.length > 0) {
-      const headings = rawHeadings.map((el) => resolveDecoratedElement(el, rules));
-      const cardTitles = rawCardTitles.map((el) => resolveDecoratedElement(el, rules));
+      const headings = rawHeadings.map((el) =>
+        resolveDecoratedElement(el, rules),
+      );
+      const cardTitles = rawCardTitles.map((el) =>
+        resolveDecoratedElement(el, rules),
+      );
       return {
         document,
         navLinks,
@@ -288,15 +341,16 @@ function getTargetElements(docs: Array<{ file: string; document: Document }>, ru
   return null;
 }
 
-test.describe('custom-text-decorations Target Grader', () => {
-  test('Underlines, overlines, and strikethroughs are drawn with the native text-decoration properties, not with border-bottom, a background gradient, or a pseudo-element', () => {
+test.describe("custom-text-decorations Target Grader", () => {
+  test("Underlines, overlines, and strikethroughs are drawn with the native text-decoration properties, not with border-bottom, a background gradient, or a pseudo-element", () => {
     const docs = getHtmlDocuments(targetFiles);
     const baseStyleRules = getBaseStyleRules(targetFiles);
     const allRules = getRules(targetFiles);
     const targets = getTargetElements(docs, baseStyleRules);
 
     expect(targets).not.toBeNull();
-    const { navLinks, footerLinks, headings, cardTitles, allTargets } = targets!;
+    const { navLinks, footerLinks, headings, cardTitles, allTargets } =
+      targets!;
     expect(allTargets.length).toBeGreaterThan(0);
 
     // Every target element group must use native text-decoration (underline, overline, or line-through)
@@ -308,26 +362,35 @@ test.describe('custom-text-decorations Target Grader', () => {
       expect(line).toMatch(/\b(underline|overline|line-through)\b/);
 
       // Must not fake lines with border-bottom / border-block-end or background gradients
-      expect(cascaded.getPropertyValue('border-bottom-style')).not.toMatch(/\b(solid|double|dotted|dashed|wavy)\b/);
-      expect(cascaded.getPropertyValue('border-block-end-style')).not.toMatch(/\b(solid|double|dotted|dashed|wavy)\b/);
-      expect(cascaded.getPropertyValue('background-image')).not.toContain('gradient');
-      expect(cascaded.getPropertyValue('background')).not.toContain('gradient');
+      expect(cascaded.getPropertyValue("border-bottom-style")).not.toMatch(
+        /\b(solid|double|dotted|dashed|wavy)\b/,
+      );
+      expect(cascaded.getPropertyValue("border-block-end-style")).not.toMatch(
+        /\b(solid|double|dotted|dashed|wavy)\b/,
+      );
+      expect(cascaded.getPropertyValue("background-image")).not.toContain(
+        "gradient",
+      );
+      expect(cascaded.getPropertyValue("background")).not.toContain("gradient");
     }
 
     // Structurally check that no ::after or ::before rule targets any decorated element or its descendants
     const targetAndDescendants = allTargets.flatMap((el) => [
       el,
-      ...(Array.from(el.querySelectorAll('*')) as Element[]),
+      ...(Array.from(el.querySelectorAll("*")) as Element[]),
     ]);
     const pseudoLineRules = allRules.filter((r): r is CSSStyleRule => {
-      if (!(r instanceof CSSStyleRule) || !/::?(?:after|before)\b/i.test(r.selectorText)) {
+      if (
+        !(r instanceof CSSStyleRule) ||
+        !/::?(?:after|before)\b/i.test(r.selectorText)
+      ) {
         return false;
       }
       return splitSelectorList(r.selectorText).some((branch) => {
         if (!/::?(?:after|before)\b/i.test(branch)) return false;
         const baseSelector = branch
-          .replace(/::?(?:before|after)\b/gi, '')
-          .replace(/:(?:hover|focus-visible|focus|active)\b/gi, '')
+          .replace(/::?(?:before|after)\b/gi, "")
+          .replace(/:(?:hover|focus-visible|focus|active)\b/gi, "")
           .trim();
         return (
           baseSelector.length > 0 &&
@@ -352,11 +415,17 @@ test.describe('custom-text-decorations Target Grader', () => {
       const cascaded = getCascadedStyle(el, baseStyleRules);
       const line = getEffectiveDecorationLine(cascaded);
       expect(line).toMatch(/\b(underline|overline|line-through)\b/);
-      expect(getEffectiveDecorationStyle(cascaded)).toMatch(/\b(solid|double|dotted|dashed|wavy)\b/);
+      expect(getEffectiveDecorationStyle(cascaded)).toMatch(
+        /\b(solid|double|dotted|dashed|wavy)\b/,
+      );
       expect(getEffectiveDecorationColor(cascaded).length).toBeGreaterThan(0);
-      expect(getEffectiveDecorationThickness(cascaded).length).toBeGreaterThan(0);
-      if (line.includes('underline')) {
-        expect(cascaded.getPropertyValue('text-underline-offset').trim().length).toBeGreaterThan(0);
+      expect(getEffectiveDecorationThickness(cascaded).length).toBeGreaterThan(
+        0,
+      );
+      if (line.includes("underline")) {
+        expect(
+          cascaded.getPropertyValue("text-underline-offset").trim().length,
+        ).toBeGreaterThan(0);
       }
     }
 
@@ -369,13 +438,13 @@ test.describe('custom-text-decorations Target Grader', () => {
       expect(customizable.style).toBe(true);
       expect(customizable.color).toBe(true);
       expect(customizable.thickness).toBe(true);
-      if (line.includes('underline')) {
+      if (line.includes("underline")) {
         expect(customizable.offset).toBe(true);
       }
     }
   });
 
-  test('Decoration thickness and underline offset use relative units such as em, so they scale with the font size', () => {
+  test("Decoration thickness and underline offset use relative units such as em, so they scale with the font size", () => {
     const docs = getHtmlDocuments(targetFiles);
     const baseStyleRules = getBaseStyleRules(targetFiles);
     const targets = getTargetElements(docs, baseStyleRules);
@@ -386,8 +455,10 @@ test.describe('custom-text-decorations Target Grader', () => {
 
     // Accept units that scale with the decorated element's font size (em, ex, cap, ch, ic, lh, %, and from-font for thickness).
     // Exclude rem (scales with root font size rather than element font size) and px.
-    const fontRelativeThicknessPattern = /(?:\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh)\b|%)|\bfrom-font\b)/i;
-    const fontRelativeOffsetPattern = /\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh)\b|%)/i;
+    const fontRelativeThicknessPattern =
+      /(?:\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh)\b|%)|\bfrom-font\b)/i;
+    const fontRelativeOffsetPattern =
+      /\d*\.?\d+(?:(?:em|ex|cap|ch|ic|lh)\b|%)/i;
 
     for (const el of [links[0], ...headings, ...cardTitles]) {
       const cascaded = getCascadedStyle(el, baseStyleRules);
@@ -397,12 +468,12 @@ test.describe('custom-text-decorations Target Grader', () => {
 
     for (const el of links) {
       const cascaded = getCascadedStyle(el, baseStyleRules);
-      const offset = cascaded.getPropertyValue('text-underline-offset').trim();
+      const offset = cascaded.getPropertyValue("text-underline-offset").trim();
       expect(offset).toMatch(fontRelativeOffsetPattern);
     }
   });
 
-  test('A decorated link is a real <a> with an href destination, not a javascript: URL with a script handler', () => {
+  test("A decorated link is a real <a> with an href destination, not a javascript: URL with a script handler", () => {
     const docs = getHtmlDocuments(targetFiles);
     const baseStyleRules = getBaseStyleRules(targetFiles);
     const targets = getTargetElements(docs, baseStyleRules);
@@ -412,38 +483,44 @@ test.describe('custom-text-decorations Target Grader', () => {
     expect(links.length).toBeGreaterThan(0);
 
     for (const link of links) {
-      expect(link.tagName.toLowerCase()).toBe('a');
-      const href = link.getAttribute('href')?.trim() || '';
+      expect(link.tagName.toLowerCase()).toBe("a");
+      const href = link.getAttribute("href")?.trim() || "";
       expect(href.length).toBeGreaterThan(0);
-      expect(href.toLowerCase().startsWith('javascript:')).toBe(false);
-      expect(link.getAttribute('onclick')).toBeNull();
+      expect(href.toLowerCase().startsWith("javascript:")).toBe(false);
+      expect(link.getAttribute("onclick")).toBeNull();
 
       // Ensure the link actually has a decoration applied
       const cascaded = getCascadedStyle(link, baseStyleRules);
-      expect(getEffectiveDecorationLine(cascaded)).toMatch(/\b(underline|overline|line-through)\b/);
+      expect(getEffectiveDecorationLine(cascaded)).toMatch(
+        /\b(underline|overline|line-through)\b/,
+      );
     }
   });
 
-  test('A link with a hover reveal underline trims its line with text-decoration-inset at rest, and returns the inset to 0 on both :hover and :focus-visible', () => {
+  test("A link with a hover reveal underline trims its line with text-decoration-inset at rest, and returns the inset to 0 on both :hover and :focus-visible", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     // Find rule(s) setting text-decoration-inset with 100% trim at rest for links / reveal
     const restInsetRules = styleRules.filter((r) => {
-      const inset = r.style.getPropertyValue('text-decoration-inset').trim();
-      return inset.includes('100%');
+      const inset = r.style.getPropertyValue("text-decoration-inset").trim();
+      return inset.includes("100%");
     });
     expect(restInsetRules.length).toBeGreaterThan(0);
 
     // Find rule(s) returning the end inset to 0 (or matching start inset, not 100%) on :hover and :focus-visible
     const activeInsetRules = styleRules.filter((r) => {
-      const inset = r.style.getPropertyValue('text-decoration-inset').trim();
-      return inset.length > 0 && !inset.includes('100%');
+      const inset = r.style.getPropertyValue("text-decoration-inset").trim();
+      return inset.length > 0 && !inset.includes("100%");
     });
-    expect(activeInsetRules.some((r) => r.selectorText.includes(':hover'))).toBe(true);
-    expect(activeInsetRules.some((r) => r.selectorText.includes(':focus-visible'))).toBe(true);
+    expect(
+      activeInsetRules.some((r) => r.selectorText.includes(":hover")),
+    ).toBe(true);
+    expect(
+      activeInsetRules.some((r) => r.selectorText.includes(":focus-visible")),
+    ).toBe(true);
   });
 
-  test('The hover reveal declares its underline separately from text-decoration-inset and never only inside an @supports test for it, so the underline is visible where text-decoration-inset is unsupported', () => {
+  test("The hover reveal declares its underline separately from text-decoration-inset and never only inside an @supports test for it, so the underline is visible where text-decoration-inset is unsupported", () => {
     const docs = getHtmlDocuments(targetFiles);
     const baseStyleRules = getBaseStyleRules(targetFiles);
     const targets = getTargetElements(docs, baseStyleRules);
@@ -456,17 +533,18 @@ test.describe('custom-text-decorations Target Grader', () => {
     const noInsetSupportRules = getRulesWithoutInsetSupport(targetFiles);
     for (const link of links) {
       const baseCascaded = getCascadedStyle(link, noInsetSupportRules);
-      expect(getEffectiveDecorationLine(baseCascaded)).toContain('underline');
+      expect(getEffectiveDecorationLine(baseCascaded)).toContain("underline");
     }
 
     // Verify text-decoration-inset is declared as its own property somewhere in the stylesheet
     const insetRules = getRules(targetFiles, CSSStyleRule).filter(
-      (r) => r.style.getPropertyValue('text-decoration-inset').trim().length > 0,
+      (r) =>
+        r.style.getPropertyValue("text-decoration-inset").trim().length > 0,
     );
     expect(insetRules.length).toBeGreaterThan(0);
   });
 
-  test('text-decoration-skip-ink: auto and text-decoration-skip-spaces are not declared when they would only restate the default or have no effect', () => {
+  test("text-decoration-skip-ink: auto and text-decoration-skip-spaces are not declared when they would only restate the default or have no effect", () => {
     const docs = getHtmlDocuments(targetFiles);
     const baseStyleRules = getBaseStyleRules(targetFiles);
     const allRules = getRules(targetFiles);
@@ -478,20 +556,28 @@ test.describe('custom-text-decorations Target Grader', () => {
 
     // Precondition: ensure decorations are actually present
     const sampleCascaded = getCascadedStyle(links[0], baseStyleRules);
-    expect(getEffectiveDecorationLine(sampleCascaded)).toMatch(/\b(underline|overline|line-through)\b/);
+    expect(getEffectiveDecorationLine(sampleCascaded)).toMatch(
+      /\b(underline|overline|line-through)\b/,
+    );
 
     for (const rule of allRules) {
       if (rule instanceof CSSStyleRule) {
-        const skipInk = rule.style.getPropertyValue('text-decoration-skip-ink').trim();
-        expect(skipInk).not.toBe('auto');
+        const skipInk = rule.style
+          .getPropertyValue("text-decoration-skip-ink")
+          .trim();
+        expect(skipInk).not.toBe("auto");
 
-        const skipSpaces = rule.style.getPropertyValue('text-decoration-skip-spaces').trim();
-        expect(skipSpaces).not.toMatch(/^(?:start|end|start\s+end|end\s+start)$/);
+        const skipSpaces = rule.style
+          .getPropertyValue("text-decoration-skip-spaces")
+          .trim();
+        expect(skipSpaces).not.toMatch(
+          /^(?:start|end|start\s+end|end\s+start)$/,
+        );
       }
     }
   });
 
-  test('Hover reveal and draw-on animations are not applied when prefers-reduced-motion: reduce matches, and the line is fully visible otherwise', () => {
+  test("Hover reveal and draw-on animations are not applied when prefers-reduced-motion: reduce matches, and the line is fully visible otherwise", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
     const reducedMotionStyleRules = getReducedMotionStyleRules(targetFiles);
@@ -504,11 +590,11 @@ test.describe('custom-text-decorations Target Grader', () => {
     // Only require @media (prefers-reduced-motion: ...) when decorative reveal transitions or animations are present
     const hasAnimatedDecoration = allRules.some((r) => {
       if (r instanceof CSSStyleRule) {
-        const inset = r.style.getPropertyValue('text-decoration-inset').trim();
-        const transition = r.style.getPropertyValue('transition').trim();
-        const animation = r.style.getPropertyValue('animation').trim();
+        const inset = r.style.getPropertyValue("text-decoration-inset").trim();
+        const transition = r.style.getPropertyValue("transition").trim();
+        const animation = r.style.getPropertyValue("animation").trim();
         return (
-          inset.includes('100%') ||
+          inset.includes("100%") ||
           /\btext-(?:decoration|underline)/i.test(transition) ||
           (animation.length > 0 && !/^none\b/i.test(animation))
         );
@@ -520,7 +606,7 @@ test.describe('custom-text-decorations Target Grader', () => {
       const mediaRules = allRules.filter(
         (r): r is CSSMediaRule =>
           r instanceof CSSMediaRule &&
-          r.conditionText.toLowerCase().includes('prefers-reduced-motion'),
+          r.conditionText.toLowerCase().includes("prefers-reduced-motion"),
       );
       expect(mediaRules.length).toBeGreaterThan(0);
     }
@@ -528,24 +614,41 @@ test.describe('custom-text-decorations Target Grader', () => {
     // When prefers-reduced-motion: reduce matches (outside no-preference, and including reduce rules),
     // lines must be fully visible (not trimmed to 100%) and have no active decoration transition or animation.
     for (const el of allTargets) {
-      const reducedMotionCascaded = getCascadedStyle(el, reducedMotionStyleRules);
+      const reducedMotionCascaded = getCascadedStyle(
+        el,
+        reducedMotionStyleRules,
+      );
       const line = getEffectiveDecorationLine(reducedMotionCascaded);
       expect(line).toMatch(/\b(underline|overline|line-through)\b/);
 
-      const inset = reducedMotionCascaded.getPropertyValue('text-decoration-inset').trim();
-      expect(inset).not.toContain('100%');
+      const inset = reducedMotionCascaded
+        .getPropertyValue("text-decoration-inset")
+        .trim();
+      expect(inset).not.toContain("100%");
 
-      const transition = reducedMotionCascaded.getPropertyValue('transition').trim();
-      const transitionDuration = reducedMotionCascaded.getPropertyValue('transition-duration').trim();
+      const transition = reducedMotionCascaded
+        .getPropertyValue("transition")
+        .trim();
+      const transitionDuration = reducedMotionCascaded
+        .getPropertyValue("transition-duration")
+        .trim();
       const hasDecorationTransition =
         (/\btext-(?:decoration|underline)/i.test(transition) ||
           (/\ball\b/i.test(transition) && !/^none\b/i.test(transition))) &&
         !/^0(?:s|ms)\b/.test(transitionDuration);
       expect(hasDecorationTransition).toBe(false);
 
-      const animation = reducedMotionCascaded.getPropertyValue('animation').trim();
-      const animationName = reducedMotionCascaded.getPropertyValue('animation-name').trim();
-      expect(animation === '' || /^none\b/i.test(animation) || animationName === 'none').toBe(true);
+      const animation = reducedMotionCascaded
+        .getPropertyValue("animation")
+        .trim();
+      const animationName = reducedMotionCascaded
+        .getPropertyValue("animation-name")
+        .trim();
+      expect(
+        animation === "" ||
+          /^none\b/i.test(animation) ||
+          animationName === "none",
+      ).toBe(true);
     }
   });
 });

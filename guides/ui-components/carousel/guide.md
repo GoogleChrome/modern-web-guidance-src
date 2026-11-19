@@ -52,23 +52,39 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The CSS below is split by concern, and only the parts that are easy to get wrong are shown; everything else is described in prose. Adapt dimensions, spacing, and colors to the design.
 
 ```html
-<section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
+<section
+  class="carousel"
+  aria-roledescription="carousel"
+  aria-label="Featured products"
+>
   <div class="carousel-controls">
     <button type="button" data-direction="previous">Previous slide</button>
     <button type="button" data-direction="next">Next slide</button>
   </div>
 
   <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-    <div role="group" aria-roledescription="slide" aria-label="1 of 3"
-        data-marker-name="Go to slide 1">
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="1 of 3"
+      data-marker-name="Go to slide 1"
+    >
       <h3>Product one</h3>
     </div>
-    <div role="group" aria-roledescription="slide" aria-label="2 of 3"
-        data-marker-name="Go to slide 2">
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="2 of 3"
+      data-marker-name="Go to slide 2"
+    >
       <h3>Product two</h3>
     </div>
-    <div role="group" aria-roledescription="slide" aria-label="3 of 3"
-        data-marker-name="Go to slide 3">
+    <div
+      role="group"
+      aria-roledescription="slide"
+      aria-label="3 of 3"
+      data-marker-name="Go to slide 3"
+    >
       <h3>Product three</h3>
     </div>
   </div>
@@ -159,7 +175,11 @@ Do not wrap the parking rules in `@supports`.
 ```css
 .carousel-track > :first-child {
   /* --children-count is only set where sibling-count() is unsupported */
-  order: clamp(0, var(--current) - (var(--children-count, sibling-count()) - 3), 1);
+  order: clamp(
+    0,
+    var(--current) - (var(--children-count, sibling-count()) - 3),
+    1
+  );
 }
 ```
 

@@ -1,60 +1,123 @@
-import { describe, it, after } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import * as esbuild from 'esbuild';
-import { createStripTsMorphLibFilesPlugin } from './build-dist.ts';
-import { replaceMacros } from '../core/macros.ts';
+import { describe, it, after } from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import * as esbuild from "esbuild";
+import { createStripTsMorphLibFilesPlugin } from "./build-dist.ts";
+import { replaceMacros } from "../core/macros.ts";
 
+import { rootDir } from "../core/paths.ts";
 
-import { rootDir } from '../core/paths.ts';
-
-describe('processSkills', () => {
-  const testOutputDir = path.join(import.meta.dirname, 'test-output');
+describe("processSkills", () => {
+  const testOutputDir = path.join(import.meta.dirname, "test-output");
 
   after(() => {
     fs.rmSync(testOutputDir, { recursive: true, force: true });
   });
 
-  it('processes GUIDE_REF macros in real CSS guide.md', () => {
-    const skillFilePath = path.join(rootDir, 'guides/css/css/guide.md');
-    assert.ok(fs.existsSync(skillFilePath), 'guides/css/css/guide.md should exist');
+  it("processes GUIDE_REF macros in real CSS guide.md", () => {
+    const skillFilePath = path.join(rootDir, "guides/css/css/guide.md");
+    assert.ok(
+      fs.existsSync(skillFilePath),
+      "guides/css/css/guide.md should exist",
+    );
 
-    const content = fs.readFileSync(skillFilePath, 'utf8');
-    const result = replaceMacros(content, skillFilePath, { target: 'skills-cli' });
+    const content = fs.readFileSync(skillFilePath, "utf8");
+    const result = replaceMacros(content, skillFilePath, {
+      target: "skills-cli",
+    });
 
-    assert.ok(!result.includes('{{ GUIDE_REF'), 'GUIDE_REF macro should be resolved');
-    assert.ok(result.includes('`child-state-based-styling` (via `npx -y modern-web-guidance@latest retrieve "child-state-based-styling"`)'), 'Should contain command for child-state-based-styling');
-    assert.ok(result.includes('`content-based-styling` (via `npx -y modern-web-guidance@latest retrieve "content-based-styling"`)'), 'Should contain command for content-based-styling');
+    assert.ok(
+      !result.includes("{{ GUIDE_REF"),
+      "GUIDE_REF macro should be resolved",
+    );
+    assert.ok(
+      result.includes(
+        '`child-state-based-styling` (via `npx -y modern-web-guidance@latest retrieve "child-state-based-styling"`)',
+      ),
+      "Should contain command for child-state-based-styling",
+    );
+    assert.ok(
+      result.includes(
+        '`content-based-styling` (via `npx -y modern-web-guidance@latest retrieve "content-based-styling"`)',
+      ),
+      "Should contain command for content-based-styling",
+    );
   });
 
-  it('uses the same command text as in modern-web-guidance/SKILL.md', () => {
-    const skillFilePath = path.join(rootDir, 'guides/modern-web-guidance/SKILL.md');
-    assert.ok(fs.existsSync(skillFilePath), 'modern-web-guidance/SKILL.md should exist');
+  it("uses the same command text as in modern-web-guidance/SKILL.md", () => {
+    const skillFilePath = path.join(
+      rootDir,
+      "guides/modern-web-guidance/SKILL.md",
+    );
+    assert.ok(
+      fs.existsSync(skillFilePath),
+      "modern-web-guidance/SKILL.md should exist",
+    );
 
-    const skillContent = fs.readFileSync(skillFilePath, 'utf8');
+    const skillContent = fs.readFileSync(skillFilePath, "utf8");
 
     const expectedPattern = 'npx -y modern-web-guidance@latest retrieve "<id>"';
-    assert.ok(skillContent.includes(expectedPattern), 'modern-web-guidance/SKILL.md should contain the expected command pattern');
+    assert.ok(
+      skillContent.includes(expectedPattern),
+      "modern-web-guidance/SKILL.md should contain the expected command pattern",
+    );
 
-    const result = replaceMacros('{{ GUIDE_REF("break-up-long-tasks") }}', 'test.md', { target: 'skills-cli' });
+    const result = replaceMacros(
+      '{{ GUIDE_REF("break-up-long-tasks") }}',
+      "test.md",
+      { target: "skills-cli" },
+    );
 
-    assert.ok(result.includes('npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"'), 'Macro output should match the pattern in SKILL.md');
+    assert.ok(
+      result.includes(
+        'npx -y modern-web-guidance@latest retrieve "break-up-long-tasks"',
+      ),
+      "Macro output should match the pattern in SKILL.md",
+    );
   });
 
-  it('verifies distribution was built successfully', async () => {
-    const publishRoot = path.join(rootDir, 'dist/skills-cli');
-    
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/legacy-scan.mjs')), 'legacy-scan.mjs should exist');
+  it("verifies distribution was built successfully", async () => {
+    const publishRoot = path.join(rootDir, "dist/skills-cli");
+
+    assert.ok(
+      fs.existsSync(
+        path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
+      ),
+      "modern-web.mjs should exist",
+    );
+    assert.ok(
+      fs.existsSync(
+        path.join(publishRoot, "skills/modern-web-guidance/search.mjs"),
+      ),
+      "search.mjs should exist",
+    );
+    assert.ok(
+      fs.existsSync(
+        path.join(publishRoot, "skills/modern-web-guidance/legacy-scan.mjs"),
+      ),
+      "legacy-scan.mjs should exist",
+    );
 
     // Verify standalone skills and their references exist
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
-    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/references/extensions/popup-ui.md')), 'chrome-extensions sibling popup-ui.md references should exist');
+    assert.ok(
+      fs.existsSync(
+        path.join(publishRoot, "skills/chrome-extensions/SKILL.md"),
+      ),
+      "chrome-extensions SKILL.md should exist",
+    );
+    assert.ok(
+      fs.existsSync(
+        path.join(
+          publishRoot,
+          "skills/chrome-extensions/references/extensions/popup-ui.md",
+        ),
+      ),
+      "chrome-extensions sibling popup-ui.md references should exist",
+    );
   });
 
-  it('strip-ts-morph-lib-files plugin fails fast when ts-morph-common.js is missing from bundle', async () => {
+  it("strip-ts-morph-lib-files plugin fails fast when ts-morph-common.js is missing from bundle", async () => {
     const plugin = createStripTsMorphLibFilesPlugin();
     await assert.rejects(
       esbuild.build({
@@ -63,31 +126,50 @@ describe('processSkills', () => {
         write: false,
         plugins: [plugin],
       }),
-      /strip-ts-morph-lib-files: filter \/ts-morph-common\\\.js\$\/ did not match any file during bundle/
+      /strip-ts-morph-lib-files: filter \/ts-morph-common\\\.js\$\/ did not match any file during bundle/,
     );
   });
 
-  it('verifies modern-web.mjs has correct shebang without --experimental-strip-types', () => {
-    const publishRoot = path.join(rootDir, 'dist/skills-cli');
-    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
-    
-    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
-    
-    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
-    const firstLine = content.split('\n')[0];
-    
-    assert.strictEqual(firstLine, '#!/usr/bin/env node', 'Shebang should be #!/usr/bin/env node');
-    assert.ok(!firstLine.includes('--experimental-strip-types'), 'Shebang should not contain --experimental-strip-types');
+  it("verifies modern-web.mjs has correct shebang without --experimental-strip-types", () => {
+    const publishRoot = path.join(rootDir, "dist/skills-cli");
+    const modernWebMjsPath = path.join(
+      publishRoot,
+      "skills/modern-web-guidance/modern-web.mjs",
+    );
+
+    assert.ok(fs.existsSync(modernWebMjsPath), "modern-web.mjs should exist");
+
+    const content = fs.readFileSync(modernWebMjsPath, "utf8");
+    const firstLine = content.split("\n")[0];
+
+    assert.strictEqual(
+      firstLine,
+      "#!/usr/bin/env node",
+      "Shebang should be #!/usr/bin/env node",
+    );
+    assert.ok(
+      !firstLine.includes("--experimental-strip-types"),
+      "Shebang should not contain --experimental-strip-types",
+    );
   });
 
-  it('verifies modern-web.mjs includes runtime node version guard banner', () => {
-    const publishRoot = path.join(rootDir, 'dist/skills-cli');
-    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
+  it("verifies modern-web.mjs includes runtime node version guard banner", () => {
+    const publishRoot = path.join(rootDir, "dist/skills-cli");
+    const modernWebMjsPath = path.join(
+      publishRoot,
+      "skills/modern-web-guidance/modern-web.mjs",
+    );
 
-    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
+    assert.ok(fs.existsSync(modernWebMjsPath), "modern-web.mjs should exist");
 
-    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
-    assert.ok(content.includes('process.versions.node.split'), 'Should check process.versions.node');
-    assert.ok(content.includes('modern-web-guidance requires Node.js >= 22'), 'Should contain error message');
+    const content = fs.readFileSync(modernWebMjsPath, "utf8");
+    assert.ok(
+      content.includes("process.versions.node.split"),
+      "Should check process.versions.node",
+    );
+    assert.ok(
+      content.includes("modern-web-guidance requires Node.js >= 22"),
+      "Should contain error message",
+    );
   });
 });

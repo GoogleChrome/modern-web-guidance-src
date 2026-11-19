@@ -1,0 +1,70 @@
+repos:
+  - repo: local
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        entry: sed -i 's/[[:space:]]*$//'
+        language: system
+        types: [text]
+
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        entry: sed -i -e '$a\'
+        language: system
+        types: [text]
+
+      - id: check-yaml
+        name: Check YAML
+        entry: python3 -c "import yaml, sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]"
+        language: system
+        types: [yaml]
+
+      - id: check-json
+        name: Check JSON
+        entry: python3 -c "import json, sys; [json.load(open(f)) for f in sys.argv[1:]]"
+        language: system
+        types: [json]
+
+      - id: check-merge-conflict
+        name: Check Merge Conflicts
+        entry: grep -r "<<<<<<<" --include="*" .
+        language: system
+        types: [text]
+
+      - id: check-json-syntax
+        name: Check JSON Syntax
+        entry: python3 -c "import json, sys; [json.load(open(f)) for f in sys.argv[1:]]"
+        language: system
+        types: [json]
+
+      - id: prettier
+        name: Prettier
+        entry: npx prettier --write
+        language: system
+        types_or: [javascript, ts, json, yaml, markdown]
+        require_serial: true
+
+      - id: eslint
+        name: ESLint
+        entry: npx eslint --fix
+        language: system
+        files: \.(ts|tsx|js|jsx)$
+        types: [file]
+
+      - id: typecheck
+        name: TypeScript typecheck
+        entry: pnpm run typecheck
+        language: system
+        pass_filenames: false
+
+      - id: lint
+        name: ESLint
+        entry: pnpm run lint
+        language: system
+        pass_filenames: false
+
+      - id: test
+        name: Run tests
+        entry: pnpm run test
+        language: system
+        pass_filenames: false

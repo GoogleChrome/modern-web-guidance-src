@@ -5,14 +5,14 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 import {
   SyntaxKind,
   type JsxOpeningElement,
   type JsxSelfClosingElement,
   type JsxAttribute,
-} from 'ts-morph';
-import { CSSStyleRule } from 'cssomnom';
+} from "ts-morph";
+import { CSSStyleRule } from "cssomnom";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -35,13 +35,13 @@ function getJsxAttributeMap(node: JsxTagNode): Map<string, JsxAttribute> {
 function getJsxAttrStringValue(attr: JsxAttribute | undefined): string | null {
   if (!attr) return null;
   const init = attr.getInitializer();
-  if (!init) return '';
+  if (!init) return "";
   if (init.isKind(SyntaxKind.StringLiteral)) {
     return init.getLiteralValue();
   }
   if (init.isKind(SyntaxKind.JsxExpression)) {
     const expr = init.getExpression();
-    if (!expr) return '';
+    if (!expr) return "";
     if (
       expr.isKind(SyntaxKind.StringLiteral) ||
       expr.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)
@@ -54,31 +54,47 @@ function getJsxAttrStringValue(attr: JsxAttribute | undefined): string | null {
 }
 
 function getAllJsxTags(project: ReturnType<typeof getJsProject>): JsxTagNode[] {
-  return project.getSourceFiles().flatMap((sf) => [
-    ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
-    ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
-  ]);
+  return project
+    .getSourceFiles()
+    .flatMap((sf) => [
+      ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
+      ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
+    ]);
 }
 
-test.describe('agentic-forms Target Grader', () => {
-  test('The form element has both toolname and tooldescription attributes', () => {
+test.describe("agentic-forms Target Grader", () => {
+  test("The form element has both toolname and tooldescription attributes", () => {
     const project = getJsProject(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
 
-    const jsxForms = getAllJsxTags(project).filter((tag) => getTagName(tag) === 'form');
-    const htmlForms = docs.flatMap((d) => Array.from(d.document.querySelectorAll('form')));
+    const jsxForms = getAllJsxTags(project).filter(
+      (tag) => getTagName(tag) === "form",
+    );
+    const htmlForms = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("form")),
+    );
 
     const validJsxForms = jsxForms.filter((form) => {
       const attrs = getJsxAttributeMap(form);
-      const toolName = getJsxAttrStringValue(attrs.get('toolname'));
-      const toolDesc = getJsxAttrStringValue(attrs.get('tooldescription'));
-      return Boolean(toolName && toolName.trim().length > 0 && toolDesc && toolDesc.trim().length > 0);
+      const toolName = getJsxAttrStringValue(attrs.get("toolname"));
+      const toolDesc = getJsxAttrStringValue(attrs.get("tooldescription"));
+      return Boolean(
+        toolName &&
+        toolName.trim().length > 0 &&
+        toolDesc &&
+        toolDesc.trim().length > 0,
+      );
     });
 
     const validHtmlForms = htmlForms.filter((form: any) => {
-      const toolName = form.getAttribute('toolname');
-      const toolDesc = form.getAttribute('tooldescription');
-      return Boolean(toolName && toolName.trim().length > 0 && toolDesc && toolDesc.trim().length > 0);
+      const toolName = form.getAttribute("toolname");
+      const toolDesc = form.getAttribute("tooldescription");
+      return Boolean(
+        toolName &&
+        toolName.trim().length > 0 &&
+        toolDesc &&
+        toolDesc.trim().length > 0,
+      );
     });
 
     const totalAnnotatedForms = validJsxForms.length + validHtmlForms.length;
@@ -92,7 +108,7 @@ test.describe('agentic-forms Target Grader', () => {
     }
   });
 
-  test('Input elements have associated labels or toolparamdescription attributes', () => {
+  test("Input elements have associated labels or toolparamdescription attributes", () => {
     const project = getJsProject(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
 
@@ -102,14 +118,16 @@ test.describe('agentic-forms Target Grader', () => {
       allTags.some((tag) => {
         const attrs = getJsxAttributeMap(tag);
         return (
-          attrs.has('toolname') ||
-          attrs.has('tooldescription') ||
-          attrs.has('toolparamdescription')
+          attrs.has("toolname") ||
+          attrs.has("tooldescription") ||
+          attrs.has("toolparamdescription")
         );
       }) ||
       docs.some((d) =>
         Boolean(
-          d.document.querySelector('[toolname], [tooldescription], [toolparamdescription]'),
+          d.document.querySelector(
+            "[toolname], [tooldescription], [toolparamdescription]",
+          ),
         ),
       );
     expect(hasWebMcpFormOrInput).toBe(true);
@@ -121,67 +139,88 @@ test.describe('agentic-forms Target Grader', () => {
         ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
       ];
-      const sfForms = sfTags.filter((t) => getTagName(t) === 'form');
+      const sfForms = sfTags.filter((t) => getTagName(t) === "form");
       if (sfForms.length === 0) continue;
 
       const labelForIds = new Set<string>();
       for (const tag of sfTags) {
-        if (getTagName(tag) === 'label') {
+        if (getTagName(tag) === "label") {
           const attrs = getJsxAttributeMap(tag);
-          const forVal = getJsxAttrStringValue(attrs.get('htmlfor') ?? attrs.get('for'));
+          const forVal = getJsxAttrStringValue(
+            attrs.get("htmlfor") ?? attrs.get("for"),
+          );
           if (forVal) labelForIds.add(forVal);
         }
       }
 
       const inputs = sfTags.filter((t) =>
-        ['input', 'select', 'textarea'].includes(getTagName(t)),
+        ["input", "select", "textarea"].includes(getTagName(t)),
       );
 
       for (const input of inputs) {
         checkedInputCount++;
         const attrs = getJsxAttributeMap(input);
-        const paramDesc = getJsxAttrStringValue(attrs.get('toolparamdescription'));
+        const paramDesc = getJsxAttrStringValue(
+          attrs.get("toolparamdescription"),
+        );
         const hasParamDesc = Boolean(paramDesc && paramDesc.trim().length > 0);
 
-        const idVal = getJsxAttrStringValue(attrs.get('id'));
-        const hasAssociatedLabelByFor = Boolean(idVal && labelForIds.has(idVal));
+        const idVal = getJsxAttrStringValue(attrs.get("id"));
+        const hasAssociatedLabelByFor = Boolean(
+          idVal && labelForIds.has(idVal),
+        );
 
         const hasWrappingLabel = input
           .getAncestors()
           .some(
             (anc) =>
               anc.isKind(SyntaxKind.JsxElement) &&
-              anc.getOpeningElement().getTagNameNode().getText() === 'label',
+              anc.getOpeningElement().getTagNameNode().getText() === "label",
           );
 
         const hasFieldsetParamDesc = input.getAncestors().some((anc) => {
           if (!anc.isKind(SyntaxKind.JsxElement)) return false;
           const opening = anc.getOpeningElement();
-          if (opening.getTagNameNode().getText() !== 'fieldset') return false;
+          if (opening.getTagNameNode().getText() !== "fieldset") return false;
           const fsAttrs = getJsxAttributeMap(opening);
-          const fsDesc = getJsxAttrStringValue(fsAttrs.get('toolparamdescription'));
+          const fsDesc = getJsxAttrStringValue(
+            fsAttrs.get("toolparamdescription"),
+          );
           return Boolean(fsDesc && fsDesc.trim().length > 0);
         });
 
         expect(
-          hasParamDesc || hasAssociatedLabelByFor || hasWrappingLabel || hasFieldsetParamDesc,
+          hasParamDesc ||
+            hasAssociatedLabelByFor ||
+            hasWrappingLabel ||
+            hasFieldsetParamDesc,
         ).toBe(true);
       }
     }
 
     for (const { document } of docs) {
-      const forms = Array.from(document.querySelectorAll('form'));
+      const forms = Array.from(document.querySelectorAll("form"));
       for (const form of forms as any[]) {
-        const inputs = Array.from(form.querySelectorAll('input, select, textarea'));
+        const inputs = Array.from(
+          form.querySelectorAll("input, select, textarea"),
+        );
         for (const input of inputs as any[]) {
           checkedInputCount++;
-          const paramDesc = input.getAttribute('toolparamdescription');
-          const hasParamDesc = Boolean(paramDesc && paramDesc.trim().length > 0);
-          const id = input.getAttribute('id');
-          const hasLabelFor = Boolean(id && document.querySelector(`label[for="${id}"]`));
-          const hasWrappingLabel = Boolean(input.closest('label'));
-          const hasFieldsetDesc = Boolean(input.closest('fieldset[toolparamdescription]'));
-          expect(hasParamDesc || hasLabelFor || hasWrappingLabel || hasFieldsetDesc).toBe(true);
+          const paramDesc = input.getAttribute("toolparamdescription");
+          const hasParamDesc = Boolean(
+            paramDesc && paramDesc.trim().length > 0,
+          );
+          const id = input.getAttribute("id");
+          const hasLabelFor = Boolean(
+            id && document.querySelector(`label[for="${id}"]`),
+          );
+          const hasWrappingLabel = Boolean(input.closest("label"));
+          const hasFieldsetDesc = Boolean(
+            input.closest("fieldset[toolparamdescription]"),
+          );
+          expect(
+            hasParamDesc || hasLabelFor || hasWrappingLabel || hasFieldsetDesc,
+          ).toBe(true);
         }
       }
     }
@@ -189,7 +228,7 @@ test.describe('agentic-forms Target Grader', () => {
     expect(checkedInputCount).toBeGreaterThan(0);
   });
 
-  test('The submit event listener uses event.preventDefault()', () => {
+  test("The submit event listener uses event.preventDefault()", () => {
     const project = getJsProject(targetFiles);
     const callExpressions = project
       .getSourceFiles()
@@ -199,21 +238,21 @@ test.describe('agentic-forms Target Grader', () => {
       const expr = call.getExpression();
       return (
         expr.isKind(SyntaxKind.PropertyAccessExpression) &&
-        expr.getName() === 'preventDefault'
+        expr.getName() === "preventDefault"
       );
     });
 
     expect(hasPreventDefault).toBe(true);
   });
 
-  test('The submit event listener checks event.agentInvoked', () => {
+  test("The submit event listener checks event.agentInvoked", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasAgentInvokedPropAccess = sourceFiles.some((sf) =>
       sf
         .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-        .some((prop) => prop.getName() === 'agentInvoked'),
+        .some((prop) => prop.getName() === "agentInvoked"),
     );
 
     const hasAgentInvokedBinding = sourceFiles.some((sf) =>
@@ -221,15 +260,15 @@ test.describe('agentic-forms Target Grader', () => {
         .getDescendantsOfKind(SyntaxKind.BindingElement)
         .some(
           (b) =>
-            b.getNameNode().getText() === 'agentInvoked' ||
-            b.getPropertyNameNode()?.getText() === 'agentInvoked',
+            b.getNameNode().getText() === "agentInvoked" ||
+            b.getPropertyNameNode()?.getText() === "agentInvoked",
         ),
     );
 
     expect(hasAgentInvokedPropAccess || hasAgentInvokedBinding).toBe(true);
   });
 
-  test('The submit event listener calls event.respondWith() with a Promise', () => {
+  test("The submit event listener calls event.respondWith() with a Promise", () => {
     const project = getJsProject(targetFiles);
     const callExpressions = project
       .getSourceFiles()
@@ -238,7 +277,7 @@ test.describe('agentic-forms Target Grader', () => {
     const respondWithCalls = callExpressions.filter((call) => {
       const expr = call.getExpression();
       if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
-        return expr.getName() === 'respondWith';
+        return expr.getName() === "respondWith";
       }
       return false;
     });
@@ -250,11 +289,11 @@ test.describe('agentic-forms Target Grader', () => {
     }
   });
 
-  test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
+  test("The :tool-form-active pseudo-class is used to provide visual feedback", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const matchingRules = styleRules.filter((rule) =>
-      rule.selectorText.includes(':tool-form-active'),
+      rule.selectorText.includes(":tool-form-active"),
     );
 
     expect(matchingRules.length).toBeGreaterThan(0);
@@ -262,25 +301,35 @@ test.describe('agentic-forms Target Grader', () => {
     expect(hasDeclarations).toBe(true);
   });
 
-  test('The :tool-submit-active pseudo-class is used to provide visual feedback for forms without toolautosubmit', () => {
+  test("The :tool-submit-active pseudo-class is used to provide visual feedback for forms without toolautosubmit", () => {
     const project = getJsProject(targetFiles);
     const docs = getHtmlDocuments(targetFiles);
 
     const validJsxForms = getAllJsxTags(project)
-      .filter((tag) => getTagName(tag) === 'form')
+      .filter((tag) => getTagName(tag) === "form")
       .filter((form) => {
         const attrs = getJsxAttributeMap(form);
-        const toolName = getJsxAttrStringValue(attrs.get('toolname'));
-        const toolDesc = getJsxAttrStringValue(attrs.get('tooldescription'));
-        return Boolean(toolName && toolName.trim().length > 0 && toolDesc && toolDesc.trim().length > 0);
+        const toolName = getJsxAttrStringValue(attrs.get("toolname"));
+        const toolDesc = getJsxAttrStringValue(attrs.get("tooldescription"));
+        return Boolean(
+          toolName &&
+          toolName.trim().length > 0 &&
+          toolDesc &&
+          toolDesc.trim().length > 0,
+        );
       });
 
     const validHtmlForms = docs
-      .flatMap((d) => Array.from(d.document.querySelectorAll('form')))
+      .flatMap((d) => Array.from(d.document.querySelectorAll("form")))
       .filter((form: any) => {
-        const toolName = form.getAttribute('toolname');
-        const toolDesc = form.getAttribute('tooldescription');
-        return Boolean(toolName && toolName.trim().length > 0 && toolDesc && toolDesc.trim().length > 0);
+        const toolName = form.getAttribute("toolname");
+        const toolDesc = form.getAttribute("tooldescription");
+        return Boolean(
+          toolName &&
+          toolName.trim().length > 0 &&
+          toolDesc &&
+          toolDesc.trim().length > 0,
+        );
       });
 
     expect(validJsxForms.length + validHtmlForms.length).toBeGreaterThan(0);
@@ -288,20 +337,21 @@ test.describe('agentic-forms Target Grader', () => {
     const formsWithoutAutoSubmitCount =
       validJsxForms.filter((form) => {
         const attrs = getJsxAttributeMap(form);
-        if (!attrs.has('toolautosubmit')) return true;
-        const val = getJsxAttrStringValue(attrs.get('toolautosubmit'));
-        return val === null || val.trim().toLowerCase() === 'false';
+        if (!attrs.has("toolautosubmit")) return true;
+        const val = getJsxAttrStringValue(attrs.get("toolautosubmit"));
+        return val === null || val.trim().toLowerCase() === "false";
       }).length +
       validHtmlForms.filter((form: any) => {
-        if (!form.hasAttribute('toolautosubmit')) return true;
-        const val = form.getAttribute('toolautosubmit');
-        return val !== null && val.trim().toLowerCase() === 'false';
+        if (!form.hasAttribute("toolautosubmit")) return true;
+        const val = form.getAttribute("toolautosubmit");
+        return val !== null && val.trim().toLowerCase() === "false";
       }).length;
 
     const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasSubmitActiveRule = styleRules.some(
       (rule) =>
-        rule.selectorText.includes(':tool-submit-active') && rule.style.length > 0,
+        rule.selectorText.includes(":tool-submit-active") &&
+        rule.style.length > 0,
     );
 
     expect(formsWithoutAutoSubmitCount === 0 || hasSubmitActiveRule).toBe(true);

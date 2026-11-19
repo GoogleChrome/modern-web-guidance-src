@@ -53,10 +53,10 @@
   </form>
   <script>
     const dropdown = document.getElementById('country');
-    
+
     dropdown.classList.add('error');
     dropdown.setAttribute('aria-invalid', 'true');
-    
+
     dropdown.addEventListener('change', function(e) {
       if (!e.target.value) {
         e.target.classList.add('error');

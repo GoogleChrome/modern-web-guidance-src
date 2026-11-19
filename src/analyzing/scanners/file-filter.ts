@@ -1,33 +1,33 @@
-import { posix } from 'node:path';
+import { posix } from "node:path";
 
 export const BUILD_OR_INSTALL_DIR_SEGMENTS: ReadonlySet<string> = new Set([
-  'node_modules',
-  'dist',
-  'build',
-  'out',
-  '_generated',
-  'coverage',
-  'venv',
-  'test-results',
-  'playwright-report',
-  'tmp',
-  'temp',
-  'gen',
-  'generated',
-  'snapshots',
-  'extracted_snapshots',
+  "node_modules",
+  "dist",
+  "build",
+  "out",
+  "_generated",
+  "coverage",
+  "venv",
+  "test-results",
+  "playwright-report",
+  "tmp",
+  "temp",
+  "gen",
+  "generated",
+  "snapshots",
+  "extracted_snapshots",
 ]);
 
 const CHECKED_IN_VENDOR_DIR_SEGMENTS: ReadonlySet<string> = new Set([
-  'vendor',
-  'third_party',
-  'third-party',
-  'external',
-  'bower_components',
-  'jspm_packages',
-  'bundle',
-  'libs',
-  'non-npm',
+  "vendor",
+  "third_party",
+  "third-party",
+  "external",
+  "bower_components",
+  "jspm_packages",
+  "bundle",
+  "libs",
+  "non-npm",
 ]);
 
 const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
@@ -36,41 +36,41 @@ const VENDORED_DIR_SEGMENTS: ReadonlySet<string> = new Set([
 ]);
 
 export const CORPUS_NON_APP_DIR_SEGMENTS: ReadonlySet<string> = new Set([
-  'docs',
-  'doc',
-  'site',
-  'website',
-  'gh-pages',
-  'gen',
-  'generated',
+  "docs",
+  "doc",
+  "site",
+  "website",
+  "gh-pages",
+  "gen",
+  "generated",
 ]);
 
 export const DOCS_AND_TESTS_DIR_SEGMENTS: ReadonlySet<string> = new Set([
-  'docs',
-  'doc',
-  'examples',
-  'example',
-  'demo',
-  'demos',
-  'test',
-  'tests',
-  '__tests__',
-  'spec',
-  'specs',
-  'fixtures',
-  '__fixtures__',
+  "docs",
+  "doc",
+  "examples",
+  "example",
+  "demo",
+  "demos",
+  "test",
+  "tests",
+  "__tests__",
+  "spec",
+  "specs",
+  "fixtures",
+  "__fixtures__",
 ]);
 
 const TEST_OR_SPEC_FILE_RE = /(?:^|\.)(?:test|spec)\./i;
 
 function normalizePath(relPath: string): string {
-  return relPath.replace(/\\/g, '/').toLowerCase();
+  return relPath.replace(/\\/g, "/").toLowerCase();
 }
 
 function splitPathSegments(relPath: string): string[] {
   return normalizePath(relPath)
-    .split('/')
-    .filter((s) => s && s !== '.' && s !== '..');
+    .split("/")
+    .filter((s) => s && s !== "." && s !== "..");
 }
 
 function hasMatchingDirSegment(
@@ -80,15 +80,15 @@ function hasMatchingDirSegment(
   const segments = splitPathSegments(relPath);
   return (
     segments.slice(0, -1).some((seg) => segmentsSet.has(seg)) ||
-    (segments.length === 1 && segmentsSet.has(segments[0] ?? ''))
+    (segments.length === 1 && segmentsSet.has(segments[0] ?? ""))
   );
 }
 
 function hasDotDirSegment(relPath: string): boolean {
-  const segments = relPath.replace(/\\/g, '/').split('/');
+  const segments = relPath.replace(/\\/g, "/").split("/");
   return segments
     .slice(0, -1)
-    .some((seg) => seg !== '.' && seg !== '..' && seg.startsWith('.'));
+    .some((seg) => seg !== "." && seg !== ".." && seg.startsWith("."));
 }
 
 /**
@@ -102,112 +102,112 @@ export function isDocsOrTestsPath(relPath: string): boolean {
   }
   return (
     segments.slice(0, -1).some((seg) => DOCS_AND_TESTS_DIR_SEGMENTS.has(seg)) ||
-    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? '')
+    TEST_OR_SPEC_FILE_RE.test(segments.at(-1) ?? "")
   );
 }
 
 const DEFAULT_IGNORED_EXTENSIONS: readonly string[] = [
-  '.min.js',
-  '.min.css',
-  '.bundle.js',
-  '.bundle.css',
-  '.pack.js',
-  '-opt.js',
-  '.opt.js',
-  '.map',
-  '.d.ts',
+  ".min.js",
+  ".min.css",
+  ".bundle.js",
+  ".bundle.css",
+  ".pack.js",
+  "-opt.js",
+  ".opt.js",
+  ".map",
+  ".d.ts",
 ];
 
 export const JS_RULE_EXTENSIONS = [
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.html',
-  '.htm',
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".jsx",
+  ".tsx",
+  ".vue",
+  ".svelte",
+  ".astro",
+  ".html",
+  ".htm",
 ] as const;
 
 export const CSS_RULE_EXTENSIONS = [
-  '.css',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.html',
-  '.htm',
+  ".css",
+  ".vue",
+  ".svelte",
+  ".astro",
+  ".html",
+  ".htm",
 ] as const;
 
 export const DOM_RULE_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.jsx',
-  '.tsx',
+  ".html",
+  ".htm",
+  ".vue",
+  ".svelte",
+  ".astro",
+  ".jsx",
+  ".tsx",
 ] as const;
 
-export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
+export const DEPENDENCY_RULE_FILENAMES = ["package.json"] as const;
 
 const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.mts',
-  '.cts',
-  '.jsx',
-  '.tsx',
-  '.html',
-  '.htm',
-  '.php',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.css',
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".jsx",
+  ".tsx",
+  ".html",
+  ".htm",
+  ".php",
+  ".vue",
+  ".svelte",
+  ".astro",
+  ".css",
 ]);
 
 const CANDIDATE_VENDORED_EXTENSIONS: ReadonlySet<string> = new Set([
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.css',
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".css",
 ]);
 
 /**
  * Well-known vendored third-party library filenames (unminified copies checked into repos).
  */
 const VENDORED_LIBRARY_FILENAMES: ReadonlySet<string> = new Set([
-  'bundle.js',
-  'bootstrap.js',
-  'bootstrap.bundle.js',
-  'bootstrap-sprockets.js',
-  'jquery.js',
-  'jquery-ui.js',
-  'moment.js',
-  'moment-with-locales.js',
-  'moment-with-cn.js',
-  'dayjs.js',
-  'codemirror.js',
-  'popper.js',
-  'zepto.js',
-  'underscore.js',
-  'lodash.js',
-  'modernizr.js',
-  'prism.js',
-  'highlight.js',
-  'chosen.jquery.js',
-  'select2.js',
-  'select2.full.js',
-  'tablesaw.js',
-  'tablesaw.jquery.js',
-  'humanize-duration.js',
+  "bundle.js",
+  "bootstrap.js",
+  "bootstrap.bundle.js",
+  "bootstrap-sprockets.js",
+  "jquery.js",
+  "jquery-ui.js",
+  "moment.js",
+  "moment-with-locales.js",
+  "moment-with-cn.js",
+  "dayjs.js",
+  "codemirror.js",
+  "popper.js",
+  "zepto.js",
+  "underscore.js",
+  "lodash.js",
+  "modernizr.js",
+  "prism.js",
+  "highlight.js",
+  "chosen.jquery.js",
+  "select2.js",
+  "select2.full.js",
+  "tablesaw.js",
+  "tablesaw.jquery.js",
+  "humanize-duration.js",
 ]);
 
 const VENDORED_MOMENT_FILENAME_RE =
@@ -219,14 +219,14 @@ const VENDORED_CHUI_STYLESHEET_RE = /^chui[.-].*\.css$/i;
  * Vendored library directory segments that frequently appear in source trees.
  */
 const VENDORED_DIRECTORY_SUBPATHS: readonly string[] = [
-  '/dayjs/esm/',
-  '/dayjs/plugin/',
-  '/codemirror/',
-  '/jquery-ui/',
-  '/tinymce/',
-  '/ckeditor/',
-  '/mathjax/',
-  '/dokka/',
+  "/dayjs/esm/",
+  "/dayjs/plugin/",
+  "/codemirror/",
+  "/jquery-ui/",
+  "/tinymce/",
+  "/ckeditor/",
+  "/mathjax/",
+  "/dokka/",
 ];
 
 /**
@@ -263,7 +263,9 @@ export interface FileFilterOptions {
  */
 export function isExcludedCorpusNonAppPath(relPath: string): boolean {
   const normalized = normalizePath(relPath);
-  const withLeadingSlash = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  const withLeadingSlash = normalized.startsWith("/")
+    ? normalized
+    : `/${normalized}`;
   const base = posix.basename(normalized);
 
   return (
@@ -271,7 +273,9 @@ export function isExcludedCorpusNonAppPath(relPath: string): boolean {
     VENDORED_MOMENT_FILENAME_RE.test(base) ||
     VENDORED_MODERNIZR_FILENAME_RE.test(base) ||
     VENDORED_CHUI_STYLESHEET_RE.test(base) ||
-    VENDORED_DIRECTORY_SUBPATHS.some((subpath) => withLeadingSlash.includes(subpath)) ||
+    VENDORED_DIRECTORY_SUBPATHS.some((subpath) =>
+      withLeadingSlash.includes(subpath),
+    ) ||
     HASHED_ASSET_DIR_RE.test(withLeadingSlash)
   );
 }
@@ -303,7 +307,8 @@ export function isVendoredOrGeneratedPath(
     isExcludedCorpusNonAppPath(normalized) ||
     hasDotDirSegment(normalized) ||
     hasMatchingDirSegment(normalized, ignoredDirs) ||
-    (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized)) ||
+    (options?.excludeCorpusNonAppDirs === true &&
+      isCorpusNonAppPath(normalized)) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext))
   );
 }
@@ -318,11 +323,14 @@ function isLongCodeLine(
     return false;
   }
   const hasInlineAsset = INLINE_ASSET_LINE_REGEX.test(line);
-  if (hasInlineAsset && (trimmed.startsWith('<svg') || trimmed.startsWith('data:'))) {
+  if (
+    hasInlineAsset &&
+    (trimmed.startsWith("<svg") || trimmed.startsWith("data:"))
+  ) {
     return false;
   }
   if (!isSingleLine || hasInlineAsset) {
-    return line.replace(STRING_LITERAL_REGEX, '').length > maxLineLength;
+    return line.replace(STRING_LITERAL_REGEX, "").length > maxLineLength;
   }
   return true;
 }
@@ -335,7 +343,7 @@ export function isMinifiedContent(
   content: string,
   maxLineLength: number = MAX_UNMINIFIED_LINE_LENGTH,
 ): boolean {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const isSingleLine = lines.length <= 1;
   const nonEmptyLengths: number[] = [];
   let longLineCount = 0;
@@ -362,7 +370,8 @@ export function isMinifiedContent(
     const longLineFraction = longLineCount / nonEmptyLengths.length;
     nonEmptyLengths.sort((a, b) => a - b);
     const p90Index = Math.floor(nonEmptyLengths.length * 0.9);
-    const p90 = nonEmptyLengths[Math.min(p90Index, nonEmptyLengths.length - 1)] ?? 0;
+    const p90 =
+      nonEmptyLengths[Math.min(p90Index, nonEmptyLengths.length - 1)] ?? 0;
     if (longLineFraction < 0.05 && p90 < 160) {
       return false;
     }
@@ -387,21 +396,23 @@ export function hasVendoredLicenseHeader(
   }
   const headerSlice = match[0];
 
-  if (!headerSlice.includes('/*!') && !VENDOR_LICENSE_REGEX.test(headerSlice)) {
+  if (!headerSlice.includes("/*!") && !VENDOR_LICENSE_REGEX.test(headerSlice)) {
     return false;
   }
 
   const sanitizedForVersion = headerSlice
-    .replace(LICENSE_URL_REGEX, '')
-    .replace(SPDX_LICENSE_REGEX, '')
-    .replace(LICENSE_NAME_VERSION_REGEX, '');
+    .replace(LICENSE_URL_REGEX, "")
+    .replace(SPDX_LICENSE_REGEX, "")
+    .replace(LICENSE_NAME_VERSION_REGEX, "");
   if (!VENDOR_VERSION_REGEX.test(sanitizedForVersion)) {
     return false;
   }
 
   if (options?.ownNames && options.ownNames.length > 0) {
     const headerLower = headerSlice.toLowerCase();
-    if (options.ownNames.some((name) => headerLower.includes(name.toLowerCase()))) {
+    if (
+      options.ownNames.some((name) => headerLower.includes(name.toLowerCase()))
+    ) {
       return false;
     }
   }
@@ -427,16 +438,19 @@ export function shouldScanFile(
   }
 
   const normalized = normalizePath(relPath);
-  if (!normalized.endsWith('package.json')) {
-    const dotIdx = normalized.lastIndexOf('.');
-    if (dotIdx === -1 || !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))) {
+  if (!normalized.endsWith("package.json")) {
+    const dotIdx = normalized.lastIndexOf(".");
+    if (
+      dotIdx === -1 ||
+      !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))
+    ) {
       return false;
     }
   }
 
   if (content !== undefined) {
     if (
-      Buffer.byteLength(content, 'utf8') > MAX_SOURCE_FILE_BYTES ||
+      Buffer.byteLength(content, "utf8") > MAX_SOURCE_FILE_BYTES ||
       isMinifiedContent(content, options?.maxLineLength) ||
       hasVendoredLicenseHeader(content, options)
     ) {
@@ -474,7 +488,7 @@ export function isCandidateVendoredFile(
   content?: string,
 ): boolean {
   const normalized = normalizePath(relPath);
-  const dotIndex = normalized.lastIndexOf('.');
+  const dotIndex = normalized.lastIndexOf(".");
   if (
     dotIndex === -1 ||
     !CANDIDATE_VENDORED_EXTENSIONS.has(normalized.slice(dotIndex)) ||
@@ -486,6 +500,7 @@ export function isCandidateVendoredFile(
     isCheckedInVendorPath(normalized) ||
     DEFAULT_IGNORED_EXTENSIONS.some((ext) => normalized.endsWith(ext)) ||
     isExcludedCorpusNonAppPath(normalized) ||
-    (content !== undefined && (isMinifiedContent(content) || hasVendoredLicenseHeader(content)))
+    (content !== undefined &&
+      (isMinifiedContent(content) || hasVendoredLicenseHeader(content)))
   );
 }

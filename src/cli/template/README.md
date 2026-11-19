@@ -6,7 +6,7 @@
 
 [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance) is a set of skills that embed web platform expertise, best practices, and browser compatibility data directly into your coding agents. It helps to steer your coding agents away from legacy patterns, and instead toward solutions that harness the power and capabilities of the modern web platform.
 
-*Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community.*
+_Stewarded by the Google Chrome, Microsoft Edge, Mozilla Firefox, and MDN teams, alongside the web development community._
 
 [Documentation](https://developer.chrome.com/docs/modern-web-guidance) · [Eval Dashboard](https://googlechrome.github.io/modern-web-guidance-src/) · [Source Code](https://github.com/GoogleChrome/modern-web-guidance-src) · [Report an Issue](https://github.com/GoogleChrome/modern-web-guidance-src/issues)
 
@@ -38,9 +38,10 @@ Coding agents often default to older patterns because LLM training data contains
 Even if a model knows an API exists, it often lacks the density of real-world, modern implementation patterns required for production-ready code.
 
 **Modern Web Guidance bridges this gap.** Our skill's CLI returns targeted, expert-curated guidelines directly into your agent's context window, focusing on:
-* **Modern Browser APIs**: Helping models correctly structure APIs they frequently misuse.
-* **Performance & Accessibility**: Preferring platform-level APIs that can be optimized by the browser and include built-in accessibility affordances.
-* **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
+
+- **Modern Browser APIs**: Helping models correctly structure APIs they frequently misuse.
+- **Performance & Accessibility**: Preferring platform-level APIs that can be optimized by the browser and include built-in accessibility affordances.
+- **Responsible Fallbacks**: Guiding models to use sensible, lightweight fallbacks instead of heavy polyfills or legacy libraries.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> What's Included?
 
@@ -86,19 +87,19 @@ _View an example:_ [the `navigation-drawer` guide](https://github.com/GoogleChro
 
 ### Safe Adoption of Modern Features
 
-* **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
-* **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
-* **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
-* **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support.
-* **Origin Trial & Volatile Feature Gates**: Guides covering experimental **Origin Trial** APIs or **volatile features** (single-engine features shipped within the last 3 months or still stabilizing) remain discoverable via `search`, but are gated on `retrieve` so agents do not adopt unstable APIs without explicit developer consent.
+- **Progressive Enhancement & Nuanced Fallbacks**: We distinguish between purely additive enhancements (like speculative preloading) which are safe to let older browsers silently ignore, and critical behaviors (like dialog controls or network beacons) where we write highly considered, low-overhead fallbacks.
+- **Responsible Fallbacks**: We prioritize lightweight, case-specific custom fallbacks (<50 LOC) or conditionally-loaded polyfills instead of heavy third-party bundles.
+- **Gotchas & Quirks**: We document hidden platform limitations, such as the 64KB payload quota for `fetchLater()` or macOS-specific scrollbar behaviors.
+- **Baseline-Aware Integration**: We leverage real-time compatibility data from the **Baseline** project so agents dynamically adapt to current browser support.
+- **Origin Trial & Volatile Feature Gates**: Guides covering experimental **Origin Trial** APIs or **volatile features** (single-engine features shipped within the last 3 months or still stabilizing) remain discoverable via `search`, but are gated on `retrieve` so agents do not adopt unstable APIs without explicit developer consent.
 
 ### Project Configuration (`.mwgrc`)
 
 Configure Origin Trial and volatile feature opt-ins for a repository with an optional `.mwgrc` JSON file in your project root (or `~/.mwgrc` as a user-level fallback), which you can commit to share across your team:
 
-| CLI Command | `.mwgrc` Key | Effect |
-| :--- | :--- | :--- |
-| `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs. |
+| CLI Command                                                  | `.mwgrc` Key                    | Effect                                              |
+| :----------------------------------------------------------- | :------------------------------ | :-------------------------------------------------- |
+| `npx modern-web-guidance@latest set-allow-origin-trials`     | `"allowOriginTrials": true`     | Unlocks guides for experimental Origin Trial APIs.  |
 | `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features. |
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
@@ -119,6 +120,7 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 ```shell
 npx skills add GoogleChrome/modern-web-guidance
 ```
+
 </details>
 
 <details>
@@ -127,6 +129,7 @@ npx skills add GoogleChrome/modern-web-guidance
 ```shell
 gh skill install GoogleChrome/modern-web-guidance
 ```
+
 </details>
 
 <details>
@@ -135,6 +138,7 @@ gh skill install GoogleChrome/modern-web-guidance
 ```shell
 agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```
+
 </details>
 
 <details>
@@ -144,6 +148,7 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 /plugin marketplace add GoogleChrome/modern-web-guidance
 /plugin install modern-web-guidance@googlechrome
 ```
+
 </details>
 
 <details>
@@ -155,6 +160,7 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 /plugin  # Select GoogleChrome marketplace, press enter, enable AutoUpdate
 /reload-plugins
 ```
+
 </details>
 
 <details>
@@ -163,6 +169,7 @@ agy plugin install https://github.com/GoogleChrome/modern-web-guidance
 ```shell
 grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 ```
+
 </details>
 
 <details>
@@ -171,6 +178,7 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 ```shell
 /plugins install https://github.com/GoogleChrome/modern-web-guidance
 ```
+
 </details>
 
 <details>
@@ -180,6 +188,7 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 codex plugin marketplace add GoogleChrome/modern-web-guidance
 codex plugin add modern-web-guidance@googlechrome
 ```
+
 </details>
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
@@ -218,7 +227,6 @@ Explore full per-agent and per-guide breakdowns on the **[Eval Dashboard](https:
 <!-- INJECT_EVAL_RESULTS_START -->
 <!-- INJECT_EVAL_RESULTS_END -->
 
-
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/boxes.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Available Skill Packs
 
 You can customize which skill packs are installed using the `--choose` flag:
@@ -227,8 +235,8 @@ You can customize which skill packs are installed using the `--choose` flag:
 npx modern-web-guidance@latest install --choose
 ```
 
-* **`modern-web-guidance`** (~205 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
-* **`chrome-extensions`** (~175 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
+- **`modern-web-guidance`** (~205 tokens): Comprehensive guidance on modern browser APIs, layouts, and performance.
+- **`chrome-extensions`** (~175 tokens): Guidance on Manifest V3, background workers, extension APIs, and Chrome Web Store publishing.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/lock.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Telemetry & Privacy
 
@@ -236,6 +244,7 @@ Google collects anonymous usage information to improve the tool's reliability, r
 
 > [!TIP]
 > **To Opt-Out:** set the `DISABLE_TELEMETRY=1` env variable in your shell profile (e.g., `.bashrc` or `.zshrc`):
+>
 > ```bash
 > export DISABLE_TELEMETRY=1
 > ```
@@ -252,10 +261,11 @@ Huge thanks to everyone who has contributed!
   <img src="https://contrib.rocks/image?repo=GoogleChrome/modern-web-guidance-src&max=101" />
 </a>
 
-## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;">  License
+## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/file-text.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> License
 
 Unless otherwise noted:
-* Software code in this project is licensed under the [Apache License 2.0](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/LICENSE).
-* Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+
+- Software code in this project is licensed under the [Apache License 2.0](https://github.com/GoogleChrome/modern-web-guidance-src/blob/main/LICENSE).
+- Documentation and guide content under `guides/` are licensed under [Creative Commons Attribution 4.0 International (CC-BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 
 Portions of the documentation in this project are derived from [MDN Web Docs](https://developer.mozilla.org/) by Mozilla Contributors and [W3C](https://www.w3.org/), [WHATWG](https://whatwg.org), and [IETF](https://www.ietf.org) specifications.

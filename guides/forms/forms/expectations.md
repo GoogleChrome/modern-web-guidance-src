@@ -34,7 +34,7 @@
 - The implementation MUST use CSS pseudo-classes like `:user-invalid` for non-intrusive styling.
 - The implementation MUST use the ValidityState API (`setCustomValidity`) for custom messaging.
 - The implementation MUST NOT disable submit buttons to block validation.
-- The implementation MUST disable the button *after* a valid submission is clicked.
+- The implementation MUST disable the button _after_ a valid submission is clicked.
 - The implementation MUST NOT show validation errors during active typing on the `input` event (except to clear errors).
 - The implementation MUST run checks and show errors on `blur` or `focusout`.
 - The implementation MUST block invalid payloads on `submit` and route focus to the error summary or first error field.

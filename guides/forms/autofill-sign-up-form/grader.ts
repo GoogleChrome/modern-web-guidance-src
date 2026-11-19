@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -14,11 +14,13 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
-
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -30,35 +32,55 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Input elements are within a `<form>` element.', async ({ page }) => {
+  test("Input elements are within a `<form>` element.", async ({ page }) => {
     const allInputsInForm = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('input'));
+      const inputs = Array.from(document.querySelectorAll("input"));
       if (inputs.length === 0) return false;
-      return inputs.every(i => !!i.closest('form'));
+      return inputs.every((i) => !!i.closest("form"));
     });
     expect(allInputsInForm).toBe(true);
   });
 
-  test('The form has a submit button using `<button>` or `<input type="submit">`.', async ({ page }) => {
-    await expect(page.locator('form button:not([type]), form button[type="submit"], form input[type="submit"]').first()).toBeVisible();
+  test('The form has a submit button using `<button>` or `<input type="submit">`.', async ({
+    page,
+  }) => {
+    await expect(
+      page
+        .locator(
+          'form button:not([type]), form button[type="submit"], form input[type="submit"]',
+        )
+        .first(),
+    ).toBeVisible();
   });
 
-  test('Every `<input>` in the form is labeled using a `<label>` element.', async ({ page }) => {
+  test("Every `<input>` in the form is labeled using a `<label>` element.", async ({
+    page,
+  }) => {
     const allLabeled = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('form input:not([type="submit"]):not([type="button"]):not([type="hidden"])'));
+      const inputs = Array.from(
+        document.querySelectorAll(
+          'form input:not([type="submit"]):not([type="button"]):not([type="hidden"])',
+        ),
+      );
       if (inputs.length === 0) return false;
-      return inputs.every(i => !!document.querySelector(`label[for="${i.id}"]`) || !!i.closest('label'));
+      return inputs.every(
+        (i) =>
+          !!document.querySelector(`label[for="${i.id}"]`) ||
+          !!i.closest("label"),
+      );
     });
     expect(allLabeled).toBe(true);
   });
 
-  test('Every `<label>` has a `for` attribute matching an input `id`.', async ({ page }) => {
+  test("Every `<label>` has a `for` attribute matching an input `id`.", async ({
+    page,
+  }) => {
     const labelsValid = await page.evaluate(() => {
-      const labels = Array.from(document.querySelectorAll('label'));
+      const labels = Array.from(document.querySelectorAll("label"));
       if (labels.length === 0) return false;
-      return labels.every(l => {
-        const forId = l.getAttribute('for');
-        return forId && document.getElementById(forId)?.tagName === 'INPUT';
+      return labels.every((l) => {
+        const forId = l.getAttribute("for");
+        return forId && document.getElementById(forId)?.tagName === "INPUT";
       });
     });
     expect(labelsValid).toBe(true);
@@ -69,43 +91,58 @@ test.describe(`Autofill Sign-up Form Expectations: ${demoName}`, () => {
   });
 
   test('The email input has `autocomplete="username"`.', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toHaveAttribute('autocomplete', /\busername\b/);
+    await expect(page.locator('input[type="email"]').first()).toHaveAttribute(
+      "autocomplete",
+      /\busername\b/,
+    );
   });
 
   test('The password input has `type="password"`.', async ({ page }) => {
     await expect(page.locator('input[type="password"]').first()).toBeVisible();
   });
 
-  test('The password input has `autocomplete="new-password"`.', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveAttribute('autocomplete', /\bnew-password\b/);
+  test('The password input has `autocomplete="new-password"`.', async ({
+    page,
+  }) => {
+    await expect(
+      page.locator('input[type="password"]').first(),
+    ).toHaveAttribute("autocomplete", /\bnew-password\b/);
   });
 
-  test('The email input has the `required` attribute.', async ({ page }) => {
-    await expect(page.locator('input[type="email"]').first()).toHaveJSProperty('required', true);
+  test("The email input has the `required` attribute.", async ({ page }) => {
+    await expect(page.locator('input[type="email"]').first()).toHaveJSProperty(
+      "required",
+      true,
+    );
   });
 
-  test('The password input has the `required` attribute.', async ({ page }) => {
-    await expect(page.locator('input[type="password"]').first()).toHaveJSProperty('required', true);
+  test("The password input has the `required` attribute.", async ({ page }) => {
+    await expect(
+      page.locator('input[type="password"]').first(),
+    ).toHaveJSProperty("required", true);
   });
 
-  test('There is exactly one email input.', async ({ page }) => {
+  test("There is exactly one email input.", async ({ page }) => {
     await expect(page.locator('input[type="email"]')).toHaveCount(1);
   });
 
-  test('There is exactly one password input.', async ({ page }) => {
+  test("There is exactly one password input.", async ({ page }) => {
     await expect(page.locator('input[type="password"]')).toHaveCount(1);
   });
 
-  test('Name input pattern allows Unicode characters and does not restrict to Latin-only.', async ({ page }) => {
+  test("Name input pattern allows Unicode characters and does not restrict to Latin-only.", async ({
+    page,
+  }) => {
     const isValid = await page.evaluate(() => {
-      const form = document.querySelector('form');
+      const form = document.querySelector("form");
       if (!form) return false;
-      const nameInput = form.querySelector<HTMLInputElement>('input[autocomplete*="name"], input[id*="name"], input[name*="name"]');
-      const pattern = nameInput?.getAttribute('pattern');
+      const nameInput = form.querySelector<HTMLInputElement>(
+        'input[autocomplete*="name"], input[id*="name"], input[name*="name"]',
+      );
+      const pattern = nameInput?.getAttribute("pattern");
       if (!pattern) return true;
-      return new RegExp(`^(?:${pattern})$`, 'u').test('Renée');
+      return new RegExp(`^(?:${pattern})$`, "u").test("Renée");
     });
     expect(isValid).toBe(true);
   });
-
 });

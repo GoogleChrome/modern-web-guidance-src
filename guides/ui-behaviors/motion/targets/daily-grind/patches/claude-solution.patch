@@ -8,12 +8,12 @@ index 66c9173..2682f48 100644
        --light: #fafafa;
 +      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
      }
- 
+
      * {
 @@ -40,6 +41,30 @@
        z-index: 1000;
      }
- 
+
 +    /* Non-essential scroll progress indicator, driven by the scroll timeline */
 +    nav::after {
 +      content: "";
@@ -43,7 +43,7 @@ index 66c9173..2682f48 100644
        font-weight: bold;
 @@ -56,20 +81,57 @@
      }
- 
+
      nav a {
 +      position: relative;
        color: white;
@@ -73,13 +73,13 @@ index 66c9173..2682f48 100644
 +          scale 0.3s var(--ease-out);
 +      }
      }
- 
+
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
        color: var(--accent);
      }
- 
+
 +    nav a:not(.logout-link):hover::after,
 +    nav a:not(.logout-link):focus-visible::after {
 +      scale: 1 1;
@@ -99,12 +99,12 @@ index 66c9173..2682f48 100644
 +    .logout-link:focus-visible {
 +      background-color: rgba(255, 171, 64, 0.15);
      }
- 
+
      /* Hero Section */
 @@ -93,6 +155,101 @@
        margin-bottom: 1rem;
      }
- 
+
 +    /* Daily roast banner */
 +    .roast-banner {
 +      display: flex;
@@ -205,7 +205,7 @@ index 66c9173..2682f48 100644
        max-width: 1100px;
 @@ -108,11 +265,44 @@
      }
- 
+
      .card {
 +      position: relative;
        background: white;
@@ -246,7 +246,7 @@ index 66c9173..2682f48 100644
 +    .card:focus-within::before {
 +      opacity: 1;
      }
- 
+
      .card h3 {
 @@ -126,15 +316,158 @@
        color: white;
@@ -267,13 +267,13 @@ index 66c9173..2682f48 100644
 +          scale 0.25s var(--ease-out);
 +      }
      }
- 
+
 -    .btn:hover {
 +    .btn:hover,
 +    .btn:focus-visible {
        background: #3e2723;
      }
- 
+
 +    /* Hero call-to-action */
 +    .hero .btn {
 +      background: var(--accent);
@@ -444,7 +444,7 @@ index 66c9173..2682f48 100644
 +      <button type="button" class="roast-banner__toggle" aria-pressed="false">Pause</button>
 +    </div>
    </header>
- 
+
    <main class="container">
 @@ -181,22 +537,38 @@
          <div class="card">
@@ -468,7 +468,7 @@ index 66c9173..2682f48 100644
        </div>
      </section>
    </main>
- 
+
 +  <dialog class="drink-dialog" aria-labelledby="drink-dialog-title">
 +    <h3 id="drink-dialog-title"></h3>
 +    <p class="drink-dialog__description"></p>
@@ -491,7 +491,7 @@ index 66c9173..2682f48 100644
 @@ -207,6 +579,113 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      // Daily roast banner pause / resume
@@ -600,5 +600,5 @@ index 66c9173..2682f48 100644
 +  </script>
 +
  </body>
- 
+
  </html>

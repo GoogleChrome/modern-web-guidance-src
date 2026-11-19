@@ -21,7 +21,7 @@ index 66c9173..069dc91 100644
 +++ b/index.html
 @@ -28,42 +28,115 @@
      }
- 
+
      /* Navigation */
 -    nav {
 +    .site-header {
@@ -44,7 +44,7 @@ index 66c9173..069dc91 100644
 -      z-index: 1000;
 +      gap: 2rem;
      }
- 
+
 +    .header-inner > * { flex-shrink: 0; white-space: nowrap; }
      .logo {
 -      font-size: 1.5rem;
@@ -54,7 +54,7 @@ index 66c9173..069dc91 100644
 +      color: white;
 +      text-decoration: none;
      }
- 
+
 -    nav ul {
 +    .site-nav ul { list-style: none; }
 +    .site-nav a, .site-nav button {
@@ -153,12 +153,12 @@ index 66c9173..069dc91 100644
 +      .site-header :focus-visible { outline-color: Highlight; }
 +      .site-menu, .dropdown-list, .logout-link { border-color: ButtonText; }
      }
- 
+
      .logout-link {
 @@ -157,16 +230,30 @@
- 
+
  <body>
- 
+
 -  <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -188,16 +188,16 @@ index 66c9173..069dc91 100644
 +    </nav>
 +    </div>
 +  </header>
- 
+
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
 @@ -207,6 +294,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/navigation.js"></script>
  </body>
- 
+
  </html>
 diff --git a/navigation.js b/navigation.js
 new file mode 100644

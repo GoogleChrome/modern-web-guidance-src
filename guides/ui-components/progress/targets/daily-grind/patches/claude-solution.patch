@@ -83,10 +83,10 @@ index 66c9173..dd2f3d4 100644
 +    }
    </style>
  </head>
- 
+
 @@ -175,6 +250,17 @@
    </header>
- 
+
    <main class="container">
 +    <section class="order-progress" aria-labelledby="order-progress-title">
 +      <h2 id="order-progress-title" style="text-align: center;">Your Order Progress</h2>

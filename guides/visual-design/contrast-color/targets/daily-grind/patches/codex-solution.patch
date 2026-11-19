@@ -11,7 +11,7 @@ index 66c9173..34249da 100644
 +++ b/index.html
 @@ -28,9 +28,36 @@
      }
- 
+
      /* Navigation */
 +    nav,
 +    .btn {
@@ -49,7 +49,7 @@ index 66c9173..34249da 100644
        justify-content: space-between;
 @@ -56,18 +83,17 @@
      }
- 
+
      nav a {
 -      color: white;
 +      color: inherit;
@@ -57,12 +57,12 @@ index 66c9173..34249da 100644
        font-size: 0.9rem;
 -      transition: color 0.3s;
      }
- 
+
      nav a:hover {
 -      color: var(--accent);
 +      text-decoration: underline;
      }
- 
+
      .logout-link {
 -      border: 1px solid var(--accent);
 +      border: 1px solid currentColor;
@@ -80,15 +80,15 @@ index 66c9173..34249da 100644
        margin-top: 15px;
 -      transition: background 0.3s;
      }
- 
+
      .btn:hover {
 -      background: #3e2723;
 +      text-decoration: underline;
      }
- 
+
      footer {
 @@ -148,7 +172,7 @@
- 
+
      .footer-links a {
        margin: 0 10px;
 -      color: var(--text);

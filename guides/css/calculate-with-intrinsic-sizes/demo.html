@@ -12,7 +12,7 @@
         --text: #333;
         --border: #d1d9e0;
 
-        /* 
+        /*
            MANDATORY: Enable keyword interpolation globally for simple animations.
            This allows 0 -> auto transitions without using calc-size().
         */
@@ -67,7 +67,7 @@
       }
 
       .simple-toggle.open .simple-toggle-content {
-        /* 
+        /*
            DO: Use intrinsic size keywords like auto for animations when no calculation is needed.
            This works because of interpolate-size: allow-keywords on :root.
         */
@@ -95,10 +95,10 @@
 
         /* MANDATORY: Always provide a fallback for browsers that do not support calc-size() */
         inline-size: fit-content;
-        
-        /* 
+
+        /*
            DO: Use calc-size() to apply complex constraints to intrinsic sizes.
-           This example ensures a minimum of 100px, adds 40px of extra breathing room 
+           This example ensures a minimum of 100px, adds 40px of extra breathing room
            to the content's natural width, and prevents overflow beyond 100%.
         */
         inline-size: calc-size(fit-content, clamp(100px, size + 40px, 100%));
@@ -137,9 +137,9 @@
         block-size: auto;
         opacity: 1;
         visibility: visible;
-        
-        /* 
-           DO: Use calc-size(auto, ...) to animate to an intrinsic height 
+
+        /*
+           DO: Use calc-size(auto, ...) to animate to an intrinsic height
            while adding extra calculated spacing (2rem) for a better design.
         */
         block-size: calc-size(auto, size + 2rem);
@@ -160,8 +160,8 @@
 
         /* MANDATORY: Fallback for max-content sizing */
         inline-size: max-content;
-        
-        /* 
+
+        /*
            DO: Use mathematical operations (like multiplication) within calc-size()
            to create proportional layouts based on the element's own content.
         */
@@ -174,16 +174,16 @@
         gap: 0.5rem;
       }
 
-      /* 
-         MANDATORY: Respect user motion preferences by simplifying animations 
+      /*
+         MANDATORY: Respect user motion preferences by simplifying animations
          for users who have requested reduced motion.
       */
       @media (prefers-reduced-motion: reduce) {
         .simple-toggle-content,
         .accordion-content {
-          /* 
+          /*
              EXAMPLE: Replacing disruptive layout animations with a subtle fade-in.
-             Setting the block-size instantly and transitioning opacity 
+             Setting the block-size instantly and transitioning opacity
              provides a clear state change without large-scale motion.
           */
           transition: opacity 1.5s ease;
@@ -235,7 +235,7 @@
         <button class="accordion-trigger" id="accordion-toggle" aria-expanded="false" aria-controls="accordion-content">Click to Toggle with Breathing Room</button>
         <div class="accordion-content" id="accordion-content">
           <div class="inner-text">
-            This content animates to its <code>auto</code> height plus an additional 2rem of calculated space. 
+            This content animates to its <code>auto</code> height plus an additional 2rem of calculated space.
             This ensures that no matter how much text is here, the "breathing room" remains consistent.
           </div>
         </div>

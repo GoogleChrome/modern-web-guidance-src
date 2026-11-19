@@ -17,7 +17,10 @@ import {
   serializeQueriesJsonl,
   type QueryRecord,
 } from "./dataset.ts";
-import { fillMissingJudgmentsInFiles, loadCorpusForPooling } from "./judge-fill.ts";
+import {
+  fillMissingJudgmentsInFiles,
+  loadCorpusForPooling,
+} from "./judge-fill.ts";
 
 export const DEFAULT_EVALS_BUCKET = "guidance-evals";
 export const DEFAULT_PER_AGENT_LIMIT = 40;
@@ -52,33 +55,52 @@ export function resolveAgentFromSuiteId(suiteId: string): Agents | undefined {
   return AGENT_PATTERNS.find(([pattern]) => lower.includes(pattern))?.[1];
 }
 
-const SEARCH_CMD_RE = /\bsearch\s+(?:--[a-z-]+(?:=\S+)?\s+)*(?:"([^"]+)"|'([^']+)'|(\S+))/i;
+const SEARCH_CMD_RE =
+  /\bsearch\s+(?:--[a-z-]+(?:=\S+)?\s+)*(?:"([^"]+)"|'([^']+)'|(\S+))/i;
 
 function getStepCommandText(step: unknown): string {
   if (!isRecord(step)) return "";
   if (isRecord(step.action)) {
     if (isRecord(step.action.params)) {
-      if (typeof step.action.params.command === "string" && step.action.params.command.trim().length > 0) {
+      if (
+        typeof step.action.params.command === "string" &&
+        step.action.params.command.trim().length > 0
+      ) {
         return step.action.params.command;
       }
-      if (typeof step.action.params.CommandLine === "string" && step.action.params.CommandLine.trim().length > 0) {
+      if (
+        typeof step.action.params.CommandLine === "string" &&
+        step.action.params.CommandLine.trim().length > 0
+      ) {
         return step.action.params.CommandLine;
       }
-      if (typeof step.action.params.cmd === "string" && step.action.params.cmd.trim().length > 0) {
+      if (
+        typeof step.action.params.cmd === "string" &&
+        step.action.params.cmd.trim().length > 0
+      ) {
         return step.action.params.cmd;
       }
     }
-    if (typeof step.action.command === "string" && step.action.command.trim().length > 0) {
+    if (
+      typeof step.action.command === "string" &&
+      step.action.command.trim().length > 0
+    ) {
       return step.action.command;
     }
-    if (typeof step.action.CommandLine === "string" && step.action.CommandLine.trim().length > 0) {
+    if (
+      typeof step.action.CommandLine === "string" &&
+      step.action.CommandLine.trim().length > 0
+    ) {
       return step.action.CommandLine;
     }
   }
   if (typeof step.command === "string" && step.command.trim().length > 0) {
     return step.command;
   }
-  if (typeof step.CommandLine === "string" && step.CommandLine.trim().length > 0) {
+  if (
+    typeof step.CommandLine === "string" &&
+    step.CommandLine.trim().length > 0
+  ) {
     return step.CommandLine;
   }
   if (isRecord(step.action) && typeof step.action.name === "string") {
@@ -91,19 +113,27 @@ function isSkillSearchStep(step: unknown): boolean {
   if (!isRecord(step) || !isRecord(step.action)) return false;
   if (step.action.canonicalCategory === "skill_search") return true;
   const commandText = getStepCommandText(step);
-  return commandText.includes("modern-web-guidance") && SEARCH_CMD_RE.test(commandText);
+  return (
+    commandText.includes("modern-web-guidance") &&
+    SEARCH_CMD_RE.test(commandText)
+  );
 }
 
 function isGuideRetrievalStep(step: unknown): boolean {
   if (!isRecord(step) || !isRecord(step.action)) return false;
   if (step.action.canonicalCategory === "guide_retrieval") return true;
   const commandText = getStepCommandText(step);
-  return commandText.includes("modern-web-guidance") && /(?:--)?retrieve\b/i.test(commandText);
+  return (
+    commandText.includes("modern-web-guidance") &&
+    /(?:--)?retrieve\b/i.test(commandText)
+  );
 }
 
 function isListStep(step: unknown): boolean {
   const commandText = getStepCommandText(step);
-  return commandText.includes("modern-web-guidance") && /\blist\b/i.test(commandText);
+  return (
+    commandText.includes("modern-web-guidance") && /\blist\b/i.test(commandText)
+  );
 }
 
 function parseGuidesFromStep(step: unknown): string[] {
@@ -111,8 +141,10 @@ function parseGuidesFromStep(step: unknown): string[] {
   const found: string[] = [];
   if (isRecord(step.action)) {
     if (isRecord(step.action.params)) {
-      if (typeof step.action.params.guide === "string") found.push(step.action.params.guide);
-      if (typeof step.action.params.use_case_id === "string") found.push(step.action.params.use_case_id);
+      if (typeof step.action.params.guide === "string")
+        found.push(step.action.params.guide);
+      if (typeof step.action.params.use_case_id === "string")
+        found.push(step.action.params.use_case_id);
     }
   }
   const commandText = getStepCommandText(step);
@@ -127,7 +159,12 @@ function parseGuidesFromStep(step: unknown): string[] {
  */
 export function extractSearchQueriesFromTrajectory(
   summary: unknown,
-  meta: { suiteId: string; agent: Agents; runDate: string; expectedGuide: string }
+  meta: {
+    suiteId: string;
+    agent: Agents;
+    runDate: string;
+    expectedGuide: string;
+  },
 ): MinedHarnessSearch[] {
   if (!isRecord(summary) || !Array.isArray(summary.steps)) return [];
   const mined: MinedHarnessSearch[] = [];
@@ -171,7 +208,9 @@ export function extractSearchQueriesFromTrajectory(
     if (parsedGuides.length > 0) {
       retrievedGuides = [...new Set(parsedGuides)];
     } else if (!retriedSearch && Array.isArray(summary.retrievedGuides)) {
-      retrievedGuides = summary.retrievedGuides.filter((guideId): guideId is string => typeof guideId === "string");
+      retrievedGuides = summary.retrievedGuides.filter(
+        (guideId): guideId is string => typeof guideId === "string",
+      );
     }
 
     mined.push({
@@ -197,11 +236,13 @@ export function extractSearchQueriesFromTrajectory(
 export function sampleHarnessQueries(
   mined: MinedHarnessSearch[],
   validGuideIds: ReadonlySet<string>,
-  options: { perAgentLimit?: number; seed?: number } = {}
+  options: { perAgentLimit?: number; seed?: number } = {},
 ): QueryRecord[] {
   const perAgentLimit = options.perAgentLimit ?? DEFAULT_PER_AGENT_LIMIT;
   const rand = createPrng(options.seed ?? DEFAULT_HARNESS_SEED);
-  const eligible = mined.filter((m) => m.searchIndex === 0 && validGuideIds.has(m.expectedGuide));
+  const eligible = mined.filter(
+    (m) => m.searchIndex === 0 && validGuideIds.has(m.expectedGuide),
+  );
   const grouped = Map.groupBy(eligible, (m) => m.agent);
   const agents = [...grouped.keys()].sort();
   const sampled: QueryRecord[] = [];
@@ -209,7 +250,9 @@ export function sampleHarnessQueries(
   for (const agent of agents) {
     const list = grouped.get(agent) ?? [];
     const seenNormalized = new Set<string>();
-    const candidates = list.map((m) => ({ m, key: rand() })).sort((a, b) => a.key - b.key);
+    const candidates = list
+      .map((m) => ({ m, key: rand() }))
+      .sort((a, b) => a.key - b.key);
 
     let count = 0;
     for (const { m: item } of candidates) {
@@ -225,10 +268,16 @@ export function sampleHarnessQueries(
           expectedGuide: item.expectedGuide,
           agent,
           runDate: item.runDate,
-          ...(item.calledList !== undefined ? { calledList: item.calledList } : {}),
-          ...(item.retriedSearch !== undefined ? { retriedSearch: item.retriedSearch } : {}),
-          ...(item.retrievedGuides !== undefined ? { retrievedGuides: [...item.retrievedGuides] } : {}),
-        })
+          ...(item.calledList !== undefined
+            ? { calledList: item.calledList }
+            : {}),
+          ...(item.retriedSearch !== undefined
+            ? { retriedSearch: item.retriedSearch }
+            : {}),
+          ...(item.retrievedGuides !== undefined
+            ? { retrievedGuides: [...item.retrievedGuides] }
+            : {}),
+        }),
       );
       count++;
     }
@@ -268,7 +317,9 @@ export function mineLocalSuitesDir(dir: string): MinedHarnessSearch[] {
     for (const relPath of relativePaths) {
       if (!relPath.endsWith("/guided/trajectory_summary.json")) continue;
       const normalizedPath = "/" + relPath;
-      const match = normalizedPath.match(/\/([^/]+)\/[^/]+\/guided\/trajectory_summary\.json$/);
+      const match = normalizedPath.match(
+        /\/([^/]+)\/[^/]+\/guided\/trajectory_summary\.json$/,
+      );
       const segments = normalizedPath.split("/");
       const taskFolder = match?.[1] ?? segments.at(-4) ?? segments.at(-3) ?? "";
       const expectedGuide = taskFolder.replace(/--.*$/, "");
@@ -276,8 +327,17 @@ export function mineLocalSuitesDir(dir: string): MinedHarnessSearch[] {
 
       const summaryPath = path.join(suitePath, relPath);
       try {
-        const summary: unknown = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
-        allMined.push(...extractSearchQueriesFromTrajectory(summary, { suiteId, agent, runDate, expectedGuide }));
+        const summary: unknown = JSON.parse(
+          fs.readFileSync(summaryPath, "utf8"),
+        );
+        allMined.push(
+          ...extractSearchQueriesFromTrajectory(summary, {
+            suiteId,
+            agent,
+            runDate,
+            expectedGuide,
+          }),
+        );
       } catch (err) {
         if (!isEnoent(err)) throw err;
       }
@@ -288,7 +348,7 @@ export function mineLocalSuitesDir(dir: string): MinedHarnessSearch[] {
 
 async function downloadNightlySummariesFromGcs(
   cacheDir = path.join(outDir, "benchmarks/harness-cache"),
-  maxRuns = DEFAULT_MAX_RUNS
+  maxRuns = DEFAULT_MAX_RUNS,
 ): Promise<string> {
   fs.mkdirSync(cacheDir, { recursive: true });
   const storage = new Storage({ projectId: DEFAULT_GCP_PROJECT });
@@ -308,7 +368,10 @@ async function downloadNightlySummariesFromGcs(
         if (typeof p === "string") prefixes.push(p);
       }
     }
-    pageToken = isRecord(nextQuery) && typeof nextQuery.pageToken === "string" ? nextQuery.pageToken : undefined;
+    pageToken =
+      isRecord(nextQuery) && typeof nextQuery.pageToken === "string"
+        ? nextQuery.pageToken
+        : undefined;
   } while (pageToken);
 
   const selectedSuites = prefixes
@@ -318,7 +381,9 @@ async function downloadNightlySummariesFromGcs(
 
   for (const suiteId of selectedSuites) {
     const [files] = await bucket.getFiles({ prefix: `${suiteId}/` });
-    const summaryFiles = files.filter((f) => f.name.endsWith("/guided/trajectory_summary.json"));
+    const summaryFiles = files.filter((f) =>
+      f.name.endsWith("/guided/trajectory_summary.json"),
+    );
     for (const file of summaryFiles) {
       const localPath = path.join(cacheDir, file.name);
       try {
@@ -336,7 +401,10 @@ async function downloadNightlySummariesFromGcs(
   return cacheDir;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   const { values } = parseArgs({
     options: {
       gcs: { type: "boolean", default: false },
@@ -344,19 +412,28 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       batch: { type: "boolean", default: false },
     },
   });
-  const sourceDir = values.gcs ? await downloadNightlySummariesFromGcs() : suitesDir;
+  const sourceDir = values.gcs
+    ? await downloadNightlySummariesFromGcs()
+    : suitesDir;
 
   const corpus = loadCorpusForPooling();
   const mined = mineLocalSuitesDir(sourceDir);
   const sampled = sampleHarnessQueries(mined, new Set(corpus.cards.keys()));
 
-  const queriesPath = path.join(DEFAULT_PUBLIC_DATA_DIR, "harness-queries.jsonl");
+  const queriesPath = path.join(
+    DEFAULT_PUBLIC_DATA_DIR,
+    "harness-queries.jsonl",
+  );
   const qrelsPath = path.join(DEFAULT_PUBLIC_DATA_DIR, "harness-qrels.jsonl");
   fs.writeFileSync(queriesPath, serializeQueriesJsonl(sampled));
-  console.log(`Mined ${mined.length} total searches; wrote ${sampled.length} sampled harness queries to ${queriesPath}`);
+  console.log(
+    `Mined ${mined.length} total searches; wrote ${sampled.length} sampled harness queries to ${queriesPath}`,
+  );
 
   if (values.judge) {
-    const count = await fillMissingJudgmentsInFiles(queriesPath, qrelsPath, { batch: values.batch });
+    const count = await fillMissingJudgmentsInFiles(queriesPath, qrelsPath, {
+      batch: values.batch,
+    });
     console.log(`Judged ${count} harness queries into ${qrelsPath}`);
   }
 }

@@ -56,7 +56,7 @@ article {
 - Use `text-wrap: balance` for balanced headlines and headline-like content (e.g. `<th>`)
 - Use `text-wrap: pretty` for long-form body text (paragraphs, blockquotes, etc.)
 - Use `text-wrap: balance` or `text-wrap: pretty` deliberately, **DO NOT** apply it on `*` as it does have a performance cost.
-- Avoid `text-wrap: balance` on elements with a visible box (backgrounds, borders, shadows, etc) as it does not change the container's width, it only affects how text wraps *within* that width. This can leave empty space at the end of the container, which is usually undesirable.
+- Avoid `text-wrap: balance` on elements with a visible box (backgrounds, borders, shadows, etc) as it does not change the container's width, it only affects how text wraps _within_ that width. This can leave empty space at the end of the container, which is usually undesirable.
 
 ## Responsive Typography
 

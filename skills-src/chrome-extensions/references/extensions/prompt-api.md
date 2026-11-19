@@ -19,6 +19,7 @@ const session = await LanguageModel.create({ ... });
 ```
 
 Also remove the expired permission from manifest.json:
+
 ```json
 "permissions": ["aiLanguageModelOriginTrial"]  // ❌ remove this
 ```
@@ -34,7 +35,7 @@ const params = await LanguageModel.params();
 
 const session = await LanguageModel.create({
   temperature: 0.7,
-  topK: 5
+  topK: 5,
 });
 ```
 
@@ -45,6 +46,7 @@ Note the use of `tabs` + `host_permissions` instead of `activeTab` — side pane
 clicks do NOT activate `activeTab` (see Rule 12).
 
 ### manifest.json
+
 ```json
 {
   "manifest_version": 3,
@@ -59,6 +61,7 @@ clicks do NOT activate `activeTab` (see Rule 12).
 ```
 
 ### service-worker.js
+
 ```js
 chrome.action.onClicked.addListener(async (tab) => {
   await chrome.sidePanel.open({ windowId: tab.windowId });
@@ -66,22 +69,23 @@ chrome.action.onClicked.addListener(async (tab) => {
 ```
 
 ### sidepanel/sidepanel.js
-```js
-const statusEl = document.getElementById('status');
-const summaryEl = document.getElementById('summary');
 
-document.getElementById('summarize').addEventListener('click', async () => {
+```js
+const statusEl = document.getElementById("status");
+const summaryEl = document.getElementById("summary");
+
+document.getElementById("summarize").addEventListener("click", async () => {
   if (!globalThis.LanguageModel) {
-    statusEl.textContent = 'Prompt API not available in this browser.';
+    statusEl.textContent = "Prompt API not available in this browser.";
     return;
   }
 
   const availability = await LanguageModel.availability({
     expectedInputs: [{ type: "text", languages: ["en"] }],
-    expectedOutputs: [{ type: "text", languages: ["en"] }]
+    expectedOutputs: [{ type: "text", languages: ["en"] }],
   });
-  if (availability === 'unavailable') {
-    statusEl.textContent = 'AI model not available on this device.';
+  if (availability === "unavailable") {
+    statusEl.textContent = "AI model not available on this device.";
     return;
   }
 
@@ -91,25 +95,34 @@ document.getElementById('summarize').addEventListener('click', async () => {
     target: { tabId: tab.id },
     func: () => {
       const body = document.body.cloneNode(true);
-      body.querySelectorAll('script, style, nav, footer, header').forEach(el => el.remove());
+      body
+        .querySelectorAll("script, style, nav, footer, header")
+        .forEach((el) => el.remove());
       return body.innerText.substring(0, 4000);
-    }
+    },
   });
 
   const session = await LanguageModel.create({
     expectedInputs: [{ type: "text", languages: ["en"] }],
     expectedOutputs: [{ type: "text", languages: ["en"] }],
-    initialPrompts: [{ role: 'system', content: 'Summarize web page content in 3-5 bullet points.' }],
+    initialPrompts: [
+      {
+        role: "system",
+        content: "Summarize web page content in 3-5 bullet points.",
+      },
+    ],
     monitor(m) {
-      m.addEventListener('downloadprogress', (e) => {
+      m.addEventListener("downloadprogress", (e) => {
         const pct = e.total ? Math.floor((e.loaded / e.total) * 100) : 0;
         statusEl.textContent = `Downloading model: ${pct}%`;
       });
-    }
+    },
   });
 
-  summaryEl.textContent = '';
-  for await (const chunk of session.promptStreaming(`Summarize:\n\n${pageText}`)) {
+  summaryEl.textContent = "";
+  for await (const chunk of session.promptStreaming(
+    `Summarize:\n\n${pageText}`,
+  )) {
     summaryEl.textContent += chunk; // APPEND — do not replace
   }
   session.destroy();

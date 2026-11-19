@@ -9,18 +9,26 @@
  * depend on external network reachability.
  */
 
-export const GA_MEASUREMENT_ID = 'G-V48MZB1JQE';
-export const COOKIE_BAR_CATEGORY = '2B';
-export const COOKIE_BAR_SITE_ID = 'Modern Web Guidance Eval Dashboard';
-export const COOKIE_BAR_CSS_URL = 'https://www.gstatic.com/glue/cookienotificationbar/cookienotificationbar.min.css';
-export const COOKIE_BAR_JS_URL = 'https://www.gstatic.com/glue/cookienotificationbar/cookienotificationbar.min.js';
+export const GA_MEASUREMENT_ID = "G-V48MZB1JQE";
+export const COOKIE_BAR_CATEGORY = "2B";
+export const COOKIE_BAR_SITE_ID = "Modern Web Guidance Eval Dashboard";
+export const COOKIE_BAR_CSS_URL =
+  "https://www.gstatic.com/glue/cookienotificationbar/cookienotificationbar.min.css";
+export const COOKIE_BAR_JS_URL =
+  "https://www.gstatic.com/glue/cookienotificationbar/cookienotificationbar.min.js";
 
 /**
  * Route-identifying query parameters safe to retain in `page_location`.
  * All other query parameters and URL hash fragments are stripped so user input,
  * OAuth tokens, or PII can never be transmitted to analytics.
  */
-const ALLOWED_QUERY_PARAMS = new Set(['guide', 'testId', 'task', 'mode', 'source']);
+const ALLOWED_QUERY_PARAMS = new Set([
+  "guide",
+  "testId",
+  "task",
+  "mode",
+  "source",
+]);
 const SAFE_PARAM_VALUE_RE = /^[a-zA-Z0-9._-]{1,120}$/;
 
 /**
@@ -40,9 +48,9 @@ export function scrubPageLocation(rawHref) {
       }
     }
     const query = cleanParams.toString();
-    return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`;
+    return `${url.origin}${url.pathname}${query ? `?${query}` : ""}`;
   } catch {
-    return '';
+    return "";
   }
 }
 
@@ -52,14 +60,16 @@ export function scrubPageLocation(rawHref) {
  * @param {string} [hostname]
  * @returns {boolean}
  */
-export function shouldLoadAnalytics(hostname = typeof location !== 'undefined' ? location.hostname : '') {
+export function shouldLoadAnalytics(
+  hostname = typeof location !== "undefined" ? location.hostname : "",
+) {
   const win = /** @type {Window & { __MWG_ENABLE_ANALYTICS?: boolean }} */ (
-    typeof window !== 'undefined' ? window : {}
+    typeof window !== "undefined" ? window : {}
   );
-  if (typeof win.__MWG_ENABLE_ANALYTICS === 'boolean') {
+  if (typeof win.__MWG_ENABLE_ANALYTICS === "boolean") {
     return win.__MWG_ENABLE_ANALYTICS;
   }
-  return hostname === 'googlechrome.github.io';
+  return hostname === "googlechrome.github.io";
 }
 
 /**
@@ -70,11 +80,13 @@ export function shouldLoadAnalytics(hostname = typeof location !== 'undefined' ?
  * @param {string} [search]
  * @returns {boolean}
  */
-export function isPreviewCookieBar(search = typeof location !== 'undefined' ? location.search : '') {
+export function isPreviewCookieBar(
+  search = typeof location !== "undefined" ? location.search : "",
+) {
   try {
     const params = new URLSearchParams(search);
-    const val = params.get('previewCookieBar');
-    return val === '1' || val === 'true';
+    const val = params.get("previewCookieBar");
+    return val === "1" || val === "true";
   } catch {
     return false;
   }
@@ -87,32 +99,38 @@ export function isPreviewCookieBar(search = typeof location !== 'undefined' ? lo
  */
 function enableCookieBarPreviewMode() {
   try {
-    window.localStorage?.removeItem('glue.CookieNotificationBar');
+    window.localStorage?.removeItem("glue.CookieNotificationBar");
   } catch {
     // Ignore storage access errors in restricted contexts.
   }
   const origFetch = window.fetch?.bind(window);
-  if (typeof origFetch !== 'function') return;
+  if (typeof origFetch !== "function") return;
   window.fetch = function previewCookieBarFetch(input, init) {
-    const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
-    if (url.includes('/glue/cookienotificationbar/config/2b.json')) {
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof Request
+          ? input.url
+          : String(input);
+    if (url.includes("/glue/cookienotificationbar/config/2b.json")) {
       return Promise.resolve(
         new Response(
           JSON.stringify({
             content: {
-              consentText: 'Hide',
+              consentText: "Hide",
               mainText:
-                '[This site] uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.',
-              moreAriaLabelText: 'Learn more about how Google uses cookies. Opens in a new tab.',
-              moreText: 'Learn more',
-              moreUrl: 'https://policies.google.com/technologies/cookies?hl=en',
+                "[This site] uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.",
+              moreAriaLabelText:
+                "Learn more about how Google uses cookies. Opens in a new tab.",
+              moreText: "Learn more",
+              moreUrl: "https://policies.google.com/technologies/cookies?hl=en",
             },
             eea: true,
-            language: 'en',
+            language: "en",
             required: true,
             rtl: false,
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
+          { status: 200, headers: { "Content-Type": "application/json" } },
         ),
       );
     }
@@ -126,14 +144,17 @@ function enableCookieBarPreviewMode() {
  * `gtag.js` and the cookie notification bar.
  */
 export function initAnalytics() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
 
-  const win = /** @type {Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void; __mwgAnalyticsInitialized?: boolean }} */ (window);
+  const win =
+    /** @type {Window & { dataLayer?: unknown[]; gtag?: (...args: unknown[]) => void; __mwgAnalyticsInitialized?: boolean }} */ (
+      window
+    );
   if (win.__mwgAnalyticsInitialized) return;
   win.__mwgAnalyticsInitialized = true;
 
   win.dataLayer = win.dataLayer || [];
-  if (typeof win.gtag !== 'function') {
+  if (typeof win.gtag !== "function") {
     win.gtag = function gtag() {
       // oxlint-disable-next-line prefer-rest-params
       win.dataLayer?.push(arguments);
@@ -141,8 +162,8 @@ export function initAnalytics() {
   }
 
   const pageLocation = scrubPageLocation(window.location.href);
-  win.gtag('js', new Date());
-  win.gtag('config', GA_MEASUREMENT_ID, {
+  win.gtag("js", new Date());
+  win.gtag("config", GA_MEASUREMENT_ID, {
     allow_google_signals: false,
     allow_ad_personalization_signals: false,
     page_location: pageLocation,
@@ -159,8 +180,8 @@ export function initAnalytics() {
   // 1. Load cookie notification bar stylesheet (prepended so dashboard.css
   //    theme overrides take precedence without needing !important).
   if (!document.querySelector(`link[href="${COOKIE_BAR_CSS_URL}"]`)) {
-    const cnbCss = document.createElement('link');
-    cnbCss.rel = 'stylesheet';
+    const cnbCss = document.createElement("link");
+    cnbCss.rel = "stylesheet";
     cnbCss.href = COOKIE_BAR_CSS_URL;
     document.head.prepend(cnbCss);
   }
@@ -170,23 +191,24 @@ export function initAnalytics() {
   if (loadFullAnalytics) {
     const gtagSrc = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
     if (!document.querySelector(`script[src="${gtagSrc}"]`)) {
-      const gtagScript = document.createElement('script');
+      const gtagScript = document.createElement("script");
       gtagScript.src = gtagSrc;
       gtagScript.async = true;
-      gtagScript.fetchPriority = 'low';
+      gtagScript.fetchPriority = "low";
       document.head.appendChild(gtagScript);
     }
   }
 
   // 3. Load cookie notification bar asynchronously with low fetch priority.
   if (!document.querySelector(`script[src="${COOKIE_BAR_JS_URL}"]`)) {
-    const cnbScript = document.createElement('script');
+    const cnbScript = document.createElement("script");
     cnbScript.src = COOKIE_BAR_JS_URL;
     cnbScript.async = true;
-    cnbScript.fetchPriority = 'low';
+    cnbScript.fetchPriority = "low";
     cnbScript.dataset.glueCookieNotificationBarCategory = COOKIE_BAR_CATEGORY;
     cnbScript.dataset.glueCookieNotificationBarSiteId = COOKIE_BAR_SITE_ID;
-    cnbScript.dataset.glueCookieNotificationBarAutoMarginClass = 'site-legal-footer';
+    cnbScript.dataset.glueCookieNotificationBarAutoMarginClass =
+      "site-legal-footer";
     document.head.appendChild(cnbScript);
   }
 }

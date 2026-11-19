@@ -13,7 +13,7 @@
 
   <button id="detect-btn">Detect Page Languages</button>
   <div id="output" aria-live="polite" aria-atomic="true"></div>
- 
+
   <script type="module">
     document.getElementById('detect-btn').addEventListener('click', async () => {
       const output = document.getElementById('output');
@@ -36,7 +36,7 @@
             });
           },
         });
-        
+
         output.innerHTML = '';
         for (const p of document.querySelectorAll('p')) {
           const text = p.textContent;

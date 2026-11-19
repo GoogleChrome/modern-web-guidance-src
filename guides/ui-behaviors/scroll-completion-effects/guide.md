@@ -26,25 +26,25 @@ The programmatic scroll methods on `Element` (`scrollIntoView()`, `scroll()`, `s
 
 ```javascript
 let currentScrollId = 0;
-const sections = document.querySelectorAll('section');
+const sections = document.querySelectorAll("section");
 
 async function scrollToAndHighlight(targetElement) {
   const scrollId = ++currentScrollId;
-  sections.forEach((sec) => sec.classList.remove('highlight'));
+  sections.forEach((sec) => sec.classList.remove("highlight"));
 
-  await targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  await targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
 
   // Abort follow-up effect if another scroll was triggered while awaiting
   if (scrollId !== currentScrollId) return;
 
-  targetElement.classList.add('highlight');
+  targetElement.classList.add("highlight");
 }
 ```
 
 - **Focusing the target after scrolling**: When moving keyboard focus to the target element (or a heading inside it with `tabindex="-1"`) after `await targetElement.scrollIntoView(...)`, pass `{ preventScroll: true }` to `focus()` so the focus call does not initiate a second, competing scroll:
 
 ```javascript
-await targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+await targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
 targetHeading.focus({ preventScroll: true });
 ```
 
@@ -86,8 +86,8 @@ function scrollIntoViewAsync(element, options, scroller = window) {
 
     const finish = () => {
       clearTimeout(timeoutId);
-      scroller.removeEventListener('scrollend', finish);
-      scroller.removeEventListener('scroll', onScroll);
+      scroller.removeEventListener("scrollend", finish);
+      scroller.removeEventListener("scroll", onScroll);
       resolve();
     };
 
@@ -98,8 +98,8 @@ function scrollIntoViewAsync(element, options, scroller = window) {
       timeoutId = setTimeout(finish, 100);
     };
 
-    scroller.addEventListener('scrollend', finish, { once: true });
-    scroller.addEventListener('scroll', onScroll, { passive: true });
+    scroller.addEventListener("scrollend", finish, { once: true });
+    scroller.addEventListener("scroll", onScroll, { passive: true });
 
     // If no scroll event fires within the idle window (e.g., already in view), resolve.
     // 100ms is an example value; it only needs to exceed the gap between scroll events.

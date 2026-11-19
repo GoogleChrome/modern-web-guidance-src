@@ -92,10 +92,10 @@ FAILED=0
 send_summary_email() {
   local exit_code=$?
   set +e
-  
+
   local sendgmr_cmd="/google/bin/releases/gws-sre/files/sendgmr/sendgmr"
   local subject="Guidance ${DISPLAY_NAME} Eval Completed Successfully"
-  
+
   if [ "$FAILED" -ne 0 ] || [ "$exit_code" -ne 0 ]; then
     subject="Guidance ${DISPLAY_NAME} Eval FAILED"
   fi
@@ -108,7 +108,7 @@ send_summary_email() {
       printf "❌ Catastrophic failure occurred before any agent results could be recorded.\n"
     fi
   } | timeout 100s $sendgmr_cmd --subject="$subject" --to="${USER_LDAP}@google.com" || echo "Warning: Failed to send email via sendgmr"
-  
+
   rm -f "$SUMMARY_FILE"
 }
 trap send_summary_email EXIT
@@ -140,7 +140,7 @@ export NIGHTLY_GUIDANCE_RUN=1
 
 run_agent() {
   local agent="$1"
-  
+
   local cmd_args=("--agent" "$agent" "--prefix" "$PREFIX")
   if [ -n "$WORKERS" ]; then
     cmd_args+=("--workers" "$WORKERS")
@@ -149,12 +149,12 @@ run_agent() {
     cmd_args+=("--local")
   fi
 
-  "$SCRIPT_DIR/run-agent.sh" "${cmd_args[@]}" || { 
+  "$SCRIPT_DIR/run-agent.sh" "${cmd_args[@]}" || {
     echo "Error running $agent"
     if ! grep -qF "${DISPLAY_NAME} run for agent ${agent}" "$SUMMARY_FILE"; then
       printf "❌ %s run for agent %s failed completely.\n\n----------------------------------------\n\n" "${DISPLAY_NAME}" "$agent" >> "$SUMMARY_FILE"
     fi
-    FAILED=1 
+    FAILED=1
   }
 }
 

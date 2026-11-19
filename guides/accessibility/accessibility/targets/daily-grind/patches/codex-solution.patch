@@ -356,7 +356,7 @@ index 66c9173..cb97883 100644
 +      min-inline-size: 24px;
 +      min-block-size: 24px;
      }
- 
+
      /* Navigation */
 -    nav {
 +    .primary-nav {
@@ -372,12 +372,12 @@ index 66c9173..cb97883 100644
 -      top: 0;
 -      z-index: 1000;
      }
- 
+
      .logo {
 @@ -46,23 +83,24 @@
        letter-spacing: 1px;
      }
- 
+
 -    nav ul {
 +    .primary-nav ul {
        display: flex;
@@ -385,7 +385,7 @@ index 66c9173..cb97883 100644
 +      gap: 0.5rem 1.25rem;
        list-style: none;
      }
- 
+
 -    nav ul li {
 -      margin-left: 20px;
 -    }
@@ -400,14 +400,14 @@ index 66c9173..cb97883 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    .primary-nav a:hover {
        color: var(--accent);
      }
- 
+
 @@ -74,8 +112,11 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -427,10 +427,10 @@ index 66c9173..cb97883 100644
 -      padding: 0 20px;
 +      padding: 3rem 20px;
      }
- 
+
      .hero h1 {
 @@ -102,9 +143,14 @@
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -443,11 +443,11 @@ index 66c9173..cb97883 100644
 +    .section-title {
 +      text-align: center;
      }
- 
+
      .card {
 @@ -143,67 +189,105 @@
      }
- 
+
      .footer-links {
 +      display: flex;
 +      flex-wrap: wrap;
@@ -456,7 +456,7 @@ index 66c9173..cb97883 100644
 +      list-style: none;
        margin-bottom: 20px;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      display: inline-flex;
@@ -495,9 +495,9 @@ index 66c9173..cb97883 100644
 +    }
    </style>
  </head>
- 
+
  <body>
- 
+
 -  <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -526,7 +526,7 @@ index 66c9173..cb97883 100644
 +      </ul>
 +    </nav>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -569,7 +569,7 @@ index 66c9173..cb97883 100644
 +      </ul>
      </section>
    </main>
- 
+
    <footer>
 -    <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -587,7 +587,7 @@ index 66c9173..cb97883 100644
 +    </nav>
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..fbdc488 100644
 --- a/package.json

@@ -173,10 +173,13 @@ This example uses a custom property as it will have no visual effect:
 Then check the computed value in JavaScript like this:
 
 ```js
-if (getComputedStyle(document.body).getPropertyValue("--style-queries-supported") === "yes") {
+if (
+  getComputedStyle(document.body).getPropertyValue(
+    "--style-queries-supported",
+  ) === "yes"
+) {
   // Use container style queries
 } else {
   // Use fallback strategy
 }
 ```
-

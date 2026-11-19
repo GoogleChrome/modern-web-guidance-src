@@ -5,8 +5,13 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type CallExpression, type Node, type Project } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import {
+  SyntaxKind,
+  type CallExpression,
+  type Node,
+  type Project,
+} from "ts-morph";
 import {
   getCascadedStyle,
   CSSStyleRule,
@@ -14,12 +19,15 @@ import {
   CSSSupportsRule,
   type CSSRule,
   type CSSStyleSheet,
-} from 'cssomnom';
+} from "cssomnom";
 
 // @ts-ignore - import.meta.url is supported by Playwright/Node ESM runner despite missing package.json "type": "module"
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function collectStyleRules(rules: Iterable<CSSRule>, insideSupportsNot = false): Array<{ rule: CSSStyleRule; insideSupportsNot: boolean }> {
+function collectStyleRules(
+  rules: Iterable<CSSRule>,
+  insideSupportsNot = false,
+): Array<{ rule: CSSStyleRule; insideSupportsNot: boolean }> {
   const result: Array<{ rule: CSSStyleRule; insideSupportsNot: boolean }> = [];
   for (const r of rules) {
     if (r instanceof CSSStyleRule) {
@@ -31,9 +39,14 @@ function collectStyleRules(rules: Iterable<CSSRule>, insideSupportsNot = false):
       const cond = r.conditionText.toLowerCase();
       const isNotScrollAxisLock =
         /\bnot\b/.test(cond) &&
-        cond.includes('scroll-axis-lock') &&
-        cond.includes('none');
-      result.push(...collectStyleRules(r.cssRules, insideSupportsNot || isNotScrollAxisLock));
+        cond.includes("scroll-axis-lock") &&
+        cond.includes("none");
+      result.push(
+        ...collectStyleRules(
+          r.cssRules,
+          insideSupportsNot || isNotScrollAxisLock,
+        ),
+      );
     } else if (r instanceof CSSGroupingRule) {
       result.push(...collectStyleRules(r.cssRules, insideSupportsNot));
     }
@@ -41,20 +54,31 @@ function collectStyleRules(rules: Iterable<CSSRule>, insideSupportsNot = false):
   return result;
 }
 
-function hasOverflowScrollOrAuto(style: { getPropertyValue(prop: string): string }): boolean {
-  const overflow = style.getPropertyValue('overflow').trim();
-  const overflowX = style.getPropertyValue('overflow-x').trim();
-  const overflowY = style.getPropertyValue('overflow-y').trim();
+function hasOverflowScrollOrAuto(style: {
+  getPropertyValue(prop: string): string;
+}): boolean {
+  const overflow = style.getPropertyValue("overflow").trim();
+  const overflowX = style.getPropertyValue("overflow-x").trim();
+  const overflowY = style.getPropertyValue("overflow-y").trim();
   const isScrollOrAuto = (val: string) => /\b(auto|scroll)\b/.test(val);
-  return isScrollOrAuto(overflow) || (isScrollOrAuto(overflowX) && isScrollOrAuto(overflowY));
+  return (
+    isScrollOrAuto(overflow) ||
+    (isScrollOrAuto(overflowX) && isScrollOrAuto(overflowY))
+  );
 }
 
-function hasOverscrollContainOrNone(style: { getPropertyValue(prop: string): string }): boolean {
-  const overscroll = style.getPropertyValue('overscroll-behavior').trim();
-  const overscrollX = style.getPropertyValue('overscroll-behavior-x').trim();
-  const overscrollY = style.getPropertyValue('overscroll-behavior-y').trim();
-  const overscrollInline = style.getPropertyValue('overscroll-behavior-inline').trim();
-  const overscrollBlock = style.getPropertyValue('overscroll-behavior-block').trim();
+function hasOverscrollContainOrNone(style: {
+  getPropertyValue(prop: string): string;
+}): boolean {
+  const overscroll = style.getPropertyValue("overscroll-behavior").trim();
+  const overscrollX = style.getPropertyValue("overscroll-behavior-x").trim();
+  const overscrollY = style.getPropertyValue("overscroll-behavior-y").trim();
+  const overscrollInline = style
+    .getPropertyValue("overscroll-behavior-inline")
+    .trim();
+  const overscrollBlock = style
+    .getPropertyValue("overscroll-behavior-block")
+    .trim();
   const isContainOrNone = (val: string) => /\b(none|contain)\b/.test(val);
   return (
     isContainOrNone(overscroll) ||
@@ -63,17 +87,18 @@ function hasOverscrollContainOrNone(style: { getPropertyValue(prop: string): str
   );
 }
 
-test.describe('2d-panning Target Grader', () => {
+test.describe("2d-panning Target Grader", () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
 
-  test('The two-dimensional scroll container sets overflow: auto or overflow: scroll and declares scroll-axis-lock: none directly on itself rather than on an ancestor wrapper', () => {
+  test("The two-dimensional scroll container sets overflow: auto or overflow: scroll and declares scroll-axis-lock: none directly on itself rather than on an ancestor wrapper", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
     const allStyleRules = collectStyleRules(rules);
 
     // Find rules that declare scroll-axis-lock: none
     const axisLockRules = allStyleRules.filter(
-      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+      ({ rule }) =>
+        rule.style.getPropertyValue("scroll-axis-lock").trim() === "none",
     );
     expect(axisLockRules.length).toBeGreaterThan(0);
 
@@ -83,10 +108,10 @@ test.describe('2d-panning Target Grader', () => {
     let appliedToNonScrollAncestor = false;
 
     for (const { document } of docs) {
-      const allElements: any[] = Array.from(document.querySelectorAll('*'));
+      const allElements: any[] = Array.from(document.querySelectorAll("*"));
       for (const el of allElements) {
         const cascaded = getCascadedStyle(el, rules);
-        if (cascaded.getPropertyValue('scroll-axis-lock').trim() === 'none') {
+        if (cascaded.getPropertyValue("scroll-axis-lock").trim() === "none") {
           if (hasOverflowScrollOrAuto(cascaded)) {
             matchedDirectContainer = true;
           } else {
@@ -98,14 +123,16 @@ test.describe('2d-panning Target Grader', () => {
 
     // Fallback check on CSSStyleRule directly if elements are dynamically created
     if (!matchedDirectContainer) {
-      matchedDirectContainer = axisLockRules.some(({ rule }) => hasOverflowScrollOrAuto(rule.style));
+      matchedDirectContainer = axisLockRules.some(({ rule }) =>
+        hasOverflowScrollOrAuto(rule.style),
+      );
     }
 
     expect(matchedDirectContainer).toBe(true);
     expect(appliedToNonScrollAncestor).toBe(false);
   });
 
-  test('The two-dimensional scroll container sets overscroll-behavior: none or overscroll-behavior: contain', () => {
+  test("The two-dimensional scroll container sets overscroll-behavior: none or overscroll-behavior: contain", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
     const docs = getHtmlDocuments(targetFiles);
@@ -113,11 +140,11 @@ test.describe('2d-panning Target Grader', () => {
     let hasOverscrollOnContainer = false;
 
     for (const { document } of docs) {
-      const allElements: any[] = Array.from(document.querySelectorAll('*'));
+      const allElements: any[] = Array.from(document.querySelectorAll("*"));
       for (const el of allElements) {
         const cascaded = getCascadedStyle(el, rules);
         if (
-          cascaded.getPropertyValue('scroll-axis-lock').trim() === 'none' &&
+          cascaded.getPropertyValue("scroll-axis-lock").trim() === "none" &&
           hasOverflowScrollOrAuto(cascaded) &&
           hasOverscrollContainOrNone(cascaded)
         ) {
@@ -130,8 +157,8 @@ test.describe('2d-panning Target Grader', () => {
       const allStyleRules = collectStyleRules(rules);
       hasOverscrollOnContainer = allStyleRules.some(
         ({ rule }) =>
-          rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none' &&
-          hasOverscrollContainOrNone(rule.style)
+          rule.style.getPropertyValue("scroll-axis-lock").trim() === "none" &&
+          hasOverscrollContainOrNone(rule.style),
       );
     }
 
@@ -144,31 +171,52 @@ test.describe('2d-panning Target Grader', () => {
     const allStyleRules = collectStyleRules(rules);
     const docs = getHtmlDocuments(targetFiles);
 
-    const namedLandmarkTags = new Set(['section', 'main', 'aside', 'nav', 'article']);
-    const namedRoles = new Set(['region', 'application', 'group', 'img', 'figure', 'grid', 'graphics-document']);
+    const namedLandmarkTags = new Set([
+      "section",
+      "main",
+      "aside",
+      "nav",
+      "article",
+    ]);
+    const namedRoles = new Set([
+      "region",
+      "application",
+      "group",
+      "img",
+      "figure",
+      "grid",
+      "graphics-document",
+    ]);
     let foundFocusableNamedContainer = false;
 
     for (const { document } of docs) {
-      const candidates: any[] = Array.from(document.querySelectorAll('[tabindex="0"]'));
+      const candidates: any[] = Array.from(
+        document.querySelectorAll('[tabindex="0"]'),
+      );
       for (const el of candidates) {
         const cascaded = getCascadedStyle(el, rules);
         const isScrollContainer =
-          cascaded.getPropertyValue('scroll-axis-lock').trim() === 'none' ||
+          cascaded.getPropertyValue("scroll-axis-lock").trim() === "none" ||
           hasOverflowScrollOrAuto(cascaded);
         if (!isScrollContainer) continue;
 
-        const explicitRole = (el.getAttribute('role') || '').trim().toLowerCase();
-        const tag = (el.tagName || '').toLowerCase();
-        const hasNamedRole = namedRoles.has(explicitRole) || (!explicitRole && namedLandmarkTags.has(tag));
+        const explicitRole = (el.getAttribute("role") || "")
+          .trim()
+          .toLowerCase();
+        const tag = (el.tagName || "").toLowerCase();
+        const hasNamedRole =
+          namedRoles.has(explicitRole) ||
+          (!explicitRole && namedLandmarkTags.has(tag));
         if (!hasNamedRole) continue;
 
-        const ariaLabel = el.getAttribute('aria-label')?.trim();
-        const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim();
-        const title = el.getAttribute('title')?.trim();
+        const ariaLabel = el.getAttribute("aria-label")?.trim();
+        const ariaLabelledBy = el.getAttribute("aria-labelledby")?.trim();
+        const title = el.getAttribute("title")?.trim();
         const hasAccessibleName = Boolean(
           (ariaLabel && ariaLabel.length > 0) ||
-          (ariaLabelledBy && document.getElementById(ariaLabelledBy)?.textContent?.trim()) ||
-          (title && title.length > 0)
+          (ariaLabelledBy &&
+            document.getElementById(ariaLabelledBy)?.textContent?.trim()) ||
+          (title && title.length > 0),
         );
 
         if (hasAccessibleName) {
@@ -181,34 +229,37 @@ test.describe('2d-panning Target Grader', () => {
 
     // Check for a visible :focus-visible rule
     const hasFocusVisibleRule = allStyleRules.some(({ rule }) => {
-      if (!rule.selectorText.includes(':focus-visible')) return false;
-      const outline = rule.style.getPropertyValue('outline').trim();
-      const outlineWidth = rule.style.getPropertyValue('outline-width').trim();
-      const outlineColor = rule.style.getPropertyValue('outline-color').trim();
-      const boxShadow = rule.style.getPropertyValue('box-shadow').trim();
-      const borderColor = rule.style.getPropertyValue('border-color').trim();
-      const border = rule.style.getPropertyValue('border').trim();
+      if (!rule.selectorText.includes(":focus-visible")) return false;
+      const outline = rule.style.getPropertyValue("outline").trim();
+      const outlineWidth = rule.style.getPropertyValue("outline-width").trim();
+      const outlineColor = rule.style.getPropertyValue("outline-color").trim();
+      const boxShadow = rule.style.getPropertyValue("box-shadow").trim();
+      const borderColor = rule.style.getPropertyValue("border-color").trim();
+      const border = rule.style.getPropertyValue("border").trim();
       return Boolean(
-        (outline && outline !== 'none' && outline !== '0') ||
-        (outlineWidth && outlineWidth !== '0' && outlineWidth !== '0px') ||
+        (outline && outline !== "none" && outline !== "0") ||
+        (outlineWidth && outlineWidth !== "0" && outlineWidth !== "0px") ||
         outlineColor ||
-        (boxShadow && boxShadow !== 'none') ||
+        (boxShadow && boxShadow !== "none") ||
         borderColor ||
-        border
+        border,
       );
     });
 
     expect(hasFocusVisibleRule).toBe(true);
   });
 
-  test('touch-action is not restricted unconditionally; when present, it is scoped inside @supports not (scroll-axis-lock: none) and set to pinch-zoom rather than none', () => {
+  test("touch-action is not restricted unconditionally; when present, it is scoped inside @supports not (scroll-axis-lock: none) and set to pinch-zoom rather than none", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
     const allStyleRules = collectStyleRules(rules);
 
     const restrictedTouchRules = allStyleRules.filter(({ rule }) => {
-      const value = rule.style.getPropertyValue('touch-action').trim().toLowerCase();
-      return value !== '' && value !== 'auto';
+      const value = rule.style
+        .getPropertyValue("touch-action")
+        .trim()
+        .toLowerCase();
+      return value !== "" && value !== "auto";
     });
 
     const docs = getHtmlDocuments(targetFiles);
@@ -216,24 +267,29 @@ test.describe('2d-panning Target Grader', () => {
 
     // Presence anchor: require a 2D scroll container declaring scroll-axis-lock: none
     const hasAxisLockRule = allStyleRules.some(
-      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+      ({ rule }) =>
+        rule.style.getPropertyValue("scroll-axis-lock").trim() === "none",
     );
     expect(hasAxisLockRule).toBe(true);
 
     // Every non-auto touch-action rule must be scoped inside @supports not (scroll-axis-lock: none) and be pinch-zoom (never none)
     expect(
       restrictedTouchRules.every(({ rule, insideSupportsNot }) => {
-        const value = rule.style.getPropertyValue('touch-action').trim().toLowerCase();
-        return insideSupportsNot && value === 'pinch-zoom';
-      })
+        const value = rule.style
+          .getPropertyValue("touch-action")
+          .trim()
+          .toLowerCase();
+        return insideSupportsNot && value === "pinch-zoom";
+      }),
     ).toBe(true);
   });
 
-  test('The JavaScript fallback pans by updating the container scrollLeft and scrollTop rather than translating the content with CSS transform', () => {
+  test("The JavaScript fallback pans by updating the container scrollLeft and scrollTop rather than translating the content with CSS transform", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allStyleRules = collectStyleRules(Array.from(stylesheet.cssRules));
     const hasAxisLockRule = allStyleRules.some(
-      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+      ({ rule }) =>
+        rule.style.getPropertyValue("scroll-axis-lock").trim() === "none",
     );
     expect(hasAxisLockRule).toBe(true);
 
@@ -241,56 +297,74 @@ test.describe('2d-panning Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression),
     );
     const panListeners = callExpressions.filter((call) => {
       const expr = call.getExpression();
       if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
       const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
-      if (name !== 'addEventListener') return false;
-      const firstArg = call.getArguments()[0]?.getText() || '';
-      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
+      if (name !== "addEventListener") return false;
+      const firstArg = call.getArguments()[0]?.getText() || "";
+      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(
+        firstArg,
+      );
     });
 
     const propertyAccesses = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+      sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression),
     );
     const elementAccesses = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.ElementAccessExpression)
+      sf.getDescendantsOfKind(SyntaxKind.ElementAccessExpression),
     );
     const binaryExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)
+      sf.getDescendantsOfKind(SyntaxKind.BinaryExpression),
     );
 
-    const assignmentOps = new Set(['=', '+=', '-=']);
+    const assignmentOps = new Set(["=", "+=", "-="]);
 
-    const updatesScrollLeft = binaryExpressions.some((expr) => {
-      const op = expr.getOperatorToken().getText();
-      if (!assignmentOps.has(op)) return false;
-      const leftText = expr.getLeft().getText();
-      return /\bscrollLeft\b/.test(leftText);
-    }) || propertyAccesses.some((pa) => pa.getName() === 'scrollBy' || pa.getName() === 'scrollTo');
+    const updatesScrollLeft =
+      binaryExpressions.some((expr) => {
+        const op = expr.getOperatorToken().getText();
+        if (!assignmentOps.has(op)) return false;
+        const leftText = expr.getLeft().getText();
+        return /\bscrollLeft\b/.test(leftText);
+      }) ||
+      propertyAccesses.some(
+        (pa) => pa.getName() === "scrollBy" || pa.getName() === "scrollTo",
+      );
 
-    const updatesScrollTop = binaryExpressions.some((expr) => {
-      const op = expr.getOperatorToken().getText();
-      if (!assignmentOps.has(op)) return false;
-      const leftText = expr.getLeft().getText();
-      return /\bscrollTop\b/.test(leftText);
-    }) || propertyAccesses.some((pa) => pa.getName() === 'scrollBy' || pa.getName() === 'scrollTo');
+    const updatesScrollTop =
+      binaryExpressions.some((expr) => {
+        const op = expr.getOperatorToken().getText();
+        if (!assignmentOps.has(op)) return false;
+        const leftText = expr.getLeft().getText();
+        return /\bscrollTop\b/.test(leftText);
+      }) ||
+      propertyAccesses.some(
+        (pa) => pa.getName() === "scrollBy" || pa.getName() === "scrollTo",
+      );
 
     // Ensure JS does not pan by assigning style.transform or style['transform']
-    const setsStyleTransform = binaryExpressions.some((expr) => {
-      const op = expr.getOperatorToken().getText();
-      if (!assignmentOps.has(op)) return false;
-      const leftText = expr.getLeft().getText();
-      return /\bstyle\s*(\.\s*transform|\[\s*['"`]transform['"`]\s*\])/.test(leftText);
-    }) || elementAccesses.some((ea) => {
-      const arg = ea.getArgumentExpression()?.getText() || '';
-      return /['"`]transform['"`]/.test(arg) && /\bstyle\b/.test(ea.getExpression().getText());
-    });
+    const setsStyleTransform =
+      binaryExpressions.some((expr) => {
+        const op = expr.getOperatorToken().getText();
+        if (!assignmentOps.has(op)) return false;
+        const leftText = expr.getLeft().getText();
+        return /\bstyle\s*(\.\s*transform|\[\s*['"`]transform['"`]\s*\])/.test(
+          leftText,
+        );
+      }) ||
+      elementAccesses.some((ea) => {
+        const arg = ea.getArgumentExpression()?.getText() || "";
+        return (
+          /['"`]transform['"`]/.test(arg) &&
+          /\bstyle\b/.test(ea.getExpression().getText())
+        );
+      });
 
     expect(
-      panListeners.length === 0 || (updatesScrollLeft && updatesScrollTop && !setsStyleTransform)
+      panListeners.length === 0 ||
+        (updatesScrollLeft && updatesScrollTop && !setsStyleTransform),
     ).toBe(true);
   });
 
@@ -298,7 +372,8 @@ test.describe('2d-panning Target Grader', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allStyleRules = collectStyleRules(Array.from(stylesheet.cssRules));
     const hasAxisLockRule = allStyleRules.some(
-      ({ rule }) => rule.style.getPropertyValue('scroll-axis-lock').trim() === 'none'
+      ({ rule }) =>
+        rule.style.getPropertyValue("scroll-axis-lock").trim() === "none",
     );
     expect(hasAxisLockRule).toBe(true);
 
@@ -306,22 +381,27 @@ test.describe('2d-panning Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const callExpressions = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression),
     );
     const panListeners = callExpressions.filter((call) => {
       const expr = call.getExpression();
       if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
       const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
-      if (name !== 'addEventListener') return false;
-      const firstArg = call.getArguments()[0]?.getText() || '';
-      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
+      if (name !== "addEventListener") return false;
+      const firstArg = call.getArguments()[0]?.getText() || "";
+      return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(
+        firstArg,
+      );
     });
 
     const isCssSupportsScrollAxisLockCall = (call: CallExpression): boolean => {
       const exprText = call.getExpression().getText();
       if (!/\bCSS\.supports\b/.test(exprText)) return false;
-      const argsText = call.getArguments().map((a) => a.getText()).join(' ');
-      return argsText.includes('scroll-axis-lock') && argsText.includes('none');
+      const argsText = call
+        .getArguments()
+        .map((a) => a.getText())
+        .join(" ");
+      return argsText.includes("scroll-axis-lock") && argsText.includes("none");
     };
 
     const isGuardedByNotCssSupports = (node: Node): boolean => {
@@ -330,7 +410,9 @@ test.describe('2d-panning Target Grader', () => {
         if (current.getKind() === SyntaxKind.IfStatement) {
           const ifStmt = current.asKindOrThrow(SyntaxKind.IfStatement);
           const condition = ifStmt.getExpression();
-          const calls = condition.getDescendantsOfKind(SyntaxKind.CallExpression);
+          const calls = condition.getDescendantsOfKind(
+            SyntaxKind.CallExpression,
+          );
           const allCalls =
             condition.getKind() === SyntaxKind.CallExpression
               ? [condition.asKindOrThrow(SyntaxKind.CallExpression), ...calls]
@@ -344,21 +426,28 @@ test.describe('2d-panning Target Grader', () => {
                   (u) =>
                     u.getOperatorToken() === SyntaxKind.ExclamationToken &&
                     (u.getOperand() === supportsCall ||
-                      u.getOperand().getDescendantsOfKind(SyntaxKind.CallExpression).includes(supportsCall))
+                      u
+                        .getOperand()
+                        .getDescendantsOfKind(SyntaxKind.CallExpression)
+                        .includes(supportsCall)),
                 ) ||
               (condition.getKind() === SyntaxKind.PrefixUnaryExpression &&
-                condition.asKindOrThrow(SyntaxKind.PrefixUnaryExpression).getOperatorToken() ===
-                  SyntaxKind.ExclamationToken) ||
+                condition
+                  .asKindOrThrow(SyntaxKind.PrefixUnaryExpression)
+                  .getOperatorToken() === SyntaxKind.ExclamationToken) ||
               condition
                 .getDescendantsOfKind(SyntaxKind.BinaryExpression)
                 .some(
                   (b) =>
-                    ['===', '=='].includes(b.getOperatorToken().getText()) &&
-                    (b.getLeft().getText() === 'false' || b.getRight().getText() === 'false')
+                    ["===", "=="].includes(b.getOperatorToken().getText()) &&
+                    (b.getLeft().getText() === "false" ||
+                      b.getRight().getText() === "false"),
                 );
             const thenStmt = ifStmt.getThenStatement();
             const elseStmt = ifStmt.getElseStatement();
-            const inThen = node.getPos() >= thenStmt.getPos() && node.getEnd() <= thenStmt.getEnd();
+            const inThen =
+              node.getPos() >= thenStmt.getPos() &&
+              node.getEnd() <= thenStmt.getEnd();
             const inElse =
               elseStmt !== undefined &&
               node.getPos() >= elseStmt.getPos() &&
@@ -369,7 +458,10 @@ test.describe('2d-panning Target Grader', () => {
           }
         }
 
-        if (current.getKind() === SyntaxKind.Block || current.getKind() === SyntaxKind.SourceFile) {
+        if (
+          current.getKind() === SyntaxKind.Block ||
+          current.getKind() === SyntaxKind.SourceFile
+        ) {
           const statements = (current as any).getStatements?.() || [];
           for (const stmt of statements) {
             if (stmt.getEnd() <= node.getPos()) {
@@ -380,17 +472,25 @@ test.describe('2d-panning Target Grader', () => {
               for (const ifStmt of ifStmts) {
                 if (ifStmt.getEnd() > node.getPos()) continue;
                 const condition = ifStmt.getExpression();
-                const calls = condition.getDescendantsOfKind(SyntaxKind.CallExpression);
+                const calls = condition.getDescendantsOfKind(
+                  SyntaxKind.CallExpression,
+                );
                 const allCalls =
                   condition.getKind() === SyntaxKind.CallExpression
-                    ? [condition.asKindOrThrow(SyntaxKind.CallExpression), ...calls]
+                    ? [
+                        condition.asKindOrThrow(SyntaxKind.CallExpression),
+                        ...calls,
+                      ]
                     : calls;
-                const supportsCall = allCalls.find(isCssSupportsScrollAxisLockCall);
+                const supportsCall = allCalls.find(
+                  isCssSupportsScrollAxisLockCall,
+                );
                 if (!supportsCall) continue;
                 const thenStmt = ifStmt.getThenStatement();
                 const hasReturn =
                   thenStmt.getKind() === SyntaxKind.ReturnStatement ||
-                  thenStmt.getDescendantsOfKind(SyntaxKind.ReturnStatement).length > 0;
+                  thenStmt.getDescendantsOfKind(SyntaxKind.ReturnStatement)
+                    .length > 0;
                 if (hasReturn) return true;
               }
             }
@@ -402,25 +502,39 @@ test.describe('2d-panning Target Grader', () => {
       return false;
     };
 
-    expect(panListeners.every((call) => isGuardedByNotCssSupports(call))).toBe(true);
+    expect(panListeners.every((call) => isGuardedByNotCssSupports(call))).toBe(
+      true,
+    );
   });
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
 
-    test('The two-dimensional scroll container overflows in both horizontal and vertical axes at runtime', async ({ page }) => {
+    test("The two-dimensional scroll container overflows in both horizontal and vertical axes at runtime", async ({
+      page,
+    }) => {
       const containerInfo = await page.evaluate(() => {
-        const candidates = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"], [role="region"], div, section'));
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '[tabindex="0"], [role="region"], div, section',
+          ),
+        );
         for (const el of candidates) {
           const cs = window.getComputedStyle(el);
           const isScrollableStyle =
-            cs.overflowX === 'auto' || cs.overflowX === 'scroll' ||
-            cs.overflowY === 'auto' || cs.overflowY === 'scroll';
-          if (isScrollableStyle && el.scrollWidth > el.clientWidth && el.scrollHeight > el.clientHeight) {
+            cs.overflowX === "auto" ||
+            cs.overflowX === "scroll" ||
+            cs.overflowY === "auto" ||
+            cs.overflowY === "scroll";
+          if (
+            isScrollableStyle &&
+            el.scrollWidth > el.clientWidth &&
+            el.scrollHeight > el.clientHeight
+          ) {
             return {
               found: true,
               scrollWidth: el.scrollWidth,
@@ -432,35 +546,55 @@ test.describe('2d-panning Target Grader', () => {
             };
           }
         }
-        return { found: false, scrollWidth: 0, clientWidth: 0, scrollHeight: 0, clientHeight: 0, overscrollBehaviorX: '', overscrollBehaviorY: '' };
+        return {
+          found: false,
+          scrollWidth: 0,
+          clientWidth: 0,
+          scrollHeight: 0,
+          clientHeight: 0,
+          overscrollBehaviorX: "",
+          overscrollBehaviorY: "",
+        };
       });
 
       expect(containerInfo.found).toBe(true);
-      expect(containerInfo.scrollWidth).toBeGreaterThan(containerInfo.clientWidth);
-      expect(containerInfo.scrollHeight).toBeGreaterThan(containerInfo.clientHeight);
-      expect(['none', 'contain']).toContain(containerInfo.overscrollBehaviorX);
-      expect(['none', 'contain']).toContain(containerInfo.overscrollBehaviorY);
+      expect(containerInfo.scrollWidth).toBeGreaterThan(
+        containerInfo.clientWidth,
+      );
+      expect(containerInfo.scrollHeight).toBeGreaterThan(
+        containerInfo.clientHeight,
+      );
+      expect(["none", "contain"]).toContain(containerInfo.overscrollBehaviorX);
+      expect(["none", "contain"]).toContain(containerInfo.overscrollBehaviorY);
     });
 
-    test('The JavaScript fallback pans scrollLeft and scrollTop in both axes when CSS.supports("scroll-axis-lock", "none") is false', async ({ page, TARGET_URL }) => {
+    test('The JavaScript fallback pans scrollLeft and scrollTop in both axes when CSS.supports("scroll-axis-lock", "none") is false', async ({
+      page,
+      TARGET_URL,
+    }) => {
       const project: Project = getJsProject(targetFiles);
       const hasPanListener = project
         .getSourceFiles()
         .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.CallExpression))
         .some((call) => {
           const expr = call.getExpression();
-          if (expr.getKind() !== SyntaxKind.PropertyAccessExpression) return false;
-          const name = expr.asKind(SyntaxKind.PropertyAccessExpression)?.getName();
-          if (name !== 'addEventListener') return false;
-          const firstArg = call.getArguments()[0]?.getText() || '';
-          return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(firstArg);
+          if (expr.getKind() !== SyntaxKind.PropertyAccessExpression)
+            return false;
+          const name = expr
+            .asKind(SyntaxKind.PropertyAccessExpression)
+            ?.getName();
+          if (name !== "addEventListener") return false;
+          const firstArg = call.getArguments()[0]?.getText() || "";
+          return /['"`](wheel|pointerdown|pointermove|touchstart|touchmove|mousedown|mousemove)['"`]/i.test(
+            firstArg,
+          );
         });
 
       await page.addInitScript(() => {
         const origSupports = CSS.supports.bind(CSS);
         CSS.supports = ((...args: [string, string?]) => {
-          const joined = args.join(' ').toLowerCase();
-          if (joined.includes('scroll-axis-lock')) {
+          const joined = args.join(" ").toLowerCase();
+          if (joined.includes("scroll-axis-lock")) {
             return false;
           }
           return origSupports(...(args as [string, string]));
@@ -470,11 +604,15 @@ test.describe('2d-panning Target Grader', () => {
       await page.goto(TARGET_URL);
 
       const panResult = await page.evaluate(() => {
-        const candidates = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"], [role="region"], div'));
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '[tabindex="0"], [role="region"], div',
+          ),
+        );
         const viewport = candidates.find((el) => {
           const cs = window.getComputedStyle(el);
           return (
-            (cs.overflowX === 'auto' || cs.overflowX === 'scroll') &&
+            (cs.overflowX === "auto" || cs.overflowX === "scroll") &&
             el.scrollWidth > el.clientWidth &&
             el.scrollHeight > el.clientHeight
           );
@@ -485,7 +623,7 @@ test.describe('2d-panning Target Grader', () => {
         viewport.scrollTop = 0;
 
         // Dispatch a diagonal wheel gesture
-        const wheelEvent = new WheelEvent('wheel', {
+        const wheelEvent = new WheelEvent("wheel", {
           deltaX: 120,
           deltaY: 95,
           deltaMode: 0,
@@ -499,7 +637,7 @@ test.describe('2d-panning Target Grader', () => {
 
         // Check that children were not translated via inline transform for panning
         const firstChild = viewport.firstElementChild as HTMLElement | null;
-        const childInlineTransform = firstChild?.style.transform || '';
+        const childInlineTransform = firstChild?.style.transform || "";
 
         return {
           afterWheelLeft,
@@ -510,7 +648,7 @@ test.describe('2d-panning Target Grader', () => {
       });
 
       expect(panResult).not.toBeNull();
-      expect(panResult!.childInlineTransform).toBe('');
+      expect(panResult!.childInlineTransform).toBe("");
       if (hasPanListener) {
         expect(panResult!.wheelDefaultPrevented).toBe(true);
         expect(panResult!.afterWheelLeft).toBeGreaterThan(0);
@@ -518,12 +656,15 @@ test.describe('2d-panning Target Grader', () => {
       }
     });
 
-    test("Any JavaScript wheel fallback doesn't cancel wheel events that have ctrlKey set, so Ctrl+wheel and trackpad pinch still zoom the page", async ({ page, TARGET_URL }) => {
+    test("Any JavaScript wheel fallback doesn't cancel wheel events that have ctrlKey set, so Ctrl+wheel and trackpad pinch still zoom the page", async ({
+      page,
+      TARGET_URL,
+    }) => {
       await page.addInitScript(() => {
         const origSupports = CSS.supports.bind(CSS);
         CSS.supports = ((...args: [string, string?]) => {
-          const joined = args.join(' ').toLowerCase();
-          if (joined.includes('scroll-axis-lock')) {
+          const joined = args.join(" ").toLowerCase();
+          if (joined.includes("scroll-axis-lock")) {
             return false;
           }
           return origSupports(...(args as [string, string]));
@@ -533,18 +674,22 @@ test.describe('2d-panning Target Grader', () => {
       await page.goto(TARGET_URL);
 
       const ctrlResult = await page.evaluate(() => {
-        const candidates = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"], [role="region"], div'));
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '[tabindex="0"], [role="region"], div',
+          ),
+        );
         const viewport = candidates.find((el) => {
           const cs = window.getComputedStyle(el);
           return (
-            (cs.overflowX === 'auto' || cs.overflowX === 'scroll') &&
+            (cs.overflowX === "auto" || cs.overflowX === "scroll") &&
             el.scrollWidth > el.clientWidth &&
             el.scrollHeight > el.clientHeight
           );
         });
         if (!viewport) return null;
 
-        const ctrlWheelEvent = new WheelEvent('wheel', {
+        const ctrlWheelEvent = new WheelEvent("wheel", {
           deltaX: 0,
           deltaY: 120,
           deltaMode: 0,

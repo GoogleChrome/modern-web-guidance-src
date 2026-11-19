@@ -23,7 +23,7 @@ body:
     id: reproduction-steps
     attributes:
       label: Steps to reproduce
-      description: If applicable, please explain the steps required to duplicate the issue. 
+      description: If applicable, please explain the steps required to duplicate the issue.
       placeholder: |
         1. Go to '...'
         2. Copy the code snippet for '...'

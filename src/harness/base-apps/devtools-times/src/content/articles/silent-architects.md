@@ -15,21 +15,21 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
 
 ### Why They Matter
 
-*   **Biodiversity:** They provide habitats and food for countless species.
-*   **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
-*   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
+- **Biodiversity:** They provide habitats and food for countless species.
+- **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
+- **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
 
 Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
 
 <script>
-    // Just blindly setting a "cache" to avoid refetching data, 
+    // Just blindly setting a "cache" to avoid refetching data,
     // but the developer accidentally set it way too large and on the wrong path scope?
     // Actually, let's just make it a large cookie for this specific API path to cause the 431.
-    
+
     // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
     // but still trigger the total header size check in the API (>4KB).
-    const largeValue = "A".repeat(2000); 
-    
+    const largeValue = "A".repeat(2000);
+
     document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
     document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
     document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;

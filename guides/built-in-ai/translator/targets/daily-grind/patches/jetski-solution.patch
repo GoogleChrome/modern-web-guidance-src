@@ -5,7 +5,7 @@ index 66c9173..ee3713d 100644
 @@ -72,6 +72,109 @@
        border-radius: 4px;
      }
- 
+
 +    /* Translation Bar */
 +    .translation-bar {
 +      background: #3e2723;
@@ -121,11 +121,11 @@ index 66c9173..ee3713d 100644
 +      font-size: 1rem;
 +      font-family: inherit;
      }
- 
+
      .btn:hover {
        background: #3e2723;
      }
- 
+
 +    .btn:disabled {
 +      background: #a1887f;
 +      cursor: not-allowed;
@@ -201,7 +201,7 @@ index 66c9173..ee3713d 100644
 +      <li><a href="/logout" class="logout-link" data-translate>Logout</a></li>
      </ul>
    </nav>
- 
+
 +  <div class="translation-bar" id="translation-bar">
 +    <div class="translation-container">
 +      <div class="translation-row">
@@ -314,7 +314,7 @@ index 66c9173..ee3713d 100644
 +    <p data-translate>Ethically sourced, locally roasted, delivered to your cup.</p>
 +    <a href="/order-online" class="btn" data-translate>Order Now</a>
    </header>
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -369,7 +369,7 @@ index 66c9173..ee3713d 100644
        </div>
      </section>
 @@ -199,14 +488,273 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -383,10 +383,10 @@ index 66c9173..ee3713d 100644
      </div>
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // Translator API Implementation adhering strictly to web standards and guide.md
-+    
++
 +    // Check if Translator API is available in global scope (window.Translator / self.Translator)
 +    // NOTE: Strictly avoiding deprecated window.ai.translator namespace
 +    function isTranslatorSupported() {
@@ -644,7 +644,7 @@ index 66c9173..ee3713d 100644
 +    });
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..b68d9f5 100644

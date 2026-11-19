@@ -1,8 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { outDir as defaultOutRoot, rootDir } from '../../core/paths.ts';
-import { PUBLIC_EVALS_DIR } from './builder.ts';
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync, spawnSync } from "node:child_process";
+import { outDir as defaultOutRoot, rootDir } from "../../core/paths.ts";
+import { PUBLIC_EVALS_DIR } from "./builder.ts";
 
 /**
  * Moves `public-evals/` between the local output directory and the `gh-pages`
@@ -15,8 +15,8 @@ import { PUBLIC_EVALS_DIR } from './builder.ts';
  * ~35k files a full site holds.
  */
 
-const BRANCH = 'gh-pages';
-const REMOTE = 'origin';
+const BRANCH = "gh-pages";
+const REMOTE = "origin";
 
 export interface PublishOptions {
   /** Commit message on the `gh-pages` branch. */
@@ -36,12 +36,19 @@ export interface PublishOptions {
 
 /** Resolves `origin`'s URL in the repo checkout. */
 export function originRemoteUrl(): string {
-  return execFileSync('git', ['remote', 'get-url', REMOTE], { cwd: rootDir, encoding: 'utf8' }).trim();
+  return execFileSync("git", ["remote", "get-url", REMOTE], {
+    cwd: rootDir,
+    encoding: "utf8",
+  }).trim();
 }
 
 /** Where the shallow clone of `gh-pages` for `repoUrl` lives between runs (under the gitignored `out/`). */
 export function cloneDir(repoUrl: string): string {
-  return path.join(defaultOutRoot, 'gh-pages-clone', repoUrl.replace(/[^\w.-]+/g, '_'));
+  return path.join(
+    defaultOutRoot,
+    "gh-pages-clone",
+    repoUrl.replace(/[^\w.-]+/g, "_"),
+  );
 }
 
 /**
@@ -51,7 +58,10 @@ export function cloneDir(repoUrl: string): string {
  * branch does not exist yet. Any other failure to reach the remote throws:
  * treating it as "nothing published" would rebuild and replace the site.
  */
-export function checkoutPublished(outDir: string, repoUrl = originRemoteUrl()): string | null {
+export function checkoutPublished(
+  outDir: string,
+  repoUrl = originRemoteUrl(),
+): string | null {
   const dest = path.join(outDir, PUBLIC_EVALS_DIR);
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
@@ -70,12 +80,18 @@ export function checkoutPublished(outDir: string, repoUrl = originRemoteUrl()): 
 
 /** The remote `gh-pages` commit, or null if the branch does not exist. */
 export function remoteHead(repoUrl: string): string | null {
-  const out = execFileSync('git', ['ls-remote', repoUrl, `refs/heads/${BRANCH}`], { encoding: 'utf8' }).trim();
-  return out === '' ? null : out.split(/\s+/)[0];
+  const out = execFileSync(
+    "git",
+    ["ls-remote", repoUrl, `refs/heads/${BRANCH}`],
+    { encoding: "utf8" },
+  ).trim();
+  return out === "" ? null : out.split(/\s+/)[0];
 }
 
 function movedError(expectedHead: string | null, head: string | null): Error {
-  return new Error(`${BRANCH} moved while building (${expectedHead ?? 'none'} → ${head ?? 'none'}); rerun to pick up the other change`);
+  return new Error(
+    `${BRANCH} moved while building (${expectedHead ?? "none"} → ${head ?? "none"}); rerun to pick up the other change`,
+  );
 }
 
 /**
@@ -85,9 +101,12 @@ function movedError(expectedHead: string | null, head: string | null): Error {
  * Does nothing and returns false when the published copy already matches.
  * Returns true if a commit was created and pushed.
  */
-export async function publishPublicEvals(outDir: string, options: PublishOptions): Promise<boolean> {
+export async function publishPublicEvals(
+  outDir: string,
+  options: PublishOptions,
+): Promise<boolean> {
   const source = path.join(outDir, PUBLIC_EVALS_DIR);
-  if (!fs.existsSync(path.join(source, 'suites.gen.json'))) {
+  if (!fs.existsSync(path.join(source, "suites.gen.json"))) {
     throw new Error(`${source} has no suites.gen.json; run the builder first`);
   }
   const repoUrl = options.repoUrl ?? originRemoteUrl();
@@ -99,17 +118,20 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
   const published = path.join(clone, PUBLIC_EVALS_DIR);
   fs.rmSync(published, { recursive: true, force: true });
   // Dot-prefixed entries (editor or OS droppings) are never part of the public contract.
-  fs.cpSync(source, published, { recursive: true, filter: src => !path.basename(src).startsWith('.') });
-  fs.writeFileSync(path.join(clone, '.nojekyll'), '');
+  fs.cpSync(source, published, {
+    recursive: true,
+    filter: (src) => !path.basename(src).startsWith("."),
+  });
+  fs.writeFileSync(path.join(clone, ".nojekyll"), "");
 
   // `--force`: a stale `.gitignore` (`*.log`) left on the branch by an earlier deploy would otherwise
   // silently drop every `modern-web.log`; the dot-prefix filter above is the only junk guard this tree needs.
-  git(clone, ['add', '-A', '--force', '--', PUBLIC_EVALS_DIR, '.nojekyll']);
+  git(clone, ["add", "-A", "--force", "--", PUBLIC_EVALS_DIR, ".nojekyll"]);
   if (!indexDiffersFromHead(clone, head)) {
     return false;
   }
 
-  const tree = git(clone, ['write-tree']).trim();
+  const tree = git(clone, ["write-tree"]).trim();
   const authorEnv: Record<string, string> = options.user
     ? {
         GIT_AUTHOR_NAME: options.user.name,
@@ -119,21 +141,35 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
       }
     : {};
   // No parent: one commit holding the whole site, as `gh-pages`' history:false did.
-  const commit = git(clone, ['commit-tree', tree, '-m', options.message], authorEnv).trim();
+  const commit = git(
+    clone,
+    ["commit-tree", tree, "-m", options.message],
+    authorEnv,
+  ).trim();
   // The lease makes the expectedHead check atomic with the push: if the branch moved while
   // the site was building, the remote rejects the update instead of us overwriting it.
-  const force = options.expectedHead === undefined
-    ? '--force'
-    : `--force-with-lease=refs/heads/${BRANCH}:${options.expectedHead ?? ''}`;
-  const push = spawnSync('git', ['push', '--quiet', force, REMOTE, `${commit}:refs/heads/${BRANCH}`], { cwd: clone, encoding: 'utf8' });
+  const force =
+    options.expectedHead === undefined
+      ? "--force"
+      : `--force-with-lease=refs/heads/${BRANCH}:${options.expectedHead ?? ""}`;
+  const push = spawnSync(
+    "git",
+    ["push", "--quiet", force, REMOTE, `${commit}:refs/heads/${BRANCH}`],
+    { cwd: clone, encoding: "utf8" },
+  );
   if (push.status !== 0) {
-    if (/stale info|rejected/.test(push.stderr) && options.expectedHead !== undefined) {
+    if (
+      /stale info|rejected/.test(push.stderr) &&
+      options.expectedHead !== undefined
+    ) {
       throw movedError(options.expectedHead, remoteHead(repoUrl));
     }
-    throw new Error(`git push to ${BRANCH} failed: ${push.stderr.trim() || push.status}`);
+    throw new Error(
+      `git push to ${BRANCH} failed: ${push.stderr.trim() || push.status}`,
+    );
   }
   // The index and working tree already hold the new site; only HEAD needs to move.
-  git(clone, ['reset', '--quiet', '--soft', commit]);
+  git(clone, ["reset", "--quiet", "--soft", commit]);
   return true;
 }
 
@@ -144,7 +180,9 @@ export async function publishPublicEvals(outDir: string, options: PublishOptions
 export function repoFromRemoteUrl(url: string): string {
   const match = /github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/.exec(url);
   if (!match) {
-    throw new Error(`cannot determine GitHub {owner}/{repo} from remote URL: ${url}`);
+    throw new Error(
+      `cannot determine GitHub {owner}/{repo} from remote URL: ${url}`,
+    );
   }
   return `${match[1]}/${match[2]}`;
 }
@@ -159,19 +197,19 @@ function syncClone(repoUrl: string, head: string | null): string {
   const clone = cloneDir(repoUrl);
   // No branch on the remote: start from an empty repository, so that nothing left in a clone
   // from an earlier publish (if the branch was deleted since) can ride into the first commit.
-  if (head === null || !fs.existsSync(path.join(clone, '.git'))) {
+  if (head === null || !fs.existsSync(path.join(clone, ".git"))) {
     fs.rmSync(clone, { recursive: true, force: true });
     fs.mkdirSync(clone, { recursive: true });
-    git(clone, ['init', '--quiet']);
-    git(clone, ['remote', 'add', REMOTE, repoUrl]);
+    git(clone, ["init", "--quiet"]);
+    git(clone, ["remote", "add", REMOTE, repoUrl]);
   }
   if (head === null) {
     return clone;
   }
-  git(clone, ['fetch', '--quiet', '--depth', '1', REMOTE, BRANCH]);
-  git(clone, ['checkout', '--quiet', '--force', `${REMOTE}/${BRANCH}`]);
+  git(clone, ["fetch", "--quiet", "--depth", "1", REMOTE, BRANCH]);
+  git(clone, ["checkout", "--quiet", "--force", `${REMOTE}/${BRANCH}`]);
   // Leftovers from an interrupted publish would otherwise be copied out as suite directories.
-  git(clone, ['clean', '--quiet', '-fdx']);
+  git(clone, ["clean", "--quiet", "-fdx"]);
   return clone;
 }
 
@@ -184,14 +222,28 @@ function indexDiffersFromHead(clone: string, head: string | null): boolean {
   if (head === null) {
     return true;
   }
-  const result = spawnSync('git', ['diff', '--cached', '--quiet', head], { cwd: clone, stdio: 'ignore' });
+  const result = spawnSync("git", ["diff", "--cached", "--quiet", head], {
+    cwd: clone,
+    stdio: "ignore",
+  });
   if (result.status !== 0 && result.status !== 1) {
-    throw new Error(`git diff --cached exited with ${result.status ?? result.signal}`);
+    throw new Error(
+      `git diff --cached exited with ${result.status ?? result.signal}`,
+    );
   }
   return result.status === 1;
 }
 
-function git(cwd: string, args: string[], env: Record<string, string> = {}): string {
+function git(
+  cwd: string,
+  args: string[],
+  env: Record<string, string> = {},
+): string {
   // Output is normally a hash or nothing; the generous buffer keeps a chatty failure readable.
-  return execFileSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
+  return execFileSync("git", args, {
+    cwd,
+    encoding: "utf8",
+    env: { ...process.env, ...env },
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }

@@ -114,7 +114,7 @@ index 66c9173..8264881 100644
 +    }
    </style>
  </head>
- 
+
 @@ -195,6 +301,45 @@
          </div>
        </div>
@@ -159,12 +159,12 @@ index 66c9173..8264881 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +352,178 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (function () {
 +      'use strict';
@@ -338,5 +338,5 @@ index 66c9173..8264881 100644
 +    })();
 +  </script>
  </body>
- 
+
  </html>

@@ -139,7 +139,7 @@ index 66c9173..01d3405 100644
 @@ -120,6 +120,40 @@
        color: var(--primary);
      }
- 
+
 +    .favorites-heading, .favorites-tools { text-align: center; }
 +    .favorites-tools { margin-top: 12px; }
 +    button {
@@ -179,7 +179,7 @@ index 66c9173..01d3405 100644
        background: var(--primary);
 @@ -175,25 +209,61 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -244,14 +244,14 @@ index 66c9173..01d3405 100644
 +      <p id="favorites-status" class="favorites-status" role="status" aria-live="polite"></p>
      </section>
    </main>
- 
+
 @@ -207,6 +277,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="./app.js"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..3dfa3fa 100644

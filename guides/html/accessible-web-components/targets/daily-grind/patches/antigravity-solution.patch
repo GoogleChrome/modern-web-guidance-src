@@ -20,7 +20,7 @@ index 66c9173..d8a8bd1 100644
 +    }
    </style>
  </head>
- 
+
 @@ -179,17 +191,26 @@
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
@@ -54,7 +54,7 @@ index 66c9173..d8a8bd1 100644
 @@ -207,6 +228,219 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    class FavoriteSwitch extends HTMLElement {
 +      static get observedAttributes() {
@@ -269,5 +269,5 @@ index 66c9173..d8a8bd1 100644
 +    customElements.define('favorite-switch', FavoriteSwitch);
 +  </script>
  </body>
- 
+
  </html>

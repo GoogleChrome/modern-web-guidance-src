@@ -1,4 +1,7 @@
-import { pipeline, type FeatureExtractionPipeline } from "@huggingface/transformers";
+import {
+  pipeline,
+  type FeatureExtractionPipeline,
+} from "@huggingface/transformers";
 
 export class Embedder {
   private static instance: Embedder | null = null;
@@ -12,7 +15,10 @@ export class Embedder {
   }
 
   public static getInstance(modelName?: string): Embedder {
-    if (!Embedder.instance || (modelName && Embedder.instance.modelName !== modelName)) {
+    if (
+      !Embedder.instance ||
+      (modelName && Embedder.instance.modelName !== modelName)
+    ) {
       Embedder.instance = new Embedder(modelName);
     }
     return Embedder.instance;
@@ -24,16 +30,16 @@ export class Embedder {
 
   public async init(): Promise<void> {
     if (this.pipe) return;
-    
+
     let repo = this.modelName;
     let dtype = "q8";
-    
+
     if (this.modelName.includes("@")) {
-        const parts = this.modelName.split("@");
-        repo = parts[0];
-        dtype = parts[1];
+      const parts = this.modelName.split("@");
+      repo = parts[0];
+      dtype = parts[1];
     }
-    
+
     this.pipe = (await pipeline("feature-extraction", repo, {
       dtype: dtype as any,
       session_options: { intraOpNumThreads: 2, interOpNumThreads: 1 },
@@ -51,12 +57,16 @@ export class Embedder {
     if (!this.pipe) await this.init();
     const tokenizer = (this.pipe as any)?.tokenizer;
     if (!tokenizer) {
-      throw new Error("Embedding pipeline has no tokenizer available for countTokens");
+      throw new Error(
+        "Embedding pipeline has no tokenizer available for countTokens",
+      );
     }
     const res = await tokenizer(text, { add_special_tokens: false });
     const count = res?.input_ids?.data?.length;
     if (typeof count !== "number") {
-      throw new Error(`Tokenizer returned invalid token count for text: ${typeof count}`);
+      throw new Error(
+        `Tokenizer returned invalid token count for text: ${typeof count}`,
+      );
     }
     return count;
   }

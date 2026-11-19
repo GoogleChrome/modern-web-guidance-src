@@ -1,7 +1,17 @@
-import { parseHTML } from 'linkedom';
-import { Node, type JsxOpeningElement, type JsxSelfClosingElement, type SourceFile } from 'ts-morph';
-import type { AnalyzerMatch, DomElementView, DomMatcherContext, DomRuleMatcher } from '../schema.ts';
-import { matchesFastTokens } from './js-scanner.ts';
+import { parseHTML } from "linkedom";
+import {
+  Node,
+  type JsxOpeningElement,
+  type JsxSelfClosingElement,
+  type SourceFile,
+} from "ts-morph";
+import type {
+  AnalyzerMatch,
+  DomElementView,
+  DomMatcherContext,
+  DomRuleMatcher,
+} from "../schema.ts";
+import { matchesFastTokens } from "./js-scanner.ts";
 
 interface HtmlTagToken {
   readonly tagName: string;
@@ -26,7 +36,7 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
 
   const advanceTo = (end: number): void => {
     while (i < end) {
-      if (html[i] === '\n') {
+      if (html[i] === "\n") {
         line++;
         col = 1;
       } else {
@@ -37,26 +47,26 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
   };
 
   const skipWhitespace = (): void => {
-    while (i < len && /\s/.test(html[i] ?? '')) {
+    while (i < len && /\s/.test(html[i] ?? "")) {
       advanceTo(i + 1);
     }
   };
 
   while (i < len) {
-    const nextLt = html.indexOf('<', i);
+    const nextLt = html.indexOf("<", i);
     if (nextLt === -1) {
       break;
     }
     advanceTo(nextLt);
 
-    if (html.startsWith('<!--', i)) {
-      const closeIdx = html.indexOf('-->', i + 4);
+    if (html.startsWith("<!--", i)) {
+      const closeIdx = html.indexOf("-->", i + 4);
       advanceTo(closeIdx === -1 ? len : closeIdx + 3);
       continue;
     }
 
-    if (html.startsWith('<!doctype', i) || html[i + 1] === '/') {
-      const closeIdx = html.indexOf('>', i);
+    if (html.startsWith("<!doctype", i) || html[i + 1] === "/") {
+      const closeIdx = html.indexOf(">", i);
       advanceTo(closeIdx === -1 ? len : closeIdx + 1);
       continue;
     }
@@ -66,7 +76,7 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
     advanceTo(i + 1);
 
     const nameStart = i;
-    while (i < len && /[a-zA-Z0-9_-]/.test(html[i] ?? '')) {
+    while (i < len && /[a-zA-Z0-9_-]/.test(html[i] ?? "")) {
       i++;
       col++;
     }
@@ -78,19 +88,19 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
     const attributes: Record<string, string> = {};
     while (i < len) {
       skipWhitespace();
-      if (i >= len || html[i] === '>') {
+      if (i >= len || html[i] === ">") {
         if (i < len) {
           advanceTo(i + 1);
         }
         break;
       }
-      if (html[i] === '/' && html[i + 1] === '>') {
+      if (html[i] === "/" && html[i + 1] === ">") {
         advanceTo(i + 2);
         break;
       }
 
       const attrStart = i;
-      while (i < len && /[^\s=>/]/.test(html[i] ?? '')) {
+      while (i < len && /[^\s=>/]/.test(html[i] ?? "")) {
         i++;
         col++;
       }
@@ -102,8 +112,8 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
       const attrKey = html.slice(attrStart, i).toLowerCase();
       skipWhitespace();
 
-      let value = '';
-      if (i < len && html[i] === '=') {
+      let value = "";
+      if (i < len && html[i] === "=") {
         advanceTo(i + 1);
         skipWhitespace();
         const quote = html[i];
@@ -118,7 +128,7 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
           }
         } else {
           const valStart = i;
-          while (i < len && /[^\s>]/.test(html[i] ?? '')) {
+          while (i < len && /[^\s>]/.test(html[i] ?? "")) {
             i++;
             col++;
           }
@@ -137,8 +147,9 @@ export function tokenizeHtmlTags(html: string): HtmlTagToken[] {
       column: tagStartCol,
       attributes,
     });
-    if ((tagName === 'script' || tagName === 'style') && html[i - 2] !== '/') {
-      const closeRe = tagName === 'script' ? SCRIPT_CLOSE_TAG_REGEX : STYLE_CLOSE_TAG_REGEX;
+    if ((tagName === "script" || tagName === "style") && html[i - 2] !== "/") {
+      const closeRe =
+        tagName === "script" ? SCRIPT_CLOSE_TAG_REGEX : STYLE_CLOSE_TAG_REGEX;
       closeRe.lastIndex = i;
       const match = closeRe.exec(html);
       advanceTo(match ? match.index : len);
@@ -156,7 +167,10 @@ interface LinkedomQueryableNode {
 
 interface LinkedomElementNode extends LinkedomQueryableNode {
   readonly tagName?: string;
-  readonly attributes?: ReadonlyArray<{ readonly name: string; readonly value: unknown }>;
+  readonly attributes?: ReadonlyArray<{
+    readonly name: string;
+    readonly value: unknown;
+  }>;
   readonly content?: unknown;
   hasAttribute(name: string): boolean;
   getAttribute(name: string): string | null;
@@ -164,32 +178,34 @@ interface LinkedomElementNode extends LinkedomQueryableNode {
 
 function isLinkedomQueryableNode(val: unknown): val is LinkedomQueryableNode {
   return (
-    typeof val === 'object' &&
+    typeof val === "object" &&
     val !== null &&
-    'querySelectorAll' in val &&
-    typeof val.querySelectorAll === 'function' &&
-    'querySelector' in val &&
-    typeof val.querySelector === 'function'
+    "querySelectorAll" in val &&
+    typeof val.querySelectorAll === "function" &&
+    "querySelector" in val &&
+    typeof val.querySelector === "function"
   );
 }
 
 function isLinkedomElementNode(val: unknown): val is LinkedomElementNode {
   return (
     isLinkedomQueryableNode(val) &&
-    'hasAttribute' in val &&
-    typeof val.hasAttribute === 'function' &&
-    'getAttribute' in val &&
-    typeof val.getAttribute === 'function'
+    "hasAttribute" in val &&
+    typeof val.hasAttribute === "function" &&
+    "getAttribute" in val &&
+    typeof val.getAttribute === "function"
   );
 }
 
-function getLinkedomAttributes(el: LinkedomElementNode): Record<string, string> {
+function getLinkedomAttributes(
+  el: LinkedomElementNode,
+): Record<string, string> {
   const attrs: Record<string, string> = {};
   if (Array.isArray(el.attributes)) {
     for (const a of el.attributes) {
       const key = a.name.toLowerCase();
       if (!Object.hasOwn(attrs, key)) {
-        attrs[key] = typeof a.value === 'string' ? a.value : '';
+        attrs[key] = typeof a.value === "string" ? a.value : "";
       }
     }
   }
@@ -202,18 +218,22 @@ function decodeCodePoint(full: string, raw: string, radix: number): string {
 }
 
 function decodeBasicEntities(val: string): string {
-  if (!val.includes('&')) {
+  if (!val.includes("&")) {
     return val;
   }
   return val
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&nbsp;/gi, '\u00a0')
-    .replace(/&#x([0-9a-f]+);/gi, (full, hex: string) => decodeCodePoint(full, hex, 16))
-    .replace(/&#(\d+);/g, (full, dec: string) => decodeCodePoint(full, dec, 10));
+    .replace(/&nbsp;/gi, "\u00a0")
+    .replace(/&#x([0-9a-f]+);/gi, (full, hex: string) =>
+      decodeCodePoint(full, hex, 16),
+    )
+    .replace(/&#(\d+);/g, (full, dec: string) =>
+      decodeCodePoint(full, dec, 10),
+    );
 }
 
 /**
@@ -245,7 +265,7 @@ function findMatchingToken(
       return (
         actual === v ||
         actual === decoded ||
-        (k === 'class' && decoded.trim().replace(/\s+/g, ' ') === actual)
+        (k === "class" && decoded.trim().replace(/\s+/g, " ") === actual)
       );
     });
     if (tokenMatches) {
@@ -269,7 +289,7 @@ function querySelectorAllIncludingTemplates(
       directMatches.push(item);
     }
   }
-  if (!root.querySelector('template')) {
+  if (!root.querySelector("template")) {
     return directMatches;
   }
 
@@ -288,10 +308,12 @@ function querySelectorAllIncludingTemplates(
         results.push(child);
       }
       if (
-        child.tagName?.toLowerCase() === 'template' &&
+        child.tagName?.toLowerCase() === "template" &&
         isLinkedomQueryableNode(child.content)
       ) {
-        results.push(...querySelectorAllIncludingTemplates(child.content, selector));
+        results.push(
+          ...querySelectorAllIncludingTemplates(child.content, selector),
+        );
       } else {
         walk(child);
       }
@@ -307,7 +329,10 @@ function createDomElementView(
   attributes: Readonly<Record<string, string>>,
   line: number,
   column: number,
-  jsx?: { readonly hasSpread: boolean; readonly dynamicAttrs: ReadonlySet<string> },
+  jsx?: {
+    readonly hasSpread: boolean;
+    readonly dynamicAttrs: ReadonlySet<string>;
+  },
 ): DomElementView {
   return {
     tagName,
@@ -316,13 +341,19 @@ function createDomElementView(
     column,
     isJsx: Boolean(jsx),
     hasSpreadAttribute: jsx?.hasSpread ?? false,
-    hasAttribute: (name: string) => Object.hasOwn(attributes, name.toLowerCase()),
+    hasAttribute: (name: string) =>
+      Object.hasOwn(attributes, name.toLowerCase()),
     getAttribute: (name: string) => {
       const lower = name.toLowerCase();
-      return Object.hasOwn(attributes, lower) ? (attributes[lower] ?? null) : null;
+      return Object.hasOwn(attributes, lower)
+        ? (attributes[lower] ?? null)
+        : null;
     },
     ...(jsx
-      ? { hasDynamicAttribute: (name: string) => jsx.dynamicAttrs.has(name.toLowerCase()) }
+      ? {
+          hasDynamicAttribute: (name: string) =>
+            jsx.dynamicAttrs.has(name.toLowerCase()),
+        }
       : {}),
   };
 }
@@ -440,7 +471,7 @@ function extractJsxAttributes(
       const attrName = attr.getNameNode().getText().toLowerCase();
       const init = attr.getInitializer();
       if (!init) {
-        staticAttrs[attrName] = '';
+        staticAttrs[attrName] = "";
       } else if (Node.isStringLiteral(init)) {
         staticAttrs[attrName] = init.getLiteralText();
       } else if (Node.isJsxExpression(init)) {
@@ -483,7 +514,7 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
     return [];
   }
 
-  const { document } = parseHTML('<!DOCTYPE html><html><body></body></html>');
+  const { document } = parseHTML("<!DOCTYPE html><html><body></body></html>");
   const ctx: DomMatcherContext = {
     filePath,
     documentText: fileContent,
@@ -491,8 +522,11 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
 
   const preparedElements = jsxNodes.map((jsxNode) => {
     const tagName = jsxNode.getTagNameNode().getText().toLowerCase();
-    const { hasSpread, staticAttrs, dynamicAttrs } = extractJsxAttributes(jsxNode);
-    const { line, column } = sourceFile.getLineAndColumnAtPos(jsxNode.getStart());
+    const { hasSpread, staticAttrs, dynamicAttrs } =
+      extractJsxAttributes(jsxNode);
+    const { line, column } = sourceFile.getLineAndColumnAtPos(
+      jsxNode.getStart(),
+    );
 
     let mockEl: { matches(selector: string): boolean } | null = null;
     try {
@@ -523,7 +557,9 @@ export function scanJsxRules<T extends { readonly matcher: DomRuleMatcher }>(
       }
       if (
         matcher.skipIfDynamicAttributes &&
-        matcher.skipIfDynamicAttributes.some((a) => dynamicAttrs.has(a.toLowerCase()))
+        matcher.skipIfDynamicAttributes.some((a) =>
+          dynamicAttrs.has(a.toLowerCase()),
+        )
       ) {
         continue;
       }

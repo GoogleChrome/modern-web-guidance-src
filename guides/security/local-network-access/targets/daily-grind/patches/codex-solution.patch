@@ -150,7 +150,7 @@ index 66c9173..5759e47 100644
 @@ -142,6 +142,17 @@
        margin-top: 40px;
      }
- 
+
 +    .equipment { margin-top: 48px; }
 +    .equipment .card { text-align: left; }
 +    .equipment label { display: block; font-weight: 600; margin-top: 16px; }
@@ -200,15 +200,15 @@ index 66c9173..5759e47 100644
 +      <p>Connection troubleshooting: keep the brewer powered on and on the same network, or start the companion utility. Both services must allow this site’s origin through standard CORS. Browser support varies; permission prompts may appear when you connect.</p>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +248,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="./equipment.js"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..3dfa3fa 100644

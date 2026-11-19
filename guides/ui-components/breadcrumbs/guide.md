@@ -32,7 +32,9 @@ This is not for switching between views of the same page (tabs) or for site-wide
 
 ```css
 /* The empty alt text after the slash hides the divider from screen readers; li + li skips the first item */
-.breadcrumb > ol > li + li::before { content: "/" / ""; }
+.breadcrumb > ol > li + li::before {
+  content: "/" / "";
+}
 ```
 
 - A styled character (`/`, `›`, `>`) generated as above is the simplest divider. For an icon divider such as a chevron, render it the way the codebase renders icons and keep it decorative; see {{ GUIDE_REF("icons") }}.
@@ -66,9 +68,14 @@ Pick the simplest technique that produces the shape, and use **one** shape per t
 Overlapping segments communicate hierarchy even without a separator. Pull each segment under the previous one with a negative inline margin, and stack them in reverse source order so each earlier segment sits above the next. `sibling-index()` and `sibling-count()` make this possible without per-item rules:
 
 ```css
-.breadcrumb > ol > li { position: relative; z-index: calc(sibling-count() - sibling-index()); }
+.breadcrumb > ol > li {
+  position: relative;
+  z-index: calc(sibling-count() - sibling-index());
+}
 /* The focused segment sits above every other segment (the li is the stacking context, so lift it, not the link) */
-.breadcrumb > ol > li:has(> a:focus-visible) { z-index: calc(sibling-count() + 1); }
+.breadcrumb > ol > li:has(> a:focus-visible) {
+  z-index: calc(sibling-count() + 1);
+}
 ```
 
 #### Simple irregular shapes (`corner-shape`)
@@ -80,16 +87,23 @@ Slant (`/`): bevel the start-start and end-end corners with a horizontal radius 
 Arrow (`>`): bevel both end corners with a horizontal radius of the point and a vertical radius of 50%. Overlap the next segment so the tip of each segment covers the flat start edge of the next.
 
 ```css
-.breadcrumb { --slant: clamp(.4rem, 2cqi, .75rem); }
-.breadcrumb > ol, .breadcrumb > ol > li { gap: 0; }
+.breadcrumb {
+  --slant: clamp(0.4rem, 2cqi, 0.75rem);
+}
+.breadcrumb > ol,
+.breadcrumb > ol > li {
+  gap: 0;
+}
 .breadcrumb > ol > li > a {
   display: block;
   corner-shape: bevel;
   /* Extra inline padding equal to the slant keeps text out of the angled corners */
-  padding: .55rem calc(var(--slant) + .8rem);
+  padding: 0.55rem calc(var(--slant) + 0.8rem);
 }
 /* The shape shows direction, so drop the separator */
-.breadcrumb > ol > li + li::before { content: none; }
+.breadcrumb > ol > li + li::before {
+  content: none;
+}
 
 /* SLANT ONLY: leans like "/" in LTR and "\" in RTL */
 .breadcrumb > ol > li > a {
@@ -97,14 +111,18 @@ Arrow (`>`): bevel both end corners with a horizontal radius of the point and a 
   border-end-end-radius: var(--slant) 100%;
 }
 /* Overlap by the slant, minus a small visible gap (example .25rem), so the angled edges run parallel */
-.breadcrumb > ol > li + li { margin-inline-start: calc(.25rem - var(--slant)); }
+.breadcrumb > ol > li + li {
+  margin-inline-start: calc(0.25rem - var(--slant));
+}
 
 /* ARROW ONLY: tip on the end side; a contrasting segment border separates the overlapped edges */
 .breadcrumb > ol > li > a {
   border-start-end-radius: var(--slant) 50%;
   border-end-end-radius: var(--slant) 50%;
 }
-.breadcrumb > ol > li + li { margin-inline-start: calc(var(--slant) * -1); }
+.breadcrumb > ol > li + li {
+  margin-inline-start: calc(var(--slant) * -1);
+}
 ```
 
 #### Fully irregular shapes (`border-shape`)
@@ -114,18 +132,40 @@ Use `border-shape` only for shapes `corner-shape` cannot make, such as a notched
 ```css
 /* The first item drops the inner notch vertex so its leading edge stays flat */
 .breadcrumb > ol > li > a {
-  --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%, var(--point) 50%);
-  padding: .55rem calc(var(--point) + .8rem);
+  --shape: polygon(
+    0 0,
+    calc(100% - var(--point)) 0,
+    100% 50%,
+    calc(100% - var(--point)) 100%,
+    0 100%,
+    var(--point) 50%
+  );
+  padding: 0.55rem calc(var(--point) + 0.8rem);
   border-shape: var(--shape);
 }
 .breadcrumb > ol > li:first-child > a {
-  --shape: polygon(0 0, calc(100% - var(--point)) 0, 100% 50%, calc(100% - var(--point)) 100%, 0 100%);
+  --shape: polygon(
+    0 0,
+    calc(100% - var(--point)) 0,
+    100% 50%,
+    calc(100% - var(--point)) 100%,
+    0 100%
+  );
 }
 /* Overlap by slightly less than --point so the notch and tip interlock */
-.breadcrumb > ol > li + li { margin-inline-start: calc(.25rem - var(--point)); }
+.breadcrumb > ol > li + li {
+  margin-inline-start: calc(0.25rem - var(--point));
+}
 /* RTL mirror: swap 0 with 100% and calc(100% - var(--point)) with var(--point) in each x coordinate */
 .breadcrumb:dir(rtl) > ol > li > a {
-  --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%, calc(100% - var(--point)) 50%);
+  --shape: polygon(
+    100% 0,
+    var(--point) 0,
+    0 50%,
+    var(--point) 100%,
+    100% 100%,
+    calc(100% - var(--point)) 50%
+  );
 }
 .breadcrumb:dir(rtl) > ol > li:first-child > a {
   --shape: polygon(100% 0, var(--point) 0, 0 50%, var(--point) 100%, 100% 100%);
@@ -172,9 +212,16 @@ These are optional. Implement them only when the trail needs them, and choose th
 @media (forced-colors: active) {
   /* Only without border-shape: with it, the border follows the shape and needs no change */
   @supports not (border-shape: polygon(0 0, 100% 0, 100% 100%)) {
-    .breadcrumb > ol > li > a { clip-path: none; border: 2px solid LinkText; }
-    .breadcrumb > ol > li + li { margin-inline-start: 0; } /* undo the shape overlap */
-    .breadcrumb > ol > li + li::before { content: "›" / ""; } /* the shape no longer shows direction */
+    .breadcrumb > ol > li > a {
+      clip-path: none;
+      border: 2px solid LinkText;
+    }
+    .breadcrumb > ol > li + li {
+      margin-inline-start: 0;
+    } /* undo the shape overlap */
+    .breadcrumb > ol > li + li::before {
+      content: "›" / "";
+    } /* the shape no longer shows direction */
   }
 }
 ```

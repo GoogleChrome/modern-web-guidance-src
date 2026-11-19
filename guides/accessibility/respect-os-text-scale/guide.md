@@ -23,10 +23,10 @@ Place the `<meta name="text-scale">` element inside your document's `<head>`. Th
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width" />
-  
+
   <!-- Opt this page into OS-level dynamic type and accessibility text scaling -->
   <meta name="text-scale" content="scale" />
-  
+
   <title>Adaptive Accessibility Layout</title>
 </head>
 ```
@@ -41,12 +41,12 @@ Use relative units for margins and padding where the spacing is coupled to text 
 body {
   font-family: system-ui, sans-serif;
   /* Inherits the root font-size, which scales automatically with the OS setting */
-  line-height: 1.5;      /* Unitless so it scales proportionally with computed font-size */
-  padding: 1.5rem;       /* Scales proportionally to prevent dense crowding at larger scales */
+  line-height: 1.5; /* Unitless so it scales proportionally with computed font-size */
+  padding: 1.5rem; /* Scales proportionally to prevent dense crowding at larger scales */
 }
 
 h1 {
-  font-size: 2.25rem;    /* Scales proportionally to the root base */
+  font-size: 2.25rem; /* Scales proportionally to the root base */
   margin-bottom: 1rem;
 }
 ```
@@ -86,9 +86,9 @@ Test responsive layouts with operating system text scaling and browser zoom enab
 
 When text scales up, elements require more vertical and horizontal space to prevent truncation or overlap. To keep your components robust, design your layouts to expand dynamically around the content rather than forcing rigid coordinates:
 
-* **Allow Text Containers to Grow**: Text-containing components and containers MUST be able to grow to accommodate scaled text. Avoid fixed `height` or `block-size` values and restrictive `max-height` or `max-block-size` values that can cause clipping or overflow. Prefer content-driven sizing; use `min-height` or `min-block-size` only when a minimum size is needed.
-* **Allow Natural Wrapping**: Do not restrict inline-axis text wrapping with `white-space: nowrap` on blocks that contain sentences. Let text reflow to new lines naturally.
-* **Employ Flexible Flexbox & Grid wrapping (Optional Example)**: For multi-column card galleries, use reflowing columns like `repeat(auto-fit, minmax(min(100%, 16rem), 1fr))` so items stack vertically if their relative width thresholds are crossed:
+- **Allow Text Containers to Grow**: Text-containing components and containers MUST be able to grow to accommodate scaled text. Avoid fixed `height` or `block-size` values and restrictive `max-height` or `max-block-size` values that can cause clipping or overflow. Prefer content-driven sizing; use `min-height` or `min-block-size` only when a minimum size is needed.
+- **Allow Natural Wrapping**: Do not restrict inline-axis text wrapping with `white-space: nowrap` on blocks that contain sentences. Let text reflow to new lines naturally.
+- **Employ Flexible Flexbox & Grid wrapping (Optional Example)**: For multi-column card galleries, use reflowing columns like `repeat(auto-fit, minmax(min(100%, 16rem), 1fr))` so items stack vertically if their relative width thresholds are crossed:
 
 ```css
 /* Card container using min-height to ensure expansion and auto-fit to reflow if needed */

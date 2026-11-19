@@ -1,22 +1,31 @@
-import fs from 'fs';
-import path from 'path';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
-import { Agents } from '../config.ts';
-import { parseJsonlFile } from './agent-shared.ts';
-import { guideIdsFromLog } from './guide-usage.ts';
+import fs from "fs";
+import path from "path";
+import { MODERN_WEB_LOG_FILE } from "../../core/constants.ts";
+import { Agents } from "../config.ts";
+import { parseJsonlFile } from "./agent-shared.ts";
+import { guideIdsFromLog } from "./guide-usage.ts";
 import {
   resolveReasoningEffort,
   type ReasoningEffort,
   type ReasoningEffortSource,
-} from './reasoning-effort.ts';
+} from "./reasoning-effort.ts";
 
 export type { ReasoningEffort, ReasoningEffortSource };
 
 // Colocated agent parsers
-import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
-import { parseCodexTrajectory, loadCodexLogs } from '../agents/codex-cli-agent.ts';
-import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
-import { parsePiTrajectory, loadPiLogs } from '../agents/pi-agent.ts';
+import {
+  parseClaudeTrajectory,
+  loadClaudeLogs,
+} from "../agents/claude-code-agent.ts";
+import {
+  parseCodexTrajectory,
+  loadCodexLogs,
+} from "../agents/codex-cli-agent.ts";
+import {
+  parseJetskiTrajectory,
+  parseJetskiCliSession,
+} from "../agents/jetski-cli-agent.ts";
+import { parsePiTrajectory, loadPiLogs } from "../agents/pi-agent.ts";
 
 // Re-export for test compatibility and legacy callers
 export {
@@ -26,8 +35,8 @@ export {
   extractClaudeCodeModel,
   extractClaudeCodeTokenUsage,
   loadClaudeLogs,
-  extractClaudeMetadata
-} from '../agents/claude-code-agent.ts';
+  extractClaudeMetadata,
+} from "../agents/claude-code-agent.ts";
 
 export {
   parseCodexTrajectory,
@@ -36,8 +45,8 @@ export {
   extractCodexCliModel,
   extractCodexCliTokenUsage,
   loadCodexLogs,
-  extractCodexMetadata
-} from '../agents/codex-cli-agent.ts';
+  extractCodexMetadata,
+} from "../agents/codex-cli-agent.ts";
 
 export {
   parseJetskiTrajectory,
@@ -46,8 +55,8 @@ export {
   collectJetskiCliGuidesFromTrajectory,
   collectJetskiCliToolsFromTrajectory,
   extractJetskiCliModel,
-  extractJetskiCliTokenUsage
-} from '../agents/jetski-cli-agent.ts';
+  extractJetskiCliTokenUsage,
+} from "../agents/jetski-cli-agent.ts";
 
 export {
   parsePiTrajectory,
@@ -56,14 +65,13 @@ export {
   extractPiModel,
   extractPiTokenUsage,
   loadPiLogs,
-  extractPiMetadata
-} from '../agents/pi-agent.ts';
+  extractPiMetadata,
+} from "../agents/pi-agent.ts";
 
-
-export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
+export const TRAJECTORY_SUMMARY_FILE = "trajectory_summary.json";
 export const NORMALIZER_VERSION = 5;
 
-const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
+const TRAJECTORY_GLOB = "{session,subagent}-*.{json,jsonl}";
 
 export function getSessionFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -73,8 +81,11 @@ export function getSessionFiles(dir: string): string[] {
 export function extractSubagentIdFromFilename(file: string): string {
   const base = path.basename(file);
   return base
-    .replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '')
-    .replace(/\.(?:json|jsonl)$/, '');
+    .replace(
+      /^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/,
+      "",
+    )
+    .replace(/\.(?:json|jsonl)$/, "");
 }
 
 export function hasRawSessionLogs(dir: string): boolean {
@@ -83,10 +94,10 @@ export function hasRawSessionLogs(dir: string): boolean {
     const files = fs.readdirSync(dir);
     return files.some(
       (f) =>
-        (f.endsWith('.db') && !f.endsWith('-shm') && !f.endsWith('-wal')) ||
-        ((f.startsWith('session-') || f.startsWith('subagent-')) &&
-          (f.endsWith('.json') || f.endsWith('.jsonl'))) ||
-        f === 'trajectory.jsonl'
+        (f.endsWith(".db") && !f.endsWith("-shm") && !f.endsWith("-wal")) ||
+        ((f.startsWith("session-") || f.startsWith("subagent-")) &&
+          (f.endsWith(".json") || f.endsWith(".jsonl"))) ||
+        f === "trajectory.jsonl",
     );
   } catch {
     return false;
@@ -94,75 +105,86 @@ export function hasRawSessionLogs(dir: string): boolean {
 }
 
 export type CanonicalCategory =
-  | 'guide_retrieval'
-  | 'skill_search'
-  | 'skill_activation'
-  | 'code_mutation'
-  | 'mandatory_rule_thought'
-  | 'incidental_noise'
-  | 'other';
+  | "guide_retrieval"
+  | "skill_search"
+  | "skill_activation"
+  | "code_mutation"
+  | "mandatory_rule_thought"
+  | "incidental_noise"
+  | "other";
 
 export interface RunCommandAction {
-  type: 'run_command';
+  type: "run_command";
   canonicalCategory?: CanonicalCategory;
   name: string;
   params: { command: string; [key: string]: unknown };
 }
 
 export interface ReadFileAction {
-  type: 'read_file';
+  type: "read_file";
   canonicalCategory?: CanonicalCategory;
   name: string;
   params: { path: string; [key: string]: unknown };
 }
 
 export interface WriteFileAction {
-  type: 'write_file';
+  type: "write_file";
   canonicalCategory?: CanonicalCategory;
   name: string;
   params: { path: string; content?: string; [key: string]: unknown };
 }
 
 export interface OtherAction {
-  type: 'other';
+  type: "other";
   canonicalCategory?: CanonicalCategory;
   name: string;
   params?: Record<string, unknown>;
 }
 
 export type StandardizedAction =
-  | RunCommandAction
-  | ReadFileAction
-  | WriteFileAction
-  | OtherAction;
+  RunCommandAction | ReadFileAction | WriteFileAction | OtherAction;
 
 export function standardizeAction(
-  type: StandardizedAction['type'],
+  type: StandardizedAction["type"],
   name: string,
-  rawParams?: unknown
+  rawParams?: unknown,
 ): StandardizedAction {
-  const p = rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : {};
+  const p =
+    rawParams && typeof rawParams === "object"
+      ? (rawParams as Record<string, unknown>)
+      : {};
   switch (type) {
-    case 'run_command': {
-      const command = (p.command as string) || (p.cmd as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
+    case "run_command": {
+      const command =
+        (p.command as string) ||
+        (p.cmd as string) ||
+        (typeof rawParams === "string" ? rawParams : "") ||
+        "";
       return {
-        type: 'run_command',
+        type: "run_command",
         name,
-        params: { ...p, command: String(command) }
+        params: { ...p, command: String(command) },
       };
     }
-    case 'read_file': {
-      const filePath = (p.path as string) || (p.file_path as string) || (typeof rawParams === 'string' ? rawParams : '') || '';
+    case "read_file": {
+      const filePath =
+        (p.path as string) ||
+        (p.file_path as string) ||
+        (typeof rawParams === "string" ? rawParams : "") ||
+        "";
       return {
-        type: 'read_file',
+        type: "read_file",
         name,
-        params: { ...p, path: String(filePath) }
+        params: { ...p, path: String(filePath) },
       };
     }
-    case 'write_file': {
-      const filePath = (p.path as string) || (p.file_path as string) || '';
+    case "write_file": {
+      const filePath = (p.path as string) || (p.file_path as string) || "";
       const rawContent = p.content ?? p.new_string ?? p.newText ?? undefined;
-      const content = rawContent !== undefined ? truncateMessage(String(rawContent), 300) : undefined;
+      const content =
+        rawContent !== undefined
+          ? truncateMessage(String(rawContent), 300)
+          : undefined;
       const {
         content: _c,
         new_string: _ns,
@@ -176,21 +198,26 @@ export function standardizeAction(
         ...rest
       } = p;
       return {
-        type: 'write_file',
+        type: "write_file",
         name,
         params: {
           ...rest,
           path: String(filePath),
-          ...(content !== undefined ? { content } : {})
-        }
+          ...(content !== undefined ? { content } : {}),
+        },
       };
     }
-    case 'other':
+    case "other":
     default: {
       return {
-        type: 'other',
+        type: "other",
         name,
-        params: rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : rawParams !== undefined ? { value: rawParams } : undefined
+        params:
+          rawParams && typeof rawParams === "object"
+            ? (rawParams as Record<string, unknown>)
+            : rawParams !== undefined
+              ? { value: rawParams }
+              : undefined,
       };
     }
   }
@@ -203,7 +230,7 @@ export interface StandardizedStep {
   thought?: string;
   action?: StandardizedAction;
   outcome?: {
-    status: 'success' | 'error';
+    status: "success" | "error";
     message?: string;
     output?: unknown;
     exitCode?: number;
@@ -232,15 +259,21 @@ export interface TrajectorySummary {
 }
 
 export function extractTimestamp(entry: any): string | undefined {
-  if (!entry || typeof entry !== 'object') return undefined;
-  const raw = entry.timestamp || entry.created_at || entry.time || entry.clientTimestamp || entry.message?.created_at || entry.payload?.created_at;
+  if (!entry || typeof entry !== "object") return undefined;
+  const raw =
+    entry.timestamp ||
+    entry.created_at ||
+    entry.time ||
+    entry.clientTimestamp ||
+    entry.message?.created_at ||
+    entry.payload?.created_at;
   if (!raw) return undefined;
-  if (typeof raw === 'number') {
+  if (typeof raw === "number") {
     const ms = raw < 1e11 ? raw * 1000 : raw;
     const d = new Date(ms);
     return !isNaN(d.getTime()) ? d.toISOString() : undefined;
   }
-  if (typeof raw === 'string') {
+  if (typeof raw === "string") {
     const d = new Date(raw);
     return !isNaN(d.getTime()) ? d.toISOString() : undefined;
   }
@@ -252,39 +285,42 @@ export function extractTimestamp(entry: any): string | undefined {
  * Strips trailing shell delimiters (such as `;` in chained commands) and supports comma- or space-separated lists.
  */
 export function extractRetrievedGuidesFromCommand(command: string): string[] {
-  if (!command.includes('modern-web-guidance') || !command.includes('retrieve')) {
+  if (
+    !command.includes("modern-web-guidance") ||
+    !command.includes("retrieve")
+  ) {
     return [];
   }
   const normalized = command
-    .replace(/\\+u003e/gi, '>')
-    .replace(/\\+u003c/gi, '<')
-    .replace(/\\+u0026/gi, '&');
+    .replace(/\\+u003e/gi, ">")
+    .replace(/\\+u003c/gi, "<")
+    .replace(/\\+u0026/gi, "&");
   const guides: string[] = [];
   const invocationRegex =
     /(?:\b(?:npx|pnpx|pnpm|node)(?:\.cmd)?\s+(?:-[a-z]+\s+)*)?[^\s"';|&><)`\\]*modern-web-guidance(?:@[^\s"';|&><)`\\]+|\/[^\s"';|&><)`\\]*modern-web\.[cm]?[jt]s)?(?:\s+(?:--skill-version(?:=\S+|\s+\S+)|--[a-z-]+(?:=\S+)?))*\s+(?:--)?retrieve\s+([^;|&><`\n\r)]+)/gi;
   let match: RegExpExecArray | null;
   while ((match = invocationRegex.exec(normalized)) !== null) {
     // Ignore inline markdown code references inside guide text, e.g. `(via \`npx -y modern-web-guidance@latest retrieve "css"\`)`
-    const lineStart = normalized.lastIndexOf('\n', match.index) + 1;
+    const lineStart = normalized.lastIndexOf("\n", match.index) + 1;
     const linePrefix = normalized.slice(lineStart, match.index);
-    if ((linePrefix.split('`').length - 1) % 2 === 1) {
+    if ((linePrefix.split("`").length - 1) % 2 === 1) {
       continue;
     }
     const argSegment = match[1]
       .split(/","|"\}/)[0]
-      .replace(/\s+\d+$/, '')
+      .replace(/\s+\d+$/, "")
       .trim();
     const tokens = argSegment.split(/[\s,]+/);
     for (let i = 0; i < tokens.length; i++) {
-      const cleaned = tokens[i].trim().replace(/^["'\\]+|["'\\;]+$/g, '');
+      const cleaned = tokens[i].trim().replace(/^["'\\]+|["'\\;]+$/g, "");
       if (!cleaned) continue;
-      if (cleaned.startsWith('-')) {
-        if (cleaned === '--skill-version') {
+      if (cleaned.startsWith("-")) {
+        if (cleaned === "--skill-version") {
           i++;
         }
         continue;
       }
-      if (/^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== 'id') {
+      if (/^[a-zA-Z0-9_-]+$/.test(cleaned) && cleaned.toLowerCase() !== "id") {
         guides.push(cleaned);
       }
     }
@@ -296,49 +332,76 @@ export function categorizeAction(
   name: string,
   params?: Record<string, any>,
   thought?: string,
-  actionType?: StandardizedAction['type']
-): NonNullable<StandardizedStep['action']>['canonicalCategory'] {
-  if (actionType === 'write_file') {
-    return 'code_mutation';
+  actionType?: StandardizedAction["type"],
+): NonNullable<StandardizedStep["action"]>["canonicalCategory"] {
+  if (actionType === "write_file") {
+    return "code_mutation";
   }
 
-  const actionName = (name || '').toLowerCase();
-  if (actionName === 'respond_to_user') {
-    return 'other';
+  const actionName = (name || "").toLowerCase();
+  if (actionName === "respond_to_user") {
+    return "other";
   }
 
-  if (actionName === 'skill' || actionName === 'activate_skill' || actionName === 'load_skill') {
-    return 'skill_activation';
+  if (
+    actionName === "skill" ||
+    actionName === "activate_skill" ||
+    actionName === "load_skill"
+  ) {
+    return "skill_activation";
   }
 
-  if (actionType !== 'run_command') {
-    const mutationParamKeys = ['targetfile', 'replacementcontent', 'replacementchunks', 'codecontent', 'write_to_file', 'replace_file_content', 'new_string', 'newtext'];
-    const paramKeys = params && typeof params === 'object' ? Object.keys(params).map(k => k.toLowerCase()) : [];
-    const hasMutationParam = paramKeys.some(k => mutationParamKeys.includes(k));
+  if (actionType !== "run_command") {
+    const mutationParamKeys = [
+      "targetfile",
+      "replacementcontent",
+      "replacementchunks",
+      "codecontent",
+      "write_to_file",
+      "replace_file_content",
+      "new_string",
+      "newtext",
+    ];
+    const paramKeys =
+      params && typeof params === "object"
+        ? Object.keys(params).map((k) => k.toLowerCase())
+        : [];
+    const hasMutationParam = paramKeys.some((k) =>
+      mutationParamKeys.includes(k),
+    );
     if (hasMutationParam) {
-      return 'code_mutation';
+      return "code_mutation";
     }
   }
 
-  const cmd = typeof params?.command === 'string' ? params.command : (typeof params?.cmd === 'string' ? params.cmd : '');
+  const cmd =
+    typeof params?.command === "string"
+      ? params.command
+      : typeof params?.cmd === "string"
+        ? params.cmd
+        : "";
   const cmdLower = cmd.toLowerCase();
 
   // Only a literal `modern-web-guidance` invocation counts. Bare `search`/`retrieve`/`gd` match
   // unrelated tools (code_search, git cat-file, ripgrep) and produced false positives.
-  if (cmdLower.includes('modern-web-guidance')) {
-    if (cmdLower.includes('retrieve')) {
-      return 'guide_retrieval';
+  if (cmdLower.includes("modern-web-guidance")) {
+    if (cmdLower.includes("retrieve")) {
+      return "guide_retrieval";
     }
-    if (cmdLower.includes('search') || cmdLower.includes('analyze') || cmdLower.includes('legacy-scan')) {
-      return 'skill_search';
+    if (
+      cmdLower.includes("search") ||
+      cmdLower.includes("analyze") ||
+      cmdLower.includes("legacy-scan")
+    ) {
+      return "skill_search";
     }
   }
 
-  if ((thought || '').toLowerCase().includes('mandatory')) {
-    return 'mandatory_rule_thought';
+  if ((thought || "").toLowerCase().includes("mandatory")) {
+    return "mandatory_rule_thought";
   }
 
-  return 'incidental_noise';
+  return "incidental_noise";
 }
 
 export interface FinalizeTrajectorySummaryOptions {
@@ -352,7 +415,7 @@ export function finalizeTrajectorySummary(
 ): TrajectorySummary {
   const isOptionsObj =
     fallbackOrOptions !== undefined &&
-    ('fallback' in fallbackOrOptions || 'env' in fallbackOrOptions);
+    ("fallback" in fallbackOrOptions || "env" in fallbackOrOptions);
   const fallbackEffort = isOptionsObj
     ? (fallbackOrOptions as FinalizeTrajectorySummaryOptions).fallback
     : (fallbackOrOptions as ReasoningEffort | undefined);
@@ -364,7 +427,10 @@ export function finalizeTrajectorySummary(
   summary.reasoningEffort = resolveReasoningEffort({
     agent: summary.agent,
     model: summary.model,
-    observed: summary.reasoningEffort?.source === 'observed' ? summary.reasoningEffort : undefined,
+    observed:
+      summary.reasoningEffort?.source === "observed"
+        ? summary.reasoningEffort
+        : undefined,
     fallback: fallbackEffort?.level
       ? fallbackEffort
       : isOptionsObj
@@ -392,7 +458,7 @@ export function finalizeTrajectorySummary(
           step.action.name,
           step.action.params,
           step.thought,
-          step.action.type
+          step.action.type,
         );
       }
     }
@@ -400,41 +466,73 @@ export function finalizeTrajectorySummary(
   return summary;
 }
 
-export function mapToolType(toolName: string): NonNullable<StandardizedStep['action']>['type'] {
+export function mapToolType(
+  toolName: string,
+): NonNullable<StandardizedStep["action"]>["type"] {
   const name = toolName.toLowerCase();
-  if (name.includes('todo')) {
-    return 'other';
+  if (name.includes("todo")) {
+    return "other";
   }
-  if (['read', 'read_file', 'view_file', 'view'].some(k => name.includes(k))) {
-    return 'read_file';
+  if (
+    ["read", "read_file", "view_file", "view"].some((k) => name.includes(k))
+  ) {
+    return "read_file";
   }
-  if (['write', 'write_file', 'replace', 'str_replace_editor', 'edit', 'edit_file', 'save'].some(k => name.includes(k))) {
-    return 'write_file';
+  if (
+    [
+      "write",
+      "write_file",
+      "replace",
+      "str_replace_editor",
+      "edit",
+      "edit_file",
+      "save",
+    ].some((k) => name.includes(k))
+  ) {
+    return "write_file";
   }
-  if (['bash', 'execute_bash', 'run_command', 'run_shell_command', 'terminal', 'shell'].some(k => name.includes(k))) {
-    return 'run_command';
+  if (
+    [
+      "bash",
+      "execute_bash",
+      "run_command",
+      "run_shell_command",
+      "terminal",
+      "shell",
+    ].some((k) => name.includes(k))
+  ) {
+    return "run_command";
   }
-  return 'other';
+  return "other";
 }
 
 export function truncateMessage(msg: any, maxLen = 300): string {
-  if (!msg) return '';
-  const str = typeof msg === 'object' ? JSON.stringify(msg) : String(msg);
+  if (!msg) return "";
+  const str = typeof msg === "object" ? JSON.stringify(msg) : String(msg);
   if (str.length > maxLen) {
-    return str.slice(0, maxLen) + '... [truncated]';
+    return str.slice(0, maxLen) + "... [truncated]";
   }
   return str;
 }
 
-export function writeTrajectorySummary(targetDir: string, summary: TrajectorySummary): void {
-  fs.writeFileSync(path.join(targetDir, TRAJECTORY_SUMMARY_FILE), JSON.stringify(summary, null, 2), 'utf8');
+export function writeTrajectorySummary(
+  targetDir: string,
+  summary: TrajectorySummary,
+): void {
+  fs.writeFileSync(
+    path.join(targetDir, TRAJECTORY_SUMMARY_FILE),
+    JSON.stringify(summary, null, 2),
+    "utf8",
+  );
 }
 
-export function readTrajectorySummary(targetDir: string): TrajectorySummary | null {
+export function readTrajectorySummary(
+  targetDir: string,
+): TrajectorySummary | null {
   const summaryPath = path.join(targetDir, TRAJECTORY_SUMMARY_FILE);
   if (!fs.existsSync(summaryPath)) return null;
   try {
-    return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    return JSON.parse(fs.readFileSync(summaryPath, "utf8"));
   } catch {
     return null;
   }
@@ -442,19 +540,24 @@ export function readTrajectorySummary(targetDir: string): TrajectorySummary | nu
 
 function normalizeAgentName(rawAgent: string | undefined): string | undefined {
   if (!rawAgent) return undefined;
-  const normalized = String(rawAgent).trim().toLowerCase().replace(/-/g, '_');
-  const match = Object.values(Agents).find((a) => a === normalized || a === rawAgent);
+  const normalized = String(rawAgent).trim().toLowerCase().replace(/-/g, "_");
+  const match = Object.values(Agents).find(
+    (a) => a === normalized || a === rawAgent,
+  );
   return match || normalized;
 }
 
-export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySummary | null): string | undefined {
+export function detectAgentForRun(
+  runDir: string,
+  existingSummary?: TrajectorySummary | null,
+): string | undefined {
   // 1. Check suite evals.json in parent directories
   let curr = path.resolve(runDir);
   while (curr && curr !== path.dirname(curr)) {
-    const evalsPath = path.join(curr, 'evals.json');
+    const evalsPath = path.join(curr, "evals.json");
     if (fs.existsSync(evalsPath)) {
       try {
-        const data = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+        const data = JSON.parse(fs.readFileSync(evalsPath, "utf8"));
         if (data.agent) {
           return normalizeAgentName(String(data.agent));
         }
@@ -471,17 +574,27 @@ export function detectAgentForRun(runDir: string, existingSummary?: TrajectorySu
   }
 
   // 3. Check directory path tokens (e.g. -claude_code, -codex_cli, -jetski_cli, -antigravity_cli)
-  const dirLower = runDir.toLowerCase().replace(/-/g, '_');
-  if (dirLower.includes('claude_code')) return Agents.CLAUDE_CODE;
-  if (dirLower.includes('codex_cli')) return Agents.CODEX_CLI;
-  if (dirLower.includes('jetski_cli') || dirLower.includes('jetski')) return Agents.JETSKI_CLI;
-  if (dirLower.includes('antigravity_cli') || dirLower.includes('antigravity') || dirLower.includes('agy')) return Agents.ANTIGRAVITY_CLI;
+  const dirLower = runDir.toLowerCase().replace(/-/g, "_");
+  if (dirLower.includes("claude_code")) return Agents.CLAUDE_CODE;
+  if (dirLower.includes("codex_cli")) return Agents.CODEX_CLI;
+  if (dirLower.includes("jetski_cli") || dirLower.includes("jetski"))
+    return Agents.JETSKI_CLI;
+  if (
+    dirLower.includes("antigravity_cli") ||
+    dirLower.includes("antigravity") ||
+    dirLower.includes("agy")
+  )
+    return Agents.ANTIGRAVITY_CLI;
   if (/(?:^|[/\\_])pi(?:$|[/\\_])/.test(dirLower)) return Agents.PI;
 
   // 4. Inspect raw files as final fallback
   try {
     const files = fs.readdirSync(runDir);
-    if (files.some((f) => f.endsWith('.db') && !f.endsWith('-shm') && !f.endsWith('-wal'))) {
+    if (
+      files.some(
+        (f) => f.endsWith(".db") && !f.endsWith("-shm") && !f.endsWith("-wal"),
+      )
+    ) {
       return Agents.JETSKI_CLI;
     }
   } catch {
@@ -507,7 +620,10 @@ export function generateNormalizedTrajectorySync(
     if (normalizedAgent === Agents.JETSKI_CLI) {
       summary = parseJetskiCliSession(targetDir);
     } else if (normalizedAgent === Agents.ANTIGRAVITY_CLI) {
-      summary = { ...parseJetskiCliSession(targetDir), agent: Agents.ANTIGRAVITY_CLI };
+      summary = {
+        ...parseJetskiCliSession(targetDir),
+        agent: Agents.ANTIGRAVITY_CLI,
+      };
     } else if (normalizedAgent === Agents.CLAUDE_CODE) {
       const { logData, subagentsMap } = loadClaudeLogs(targetDir);
       if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
@@ -529,26 +645,47 @@ export function generateNormalizedTrajectorySync(
       if (initialPrompt !== undefined) {
         summary.initialPrompt = initialPrompt;
       }
-      const logEntries = parseJsonlFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+      const logEntries = parseJsonlFile(
+        path.join(targetDir, MODERN_WEB_LOG_FILE),
+      );
       if (logEntries.length > 0) {
-        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
-        summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
+        summary.retrievedGuides = [
+          ...new Set([
+            ...(summary.retrievedGuides ?? []),
+            ...guideIdsFromLog(logEntries),
+          ]),
+        ];
+        summary.toolsUsed = [
+          ...new Set([...(summary.toolsUsed ?? []), "modern-web-guidance"]),
+        ];
       }
-      finalizeTrajectorySummary(summary, { fallback: previousEffort, env: effectiveEnv });
+      finalizeTrajectorySummary(summary, {
+        fallback: previousEffort,
+        env: effectiveEnv,
+      });
       writeTrajectorySummary(targetDir, summary);
       return summary;
     }
   } catch (err) {
-    console.error(`[TrajectoryParser] Failed to generate normalized trajectory for ${agentName}:`, err);
+    console.error(
+      `[TrajectoryParser] Failed to generate normalized trajectory for ${agentName}:`,
+      err,
+    );
   }
   return null;
 }
 
-export async function generateNormalizedTrajectory(targetDir: string, agentName: string, initialPrompt?: string): Promise<void> {
+export async function generateNormalizedTrajectory(
+  targetDir: string,
+  agentName: string,
+  initialPrompt?: string,
+): Promise<void> {
   generateNormalizedTrajectorySync(targetDir, agentName, initialPrompt);
 }
 
-export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySummary | null {
+export function ensureFreshTrajectorySummarySync(
+  runDir: string,
+): TrajectorySummary | null {
   const existing = readTrajectorySummary(runDir);
   const isFresh =
     existing !== null &&
@@ -563,26 +700,45 @@ export function ensureFreshTrajectorySummarySync(runDir: string): TrajectorySumm
   if (hasRawSessionLogs(runDir)) {
     const detectedAgent = detectAgentForRun(runDir, existing);
     if (detectedAgent) {
-      console.log(`[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? 'none'} → v${NORMALIZER_VERSION}) in ${runDir}`);
-      const regenerated = generateNormalizedTrajectorySync(runDir, detectedAgent, existing?.initialPrompt, { env: {} });
+      console.log(
+        `[Trajectory] Regenerating trajectory_summary.json (v${existing?.normalizerVersion ?? "none"} → v${NORMALIZER_VERSION}) in ${runDir}`,
+      );
+      const regenerated = generateNormalizedTrajectorySync(
+        runDir,
+        detectedAgent,
+        existing?.initialPrompt,
+        { env: {} },
+      );
       if (regenerated) {
         return regenerated;
       }
-      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
+      console.warn(
+        `[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? "unknown"})`,
+      );
     } else {
-      console.warn(`[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? 'unknown'})`);
+      console.warn(
+        `[Trajectory] Failed to regenerate summary for ${runDir} (agent=${detectedAgent ?? "unknown"})`,
+      );
     }
   } else if (!existing) {
-    console.warn(`[Trajectory] No trajectory_summary.json or raw logs in ${runDir}; trajectory unavailable`);
+    console.warn(
+      `[Trajectory] No trajectory_summary.json or raw logs in ${runDir}; trajectory unavailable`,
+    );
   } else if (existing.normalizerVersion === NORMALIZER_VERSION) {
-    console.warn(`[Trajectory] Summary in ${runDir} has 0 steps and no raw logs to regenerate`);
+    console.warn(
+      `[Trajectory] Summary in ${runDir} has 0 steps and no raw logs to regenerate`,
+    );
   } else {
-    console.warn(`[Trajectory] Using stale summary (v${existing.normalizerVersion ?? 'none'}) in ${runDir}; no raw logs to regenerate`);
+    console.warn(
+      `[Trajectory] Using stale summary (v${existing.normalizerVersion ?? "none"}) in ${runDir}; no raw logs to regenerate`,
+    );
   }
 
   return existing;
 }
 
-export async function ensureFreshTrajectorySummary(runDir: string): Promise<TrajectorySummary | null> {
+export async function ensureFreshTrajectorySummary(
+  runDir: string,
+): Promise<TrajectorySummary | null> {
   return ensureFreshTrajectorySummarySync(runDir);
 }

@@ -4,8 +4,8 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import { Node, SyntaxKind, type SourceFile } from "ts-morph";
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -51,7 +51,10 @@ function resolveArgumentStrings(
   ) {
     return resolveArgumentStrings(node.getExpression(), sf, visited);
   }
-  if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+  if (
+    Node.isStringLiteral(node) ||
+    Node.isNoSubstitutionTemplateLiteral(node)
+  ) {
     return [node.getLiteralValue()];
   }
   if (Node.isConditionalExpression(node)) {
@@ -74,8 +77,13 @@ function resolveArgumentStrings(
     const fromMatchingProps = sf
       .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
       .filter((pa) => pa.getName() === propName)
-      .flatMap((pa) => resolveArgumentStrings(pa.getInitializer(), sf, visited));
-    return [...fromMatchingProps, ...resolveArgumentStrings(node.getExpression(), sf, visited)];
+      .flatMap((pa) =>
+        resolveArgumentStrings(pa.getInitializer(), sf, visited),
+      );
+    return [
+      ...fromMatchingProps,
+      ...resolveArgumentStrings(node.getExpression(), sf, visited),
+    ];
   }
   if (Node.isElementAccessExpression(node)) {
     return resolveArgumentStrings(node.getExpression(), sf, visited);
@@ -90,7 +98,7 @@ function resolveArgumentStrings(
     }
     for (const bin of sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
       if (
-        bin.getOperatorToken().getText() === '=' &&
+        bin.getOperatorToken().getText() === "=" &&
         bin.getLeft().getText() === name
       ) {
         out.push(...resolveArgumentStrings(bin.getRight(), sf, visited));
@@ -99,7 +107,9 @@ function resolveArgumentStrings(
     for (const param of sf.getDescendantsOfKind(SyntaxKind.Parameter)) {
       if (param.getName() !== name) continue;
       if (param.getInitializer()) {
-        out.push(...resolveArgumentStrings(param.getInitializer(), sf, visited));
+        out.push(
+          ...resolveArgumentStrings(param.getInitializer(), sf, visited),
+        );
       }
       const fnParent = param.getParent();
       const paramIndex = Node.isFunctionLikeDeclaration(fnParent)
@@ -110,7 +120,13 @@ function resolveArgumentStrings(
         for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
           const callee = call.getExpression().getText();
           if (callee === fnName || callee.endsWith(`.${fnName}`)) {
-            out.push(...resolveArgumentStrings(call.getArguments()[paramIndex], sf, visited));
+            out.push(
+              ...resolveArgumentStrings(
+                call.getArguments()[paramIndex],
+                sf,
+                visited,
+              ),
+            );
           }
         }
       }
@@ -125,7 +141,7 @@ function getExportImportFormatValues(files: string[]): Set<string> {
   for (const sf of getAppSourceFiles(files)) {
     for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       const expr = call.getExpression().getText();
-      if (!expr.includes('exportKey') && !expr.includes('importKey')) continue;
+      if (!expr.includes("exportKey") && !expr.includes("importKey")) continue;
       const formatArg = call.getArguments()[0];
       for (const value of resolveArgumentStrings(formatArg, sf)) {
         formats.add(value);
@@ -135,27 +151,27 @@ function getExportImportFormatValues(files: string[]): Set<string> {
   return formats;
 }
 
-test.describe('digital-signatures Target Grader', () => {
+test.describe("digital-signatures Target Grader", () => {
   // Requirement 1: Checks for modern WebCrypto signature algorithm support using static SubtleCrypto.supports()
-  test('checks for modern WebCrypto signature algorithm support using static SubtleCrypto.supports()', () => {
+  test("checks for modern WebCrypto signature algorithm support using static SubtleCrypto.supports()", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasSupportsCheck = sourceFiles.some((sf) => {
       const hasSubtleCrypto = sf
         .getDescendantsOfKind(SyntaxKind.Identifier)
-        .some((id) => id.getText() === 'SubtleCrypto');
+        .some((id) => id.getText() === "SubtleCrypto");
       const callsSupports = sf
         .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => call.getExpression().getText().includes('supports'));
+        .some((call) => call.getExpression().getText().includes("supports"));
       const accessesSupports = sf
         .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-        .some((pa) => pa.getName() === 'supports');
+        .some((pa) => pa.getName() === "supports");
       return hasSubtleCrypto && (callsSupports || accessesSupports);
     });
     expect(hasSupportsCheck).toBe(true);
   });
 
   // Requirement 1: Falls back to a classical signature algorithm (Ed25519 or ECDSA) when unsupported
-  test('falls back to a classical signature algorithm (Ed25519 or ECDSA) when modern algorithms are unsupported', () => {
+  test("falls back to a classical signature algorithm (Ed25519 or ECDSA) when modern algorithms are unsupported", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasClassicalFallback = sourceFiles.some((sf) => {
       const literals = [
@@ -164,19 +180,19 @@ test.describe('digital-signatures Target Grader', () => {
       ];
       return literals.some((lit) => {
         const val = lit.getLiteralValue();
-        return val === 'Ed25519' || val === 'ECDSA';
+        return val === "Ed25519" || val === "ECDSA";
       });
     });
     expect(hasClassicalFallback).toBe(true);
   });
 
   // Requirement 2: Generates a key pair for ML-DSA-44, ML-DSA-65, or ML-DSA-87
-  test('generates a key pair for an ML-DSA algorithm (ML-DSA-44, ML-DSA-65, or ML-DSA-87)', () => {
+  test("generates a key pair for an ML-DSA algorithm (ML-DSA-44, ML-DSA-65, or ML-DSA-87)", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasMlDsaGeneration = sourceFiles.some((sf) => {
       const callsGenerateKey = sf
         .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => call.getExpression().getText().includes('generateKey'));
+        .some((call) => call.getExpression().getText().includes("generateKey"));
       const hasMlDsa = [
         ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
         ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
@@ -187,73 +203,72 @@ test.describe('digital-signatures Target Grader', () => {
   });
 
   // Requirement 2: Key pair generation specifies ['sign', 'verify'] usages
-  test('specifies sign and verify key usages during key pair generation', () => {
+  test("specifies sign and verify key usages during key pair generation", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasSignVerifyUsages = sourceFiles.some((sf) => {
-      return sf
-        .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => {
-          if (!call.getExpression().getText().includes('generateKey')) return false;
-          return call.getArguments().some((arg) => {
-            if (arg.getKind() === SyntaxKind.ArrayLiteralExpression) {
-              const elements = (arg as any)
-                .getElements()
-                .map((el: any) => el.getText().replace(/['"`]/g, ''));
-              return elements.includes('sign') && elements.includes('verify');
-            }
-            return false;
-          });
+      return sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        if (!call.getExpression().getText().includes("generateKey"))
+          return false;
+        return call.getArguments().some((arg) => {
+          if (arg.getKind() === SyntaxKind.ArrayLiteralExpression) {
+            const elements = (arg as any)
+              .getElements()
+              .map((el: any) => el.getText().replace(/['"`]/g, ""));
+            return elements.includes("sign") && elements.includes("verify");
+          }
+          return false;
         });
+      });
     });
     expect(hasSignVerifyUsages).toBe(true);
   });
 
   // Requirement 3: Exports or imports verification key using modern raw formats ('raw-public' or 'raw-seed')
-  test('exports or imports ML-DSA keys using explicit modern raw formats (raw-public or raw-seed)', () => {
+  test("exports or imports ML-DSA keys using explicit modern raw formats (raw-public or raw-seed)", () => {
     const formats = getExportImportFormatValues(targetFiles);
-    expect(formats.has('raw-public') || formats.has('raw-seed')).toBe(true);
+    expect(formats.has("raw-public") || formats.has("raw-seed")).toBe(true);
   });
 
   // Requirement 3: Falls back to 'raw' format for classical keys rather than passing 'raw' to ML-DSA
-  test('falls back to the raw format for classical keys rather than passing raw to ML-DSA', () => {
+  test("falls back to the raw format for classical keys rather than passing raw to ML-DSA", () => {
     const formats = getExportImportFormatValues(targetFiles);
-    expect(formats.has('raw')).toBe(true);
+    expect(formats.has("raw")).toBe(true);
   });
 
   // Requirement 4: Signs payload data using crypto.subtle.sign()
-  test('signs payload data using crypto.subtle.sign()', () => {
+  test("signs payload data using crypto.subtle.sign()", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasSubtleSign = sourceFiles.some((sf) => {
-      return sf
-        .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => {
-          const expr = call.getExpression().getText();
-          return (
-            expr.includes('sign') &&
-            (expr.includes('subtle') || expr.includes('api') || expr.endsWith('.sign'))
-          );
-        });
+      return sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression().getText();
+        return (
+          expr.includes("sign") &&
+          (expr.includes("subtle") ||
+            expr.includes("api") ||
+            expr.endsWith(".sign"))
+        );
+      });
     });
     expect(hasSubtleSign).toBe(true);
   });
 
   // Requirement 4: Configures domain-separation context parameter for ML-DSA
-  test('configures domain-separation context for ML-DSA signing and verification', () => {
+  test("configures domain-separation context for ML-DSA signing and verification", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasDomainContext = sourceFiles.some((sf) => {
       const hasPropertyAssignment = sf
         .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-        .some((pa) => pa.getName() === 'context');
+        .some((pa) => pa.getName() === "context");
       const hasShorthand = sf
         .getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)
-        .some((spa) => spa.getName() === 'context');
+        .some((spa) => spa.getName() === "context");
       return hasPropertyAssignment || hasShorthand;
     });
     expect(hasDomainContext).toBe(true);
   });
 
   // Requirement 4: Produces non-empty signature displayed in UI
-  test('renders an element in the UI to display the generated digital signature', () => {
+  test("renders an element in the UI to display the generated digital signature", () => {
     const docs = getHtmlDocuments(targetFiles);
     const sigEl = docs
       .map((d) =>
@@ -266,24 +281,24 @@ test.describe('digital-signatures Target Grader', () => {
   });
 
   // Requirement 5: Verifies signature against payload using crypto.subtle.verify()
-  test('verifies the digital signature using crypto.subtle.verify()', () => {
+  test("verifies the digital signature using crypto.subtle.verify()", () => {
     const sourceFiles = getAppSourceFiles(targetFiles);
     const hasSubtleVerify = sourceFiles.some((sf) => {
-      return sf
-        .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => {
-          const expr = call.getExpression().getText();
-          return (
-            expr.includes('verify') &&
-            (expr.includes('subtle') || expr.includes('api') || expr.endsWith('.verify'))
-          );
-        });
+      return sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
+        const expr = call.getExpression().getText();
+        return (
+          expr.includes("verify") &&
+          (expr.includes("subtle") ||
+            expr.includes("api") ||
+            expr.endsWith(".verify"))
+        );
+      });
     });
     expect(hasSubtleVerify).toBe(true);
   });
 
   // Requirement 5: Displays verification status in the UI
-  test('displays the signature verification status in the UI', () => {
+  test("displays the signature verification status in the UI", () => {
     const docs = getHtmlDocuments(targetFiles);
     const statusEl = docs
       .map((d) =>

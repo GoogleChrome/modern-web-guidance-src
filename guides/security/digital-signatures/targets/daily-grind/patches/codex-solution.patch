@@ -13,7 +13,7 @@ index 66c9173..1af96dc 100644
 @@ -135,6 +135,19 @@
        background: #3e2723;
      }
- 
+
 +    .signature-panel { margin-top: 40px; padding: 24px; background: white; border: 1px solid var(--secondary); border-radius: 8px; }
 +    .signature-panel label { display: block; font-weight: 600; margin-top: 16px; }
 +    .signature-panel input, .signature-panel textarea { display: block; width: 100%; padding: 10px; border: 1px solid #9e8279; border-radius: 4px; font: inherit; }
@@ -56,15 +56,15 @@ index 66c9173..1af96dc 100644
 +      <p id="signature-status" role="status" aria-live="polite" aria-atomic="true">Generate a key pair to begin.</p>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +241,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/src/main.ts"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..13fe68a 100644

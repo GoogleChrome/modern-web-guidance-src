@@ -3,14 +3,14 @@ import {
   expect,
   getTargetFiles,
   getCssStyleSheet,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 import {
   CSSStyleRule,
   CSSSupportsRule,
   CSSGroupingRule,
   type CSSRule,
   type CSSStyleSheet,
-} from 'cssomnom';
+} from "cssomnom";
 
 // @ts-ignore - package.json lacks "type": "module" in daily-grind, causing tsc module nodenext to flag import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -26,10 +26,10 @@ function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
   return all;
 }
 
-test.describe('faster-spa-view-transitions Target Grader', () => {
+test.describe("faster-spa-view-transitions Target Grader", () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
 
-  test('When content-visibility: hidden is not supported, a @supports not (content-visibility: hidden) fallback rule applies display: none to inactive view elements', () => {
+  test("When content-visibility: hidden is not supported, a @supports not (content-visibility: hidden) fallback rule applies display: none to inactive view elements", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = collectAllRules(stylesheet.cssRules);
 
@@ -46,7 +46,7 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
       return innerRules.some(
         (ir): ir is CSSStyleRule =>
           ir instanceof CSSStyleRule &&
-          ir.style.getPropertyValue('display').trim() === 'none',
+          ir.style.getPropertyValue("display").trim() === "none",
       );
     });
     expect(hasDisplayNoneFallback).toBe(true);
@@ -54,29 +54,33 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
 
-    test('Inactive view elements have content-visibility: hidden applied in their computed styles', async ({
+    test("Inactive view elements have content-visibility: hidden applied in their computed styles", async ({
       page,
     }) => {
       // Navigate across views to ensure lazy-instantiated views are mounted and cached
-      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page
+        .locator("nav")
+        .getByRole("link", { name: "Locations" })
+        .click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       const state = await page.evaluate(() => {
-        const allElements = Array.from(document.querySelectorAll('body *'));
+        const allElements = Array.from(document.querySelectorAll("body *"));
         const hiddenViews = allElements.filter(
-          (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+          (el) => window.getComputedStyle(el).contentVisibility === "hidden",
         );
         return {
           hiddenCount: hiddenViews.length,
           allHaveHidden:
             hiddenViews.length > 0 &&
             hiddenViews.every(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+              (el) =>
+                window.getComputedStyle(el).contentVisibility === "hidden",
             ),
         };
       });
@@ -85,33 +89,44 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
       expect(state.allHaveHidden).toBe(true);
     });
 
-    test('When a view element is active, it does not have content-visibility: hidden applied (its computed content-visibility is visible)', async ({
+    test("When a view element is active, it does not have content-visibility: hidden applied (its computed content-visibility is visible)", async ({
       page,
     }) => {
-      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page
+        .locator("nav")
+        .getByRole("link", { name: "Locations" })
+        .click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       const state = await page.evaluate(() => {
-        const allElements = Array.from(document.querySelectorAll('body *'));
+        const allElements = Array.from(document.querySelectorAll("body *"));
         const hiddenViews = allElements.filter(
-          (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+          (el) => window.getComputedStyle(el).contentVisibility === "hidden",
         );
         if (hiddenViews.length === 0) {
           return { hiddenCount: 0, activeComputedVisibility: null };
         }
         const parent = hiddenViews[0].parentElement;
         if (!parent) {
-          return { hiddenCount: hiddenViews.length, activeComputedVisibility: null };
+          return {
+            hiddenCount: hiddenViews.length,
+            activeComputedVisibility: null,
+          };
         }
         const siblings = Array.from(parent.children);
         const activeViews = siblings.filter(
           (el) =>
             !hiddenViews.includes(el) &&
-            window.getComputedStyle(el).display !== 'none' &&
-            !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName),
+            window.getComputedStyle(el).display !== "none" &&
+            !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
+              el.tagName,
+            ),
         );
         if (activeViews.length === 0) {
-          return { hiddenCount: hiddenViews.length, activeComputedVisibility: null };
+          return {
+            hiddenCount: hiddenViews.length,
+            activeComputedVisibility: null,
+          };
         }
         return {
           hiddenCount: hiddenViews.length,
@@ -121,21 +136,22 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
       });
 
       expect(state.hiddenCount).toBeGreaterThan(0);
-      expect(state.activeComputedVisibility).toBe('visible');
+      expect(state.activeComputedVisibility).toBe("visible");
     });
 
-    test('Switching between views toggles the content-visibility state between the active and inactive view elements', async ({
+    test("Switching between views toggles the content-visibility state between the active and inactive view elements", async ({
       page,
     }) => {
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       // Tag the active Menu view while on Menu (polling to allow async route handlers like hashchange to finish)
       await expect
         .poll(async () => {
           return await page.evaluate(() => {
-            const allElements = Array.from(document.querySelectorAll('body *'));
+            const allElements = Array.from(document.querySelectorAll("body *"));
             const hiddenViews = allElements.filter(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+              (el) =>
+                window.getComputedStyle(el).contentVisibility === "hidden",
             );
             if (hiddenViews.length === 0) return false;
             const parent = hiddenViews[0].parentElement;
@@ -144,28 +160,32 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             const activeView = siblings.find(
               (el) =>
                 !hiddenViews.includes(el) &&
-                window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                window.getComputedStyle(el).display !== "none" &&
+                !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
                   el.tagName,
                 ) &&
-                /\bmenu\b/i.test(el.textContent || ''),
+                /\bmenu\b/i.test(el.textContent || ""),
             );
             if (!activeView) return false;
-            activeView.setAttribute('data-grader-view-menu', 'true');
+            activeView.setAttribute("data-grader-view-menu", "true");
             return true;
           });
         })
         .toBe(true);
 
-      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+      await page
+        .locator("nav")
+        .getByRole("link", { name: "Locations" })
+        .click();
 
       // Tag the active Locations view while on Locations and check visibility states
       await expect
         .poll(async () => {
           return await page.evaluate(() => {
-            const allElements = Array.from(document.querySelectorAll('body *'));
+            const allElements = Array.from(document.querySelectorAll("body *"));
             const hiddenViews = allElements.filter(
-              (el) => window.getComputedStyle(el).contentVisibility === 'hidden',
+              (el) =>
+                window.getComputedStyle(el).contentVisibility === "hidden",
             );
             if (hiddenViews.length === 0) return null;
             const parent = hiddenViews[0].parentElement;
@@ -178,17 +198,17 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
               (el) =>
                 el !== menuView &&
                 !hiddenViews.includes(el) &&
-                window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                window.getComputedStyle(el).display !== "none" &&
+                !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
                   el.tagName,
                 ) &&
-                /\blocations\b/i.test(el.textContent || ''),
+                /\blocations\b/i.test(el.textContent || ""),
             );
             if (!activeView || !menuView) {
               return null;
             }
 
-            activeView.setAttribute('data-grader-view-locations', 'true');
+            activeView.setAttribute("data-grader-view-locations", "true");
 
             return {
               locationsVisibility:
@@ -199,12 +219,12 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
           });
         })
         .toEqual({
-          locationsVisibility: 'visible',
-          menuVisibility: 'hidden',
+          locationsVisibility: "visible",
+          menuVisibility: "hidden",
         });
 
       // Switch back to Menu
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       await expect
         .poll(async () => {
@@ -225,29 +245,31 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
           });
         })
         .toEqual({
-          locationsVisibility: 'hidden',
-          menuVisibility: 'visible',
+          locationsVisibility: "hidden",
+          menuVisibility: "visible",
         });
     });
 
-    test('Inactive view elements have the inert attribute applied (and removed when active) so hidden content is excluded from the keyboard tab order and accessibility tree', async ({
+    test("Inactive view elements have the inert attribute applied (and removed when active) so hidden content is excluded from the keyboard tab order and accessibility tree", async ({
       page,
     }) => {
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       await expect
         .poll(async () => {
           return await page.evaluate(() => {
-            const allElements = Array.from(document.querySelectorAll('body *'));
+            const allElements = Array.from(document.querySelectorAll("body *"));
             const hiddenViews = allElements.filter((el) => {
               const style = window.getComputedStyle(el);
               return (
-                style.contentVisibility === 'hidden' ||
+                style.contentVisibility === "hidden" ||
                 (el as HTMLElement).inert === true ||
-                el.hasAttribute('inert') ||
+                el.hasAttribute("inert") ||
                 (el as HTMLElement).hidden ||
-                (style.display === 'none' &&
-                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+                (style.display === "none" &&
+                  !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
+                    el.tagName,
+                  ))
               );
             });
             if (hiddenViews.length === 0) return false;
@@ -257,34 +279,39 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             const activeView = siblings.find(
               (el) =>
                 !hiddenViews.includes(el) &&
-                window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                window.getComputedStyle(el).display !== "none" &&
+                !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
                   el.tagName,
                 ) &&
-                /\bmenu\b/i.test(el.textContent || ''),
+                /\bmenu\b/i.test(el.textContent || ""),
             );
             if (!activeView) return false;
-            activeView.setAttribute('data-grader-inert-menu', 'true');
+            activeView.setAttribute("data-grader-inert-menu", "true");
             return true;
           });
         })
         .toBe(true);
 
-      await page.locator('nav').getByRole('link', { name: 'Locations' }).click();
+      await page
+        .locator("nav")
+        .getByRole("link", { name: "Locations" })
+        .click();
 
       await expect
         .poll(async () => {
           return await page.evaluate(() => {
-            const allElements = Array.from(document.querySelectorAll('body *'));
+            const allElements = Array.from(document.querySelectorAll("body *"));
             const hiddenViews = allElements.filter((el) => {
               const style = window.getComputedStyle(el);
               return (
-                style.contentVisibility === 'hidden' ||
+                style.contentVisibility === "hidden" ||
                 (el as HTMLElement).inert === true ||
-                el.hasAttribute('inert') ||
+                el.hasAttribute("inert") ||
                 (el as HTMLElement).hidden ||
-                (style.display === 'none' &&
-                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+                (style.display === "none" &&
+                  !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
+                    el.tagName,
+                  ))
               );
             });
             if (hiddenViews.length === 0) return null;
@@ -298,28 +325,28 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
               (el) =>
                 el !== menuView &&
                 !hiddenViews.includes(el) &&
-                window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(
+                window.getComputedStyle(el).display !== "none" &&
+                !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
                   el.tagName,
                 ) &&
-                /\blocations\b/i.test(el.textContent || ''),
+                /\blocations\b/i.test(el.textContent || ""),
             );
             if (!activeView || !menuView) {
               return null;
             }
 
-            activeView.setAttribute('data-grader-inert-locations', 'true');
+            activeView.setAttribute("data-grader-inert-locations", "true");
 
             const allInactiveInert = hiddenViews.every(
               (el) =>
                 (el as HTMLElement).inert === true ||
-                el.hasAttribute('inert') ||
+                el.hasAttribute("inert") ||
                 (el as HTMLElement).hidden ||
-                window.getComputedStyle(el).display === 'none',
+                window.getComputedStyle(el).display === "none",
             );
             const activeInert =
               (activeView as HTMLElement).inert === true ||
-              activeView.hasAttribute('inert');
+              activeView.hasAttribute("inert");
 
             return {
               allInactiveInert,
@@ -333,7 +360,7 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         });
 
       // Switch back to Menu and verify inert is removed on Menu and applied to Locations
-      await page.locator('nav').getByRole('link', { name: 'Menu' }).click();
+      await page.locator("nav").getByRole("link", { name: "Menu" }).click();
 
       await expect
         .poll(async () => {
@@ -349,9 +376,9 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             return {
               locationsInert:
                 locationsView.inert === true ||
-                locationsView.hasAttribute('inert'),
+                locationsView.hasAttribute("inert"),
               menuInert:
-                menuView.inert === true || menuView.hasAttribute('inert'),
+                menuView.inert === true || menuView.hasAttribute("inert"),
             };
           });
         })
@@ -361,13 +388,15 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         });
     });
 
-    test('Switching to a view moves keyboard focus to the newly active view container', async ({
+    test("Switching to a view moves keyboard focus to the newly active view container", async ({
       page,
     }) => {
       await page.evaluate(() => {
-        (window as unknown as { __graderFocusedViews?: Element[] }).__graderFocusedViews = [];
+        (
+          window as unknown as { __graderFocusedViews?: Element[] }
+        ).__graderFocusedViews = [];
         document.addEventListener(
-          'focusin',
+          "focusin",
           (e) => {
             if (e.target instanceof Element) {
               (
@@ -386,21 +415,23 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
         };
       });
 
-      await page.locator('nav').getByRole('link', { name: 'Rewards' }).click();
+      await page.locator("nav").getByRole("link", { name: "Rewards" }).click();
 
       await expect
         .poll(async () => {
           return await page.evaluate(() => {
-            const allElements = Array.from(document.querySelectorAll('body *'));
+            const allElements = Array.from(document.querySelectorAll("body *"));
             const hiddenViews = allElements.filter((el) => {
               const style = window.getComputedStyle(el);
               return (
-                style.contentVisibility === 'hidden' ||
+                style.contentVisibility === "hidden" ||
                 (el as HTMLElement).inert === true ||
-                el.hasAttribute('inert') ||
+                el.hasAttribute("inert") ||
                 (el as HTMLElement).hidden ||
-                (style.display === 'none' &&
-                  !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName))
+                (style.display === "none" &&
+                  !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
+                    el.tagName,
+                  ))
               );
             });
             if (hiddenViews.length === 0) return false;
@@ -410,9 +441,11 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             const activeView = siblings.find(
               (el) =>
                 !hiddenViews.includes(el) &&
-                window.getComputedStyle(el).display !== 'none' &&
-                !['NAV', 'FOOTER', 'SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName) &&
-                /\brewards\b/i.test(el.textContent || ''),
+                window.getComputedStyle(el).display !== "none" &&
+                !["NAV", "FOOTER", "SCRIPT", "STYLE", "TEMPLATE"].includes(
+                  el.tagName,
+                ) &&
+                /\brewards\b/i.test(el.textContent || ""),
             );
             if (!activeView) return false;
 
@@ -423,7 +456,9 @@ test.describe('faster-spa-view-transitions Target Grader', () => {
             return (
               document.activeElement === activeView ||
               activeView.contains(document.activeElement) ||
-              recorded.some((el) => el === activeView || activeView.contains(el))
+              recorded.some(
+                (el) => el === activeView || activeView.contains(el),
+              )
             );
           });
         })

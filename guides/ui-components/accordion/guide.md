@@ -23,15 +23,15 @@ If the accordion is a distinct section of the page, group its items in an elemen
 
 ```html
 <section class="accordion" aria-labelledby="faq-heading">
-	<h2 id="faq-heading">Frequently Asked Questions</h2>
-	<details>
-		<summary>Lorem ipsum dolor sit amet?</summary>
-		<!-- answer 1 -->
-	</details>
-	<details>
-		<summary>Consectetur adipiscing elit?</summary>
-		<!-- answer 2 -->
-	</details>
+  <h2 id="faq-heading">Frequently Asked Questions</h2>
+  <details>
+    <summary>Lorem ipsum dolor sit amet?</summary>
+    <!-- answer 1 -->
+  </details>
+  <details>
+    <summary>Consectetur adipiscing elit?</summary>
+    <!-- answer 2 -->
+  </details>
 </section>
 ```
 
@@ -40,9 +40,10 @@ If each item needs its own heading, build a custom accordion instead (see below)
 {# JAWS: https://github.com/FreedomScientific/VFO-standards-support/issues/105 (wontfix). TalkBack: https://tetralogical.com/resources/accessible-components-library/compatibility/ #}
 
 Accessibility notes:
+
 - Do not wrap every small accordion in a landmark or `region`; that adds navigation noise for screen reader users.
 - Do not add arrow key navigation, roving `tabindex`, or `Home`/`End` handling.
-Accordion contents are often long enough to need scrolling, and arrow keys on a focused trigger are how keyboard users scroll.
+  Accordion contents are often long enough to need scrolling, and arrow keys on a focused trigger are how keyboard users scroll.
 - If a heading for the entire accordion is not desirable, use an `aria-label` on the container element to provide an accessible name for the group.
 
 ## Exclusive accordions
@@ -54,19 +55,20 @@ Ensure that `name` is not used elsewhere on the page unless it is intended to be
 
 ```html
 <section class="accordion" aria-labelledby="faq-heading">
-	<h2 id="faq-heading">Frequently Asked Questions</h2>
-	<details name="faq-question">
-		<summary>Lorem ipsum dolor sit amet?</summary>
-		<!-- answer 1 -->
-	</details>
-	<details name="faq-question">
-		<summary>Consectetur adipiscing elit?</summary>
-		<!-- answer 2 -->
-	</details>
+  <h2 id="faq-heading">Frequently Asked Questions</h2>
+  <details name="faq-question">
+    <summary>Lorem ipsum dolor sit amet?</summary>
+    <!-- answer 1 -->
+  </details>
+  <details name="faq-question">
+    <summary>Consectetur adipiscing elit?</summary>
+    <!-- answer 2 -->
+  </details>
 </section>
 ```
 
 Avoid exclusive accordions, as they can produce suboptimal user experience:
+
 - Sometimes users want to reference between the contents of multiple items, which exclusive accordions prevent.
 - They also can cause content to shift out of the user’s view which can cause significant problems for those using screen magnifiers.
 
@@ -76,30 +78,37 @@ To require that one item is always open, stop the open item’s `summary` from c
 
 ```html
 <section class="accordion always-open" aria-labelledby="plans-heading">
-	<h2 id="plans-heading">Plans</h2>
-	<details name="plan" open>
-		<!-- Mirrors the open state; the script keeps it in sync -->
-		<summary aria-disabled="true">Basic</summary>
-		<!-- Basic plan -->
-	</details>
-	<details name="plan">
-		<summary>Pro</summary>
-		<!-- Pro plan -->
-	</details>
+  <h2 id="plans-heading">Plans</h2>
+  <details name="plan" open>
+    <!-- Mirrors the open state; the script keeps it in sync -->
+    <summary aria-disabled="true">Basic</summary>
+    <!-- Basic plan -->
+  </details>
+  <details name="plan">
+    <summary>Pro</summary>
+    <!-- Pro plan -->
+  </details>
 </section>
 ```
 
 ```javascript
 // Enter and Space on a summary also dispatch click, so this covers keyboard too
-document.addEventListener("click", event => {
-	if (event.target.closest(".accordion.always-open details[open] > summary")) event.preventDefault();
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".accordion.always-open details[open] > summary"))
+    event.preventDefault();
 });
 
 // toggle does not bubble, hence capture
-document.addEventListener("toggle", event => {
-	if (!event.target.matches(".accordion.always-open details")) return;
-	event.target.querySelector(":scope > summary").setAttribute("aria-disabled", event.target.open);
-}, { capture: true });
+document.addEventListener(
+  "toggle",
+  (event) => {
+    if (!event.target.matches(".accordion.always-open details")) return;
+    event.target
+      .querySelector(":scope > summary")
+      .setAttribute("aria-disabled", event.target.open);
+  },
+  { capture: true },
+);
 ```
 
 Keep the disabled `summary` focusable so focus is not lost when the item a user just opened becomes disabled, but exclude it from hover and pointer styles so it does not look clickable:
@@ -107,11 +116,11 @@ Keep the disabled `summary` focusable so focus is not lost when the item a user 
 ```css
 /* :where() keeps the guard from raising specificity */
 summary:where(:not([aria-disabled="true"])) {
-	cursor: pointer;
+  cursor: pointer;
 
-	&:hover {
-		background: var(--color-hover);
-	}
+  &:hover {
+    background: var(--color-hover);
+  }
 }
 ```
 
@@ -126,12 +135,17 @@ Verified 2026-11-04 with VoiceOver on both iOS and macOS: every press announces 
 
 ```html
 <section class="accordion" id="support-accordion" aria-labelledby="support">
-	<h2 id="support">Support</h2>
-	<button type="button" commandfor="support-accordion" command="--toggle-all" aria-expanded="false">
-		<span class="expand">Expand all</span>
-		<span class="collapse">Collapse all</span>
-	</button>
-	<!-- Accordion items -->
+  <h2 id="support">Support</h2>
+  <button
+    type="button"
+    commandfor="support-accordion"
+    command="--toggle-all"
+    aria-expanded="false"
+  >
+    <span class="expand">Expand all</span>
+    <span class="collapse">Collapse all</span>
+  </button>
+  <!-- Accordion items -->
 </section>
 ```
 
@@ -139,31 +153,42 @@ Verified 2026-11-04 with VoiceOver on both iOS and macOS: every press announces 
 /* Show the label for the action the button will perform */
 [command="--toggle-all"][aria-expanded="true"] .expand,
 [command="--toggle-all"][aria-expanded="false"] .collapse {
-	display: none;
+  display: none;
 }
 ```
 
 ```javascript
-document.addEventListener("command", event => {
-	if (event.command !== "--toggle-all") return;
-	const expand = event.source.getAttribute("aria-expanded") !== "true";
+document.addEventListener(
+  "command",
+  (event) => {
+    if (event.command !== "--toggle-all") return;
+    const expand = event.source.getAttribute("aria-expanded") !== "true";
 
-	// Command events fire on the commandfor target
-	for (const details of event.target.querySelectorAll(":scope > details")) {
-		details.open = expand;
-	}
-}, { capture: true }); // Command events do not bubble, hence capture
+    // Command events fire on the commandfor target
+    for (const details of event.target.querySelectorAll(":scope > details")) {
+      details.open = expand;
+    }
+  },
+  { capture: true },
+); // Command events do not bubble, hence capture
 
 // Items also open and close individually, so derive the button state from them
-document.addEventListener("toggle", event => {
-	if (!event.target.matches(".accordion > details")) return;
-	const accordion = event.target.parentElement;
-	const button = accordion.querySelector(':scope > [command="--toggle-all"]');
-	if (!button) return;
+document.addEventListener(
+  "toggle",
+  (event) => {
+    if (!event.target.matches(".accordion > details")) return;
+    const accordion = event.target.parentElement;
+    const button = accordion.querySelector(':scope > [command="--toggle-all"]');
+    if (!button) return;
 
-	const items = accordion.querySelectorAll(":scope > details");
-	button.setAttribute("aria-expanded", Array.prototype.every.call(items, details => details.open));
-}, { capture: true }); // toggle does not bubble, hence capture
+    const items = accordion.querySelectorAll(":scope > details");
+    button.setAttribute(
+      "aria-expanded",
+      Array.prototype.every.call(items, (details) => details.open),
+    );
+  },
+  { capture: true },
+); // toggle does not bubble, hence capture
 ```
 
 Separate buttons are also possible and improve discoverability, at the cost of _feedback_: there are states where one of the buttons will produce no visible result, and disabling it accessibly introduces challenges and increases complexity.
@@ -184,38 +209,38 @@ Right before the label text is preferable to right after, as it facilitates vert
 
 ```css
 summary {
-	/* Removes the default triangle */
-	list-style: none;
-	display: flex;
-	align-items: center;
-	gap: 0.5ch;
+  /* Removes the default triangle */
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5ch;
 
-	&::before {
-		content: "";
-		inline-size: 1em;
-		block-size: 1em;
-		flex-shrink: 0;
-		background-color: currentColor;
-		/* Example chevron pointing down, the open state; any single-color SVG works */
-		mask: url("icons/chevron-down.svg") no-repeat center / contain;
-		/* Closed: point toward the inline end */
-		rotate: -90deg;
-	}
+  &::before {
+    content: "";
+    inline-size: 1em;
+    block-size: 1em;
+    flex-shrink: 0;
+    background-color: currentColor;
+    /* Example chevron pointing down, the open state; any single-color SVG works */
+    mask: url("icons/chevron-down.svg") no-repeat center / contain;
+    /* Closed: point toward the inline end */
+    rotate: -90deg;
+  }
 
-	&:dir(rtl)::before {
-		rotate: 90deg;
-	}
+  &:dir(rtl)::before {
+    rotate: 90deg;
+  }
 
-	/* Rotate rather than swap icons, so the change can animate */
-	details[open] > &::before {
-		rotate: 0deg;
-	}
+  /* Rotate rather than swap icons, so the change can animate */
+  details[open] > &::before {
+    rotate: 0deg;
+  }
 
-	@media (prefers-reduced-motion: no-preference) {
-		&::before {
-			transition: rotate 0.2s;
-		}
-	}
+  @media (prefers-reduced-motion: no-preference) {
+    &::before {
+      transition: rotate 0.2s;
+    }
+  }
 }
 ```
 
@@ -225,28 +250,28 @@ To animate opening and closing, transition `block-size` between `0` and its intr
 
 ```css
 details::details-content {
-	/* Lets block-size transition to and from its intrinsic auto size */
-	interpolate-size: allow-keywords;
-	overflow: clip;
-	/* Keeps layout containment constant across states; otherwise content-visibility toggling it
+  /* Lets block-size transition to and from its intrinsic auto size */
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  /* Keeps layout containment constant across states; otherwise content-visibility toggling it
 	   makes the transition jitter when the content has outward margins (e.g. a nested p) */
-	contain: layout;
+  contain: layout;
 }
 
 details:not([open])::details-content {
-	block-size: 0;
+  block-size: 0;
 }
 
 /* Only animate for users who have not asked for reduced motion */
 @media (prefers-reduced-motion: no-preference) {
-	details::details-content {
-		transition: block-size, content-visibility, display;
-		/* Example duration; match the surrounding motion design */
-		transition-duration: 0.3s;
-		transition-timing-function: ease-in-out;
-		/* Defers content-visibility: hidden until the collapse ends */
-		transition-behavior: allow-discrete;
-	}
+  details::details-content {
+    transition: block-size, content-visibility, display;
+    /* Example duration; match the surrounding motion design */
+    transition-duration: 0.3s;
+    transition-timing-function: ease-in-out;
+    /* Defers content-visibility: hidden until the collapse ends */
+    transition-behavior: allow-discrete;
+  }
 }
 ```
 
@@ -258,17 +283,17 @@ If it’s undesirable for a `details` element’s contents to be included in wha
 
 ```css
 .accordion.unsearchable > details {
-	/* Excludes the contents from find-in-page */
-	&:not([open])::details-content {
-		display: none;
-	}
+  /* Excludes the contents from find-in-page */
+  &:not([open])::details-content {
+    display: none;
+  }
 
-	/* Where the opening transition starts from, since display: none has no size */
-	&[open]::details-content {
-		@starting-style {
-			block-size: 0;
-		}
-	}
+  /* Where the opening transition starts from, since display: none has no size */
+  &[open]::details-content {
+    @starting-style {
+      block-size: 0;
+    }
+  }
 }
 ```
 
@@ -283,26 +308,39 @@ Hide the content with `hidden="until-found"` so it stays findable, or with plain
 
 ```html
 <section class="accordion" aria-labelledby="faq-heading">
-	<h2 id="faq-heading">Frequently Asked Questions</h2>
-	<h3>
-		<button type="button" commandfor="answer-1" command="--toggle" aria-expanded="false">How do I reset my password?</button>
-	</h3>
-	<div id="answer-1" hidden="until-found"><!-- Answer --></div>
+  <h2 id="faq-heading">Frequently Asked Questions</h2>
+  <h3>
+    <button
+      type="button"
+      commandfor="answer-1"
+      command="--toggle"
+      aria-expanded="false"
+    >
+      How do I reset my password?
+    </button>
+  </h3>
+  <div id="answer-1" hidden="until-found"><!-- Answer --></div>
 </section>
 ```
 
 ```javascript
-document.addEventListener("command", event => {
-	if (event.command !== "--toggle") return;
-	const content = event.target;
+document.addEventListener(
+  "command",
+  (event) => {
+    if (event.command !== "--toggle") return;
+    const content = event.target;
 
-	content.hidden = content.hidden ? false : "until-found";
-	event.source.setAttribute("aria-expanded", !content.hidden);
-}, { capture: true }); // Command events do not bubble, hence capture
+    content.hidden = content.hidden ? false : "until-found";
+    event.source.setAttribute("aria-expanded", !content.hidden);
+  },
+  { capture: true },
+); // Command events do not bubble, hence capture
 
 // Find-in-page reveals the content directly, so mirror that into the trigger
-document.addEventListener("beforematch", event => {
-	document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"]`)?.setAttribute("aria-expanded", "true");
+document.addEventListener("beforematch", (event) => {
+  document
+    .querySelector(`[commandfor="${CSS.escape(event.target.id)}"]`)
+    ?.setAttribute("aria-expanded", "true");
 });
 ```
 
@@ -321,15 +359,26 @@ If the exclusivity is crucial to the user experience, you can implement a fallba
 ```javascript
 // Only needed where the name attribute is unsupported
 if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {
-	document.addEventListener("toggle", event => {
-		const details = event.target;
-		if (!(details instanceof HTMLDetailsElement) || !details.open || !details.hasAttribute("name")) return;
+  document.addEventListener(
+    "toggle",
+    (event) => {
+      const details = event.target;
+      if (
+        !(details instanceof HTMLDetailsElement) ||
+        !details.open ||
+        !details.hasAttribute("name")
+      )
+        return;
 
-		const name = CSS.escape(details.getAttribute("name"));
-		for (const other of document.querySelectorAll(`details[name="${name}"]`)) {
-			if (other !== details) other.open = false;
-		}
-	}, { capture: true }); // toggle does not bubble, hence capture
+      const name = CSS.escape(details.getAttribute("name"));
+      for (const other of document.querySelectorAll(
+        `details[name="${name}"]`,
+      )) {
+        if (other !== details) other.open = false;
+      }
+    },
+    { capture: true },
+  ); // toggle does not bubble, hence capture
 }
 ```
 

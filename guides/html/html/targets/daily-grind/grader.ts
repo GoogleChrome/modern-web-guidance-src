@@ -38,59 +38,80 @@ import {
   expect,
   getTargetFiles,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from "../../../../test-fixture.ts";
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('daily-grind Target Grader', () => {
+test.describe("daily-grind Target Grader", () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
-  test('Expectation 4: Site header landmark contains primary navigation', () => {
+  test("Expectation 4: Site header landmark contains primary navigation", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasHeaderNav = docs.some(d => Boolean(d.document.querySelector('header nav')));
+    const hasHeaderNav = docs.some((d) =>
+      Boolean(d.document.querySelector("header nav")),
+    );
     expect(hasHeaderNav).toBe(true);
   });
 
-  test('Expectation 4: Main landmark contains the primary h1 heading', () => {
+  test("Expectation 4: Main landmark contains the primary h1 heading", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasMainH1 = docs.some(d => Boolean(d.document.querySelector('main h1')));
+    const hasMainH1 = docs.some((d) =>
+      Boolean(d.document.querySelector("main h1")),
+    );
     expect(hasMainH1).toBe(true);
   });
 
-  test('Expectation 4: Main landmark contains the hero section', () => {
+  test("Expectation 4: Main landmark contains the hero section", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasMainHero = docs.some(d => Boolean(d.document.querySelector('main .hero, main section.hero')));
+    const hasMainHero = docs.some((d) =>
+      Boolean(d.document.querySelector("main .hero, main section.hero")),
+    );
     expect(hasMainHero).toBe(true);
   });
 
-  test('Expectation 4: Footer landmark contains navigation for footer links', () => {
+  test("Expectation 4: Footer landmark contains navigation for footer links", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasFooterNav = docs.some(d => Boolean(d.document.querySelector('footer nav')));
+    const hasFooterNav = docs.some((d) =>
+      Boolean(d.document.querySelector("footer nav")),
+    );
     expect(hasFooterNav).toBe(true);
   });
 
-  test('Expectation 8: Seasonal favorites cards container uses a semantic list element', () => {
+  test("Expectation 8: Seasonal favorites cards container uses a semantic list element", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasListGrid = docs.some(d => Boolean(d.document.querySelector('ul.grid, ol.grid, main ul, main ol')));
+    const hasListGrid = docs.some((d) =>
+      Boolean(d.document.querySelector("ul.grid, ol.grid, main ul, main ol")),
+    );
     expect(hasListGrid).toBe(true);
   });
 
-  test('Expectation 8: Seasonal favorites cards are structured as list items', () => {
+  test("Expectation 8: Seasonal favorites cards are structured as list items", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasCardListItems = docs.some(d => d.document.querySelectorAll('ul.grid > li, ol.grid > li, .grid > li, main li').length >= 3);
+    const hasCardListItems = docs.some(
+      (d) =>
+        d.document.querySelectorAll(
+          "ul.grid > li, ol.grid > li, .grid > li, main li",
+        ).length >= 3,
+    );
     expect(hasCardListItems).toBe(true);
   });
 
-  test('Expectation 8: Footer links are structured inside a semantic list element', () => {
+  test("Expectation 8: Footer links are structured inside a semantic list element", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasFooterList = docs.some(d => Boolean(d.document.querySelector('footer ul, footer ol')));
+    const hasFooterList = docs.some((d) =>
+      Boolean(d.document.querySelector("footer ul, footer ol")),
+    );
     expect(hasFooterList).toBe(true);
   });
 
-  test('Expectation 8: Footer links are structured as individual list items', () => {
+  test("Expectation 8: Footer links are structured as individual list items", () => {
     const docs = getHtmlDocuments(targetFiles);
-    const hasFooterListItems = docs.some(d => d.document.querySelectorAll('footer ul li, footer ol li, footer li').length >= 4);
+    const hasFooterListItems = docs.some(
+      (d) =>
+        d.document.querySelectorAll("footer ul li, footer ol li, footer li")
+          .length >= 4,
+    );
     expect(hasFooterListItems).toBe(true);
   });
 });

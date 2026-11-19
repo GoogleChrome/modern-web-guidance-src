@@ -54,7 +54,7 @@ index 22f7b64..acc187a 100644
 +    ): PublicKeyCredentialRequestOptions;
    }
  }
- 
+
 -export {};
 \ No newline at end of file
 +export {};
@@ -90,7 +90,7 @@ index 980b279..c830daf 100644
 --- a/src/components/Header.astro
 +++ b/src/components/Header.astro
 @@ -25,6 +25,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
- 
+
        <!-- Right: Buttons -->
        <div class="flex items-center space-x-3">
 +        <a
@@ -990,7 +990,7 @@ index 1684cf6..33e9b63 100644
 -
  import { defineMiddleware } from 'astro:middleware';
 +import { DEFAULT_USER_ID } from './utils/db';
- 
+
  export const onRequest = defineMiddleware(async (context, next) => {
    if (context.session) {
 @@ -8,6 +8,12 @@ export const onRequest = defineMiddleware(async (context, next) => {

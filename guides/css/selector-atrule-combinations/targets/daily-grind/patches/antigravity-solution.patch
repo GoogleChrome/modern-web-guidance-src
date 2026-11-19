@@ -25,7 +25,7 @@ index 66c9173..163b4db 100644
 +        --color-scheme: light;
 +      }
      }
- 
+
      * {
 @@ -152,6 +170,56 @@
        text-decoration: none;
@@ -83,7 +83,7 @@ index 66c9173..163b4db 100644
 +    }
    </style>
  </head>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..6238fbd 100644
 --- a/package.json

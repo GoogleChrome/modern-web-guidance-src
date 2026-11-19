@@ -25,7 +25,7 @@ interface StaticModelData {
  */
 export function encodeTokens(
   text: string,
-  wordIndex: ReadonlyMap<string, number>
+  wordIndex: ReadonlyMap<string, number>,
 ): Array<[number, number]> {
   const out: Array<[number, number]> = [];
   for (const tok of tokenize(text)) {
@@ -58,7 +58,7 @@ export function accumulateNormalizedVector(
   enc: ReadonlyArray<[number, number]>,
   table: Int8Array | Float32Array,
   scales: Float32Array,
-  out = new Float32Array(STATIC_EMBEDDING_DIMS)
+  out = new Float32Array(STATIC_EMBEDDING_DIMS),
 ): Float32Array {
   out.fill(0);
   if (enc.length === 0) {
@@ -102,18 +102,29 @@ export class StaticEmbedder implements EmbedderLike {
   private ensureModel(): StaticModelData {
     if (this.model) return this.model;
 
-    const modelDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "gen");
+    const modelDir = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      "gen",
+    );
     const wordsPath = path.join(modelDir, "query-words.json");
     const tablePath = path.join(modelDir, "query-words.i8");
     const scalesPath = path.join(modelDir, "query-words.scale.f32");
 
-    if (!fs.existsSync(wordsPath) || !fs.existsSync(tablePath) || !fs.existsSync(scalesPath)) {
-      throw new Error(`Static model files missing in ${modelDir}. Expected query-words.json, query-words.i8, query-words.scale.f32`);
+    if (
+      !fs.existsSync(wordsPath) ||
+      !fs.existsSync(tablePath) ||
+      !fs.existsSync(scalesPath)
+    ) {
+      throw new Error(
+        `Static model files missing in ${modelDir}. Expected query-words.json, query-words.i8, query-words.scale.f32`,
+      );
     }
 
     const rawWords: unknown = JSON.parse(fs.readFileSync(wordsPath, "utf8"));
     if (!Array.isArray(rawWords)) {
-      throw new Error(`Corrupt query-words.json in ${modelDir}: expected JSON array`);
+      throw new Error(
+        `Corrupt query-words.json in ${modelDir}: expected JSON array`,
+      );
     }
     const words = rawWords.map(String);
     const wordIndex = new Map<string, number>();
@@ -124,7 +135,7 @@ export class StaticEmbedder implements EmbedderLike {
     const tableBuf = fs.readFileSync(tablePath);
     if (tableBuf.byteLength !== words.length * STATIC_EMBEDDING_DIMS) {
       throw new Error(
-        `Corrupt query-words.i8: size ${tableBuf.byteLength} != expected ${words.length * STATIC_EMBEDDING_DIMS}`
+        `Corrupt query-words.i8: size ${tableBuf.byteLength} != expected ${words.length * STATIC_EMBEDDING_DIMS}`,
       );
     }
     const table = toInt8Array(tableBuf);
@@ -132,7 +143,7 @@ export class StaticEmbedder implements EmbedderLike {
     const scaleBuf = fs.readFileSync(scalesPath);
     if (scaleBuf.byteLength !== words.length * 4) {
       throw new Error(
-        `Corrupt query-words.scale.f32: size ${scaleBuf.byteLength} != expected ${words.length * 4}`
+        `Corrupt query-words.scale.f32: size ${scaleBuf.byteLength} != expected ${words.length * 4}`,
       );
     }
     const scales = toAlignedFloat32Array(scaleBuf);
@@ -153,7 +164,9 @@ export class StaticEmbedder implements EmbedderLike {
   public embedSync(text: string): number[] {
     const model = this.ensureModel();
     const enc = encodeTokens(text, model.wordIndex);
-    return Array.from(accumulateNormalizedVector(enc, model.table, model.scales));
+    return Array.from(
+      accumulateNormalizedVector(enc, model.table, model.scales),
+    );
   }
 
   public countTokens(text: string): number {

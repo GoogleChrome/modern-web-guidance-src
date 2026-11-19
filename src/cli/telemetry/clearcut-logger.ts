@@ -4,21 +4,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import process from 'node:process';
-import { WatchdogClient } from './watchdog-client.ts';
+import process from "node:process";
+import { WatchdogClient } from "./watchdog-client.ts";
 import {
   type ChromeModernWebGuidance,
   type SearchItem,
   CommandType,
   WatchdogMessageType,
   OsType,
-} from './types.ts';
-import { getVersion } from '../version.ts';
-import { determineAgent } from './detect-agent.ts';
+} from "./types.ts";
+import { getVersion } from "../version.ts";
+import { determineAgent } from "./detect-agent.ts";
 
 function isTelemetryEnabled(): boolean {
   const optOutSetting = process.env.DISABLE_TELEMETRY?.toLowerCase();
-  if (optOutSetting === '1' || optOutSetting === 'true') {
+  if (optOutSetting === "1" || optOutSetting === "true") {
     return false;
   }
   if (process.env.NODE_TEST_CONTEXT !== undefined) {
@@ -29,9 +29,9 @@ function isTelemetryEnabled(): boolean {
 
 export function detectOS(): OsType {
   const platform = process.platform;
-  if (platform === 'darwin') return OsType.MACOS;
-  if (platform === 'win32') return OsType.WINDOWS;
-  if (platform === 'linux') return OsType.LINUX;
+  if (platform === "darwin") return OsType.MACOS;
+  if (platform === "win32") return OsType.WINDOWS;
+  if (platform === "linux") return OsType.LINUX;
   return OsType.UNSPECIFIED;
 }
 
@@ -51,12 +51,14 @@ export class ClearcutLogger {
   #skillVersion?: string;
   #agent?: string;
 
-  constructor(options: {
-    clearcutEndpoint?: string;
-    clearcutIncludePidHeader?: boolean;
-    skillVersion?: string | null;
-    agent?: string | null;
-  } = {}) {
+  constructor(
+    options: {
+      clearcutEndpoint?: string;
+      clearcutIncludePidHeader?: boolean;
+      skillVersion?: string | null;
+      agent?: string | null;
+    } = {},
+  ) {
     if (!isTelemetryEnabled()) {
       return;
     }
@@ -68,7 +70,12 @@ export class ClearcutLogger {
     });
   }
 
-  async logSearchResult(query: string, latencyMs: number, success: boolean, searchItems: SearchItem[]): Promise<void> {
+  async logSearchResult(
+    query: string,
+    latencyMs: number,
+    success: boolean,
+    searchItems: SearchItem[],
+  ): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -92,7 +99,11 @@ export class ClearcutLogger {
     });
   }
 
-  async logRetrieveResult(latencyMs: number, success: boolean, guideId: string): Promise<void> {
+  async logRetrieveResult(
+    latencyMs: number,
+    success: boolean,
+    guideId: string,
+  ): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
@@ -115,16 +126,23 @@ export class ClearcutLogger {
     });
   }
 
-  async logToolCommand(latencyMs: number, success: boolean, commandType: CommandType): Promise<void> {
+  async logToolCommand(
+    latencyMs: number,
+    success: boolean,
+    commandType: CommandType,
+  ): Promise<void> {
     if (!this.#watchdog) {
       return;
     }
 
-    if (commandType == CommandType.INSTALL || commandType == CommandType.INSTALL_CHOOSE) {
+    if (
+      commandType == CommandType.INSTALL ||
+      commandType == CommandType.INSTALL_CHOOSE
+    ) {
       console.warn(
         "Google collects anonymous usage information to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
-        "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
-        "See https://github.com/GoogleChrome/modern-web-guidance#-telemetry--privacy for more details."
+          "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
+          "See https://github.com/GoogleChrome/modern-web-guidance#-telemetry--privacy for more details.",
       );
     }
 

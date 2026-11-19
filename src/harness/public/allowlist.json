@@ -14,9 +14,7 @@
   "overrides": [
     {
       "id": "codex-sol-medium-1.0-rc-2026-11-08",
-      "excludeGuides": [
-        "sort-high-precision-timestamps"
-      ]
+      "excludeGuides": ["sort-high-precision-timestamps"]
     }
   ],
   "releasedModels": [

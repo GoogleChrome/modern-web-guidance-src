@@ -50,9 +50,9 @@ index 66c9173..bd0d093 100644
 +    }
    </style>
  </head>
- 
+
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="#/">THE DAILY GRIND</a></div>
@@ -68,7 +68,7 @@ index 66c9173..bd0d093 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
 +  <main class="views">
 +  <section id="home-view" class="spa-view" data-route="/" tabindex="-1" aria-label="Home">
    <header class="hero">
@@ -76,7 +76,7 @@ index 66c9173..bd0d093 100644
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
      <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 -  <main class="container">
 +  <div class="container">
      <section>
@@ -128,15 +128,15 @@ index 66c9173..bd0d093 100644
 +    </div>
 +  </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +273,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="./navigation.js"></script>
  </body>
- 
+
  </html>
 diff --git a/navigation.js b/navigation.js
 new file mode 100644

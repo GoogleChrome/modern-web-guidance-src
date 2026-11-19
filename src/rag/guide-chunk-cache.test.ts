@@ -26,17 +26,52 @@ describe("guide-chunk-cache", () => {
     const hashA2 = computeChunkHash(textA);
     const hashB = computeChunkHash(textB);
 
-    assert.strictEqual(hashA1, hashA2, "Identical inputs must yield identical hash");
-    assert.notStrictEqual(hashA1, hashB, "Different text must yield different hash");
+    assert.strictEqual(
+      hashA1,
+      hashA2,
+      "Identical inputs must yield identical hash",
+    );
+    assert.notStrictEqual(
+      hashA1,
+      hashB,
+      "Different text must yield different hash",
+    );
 
-    const hashDifferentModel = computeChunkHash(textA, "other-model", TASK_TYPE, STATIC_DIMS);
-    assert.notStrictEqual(hashA1, hashDifferentModel, "Different model must yield different hash");
+    const hashDifferentModel = computeChunkHash(
+      textA,
+      "other-model",
+      TASK_TYPE,
+      STATIC_DIMS,
+    );
+    assert.notStrictEqual(
+      hashA1,
+      hashDifferentModel,
+      "Different model must yield different hash",
+    );
 
-    const hashDifferentTask = computeChunkHash(textA, TEACHER_MODEL, "RETRIEVAL_QUERY", STATIC_DIMS);
-    assert.notStrictEqual(hashA1, hashDifferentTask, "Different task type must yield different hash");
+    const hashDifferentTask = computeChunkHash(
+      textA,
+      TEACHER_MODEL,
+      "RETRIEVAL_QUERY",
+      STATIC_DIMS,
+    );
+    assert.notStrictEqual(
+      hashA1,
+      hashDifferentTask,
+      "Different task type must yield different hash",
+    );
 
-    const hashDifferentDims = computeChunkHash(textA, TEACHER_MODEL, TASK_TYPE, 128);
-    assert.notStrictEqual(hashA1, hashDifferentDims, "Different dims must yield different hash");
+    const hashDifferentDims = computeChunkHash(
+      textA,
+      TEACHER_MODEL,
+      TASK_TYPE,
+      128,
+    );
+    assert.notStrictEqual(
+      hashA1,
+      hashDifferentDims,
+      "Different dims must yield different hash",
+    );
   });
 
   it("truncateAndNormalize256 truncates 768-d to 256-d unit vector", () => {
@@ -86,23 +121,31 @@ describe("guide-chunk-cache", () => {
         }
         assert.ok(
           dot > 0.999,
-          `Expected cosine similarity > 0.999, got ${dot} for hash ${hash}`
+          `Expected cosine similarity > 0.999, got ${dot} for hash ${hash}`,
         );
       }
 
       // Test pruning: save only first 3 entries
-      const subsetMap = new Map<string, Float32Array>([...origMap.entries()].slice(0, 3));
+      const subsetMap = new Map<string, Float32Array>(
+        [...origMap.entries()].slice(0, 3),
+      );
       saveChunkCache(subsetMap, tmpDir);
 
       const prunedMap = loadChunkCache(tmpDir);
-      assert.strictEqual(prunedMap.size, 3, "Pruned cache should only contain 3 entries");
+      assert.strictEqual(
+        prunedMap.size,
+        3,
+        "Pruned cache should only contain 3 entries",
+      );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
   it("loadChunkCache handles empty or missing directories cleanly", () => {
-    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "empty-cache-test-"));
+    const emptyDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "empty-cache-test-"),
+    );
     try {
       const result = loadChunkCache(emptyDir);
       assert.strictEqual(result.size, 0);
@@ -126,15 +169,30 @@ describe("guide-chunk-cache", () => {
     assert.ok(Math.abs(deq0[1] - -0.8) < 0.01);
 
     const deq1 = dequantizeVectorRow(qTable, scales, 1, STATIC_DIMS);
-    assert.strictEqual(deq1.length, 0, "Zero-scale row must dequantize to empty Float32Array(0)");
+    assert.strictEqual(
+      deq1.length,
+      0,
+      "Zero-scale row must dequantize to empty Float32Array(0)",
+    );
   });
 
   it("loadChunkCache detects corrupted binary files", () => {
-    const corruptDir = fs.mkdtempSync(path.join(os.tmpdir(), "corrupt-cache-test-"));
+    const corruptDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "corrupt-cache-test-"),
+    );
     try {
-      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.json"), JSON.stringify(["hash1", "hash2"]));
-      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.i8"), Buffer.alloc(100)); // wrong length
-      fs.writeFileSync(path.join(corruptDir, "guide-chunk-cache.scale.f32"), Buffer.alloc(8));
+      fs.writeFileSync(
+        path.join(corruptDir, "guide-chunk-cache.json"),
+        JSON.stringify(["hash1", "hash2"]),
+      );
+      fs.writeFileSync(
+        path.join(corruptDir, "guide-chunk-cache.i8"),
+        Buffer.alloc(100),
+      ); // wrong length
+      fs.writeFileSync(
+        path.join(corruptDir, "guide-chunk-cache.scale.f32"),
+        Buffer.alloc(8),
+      );
 
       assert.throws(() => loadChunkCache(corruptDir), /Chunk cache corrupted/);
     } finally {
@@ -143,10 +201,18 @@ describe("guide-chunk-cache", () => {
   });
 
   it("release check flags missing chunks when cache is empty", async () => {
-    const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), "empty-cache-check-"));
+    const emptyDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "empty-cache-check-"),
+    );
     try {
-      const checkResult = await embedGuideChunks({ check: true, cacheDir: emptyDir });
-      assert.ok(checkResult.missing.length > 0, "Release check must flag missing chunks on empty cache");
+      const checkResult = await embedGuideChunks({
+        check: true,
+        cacheDir: emptyDir,
+      });
+      assert.ok(
+        checkResult.missing.length > 0,
+        "Release check must flag missing chunks on empty cache",
+      );
       assert.strictEqual(checkResult.cachedCount, 0);
     } finally {
       fs.rmSync(emptyDir, { recursive: true, force: true });
@@ -154,7 +220,9 @@ describe("guide-chunk-cache", () => {
   });
 
   it("embedGuideChunks is append-only by default and only prunes when prune: true", async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-prune-test-"));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "chunk-cache-prune-test-"),
+    );
     try {
       const allChunks = scanCorpusChunks("skills-cli");
       const testCache = new Map<string, Float32Array>();
@@ -170,20 +238,31 @@ describe("guide-chunk-cache", () => {
 
       // Default run (prune: false) should NOT prune stale entry
       const resDefault = await embedGuideChunks({ cacheDir: tmpDir });
-      assert.strictEqual(resDefault.prunedCount, 0, "Default embedGuideChunks must not prune");
+      assert.strictEqual(
+        resDefault.prunedCount,
+        0,
+        "Default embedGuideChunks must not prune",
+      );
       const loadedAfterDefault = loadChunkCache(tmpDir);
       assert.ok(
         loadedAfterDefault.has("stale-chunk-hash-123"),
-        "Stale entry must be preserved in append-only mode"
+        "Stale entry must be preserved in append-only mode",
       );
 
       // Explicit prune: true should prune the stale entry
-      const resPruned = await embedGuideChunks({ cacheDir: tmpDir, prune: true });
-      assert.strictEqual(resPruned.prunedCount, 1, "embedGuideChunks with prune: true must prune 1 entry");
+      const resPruned = await embedGuideChunks({
+        cacheDir: tmpDir,
+        prune: true,
+      });
+      assert.strictEqual(
+        resPruned.prunedCount,
+        1,
+        "embedGuideChunks with prune: true must prune 1 entry",
+      );
       const loadedAfterPrune = loadChunkCache(tmpDir);
       assert.ok(
         !loadedAfterPrune.has("stale-chunk-hash-123"),
-        "Stale entry must be removed when prune: true"
+        "Stale entry must be removed when prune: true",
       );
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });

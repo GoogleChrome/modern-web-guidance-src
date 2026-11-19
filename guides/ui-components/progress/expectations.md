@@ -6,4 +6,3 @@
 - Custom styles normalize the element using `appearance: none` and `border: 0`.
 - Custom styles are provided for browser-specific pseudo-elements (`::-webkit-progress-bar`, `::-webkit-progress-value`, and `::-moz-progress-bar`) using separate (un-grouped) `-webkit-` and `-moz-` selector rules.
 - The custom indeterminate animation respects the `prefers-reduced-motion: reduce` media query by slowing down or dampening the animation rather than disabling it entirely.
-

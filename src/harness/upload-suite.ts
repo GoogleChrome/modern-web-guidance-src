@@ -1,29 +1,56 @@
-import { Storage } from '@google-cloud/storage';
-import os from 'os';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { cRed, cGreen, cCyan, cBold } from '../core/colors.ts';
-import { suitesDir as baseResultsDir } from '../core/paths.ts';
-import { extractSuiteSummary } from '../dashboard/summary-extractor.js';
+import { Storage } from "@google-cloud/storage";
+import os from "os";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import { cRed, cGreen, cCyan, cBold } from "../core/colors.ts";
+import { suitesDir as baseResultsDir } from "../core/paths.ts";
+import { extractSuiteSummary } from "../dashboard/summary-extractor.js";
 import {
   BASE64_TRAJECTORY_SCRIPT_RE,
   extractBase64TrajectoryPayloads,
   findSecretLeaks,
   getHostSecrets,
   sanitizeTextSecrets,
-} from './lib/secret-guard.ts';
+} from "./lib/secret-guard.ts";
 
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
+const PROJECT_ID = "chrome-kiwi-air-force-dev";
+const BUCKET_NAME = "guidance-evals";
 
 const TEXT_UPLOAD_EXTENSIONS = new Set([
-  '.txt', '.log', '.json', '.jsonl', '.patch', '.md', '.css', '.js', '.mjs', '.cjs',
-  '.ts', '.mts', '.cts', '.tsx', '.jsx', '.astro', '.svelte', '.vue', '.htm',
-  '.xml', '.svg', '.yaml', '.yml', '.csv',
+  ".txt",
+  ".log",
+  ".json",
+  ".jsonl",
+  ".patch",
+  ".md",
+  ".css",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".tsx",
+  ".jsx",
+  ".astro",
+  ".svelte",
+  ".vue",
+  ".htm",
+  ".xml",
+  ".svg",
+  ".yaml",
+  ".yml",
+  ".csv",
 ]);
 
-const BINARY_TRAJECTORY_EXTENSIONS = new Set(['.db', '.db-wal', '.db-shm', '.sqlite', '.pb']);
+const BINARY_TRAJECTORY_EXTENSIONS = new Set([
+  ".db",
+  ".db-wal",
+  ".db-shm",
+  ".sqlite",
+  ".pb",
+]);
 
 interface UploadPlanEntry {
   localPath: string;
@@ -42,32 +69,45 @@ function stageOrVerifyFile(
 ): void {
   const ext = path.extname(fileName).toLowerCase();
   const lowerName = fileName.toLowerCase();
-  const isBinaryTrajectory = BINARY_TRAJECTORY_EXTENSIONS.has(ext)
-    || lowerName.endsWith('.db-wal')
-    || lowerName.endsWith('.db-shm');
+  const isBinaryTrajectory =
+    BINARY_TRAJECTORY_EXTENSIONS.has(ext) ||
+    lowerName.endsWith(".db-wal") ||
+    lowerName.endsWith(".db-shm");
 
-  if (ext === '.html' || TEXT_UPLOAD_EXTENSIONS.has(ext)) {
-    const original = fs.readFileSync(fullPath, 'utf8');
-    if (ext === '.html') {
+  if (ext === ".html" || TEXT_UPLOAD_EXTENSIONS.has(ext)) {
+    const original = fs.readFileSync(fullPath, "utf8");
+    if (ext === ".html") {
       for (const payload of extractBase64TrajectoryPayloads(original)) {
         const payloadLeaks = findSecretLeaks(payload, extraSecrets);
         if (payloadLeaks.length > 0) {
-          leakErrors.push(`${destinationPath} (embedded payload: ${payloadLeaks.join(', ')})`);
+          leakErrors.push(
+            `${destinationPath} (embedded payload: ${payloadLeaks.join(", ")})`,
+          );
         }
       }
     }
 
-    const redacted = sanitizeTextSecrets(original, extraSecrets, { preserveBase64Scripts: ext === '.html' });
-    const textToVerify = ext === '.html' ? redacted.replace(BASE64_TRAJECTORY_SCRIPT_RE, '') : redacted;
+    const redacted = sanitizeTextSecrets(original, extraSecrets, {
+      preserveBase64Scripts: ext === ".html",
+    });
+    const textToVerify =
+      ext === ".html"
+        ? redacted.replace(BASE64_TRAJECTORY_SCRIPT_RE, "")
+        : redacted;
     const remaining = findSecretLeaks(textToVerify, extraSecrets);
     if (remaining.length > 0) {
-      leakErrors.push(`${destinationPath} (unredacted: ${remaining.join(', ')})`);
+      leakErrors.push(
+        `${destinationPath} (unredacted: ${remaining.join(", ")})`,
+      );
     }
 
     if (redacted !== original) {
-      const stagedPath = path.join(stagingDir, destinationPath.replace(/^[/\\]+/, ''));
+      const stagedPath = path.join(
+        stagingDir,
+        destinationPath.replace(/^[/\\]+/, ""),
+      );
       fs.mkdirSync(path.dirname(stagedPath), { recursive: true });
-      fs.writeFileSync(stagedPath, redacted, 'utf8');
+      fs.writeFileSync(stagedPath, redacted, "utf8");
       entries.push({ localPath: stagedPath, destinationPath, redacted: true });
     } else {
       entries.push({ localPath: fullPath, destinationPath, redacted: false });
@@ -75,23 +115,30 @@ function stageOrVerifyFile(
     return;
   }
 
-  const leaks = findSecretLeaks(fs.readFileSync(fullPath), extraSecrets, { scanPatterns: isBinaryTrajectory });
+  const leaks = findSecretLeaks(fs.readFileSync(fullPath), extraSecrets, {
+    scanPatterns: isBinaryTrajectory,
+  });
   if (leaks.length > 0) {
-    leakErrors.push(`${destinationPath} (${leaks.join(', ')})`);
+    leakErrors.push(`${destinationPath} (${leaks.join(", ")})`);
     return;
   }
   entries.push({ localPath: fullPath, destinationPath, redacted: false });
 }
 
 export async function uploadDirectory(
-  bucket: { upload: (localPath: string, opts: { destination: string }) => Promise<unknown> },
+  bucket: {
+    upload: (
+      localPath: string,
+      opts: { destination: string },
+    ) => Promise<unknown>;
+  },
   dirPath: string,
   gcsPrefix: string,
   summaryOnly = false,
   options: { extraSecrets?: readonly string[] } = {},
 ): Promise<{ uploaded: number; redacted: number }> {
   const extraSecrets = options.extraSecrets ?? getHostSecrets();
-  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-upload-stage-'));
+  const stagingDir = fs.mkdtempSync(path.join(os.tmpdir(), "gd-upload-stage-"));
   const entries: UploadPlanEntry[] = [];
   const leakErrors: string[] = [];
 
@@ -102,16 +149,30 @@ export async function uploadDirectory(
       const fullPath = path.join(currentDir, file.name);
       const destinationPath = path.join(currentPrefix, file.name);
 
-      if (file.name === 'node_modules' || file.name === '.jetskicli') continue;
+      if (file.name === "node_modules" || file.name === ".jetskicli") continue;
 
       if (file.isDirectory()) {
         if (!summaryOnly) {
           collectFiles(fullPath, destinationPath);
         }
       } else {
-        if (file.name === '.DS_Store' || file.name === 'pnpm-workspace.yaml') continue;
-        if (summaryOnly && file.name !== 'evals.json' && file.name !== 'evals.md') continue;
-        stageOrVerifyFile(fullPath, destinationPath, file.name, stagingDir, extraSecrets, entries, leakErrors);
+        if (file.name === ".DS_Store" || file.name === "pnpm-workspace.yaml")
+          continue;
+        if (
+          summaryOnly &&
+          file.name !== "evals.json" &&
+          file.name !== "evals.md"
+        )
+          continue;
+        stageOrVerifyFile(
+          fullPath,
+          destinationPath,
+          file.name,
+          stagingDir,
+          extraSecrets,
+          entries,
+          leakErrors,
+        );
       }
     }
   }
@@ -120,12 +181,14 @@ export async function uploadDirectory(
     collectFiles(dirPath, gcsPrefix);
 
     if (leakErrors.length > 0) {
-      throw new Error(`Upload blocked: detected credentials in ${leakErrors.length} file(s):\n  - ${leakErrors.join('\n  - ')}`);
+      throw new Error(
+        `Upload blocked: detected credentials in ${leakErrors.length} file(s):\n  - ${leakErrors.join("\n  - ")}`,
+      );
     }
 
-    const redactedCount = entries.filter(e => e.redacted).length;
+    const redactedCount = entries.filter((e) => e.redacted).length;
     console.log(
-      `Discovered ${entries.length} files to upload${redactedCount > 0 ? ` (${redactedCount} redacted)` : ''}. Uploading concurrently...`,
+      `Discovered ${entries.length} files to upload${redactedCount > 0 ? ` (${redactedCount} redacted)` : ""}. Uploading concurrently...`,
     );
 
     const concurrencyLevel = 50;
@@ -133,8 +196,12 @@ export async function uploadDirectory(
       const chunk = entries.slice(i, i + concurrencyLevel);
       await Promise.all(
         chunk.map(async (entry) => {
-          console.log(`Uploading ${entry.destinationPath} to gs://${BUCKET_NAME}/${entry.destinationPath}...`);
-          await bucket.upload(entry.localPath, { destination: entry.destinationPath });
+          console.log(
+            `Uploading ${entry.destinationPath} to gs://${BUCKET_NAME}/${entry.destinationPath}...`,
+          );
+          await bucket.upload(entry.localPath, {
+            destination: entry.destinationPath,
+          });
         }),
       );
     }
@@ -151,25 +218,31 @@ export async function reconcileAndUploadManifest(
   evalsData: any,
   options: { reextractAll?: boolean } = {},
 ) {
-  console.log(cCyan('🔄 Reconciling GCS suites manifest...'));
-  
+  console.log(cCyan("🔄 Reconciling GCS suites manifest..."));
+
   let remoteManifest: any[] = [];
-  const manifestFile = bucket.file('suites.gen.json');
+  const manifestFile = bucket.file("suites.gen.json");
   try {
     const [exists] = await manifestFile.exists();
     if (exists) {
       const [content] = await manifestFile.download();
-      remoteManifest = JSON.parse(content.toString('utf8'));
+      remoteManifest = JSON.parse(content.toString("utf8"));
     }
   } catch (e: any) {
-    console.warn(`Could not fetch existing suites.gen.json from GCS: ${e.message}`);
+    console.warn(
+      `Could not fetch existing suites.gen.json from GCS: ${e.message}`,
+    );
   }
 
   // Fast prefix listing with pagination to detect all suites in GCS
   const gcsPrefixes: string[] = [];
   let pageToken: string | undefined = undefined;
   do {
-    const res: [any, any, any] = await bucket.getFiles({ delimiter: '/', autoPaginate: false, pageToken });
+    const res: [any, any, any] = await bucket.getFiles({
+      delimiter: "/",
+      autoPaginate: false,
+      pageToken,
+    });
     const nextQuery = res[1];
     const apiResponse = res[2];
     if (apiResponse && apiResponse.prefixes) {
@@ -178,16 +251,18 @@ export async function reconcileAndUploadManifest(
     pageToken = nextQuery?.pageToken;
   } while (pageToken);
 
-  const activeSuiteIds = new Set<string>(gcsPrefixes.map((p: string) => p.replace(/\/$/, '')));
+  const activeSuiteIds = new Set<string>(
+    gcsPrefixes.map((p: string) => p.replace(/\/$/, "")),
+  );
   if (uploadedSuiteName) {
     activeSuiteIds.add(uploadedSuiteName);
   }
 
   const manifestMap = new Map<string, any>();
   for (const entry of remoteManifest) {
-    const id = typeof entry === 'string' ? entry : entry.testId;
+    const id = typeof entry === "string" ? entry : entry.testId;
     if (id && activeSuiteIds.has(id)) {
-      manifestMap.set(id, typeof entry === 'string' ? { testId: id } : entry);
+      manifestMap.set(id, typeof entry === "string" ? { testId: id } : entry);
     }
   }
 
@@ -200,55 +275,76 @@ export async function reconcileAndUploadManifest(
   }
 
   // Backfill missing summaries (or re-extract all when --reextract-manifest is passed)
-  const missingSuiteIds = Array.from(activeSuiteIds).filter(id => {
+  const missingSuiteIds = Array.from(activeSuiteIds).filter((id) => {
     if (options.reextractAll && id !== uploadedSuiteName) return true;
     const existing = manifestMap.get(id);
-    return !existing || !existing.guidedStats || !existing.a11yStats || !existing.showcase;
+    return (
+      !existing ||
+      !existing.guidedStats ||
+      !existing.a11yStats ||
+      !existing.showcase
+    );
   });
 
   if (missingSuiteIds.length > 0) {
     const concurrency = 10;
     for (let i = 0; i < missingSuiteIds.length; i += concurrency) {
       const chunk = missingSuiteIds.slice(i, i + concurrency);
-      await Promise.all(chunk.map(async (suiteId) => {
-        try {
-          console.log(`${options.reextractAll ? 'Re-extracting' : 'Extracting'} summary for GCS suite: ${suiteId}...`);
-          const evalsFile = bucket.file(`${suiteId}/evals.json`);
-          const [fileContent] = await evalsFile.download();
-          const parsed = JSON.parse(fileContent.toString('utf8'));
-          const summary = extractSuiteSummary(suiteId, parsed);
-          if (summary) {
-            manifestMap.set(suiteId, summary);
+      await Promise.all(
+        chunk.map(async (suiteId) => {
+          try {
+            console.log(
+              `${options.reextractAll ? "Re-extracting" : "Extracting"} summary for GCS suite: ${suiteId}...`,
+            );
+            const evalsFile = bucket.file(`${suiteId}/evals.json`);
+            const [fileContent] = await evalsFile.download();
+            const parsed = JSON.parse(fileContent.toString("utf8"));
+            const summary = extractSuiteSummary(suiteId, parsed);
+            if (summary) {
+              manifestMap.set(suiteId, summary);
+            }
+          } catch (e: any) {
+            console.warn(
+              `Could not fetch evals.json for ${suiteId}: ${e.message}`,
+            );
           }
-        } catch (e: any) {
-          console.warn(`Could not fetch evals.json for ${suiteId}: ${e.message}`);
-        }
-      }));
+        }),
+      );
     }
   }
 
-  const updatedList = Array.from(manifestMap.values()).sort((a, b) => (a.testId || '').localeCompare(b.testId || ''));
+  const updatedList = Array.from(manifestMap.values()).sort((a, b) =>
+    (a.testId || "").localeCompare(b.testId || ""),
+  );
 
   await manifestFile.save(JSON.stringify(updatedList, null, 2), {
-    contentType: 'application/json',
+    contentType: "application/json",
     resumable: false,
   });
 
-  console.log(cBold(cGreen(`✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites)`)));
+  console.log(
+    cBold(
+      cGreen(
+        `✅ Reconciled and updated gs://${BUCKET_NAME}/suites.gen.json (${updatedList.length} suites)`,
+      ),
+    ),
+  );
 }
 
 async function main() {
   const args = process.argv.slice(2);
-  const summaryOnly = args.includes('--summary-only');
-  const reextractManifest = args.includes('--reextract-manifest');
+  const summaryOnly = args.includes("--summary-only");
+  const reextractManifest = args.includes("--reextract-manifest");
 
   // Remove flags to get positional arguments
-  const positionalArgs = args.filter(a => !a.startsWith('--'));
+  const positionalArgs = args.filter((a) => !a.startsWith("--"));
 
   if (reextractManifest && positionalArgs.length === 0) {
     const storage = new Storage({ projectId: PROJECT_ID });
     const bucket = storage.bucket(BUCKET_NAME);
-    await reconcileAndUploadManifest(bucket, null, null, { reextractAll: true });
+    await reconcileAndUploadManifest(bucket, null, null, {
+      reextractAll: true,
+    });
     return;
   }
 
@@ -256,7 +352,9 @@ async function main() {
   const customResultsDir = positionalArgs[1];
 
   if (!suiteName) {
-    console.error('❌ Please provide a suite name (e.g. pnpm upload <suite-name>) or --reextract-manifest.');
+    console.error(
+      "❌ Please provide a suite name (e.g. pnpm upload <suite-name>) or --reextract-manifest.",
+    );
     process.exit(1);
   }
 
@@ -264,13 +362,13 @@ async function main() {
   suiteName = path.basename(suiteName);
 
   let resultsDir = path.join(baseResultsDir, suiteName);
-  
+
   // Support custom results directory!
   if (customResultsDir) {
     resultsDir = path.join(path.resolve(customResultsDir), suiteName);
   }
-  
-  const evalsJsonPath = path.join(resultsDir, 'evals.json');
+
+  const evalsJsonPath = path.join(resultsDir, "evals.json");
 
   if (!fs.existsSync(resultsDir)) {
     console.error(cRed(`❌ Results directory not found: ${resultsDir}`));
@@ -278,17 +376,25 @@ async function main() {
   }
 
   if (!fs.existsSync(evalsJsonPath)) {
-    console.error(cRed(`❌ evals.json not found in ${resultsDir}. Cannot upload incomplete or un-evaluated suite.`));
+    console.error(
+      cRed(
+        `❌ evals.json not found in ${resultsDir}. Cannot upload incomplete or un-evaluated suite.`,
+      ),
+    );
     process.exit(1);
   }
 
   let evalsData: any = null;
   try {
-    const evalsContent = fs.readFileSync(evalsJsonPath, 'utf8');
+    const evalsContent = fs.readFileSync(evalsJsonPath, "utf8");
     evalsData = JSON.parse(evalsContent);
     const results = evalsData.results || {};
     if (Object.keys(results).length === 0) {
-      console.warn(cRed(`⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`));
+      console.warn(
+        cRed(
+          `⚠️ Warning: No evaluation data found in evals.json (0 tasks were run). Sync skipped.`,
+        ),
+      );
       process.exit(0);
     }
 
@@ -307,7 +413,11 @@ async function main() {
       }
     }
     if (totalRunsCount > 0 && earlyFailuresCount === totalRunsCount) {
-      console.error(cRed(`❌ Error: Catastrophic generation failures (100% early failure rate). Upload blocked to prevent trend contamination.`));
+      console.error(
+        cRed(
+          `❌ Error: Catastrophic generation failures (100% early failure rate). Upload blocked to prevent trend contamination.`,
+        ),
+      );
       process.exit(1);
     }
   } catch (e: any) {
@@ -315,21 +425,38 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(cBold(cCyan(`Starting upload for suite: ${suiteName}${summaryOnly ? ' (Summary Only)' : ''}`)));
+  console.log(
+    cBold(
+      cCyan(
+        `Starting upload for suite: ${suiteName}${summaryOnly ? " (Summary Only)" : ""}`,
+      ),
+    ),
+  );
 
   const storage = new Storage({ projectId: PROJECT_ID });
   const bucket = storage.bucket(BUCKET_NAME);
 
   try {
     await uploadDirectory(bucket, resultsDir, suiteName, summaryOnly);
-    console.log(cBold(cGreen(`\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`)));
-    await reconcileAndUploadManifest(bucket, suiteName, evalsData, { reextractAll: reextractManifest });
+    console.log(
+      cBold(
+        cGreen(
+          `\n✅ Successfully uploaded suite '${suiteName}' to gs://${BUCKET_NAME}/${suiteName}`,
+        ),
+      ),
+    );
+    await reconcileAndUploadManifest(bucket, suiteName, evalsData, {
+      reextractAll: reextractManifest,
+    });
   } catch (error: any) {
     console.error(cRed(`❌ Upload failed: ${error.message}`));
     process.exit(1);
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main().catch(console.error);
 }

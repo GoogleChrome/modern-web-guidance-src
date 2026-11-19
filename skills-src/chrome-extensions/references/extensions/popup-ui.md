@@ -28,17 +28,22 @@
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { width: 350px; min-height: 200px; padding: 16px; font-family: system-ui; }
-  </style>
-</head>
-<body>
-  <h1>My Extension</h1>
-  <div id="content"></div>
-  <script src="popup.js"></script>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        width: 350px;
+        min-height: 200px;
+        padding: 16px;
+        font-family: system-ui;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>My Extension</h1>
+    <div id="content"></div>
+    <script src="popup.js"></script>
+  </body>
 </html>
 ```
 
@@ -48,14 +53,14 @@ Popup state is lost when closed. Use `chrome.storage` for persistence:
 
 ```js
 // Save on change
-document.getElementById('input').addEventListener('input', (e) => {
+document.getElementById("input").addEventListener("input", (e) => {
   chrome.storage.local.set({ savedInput: e.target.value });
 });
 
 // Restore on open
-document.addEventListener('DOMContentLoaded', async () => {
-  const { savedInput = '' } = await chrome.storage.local.get('savedInput');
-  document.getElementById('input').value = savedInput;
+document.addEventListener("DOMContentLoaded", async () => {
+  const { savedInput = "" } = await chrome.storage.local.get("savedInput");
+  document.getElementById("input").value = savedInput;
 });
 ```
 
@@ -67,12 +72,14 @@ and supports sync.
 
 ```js
 // From popup
-const response = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
 
 // Long-lived connection
-const port = chrome.runtime.connect({ name: 'popup' });
-port.postMessage({ type: 'INIT' });
-port.onMessage.addListener((msg) => { /* handle */ });
+const port = chrome.runtime.connect({ name: "popup" });
+port.postMessage({ type: "INIT" });
+port.onMessage.addListener((msg) => {
+  /* handle */
+});
 ```
 
 ## Dynamic Popup vs No Popup
@@ -88,7 +95,8 @@ chrome.action.onClicked.addListener((tab) => {
 ```
 
 You can toggle between popup and no-popup dynamically:
+
 ```js
-chrome.action.setPopup({ popup: 'popup/popup.html' }); // Enable popup
-chrome.action.setPopup({ popup: '' }); // Disable popup (enables onClicked)
+chrome.action.setPopup({ popup: "popup/popup.html" }); // Enable popup
+chrome.action.setPopup({ popup: "" }); // Disable popup (enables onClicked)
 ```

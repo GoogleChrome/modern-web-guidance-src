@@ -26,24 +26,30 @@ The `long-animation-frame` entry contains a `scripts` property which is an array
 // data is lost between observer callbacks.
 const allScripts = [];
 
-const observer = new PerformanceObserver(list => {
+const observer = new PerformanceObserver((list) => {
   // Collect all script entries across frames to find the biggest offenders.
-  allScripts.push(...list.getEntries().flatMap(entry => entry.scripts));
+  allScripts.push(...list.getEntries().flatMap((entry) => entry.scripts));
 
   // Group by sourceURL so you can identify which scripts contribute
   // the most total time, even if each individual invocation is short.
-  const scriptSource = [...new Set(allScripts.map(script => script.sourceURL))];
-  const scriptsBySource = scriptSource.map(sourceURL => ([sourceURL,
-      allScripts.filter(script => script.sourceURL === sourceURL)
-  ]));
+  const scriptSource = [
+    ...new Set(allScripts.map((script) => script.sourceURL)),
+  ];
+  const scriptsBySource = scriptSource.map((sourceURL) => [
+    sourceURL,
+    allScripts.filter((script) => script.sourceURL === sourceURL),
+  ]);
   const processedScripts = scriptsBySource.map(([sourceURL, scripts]) => ({
     sourceURL,
     count: scripts.length,
-    totalDuration: scripts.reduce((subtotal, script) => subtotal + script.duration, 0)
+    totalDuration: scripts.reduce(
+      (subtotal, script) => subtotal + script.duration,
+      0,
+    ),
   }));
 
   // Only include scripts above a certain threshold to reduce noise.
-  const heavyScripts = processedScripts.filter(script => {
+  const heavyScripts = processedScripts.filter((script) => {
     return script.totalDuration > 100;
   });
 
@@ -58,7 +64,7 @@ const observer = new PerformanceObserver(list => {
 
 // Use buffered: true to capture any long frames that occurred before
 // this observer was registered.
-observer.observe({type: 'long-animation-frame', buffered: true});
+observer.observe({ type: "long-animation-frame", buffered: true });
 ```
 
 ## Best Practices

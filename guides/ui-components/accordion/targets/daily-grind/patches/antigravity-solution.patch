@@ -5,7 +5,7 @@ index 66c9173..321f6a4 100644
 @@ -135,6 +135,116 @@
        background: #3e2723;
      }
- 
+
 +    /* Accordion Section */
 +    .accordion {
 +      margin-top: 50px;
@@ -144,12 +144,12 @@ index 66c9173..321f6a4 100644
 +      </details>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +337,21 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // Fallback where the details name attribute is unsupported
 +    if (!Object.hasOwn(HTMLDetailsElement.prototype, "name")) {
@@ -166,5 +166,5 @@ index 66c9173..321f6a4 100644
 +  </script>
 +
  </body>
- 
+
  </html>

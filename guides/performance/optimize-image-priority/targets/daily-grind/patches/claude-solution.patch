@@ -5,7 +5,7 @@ index 66c9173..be34083 100644
 @@ -72,13 +72,59 @@
        border-radius: 4px;
      }
- 
+
 +    /* Collapsed promo in navigation (revealed on interaction) */
 +    .nav-promo {
 +      position: relative;
@@ -69,7 +69,7 @@ index 66c9173..be34083 100644
 @@ -88,11 +134,44 @@
        padding: 0 20px;
      }
- 
+
 +    .hero-img {
 +      position: absolute;
 +      inset: 0;
@@ -97,7 +97,7 @@ index 66c9173..be34083 100644
        font-size: 3rem;
        margin-bottom: 1rem;
      }
- 
+
 +    .card img {
 +      display: block;
 +      width: 100%;
@@ -130,7 +130,7 @@ index 66c9173..be34083 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
    <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -144,7 +144,7 @@ index 66c9173..be34083 100644
 +      <a href="/order-online" class="btn">Order Now</a>
 +    </div>
    </header>
- 
+
    <main class="container">
 @@ -179,16 +274,22 @@
        <h2 style="text-align: center;">Seasonal Favorites</h2>

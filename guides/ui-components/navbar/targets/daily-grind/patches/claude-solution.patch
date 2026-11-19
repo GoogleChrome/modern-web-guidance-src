@@ -5,7 +5,7 @@ index 66c9173..1f6aba6 100644
 @@ -27,49 +27,331 @@
        background-color: var(--light);
      }
- 
+
 -    /* Navigation */
 -    nav {
 -      background: var(--primary);
@@ -179,7 +179,7 @@ index 66c9173..1f6aba6 100644
 +        outline-offset: 2px;
 +      }
      }
- 
+
 -    .logo {
 -      font-size: 1.5rem;
 -      font-weight: bold;
@@ -188,7 +188,7 @@ index 66c9173..1f6aba6 100644
 +    .site-header.is-measuring * {
 +      transition: none !important;
      }
- 
+
 -    nav ul {
 -      display: flex;
 -      list-style: none;
@@ -274,7 +274,7 @@ index 66c9173..1f6aba6 100644
 +        display: grid;
 +      }
      }
- 
+
 -    nav ul li {
 -      margin-left: 20px;
 +    /* Without anchor positioning, script places the floating submenu below its trigger */
@@ -284,7 +284,7 @@ index 66c9173..1f6aba6 100644
 +        margin: 0;
 +      }
      }
- 
+
 -    nav a {
 -      color: white;
 -      text-decoration: none;
@@ -314,7 +314,7 @@ index 66c9173..1f6aba6 100644
 +        }
 +      }
      }
- 
+
 -    nav a:hover {
 -      color: var(--accent);
 +    /* Optional narrow submenu slide-down */
@@ -336,7 +336,7 @@ index 66c9173..1f6aba6 100644
 +        }
 +      }
      }
- 
+
 -    .logout-link {
 -      border: 1px solid var(--accent);
 -      padding: 5px 12px;
@@ -361,12 +361,12 @@ index 66c9173..1f6aba6 100644
 +        }
 +      }
      }
- 
+
      /* Hero Section */
 @@ -157,22 +439,47 @@
- 
+
  <body>
- 
+
 -  <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -421,13 +421,13 @@ index 66c9173..1f6aba6 100644
      <a href="/order-online" class="btn">Order Now</a>
 -  </header>
 +  </section>
- 
+
    <main class="container">
      <section>
 @@ -207,6 +514,151 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    // MANDATORY: Feature detect 'popover' on HTMLElement.prototype; load the polyfill only when missing.
 +    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
@@ -574,5 +574,5 @@ index 66c9173..1f6aba6 100644
 +  </script>
 +
  </body>
- 
+
  </html>

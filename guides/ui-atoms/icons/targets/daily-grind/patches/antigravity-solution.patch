@@ -167,12 +167,12 @@ index 66c9173..24c6c31 100644
 +        }
 +      }
      }
- 
+
      * {
 @@ -66,10 +220,27 @@
        color: var(--accent);
      }
- 
+
 +    nav a[href="/menu"] {
 +      --icon-start: var(--icon-coffee);
 +    }
@@ -195,11 +195,11 @@ index 66c9173..24c6c31 100644
        border-radius: 4px;
 +      --icon-start: var(--icon-logout);
      }
- 
+
      /* Hero Section */
 @@ -108,6 +279,7 @@
      }
- 
+
      .card {
 +      position: relative;
        background: white;
@@ -208,7 +208,7 @@ index 66c9173..24c6c31 100644
 @@ -120,6 +292,49 @@
        color: var(--primary);
      }
- 
+
 +    .roast-level {
 +      display: inline-block;
 +      margin-bottom: 8px;
@@ -265,7 +265,7 @@ index 66c9173..24c6c31 100644
 +    .hero .btn {
 +      --icon-start: var(--icon-order);
      }
- 
+
      .btn:hover {
 @@ -160,18 +380,18 @@
    <nav>
@@ -283,14 +283,14 @@ index 66c9173..24c6c31 100644
 +      <li><a href="/logout" class="logout-link icon-start">Logout</a></li>
      </ul>
    </nav>
- 
+
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
 -    <a href="/order-online" class="btn">Order Now</a>
 +    <a href="/order-online" class="btn icon-start icon-end">Order Now</a>
    </header>
- 
+
    <main class="container">
 @@ -179,19 +399,25 @@
        <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -324,7 +324,7 @@ index 66c9173..24c6c31 100644
 @@ -207,6 +433,15 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    document.querySelectorAll('.button-favorite').forEach((button) => {
 +      button.addEventListener('click', () => {
@@ -335,5 +335,5 @@ index 66c9173..24c6c31 100644
 +  </script>
 +
  </body>
- 
+
  </html>

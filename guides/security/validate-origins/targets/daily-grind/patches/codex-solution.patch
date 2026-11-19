@@ -98,7 +98,7 @@ index 66c9173..b53ae58 100644
 @@ -120,6 +120,20 @@
        color: var(--primary);
      }
- 
+
 +    .account-tools { margin-top: 40px; }
 +    .account-tools .card { text-align: left; }
 +    .account-tools label { display: block; margin-top: 12px; }
@@ -152,15 +152,15 @@ index 66c9173..b53ae58 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +252,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/src/main.ts"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..9a3b488 100644

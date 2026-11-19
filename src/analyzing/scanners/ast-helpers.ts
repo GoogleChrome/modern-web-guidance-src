@@ -15,7 +15,7 @@ import {
   type SourceFile,
   type Statement,
   type VariableDeclaration,
-} from 'ts-morph';
+} from "ts-morph";
 
 /**
  * Strips parentheses, type assertions, non-null assertions, and satisfies wrappers
@@ -37,7 +37,8 @@ export function unwrapExpression(expr: Node): Node {
 
 export function isCallableScope(
   scope: Node,
-): scope is FunctionDeclaration | FunctionExpression | ArrowFunction | MethodDeclaration {
+): scope is
+  FunctionDeclaration | FunctionExpression | ArrowFunction | MethodDeclaration {
   return (
     Node.isFunctionDeclaration(scope) ||
     Node.isFunctionExpression(scope) ||
@@ -52,7 +53,9 @@ function hasBindingName(decl: VariableDeclaration, name: string): boolean {
     ? nameNode.getText() === name
     : nameNode
         .getDescendantsOfKind(SyntaxKind.BindingElement)
-        .some((el) => Node.isIdentifier(el.getNameNode()) && el.getName() === name);
+        .some(
+          (el) => Node.isIdentifier(el.getNameNode()) && el.getName() === name,
+        );
 }
 
 export interface ResolvedImport {
@@ -60,13 +63,16 @@ export interface ResolvedImport {
   readonly importedName: string;
 }
 
-function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedImport | null {
+function findImportBinding(
+  sourceFile: SourceFile,
+  localName: string,
+): ResolvedImport | null {
   for (const declaration of sourceFile.getImportDeclarations()) {
     if (declaration.getDefaultImport()?.getText() === localName) {
-      return { declaration, importedName: 'default' };
+      return { declaration, importedName: "default" };
     }
     if (declaration.getNamespaceImport()?.getText() === localName) {
-      return { declaration, importedName: '*' };
+      return { declaration, importedName: "*" };
     }
     for (const named of declaration.getNamedImports()) {
       const boundName = named.getAliasNode()?.getText() ?? named.getName();
@@ -79,10 +85,10 @@ function findImportBinding(sourceFile: SourceFile, localName: string): ResolvedI
 }
 
 export type LexicalBinding =
-  | { readonly kind: 'variable'; readonly node: VariableDeclaration }
-  | { readonly kind: 'function'; readonly node: FunctionDeclaration }
-  | { readonly kind: 'import'; readonly importBinding: ResolvedImport }
-  | { readonly kind: 'other' };
+  | { readonly kind: "variable"; readonly node: VariableDeclaration }
+  | { readonly kind: "function"; readonly node: FunctionDeclaration }
+  | { readonly kind: "import"; readonly importBinding: ResolvedImport }
+  | { readonly kind: "other" };
 
 /**
  * Walks enclosing lexical scopes from `startNode` up to `SourceFile` and returns
@@ -93,25 +99,30 @@ export function resolveLexicalBinding(
   name: string,
   beforePos?: number,
 ): LexicalBinding | null {
-  for (let current = startNode.getParent(); current; current = current.getParent()) {
+  for (
+    let current = startNode.getParent();
+    current;
+    current = current.getParent()
+  ) {
     if (isCallableScope(current)) {
       if (current.getParameter(name)) {
-        return { kind: 'other' };
+        return { kind: "other" };
       }
       if (
-        (Node.isFunctionDeclaration(current) || Node.isFunctionExpression(current)) &&
+        (Node.isFunctionDeclaration(current) ||
+          Node.isFunctionExpression(current)) &&
         current.getName() === name
       ) {
         return Node.isFunctionDeclaration(current)
-          ? { kind: 'function', node: current }
-          : { kind: 'other' };
+          ? { kind: "function", node: current }
+          : { kind: "other" };
       }
     }
 
     if (Node.isCatchClause(current)) {
       const catchVar = current.getVariableDeclaration();
       if (catchVar && hasBindingName(catchVar, name)) {
-        return { kind: 'other' };
+        return { kind: "other" };
       }
     }
 
@@ -122,35 +133,39 @@ export function resolveLexicalBinding(
     ) {
       const init = current.getInitializer();
       if (init && Node.isVariableDeclarationList(init)) {
-        const loopDecl = init.getDeclarations().find((d) => hasBindingName(d, name));
+        const loopDecl = init
+          .getDeclarations()
+          .find((d) => hasBindingName(d, name));
         if (loopDecl) {
           return beforePos !== undefined && loopDecl.getStart() >= beforePos
-            ? { kind: 'other' }
-            : { kind: 'variable', node: loopDecl };
+            ? { kind: "other" }
+            : { kind: "variable", node: loopDecl };
         }
       }
     }
 
     if (Node.isBlock(current) || Node.isSourceFile(current)) {
       const decl = current.getVariableDeclaration(
-        (d) => hasBindingName(d, name) && (beforePos === undefined || d.getStart() < beforePos),
+        (d) =>
+          hasBindingName(d, name) &&
+          (beforePos === undefined || d.getStart() < beforePos),
       );
       if (decl) {
-        return { kind: 'variable', node: decl };
+        return { kind: "variable", node: decl };
       }
       const func = current.getFunction(name);
       if (func) {
-        return { kind: 'function', node: func };
+        return { kind: "function", node: func };
       }
       if (current.getClass(name)) {
-        return { kind: 'other' };
+        return { kind: "other" };
       }
     }
 
     if (Node.isSourceFile(current)) {
       const importBinding = findImportBinding(current, name);
       if (importBinding) {
-        return { kind: 'import', importBinding };
+        return { kind: "import", importBinding };
       }
     }
   }
@@ -169,7 +184,8 @@ export function resolveLocalExpression(node: Node, maxHops: number = 1): Node {
     const name = current.getText();
     const binding = resolveLexicalBinding(current, name, current.getStart());
     const init =
-      binding?.kind === 'variable' && Node.isIdentifier(binding.node.getNameNode())
+      binding?.kind === "variable" &&
+      Node.isIdentifier(binding.node.getNameNode())
         ? binding.node.getInitializer()
         : undefined;
     if (!init || init === current) {
@@ -193,7 +209,7 @@ export function resolveCallableNode(node: Node, maxHops: number = 1): Node {
   const resolved = resolveLocalExpression(node, maxHops);
   if (Node.isIdentifier(resolved)) {
     const binding = resolveLexicalBinding(resolved, resolved.getText());
-    if (binding?.kind === 'function') {
+    if (binding?.kind === "function") {
       return binding.node;
     }
   }
@@ -208,7 +224,7 @@ export function isUnshadowedGlobal(node: Node, globalName: string): boolean {
   return resolveLexicalBinding(node, globalName) === null;
 }
 
-const GLOBAL_ROOT_IDENTIFIERS = new Set(['window', 'globalThis', 'self']);
+const GLOBAL_ROOT_IDENTIFIERS = new Set(["window", "globalThis", "self"]);
 
 /**
  * Unwraps `node` and returns `true` if it refers to `globalName` as an unshadowed global,
@@ -220,14 +236,23 @@ export function isGlobalReference(node: Node, globalName: string): boolean {
   const unwrapped = unwrapExpression(node);
 
   if (Node.isIdentifier(unwrapped)) {
-    return unwrapped.getText() === globalName && isUnshadowedGlobal(unwrapped, globalName);
+    return (
+      unwrapped.getText() === globalName &&
+      isUnshadowedGlobal(unwrapped, globalName)
+    );
   }
 
-  if (Node.isPropertyAccessExpression(unwrapped) && unwrapped.getName() === globalName) {
+  if (
+    Node.isPropertyAccessExpression(unwrapped) &&
+    unwrapped.getName() === globalName
+  ) {
     const rootExpr = unwrapExpression(unwrapped.getExpression());
     if (Node.isIdentifier(rootExpr)) {
       const rootName = rootExpr.getText();
-      return GLOBAL_ROOT_IDENTIFIERS.has(rootName) && isUnshadowedGlobal(rootExpr, rootName);
+      return (
+        GLOBAL_ROOT_IDENTIFIERS.has(rootName) &&
+        isUnshadowedGlobal(rootExpr, rootName)
+      );
     }
   }
 
@@ -237,38 +262,46 @@ export function isGlobalReference(node: Node, globalName: string): boolean {
 const NEGATIVE_COMPARISON_VALUES = new Set([
   "'undefined'",
   '"undefined"',
-  'undefined',
-  'null',
-  'false',
+  "undefined",
+  "null",
+  "false",
 ]);
 
 /**
  * Checks for negative equality comparisons like `typeof Feature === 'undefined'` or `Feature == null`.
  */
-function checkBinaryComparisonPolarity(expr: BinaryExpression): 'positive' | 'negative' | null {
+function checkBinaryComparisonPolarity(
+  expr: BinaryExpression,
+): "positive" | "negative" | null {
   if (!NEGATIVE_COMPARISON_VALUES.has(expr.getRight().getText())) {
     return null;
   }
   const op = expr.getOperatorToken().getKind();
-  if (op === SyntaxKind.EqualsEqualsToken || op === SyntaxKind.EqualsEqualsEqualsToken) {
-    return 'negative';
+  if (
+    op === SyntaxKind.EqualsEqualsToken ||
+    op === SyntaxKind.EqualsEqualsEqualsToken
+  ) {
+    return "negative";
   }
-  if (op === SyntaxKind.ExclamationEqualsToken || op === SyntaxKind.ExclamationEqualsEqualsToken) {
-    return 'positive';
+  if (
+    op === SyntaxKind.ExclamationEqualsToken ||
+    op === SyntaxKind.ExclamationEqualsEqualsToken
+  ) {
+    return "positive";
   }
   return null;
 }
 
 const BROWSER_GLOBAL_ROOTS = new Set([
-  'window',
-  'document',
-  'navigator',
-  'HTMLElement',
-  'Element',
-  'Node',
-  'CSS',
-  'globalThis',
-  'self',
+  "window",
+  "document",
+  "navigator",
+  "HTMLElement",
+  "Element",
+  "Node",
+  "CSS",
+  "globalThis",
+  "self",
 ]);
 
 export function getStaticStringValue(node: Node | undefined): string | null {
@@ -276,12 +309,16 @@ export function getStaticStringValue(node: Node | undefined): string | null {
     return null;
   }
   const unwrapped = unwrapExpression(node);
-  return Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)
+  return Node.isStringLiteral(unwrapped) ||
+    Node.isNoSubstitutionTemplateLiteral(unwrapped)
     ? unwrapped.getLiteralText()
     : null;
 }
 
-function matchesTokenExact(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+function matchesTokenExact(
+  name: string | null | undefined,
+  featureTokens: readonly string[],
+): boolean {
   if (!name) {
     return false;
   }
@@ -289,7 +326,10 @@ function matchesTokenExact(name: string | null | undefined, featureTokens: reado
   return featureTokens.some((token) => token.toLowerCase() === lower);
 }
 
-function matchesTokenNameOrSubstring(name: string | null | undefined, featureTokens: readonly string[]): boolean {
+function matchesTokenNameOrSubstring(
+  name: string | null | undefined,
+  featureTokens: readonly string[],
+): boolean {
   if (!name) {
     return false;
   }
@@ -314,7 +354,10 @@ interface PropertyCheck {
 }
 
 function extractPropertyCheck(node: Node): PropertyCheck | null {
-  if (Node.isBinaryExpression(node) && node.getOperatorToken().getKind() === SyntaxKind.InKeyword) {
+  if (
+    Node.isBinaryExpression(node) &&
+    node.getOperatorToken().getKind() === SyntaxKind.InKeyword
+  ) {
     return { target: node.getRight(), prop: node.getLeft() };
   }
 
@@ -326,17 +369,24 @@ function extractPropertyCheck(node: Node): PropertyCheck | null {
       const first = args[0];
       const second = args[1];
 
-      if (method === 'hasOwn' && first && second && isGlobalReference(callee.getExpression(), 'Object')) {
+      if (
+        method === "hasOwn" &&
+        first &&
+        second &&
+        isGlobalReference(callee.getExpression(), "Object")
+      ) {
         return { target: first, prop: second };
       }
-      if (method === 'hasOwnProperty' && first) {
+      if (method === "hasOwnProperty" && first) {
         return { target: callee.getExpression(), prop: first };
       }
-      if (method === 'call' && first && second) {
+      if (method === "call" && first && second) {
         const target = unwrapExpression(callee.getExpression());
         const isHasOwn =
-          (Node.isIdentifier(target) && target.getText() === 'hasOwnProperty') ||
-          (Node.isPropertyAccessExpression(target) && target.getName() === 'hasOwnProperty');
+          (Node.isIdentifier(target) &&
+            target.getText() === "hasOwnProperty") ||
+          (Node.isPropertyAccessExpression(target) &&
+            target.getName() === "hasOwnProperty");
         if (isHasOwn) {
           return { target: first, prop: second };
         }
@@ -378,7 +428,10 @@ function isValidFeatureCondition(
 
   if (Node.isIdentifier(unwrapped)) {
     const name = unwrapped.getText();
-    if (matchesTokenExact(name, featureTokens) && isUnshadowedGlobal(unwrapped, name)) {
+    if (
+      matchesTokenExact(name, featureTokens) &&
+      isUnshadowedGlobal(unwrapped, name)
+    ) {
       return true;
     }
     if (seen.has(unwrapped)) {
@@ -399,17 +452,27 @@ function isValidFeatureCondition(
   }
 
   if (Node.isTypeOfExpression(unwrapped)) {
-    return isValidFeatureCondition(unwrapped.getExpression(), featureTokens, seen);
+    return isValidFeatureCondition(
+      unwrapped.getExpression(),
+      featureTokens,
+      seen,
+    );
   }
 
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'supports') {
-      if (isGlobalReference(callee.getExpression(), 'CSS')) {
-        const argsText = unwrapped.getArguments().map((a) => a.getText()).join(' ');
+    if (
+      Node.isPropertyAccessExpression(callee) &&
+      callee.getName() === "supports"
+    ) {
+      if (isGlobalReference(callee.getExpression(), "CSS")) {
+        const argsText = unwrapped
+          .getArguments()
+          .map((a) => a.getText())
+          .join(" ");
         return (
           matchesTokenNameOrSubstring(argsText, featureTokens) ||
-          featureTokens.some((t) => t.toLowerCase() === 'css.supports')
+          featureTokens.some((t) => t.toLowerCase() === "css.supports")
         );
       }
     }
@@ -444,22 +507,41 @@ function conditionCheckPolarity(
   conditionExpr: Node,
   featureTokens: readonly string[],
   seen: Set<Node> = new Set(),
-): 'positive' | 'negative' | null {
+): "positive" | "negative" | null {
   const unwrapped = unwrapExpression(conditionExpr);
 
   if (
     Node.isPrefixUnaryExpression(unwrapped) &&
     unwrapped.getOperatorToken() === SyntaxKind.ExclamationToken
   ) {
-    const inner = conditionCheckPolarity(unwrapped.getOperand(), featureTokens, seen);
-    return inner === 'positive' ? 'negative' : inner === 'negative' ? 'positive' : null;
+    const inner = conditionCheckPolarity(
+      unwrapped.getOperand(),
+      featureTokens,
+      seen,
+    );
+    return inner === "positive"
+      ? "negative"
+      : inner === "negative"
+        ? "positive"
+        : null;
   }
 
   if (Node.isBinaryExpression(unwrapped)) {
     const op = unwrapped.getOperatorToken().getKind();
-    if (op === SyntaxKind.AmpersandAmpersandToken || op === SyntaxKind.BarBarToken) {
-      const left = conditionCheckPolarity(unwrapped.getLeft(), featureTokens, seen);
-      const right = conditionCheckPolarity(unwrapped.getRight(), featureTokens, seen);
+    if (
+      op === SyntaxKind.AmpersandAmpersandToken ||
+      op === SyntaxKind.BarBarToken
+    ) {
+      const left = conditionCheckPolarity(
+        unwrapped.getLeft(),
+        featureTokens,
+        seen,
+      );
+      const right = conditionCheckPolarity(
+        unwrapped.getRight(),
+        featureTokens,
+        seen,
+      );
       if (left && right) {
         return left === right ? left : null;
       }
@@ -483,8 +565,8 @@ function conditionCheckPolarity(
   }
 
   return Node.isBinaryExpression(unwrapped)
-    ? (checkBinaryComparisonPolarity(unwrapped) ?? 'positive')
-    : 'positive';
+    ? (checkBinaryComparisonPolarity(unwrapped) ?? "positive")
+    : "positive";
 }
 
 /**
@@ -514,7 +596,8 @@ function hasPositiveEarlyReturn(
     (stmt) =>
       stmt.getStart() < beforePos &&
       Node.isIfStatement(stmt) &&
-      conditionCheckPolarity(stmt.getExpression(), featureTokens) === 'positive' &&
+      conditionCheckPolarity(stmt.getExpression(), featureTokens) ===
+        "positive" &&
       statementAlwaysExits(stmt.getThenStatement()),
   );
 }
@@ -528,7 +611,9 @@ function isGuardedByCallableEarlyReturn(
   }
   const body = callable.getBody();
   return Boolean(
-    body && Node.isBlock(body) && hasPositiveEarlyReturn(body.getStatements(), featureTokens),
+    body &&
+    Node.isBlock(body) &&
+    hasPositiveEarlyReturn(body.getStatements(), featureTokens),
   );
 }
 
@@ -593,25 +678,41 @@ export function isProtectedByFeatureGuard(
   ) {
     if (Node.isIfStatement(parent) || Node.isConditionalExpression(parent)) {
       const [whenTrue, whenFalse, cond] = Node.isIfStatement(parent)
-        ? [parent.getThenStatement(), parent.getElseStatement(), parent.getExpression()]
+        ? [
+            parent.getThenStatement(),
+            parent.getElseStatement(),
+            parent.getExpression(),
+          ]
         : [parent.getWhenTrue(), parent.getWhenFalse(), parent.getCondition()];
       const expected =
-        current === whenFalse ? 'positive' : current === whenTrue ? 'negative' : null;
-      if (expected && conditionCheckPolarity(cond, featureTokens) === expected) {
+        current === whenFalse
+          ? "positive"
+          : current === whenTrue
+            ? "negative"
+            : null;
+      if (
+        expected &&
+        conditionCheckPolarity(cond, featureTokens) === expected
+      ) {
         return true;
       }
     } else if (Node.isBinaryExpression(parent)) {
       const op = parent.getOperatorToken().getKind();
       if (
-        (op === SyntaxKind.BarBarToken || op === SyntaxKind.QuestionQuestionToken) &&
+        (op === SyntaxKind.BarBarToken ||
+          op === SyntaxKind.QuestionQuestionToken) &&
         current === parent.getRight() &&
-        conditionCheckPolarity(parent.getLeft(), featureTokens) === 'positive'
+        conditionCheckPolarity(parent.getLeft(), featureTokens) === "positive"
       ) {
         return true;
       }
     } else if (
       (Node.isBlock(parent) || Node.isSourceFile(parent)) &&
-      hasPositiveEarlyReturn(parent.getStatements(), featureTokens, current.getStart())
+      hasPositiveEarlyReturn(
+        parent.getStatements(),
+        featureTokens,
+        current.getStart(),
+      )
     ) {
       return true;
     }
@@ -621,11 +722,11 @@ export function isProtectedByFeatureGuard(
 }
 
 const JQUERY_EVENT_SHORTHANDS: ReadonlySet<string> = new Set([
-  'scroll',
-  'keydown',
-  'keyup',
-  'focus',
-  'blur',
+  "scroll",
+  "keydown",
+  "keyup",
+  "focus",
+  "blur",
 ]);
 
 export interface MatchedEventListener {
@@ -654,18 +755,22 @@ export function matchEventListenerCall(
   const [firstArg, secondArg] = args;
   const lastArg = args.at(-1);
 
-  if (methodName === 'addEventListener' && secondArg) {
+  if (methodName === "addEventListener" && secondArg) {
     const evName = getStaticStringValue(firstArg);
     return evName && eventNames.includes(evName)
-      ? { eventName: evName, handlerNode: resolveCallableNode(secondArg), targetNode }
+      ? {
+          eventName: evName,
+          handlerNode: resolveCallableNode(secondArg),
+          targetNode,
+        }
       : null;
   }
 
-  if (methodName === 'on' && secondArg && lastArg) {
+  if (methodName === "on" && secondArg && lastArg) {
     const matchedEvent = getStaticStringValue(firstArg)
       ?.trim()
       .split(/\s+/)
-      .map((e) => e.split('.')[0])
+      .map((e) => e.split(".")[0])
       .find((e): e is string => Boolean(e && eventNames.includes(e)));
     return matchedEvent
       ? {
@@ -691,14 +796,19 @@ export function matchEventListenerCall(
   return null;
 }
 
-const CLASS_LIST_MUTATION_METHODS = new Set(['add', 'remove', 'toggle', 'replace']);
+const CLASS_LIST_MUTATION_METHODS = new Set([
+  "add",
+  "remove",
+  "toggle",
+  "replace",
+]);
 const DIRECT_DOM_MUTATION_METHODS = new Set([
-  'setAttribute',
-  'removeAttribute',
-  'toggleAttribute',
-  'addClass',
-  'removeClass',
-  'toggleClass',
+  "setAttribute",
+  "removeAttribute",
+  "toggleAttribute",
+  "addClass",
+  "removeClass",
+  "toggleClass",
 ]);
 
 function isDirectClassOrAttrMutation(n: Node): boolean {
@@ -706,7 +816,9 @@ function isDirectClassOrAttrMutation(n: Node): boolean {
     const op = n.getOperatorToken().getKind();
     if (op === SyntaxKind.EqualsToken || op === SyntaxKind.PlusEqualsToken) {
       const left = unwrapExpression(n.getLeft());
-      return Node.isPropertyAccessExpression(left) && left.getName() === 'className';
+      return (
+        Node.isPropertyAccessExpression(left) && left.getName() === "className"
+      );
     }
     return false;
   }
@@ -726,15 +838,20 @@ function isDirectClassOrAttrMutation(n: Node): boolean {
 
   if (CLASS_LIST_MUTATION_METHODS.has(methodName)) {
     const caller = unwrapExpression(expr.getExpression());
-    return Node.isPropertyAccessExpression(caller) && caller.getName() === 'classList';
+    return (
+      Node.isPropertyAccessExpression(caller) &&
+      caller.getName() === "classList"
+    );
   }
 
-  if (methodName === 'attr') {
+  if (methodName === "attr") {
     const args = n.getArguments();
     const firstArg = args[0];
     return (
       args.length >= 2 ||
-      (args.length === 1 && firstArg !== undefined && Node.isObjectLiteralExpression(unwrapExpression(firstArg)))
+      (args.length === 1 &&
+        firstArg !== undefined &&
+        Node.isObjectLiteralExpression(unwrapExpression(firstArg)))
     );
   }
 
@@ -749,7 +866,11 @@ function isDirectClassOrAttrMutation(n: Node): boolean {
 export function isDomClassOrAttrMutation(node: Node): boolean {
   return (
     isDirectClassOrAttrMutation(node) ||
-    Boolean(node.forEachDescendant((desc) => isDirectClassOrAttrMutation(desc) || undefined))
+    Boolean(
+      node.forEachDescendant(
+        (desc) => isDirectClassOrAttrMutation(desc) || undefined,
+      ),
+    )
   );
 }
 
@@ -798,13 +919,16 @@ export function isRequireOfPackage(
   const firstArg = unwrapped.getArguments()[0];
   if (
     Node.isIdentifier(callee) &&
-    callee.getText() === 'require' &&
+    callee.getText() === "require" &&
     firstArg &&
     Node.isStringLiteral(firstArg)
   ) {
     return matchesPackageSpec(firstArg.getLiteralText(), packages);
   }
-  return Boolean(options?.allowCurriedRequire && isRequireOfPackage(callee, packages, options));
+  return Boolean(
+    options?.allowCurriedRequire &&
+    isRequireOfPackage(callee, packages, options),
+  );
 }
 
 export interface LibraryReferenceOptions extends RequirePackageOptions {
@@ -830,7 +954,9 @@ function matchesExpectedPropertyName(
   identName: string,
   allowDefaultImport: boolean,
 ): boolean {
-  return propName === identName || (allowDefaultImport && propName === 'default');
+  return (
+    propName === identName || (allowDefaultImport && propName === "default")
+  );
 }
 
 function isRequireExportExpression(
@@ -841,13 +967,24 @@ function isRequireExportExpression(
   requireOpts: RequirePackageOptions | undefined,
 ): boolean {
   const resolved = resolveLocalExpression(expr, 2);
-  if (allowDefaultImport && isRequireOfPackage(resolved, packages, requireOpts)) {
+  if (
+    allowDefaultImport &&
+    isRequireOfPackage(resolved, packages, requireOpts)
+  ) {
     return true;
   }
   return (
     Node.isPropertyAccessExpression(resolved) &&
-    matchesExpectedPropertyName(resolved.getName(), identName, allowDefaultImport) &&
-    isRequireOfPackage(resolveLocalExpression(resolved.getExpression(), 2), packages, requireOpts)
+    matchesExpectedPropertyName(
+      resolved.getName(),
+      identName,
+      allowDefaultImport,
+    ) &&
+    isRequireOfPackage(
+      resolveLocalExpression(resolved.getExpression(), 2),
+      packages,
+      requireOpts,
+    )
   );
 }
 
@@ -866,7 +1003,13 @@ function matchesRequireVariableDeclaration(
   }
 
   if (Node.isIdentifier(nameNode)) {
-    return isRequireExportExpression(init, identName, packages, allowDefaultImport, requireOpts);
+    return isRequireExportExpression(
+      init,
+      identName,
+      packages,
+      allowDefaultImport,
+      requireOpts,
+    );
   }
 
   if (Node.isObjectBindingPattern(nameNode)) {
@@ -905,7 +1048,7 @@ export function isLibraryReference(
     if (!binding) {
       return allowGlobal && localName === identName;
     }
-    if (binding.kind === 'variable') {
+    if (binding.kind === "variable") {
       return matchesRequireVariableDeclaration(
         binding.node,
         localName,
@@ -915,27 +1058,45 @@ export function isLibraryReference(
         options,
       );
     }
-    if (binding.kind === 'import') {
+    if (binding.kind === "import") {
       const { declaration, importedName } = binding.importBinding;
       if (!matchesPackageSpec(getSafeModuleSpecifier(declaration), packages)) {
         return false;
       }
-      return importedName === '*'
+      return importedName === "*"
         ? allowDefaultImport
-        : matchesExpectedPropertyName(importedName, identName, allowDefaultImport);
+        : matchesExpectedPropertyName(
+            importedName,
+            identName,
+            allowDefaultImport,
+          );
     }
     return false;
   }
 
-  if (isRequireExportExpression(unwrapped, identName, packages, allowDefaultImport, options)) {
+  if (
+    isRequireExportExpression(
+      unwrapped,
+      identName,
+      packages,
+      allowDefaultImport,
+      options,
+    )
+  ) {
     return true;
   }
 
   if (
     allowGlobal &&
     Node.isPropertyAccessExpression(unwrapped) &&
-    matchesExpectedPropertyName(unwrapped.getName(), identName, allowDefaultImport) &&
-    options?.globalNamespaces?.some((ns) => isGlobalReference(unwrapped.getExpression(), ns))
+    matchesExpectedPropertyName(
+      unwrapped.getName(),
+      identName,
+      allowDefaultImport,
+    ) &&
+    options?.globalNamespaces?.some((ns) =>
+      isGlobalReference(unwrapped.getExpression(), ns),
+    )
   ) {
     return true;
   }
@@ -943,25 +1104,36 @@ export function isLibraryReference(
   return allowGlobal && isGlobalReference(unwrapped, identName);
 }
 
-function extractAccessName(access: PropertyAccessExpression | ElementAccessExpression): string | null {
+function extractAccessName(
+  access: PropertyAccessExpression | ElementAccessExpression,
+): string | null {
   return Node.isPropertyAccessExpression(access)
     ? access.getName()
     : getStaticStringValue(access.getArgumentExpression());
 }
 
-export function getMemberAccess(
-  node: Node | undefined,
-): { readonly expression: Node; readonly name: string; readonly optional: boolean } | null {
+export function getMemberAccess(node: Node | undefined): {
+  readonly expression: Node;
+  readonly name: string;
+  readonly optional: boolean;
+} | null {
   if (!node) {
     return null;
   }
   const unwrapped = unwrapExpression(node);
-  if (!Node.isPropertyAccessExpression(unwrapped) && !Node.isElementAccessExpression(unwrapped)) {
+  if (
+    !Node.isPropertyAccessExpression(unwrapped) &&
+    !Node.isElementAccessExpression(unwrapped)
+  ) {
     return null;
   }
   const name = extractAccessName(unwrapped);
   return name !== null
-    ? { expression: unwrapped.getExpression(), name, optional: unwrapped.hasQuestionDotToken() }
+    ? {
+        expression: unwrapped.getExpression(),
+        name,
+        optional: unwrapped.hasQuestionDotToken(),
+      }
     : null;
 }
 
@@ -979,8 +1151,16 @@ export function getAssignment(node: Node | undefined): {
     return null;
   }
   const operator = unwrapped.getOperatorToken().getKind();
-  if (operator < SyntaxKind.FirstAssignment || operator > SyntaxKind.LastAssignment) {
+  if (
+    operator < SyntaxKind.FirstAssignment ||
+    operator > SyntaxKind.LastAssignment
+  ) {
     return null;
   }
-  return { binary: unwrapped, left: unwrapped.getLeft(), right: unwrapped.getRight(), operator };
+  return {
+    binary: unwrapped,
+    left: unwrapped.getLeft(),
+    right: unwrapped.getRight(),
+    operator,
+  };
 }

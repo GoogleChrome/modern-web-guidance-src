@@ -6,7 +6,10 @@ import { FEATURE_GATES } from "../core/feature-gates.ts";
 export class FeatureGateError extends Error {
   readonly gateKey: "allowOriginTrials" | "allowVolatileFeatures";
 
-  constructor(message: string, gateKey: "allowOriginTrials" | "allowVolatileFeatures") {
+  constructor(
+    message: string,
+    gateKey: "allowOriginTrials" | "allowVolatileFeatures",
+  ) {
     super(message);
     this.name = "FeatureGateError";
     this.gateKey = gateKey;
@@ -27,7 +30,9 @@ export class VolatileFeatureGateError extends FeatureGateError {
   }
 }
 
-export function formatBaselineTargetBanner(rawBaseline: string | undefined): string {
+export function formatBaselineTargetBanner(
+  rawBaseline: string | undefined,
+): string {
   const normalized = normalizeBaselineTarget(rawBaseline);
   if (!normalized || normalized === "widely") {
     return "";
@@ -85,7 +90,10 @@ function formatGateMessage({
 > If you still write ${featureIds} code without this guide (whether from model memory or external documentation), you MUST still add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section including the exact unlock command \`${fullCommand}\` and noting that unverified ${featureIds} code risks being outdated or incomplete.`;
 }
 
-export async function retrieveUseCase(useCaseId: string, options?: { cwd?: string }): Promise<string> {
+export async function retrieveUseCase(
+  useCaseId: string,
+  options?: { cwd?: string },
+): Promise<string> {
   const useCase = getUseCase(useCaseId);
   if (!useCase) {
     throw new Error(`No guide found for use case: ${useCaseId}`);
@@ -137,7 +145,7 @@ export async function retrieveUseCase(useCaseId: string, options?: { cwd?: strin
   logToolResult("get_best_practices", [{ id: useCaseId }]);
 
   const banner = formatBaselineTargetBanner(
-    typeof config.baseline === "string" ? config.baseline : undefined
+    typeof config.baseline === "string" ? config.baseline : undefined,
   );
   return banner + guide;
 }

@@ -23,13 +23,14 @@ This guide implements a fully styled horizontal progress bar with style customiz
 ## Markup
 
 1.  **Use a native `<progress>` element**: It provides built-in accessibility and platform-consistent behavior.
-2. Use `max` if a scale different from the default 0-1 scale is needed.
-3. For a specific progress value, set a `value` attribute. Omit `value` for an indeterminate state (e.g. before more concrete feedback starts).
-4. Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label.
+2.  Use `max` if a scale different from the default 0-1 scale is needed.
+3.  For a specific progress value, set a `value` attribute. Omit `value` for an indeterminate state (e.g. before more concrete feedback starts).
+4.  Use `<label for="...">`, `aria-labelledby`, or `aria-label` to associate the progress element with a label.
 
 ## What type of customization is needed?
 
 For limited styling, these properties are sufficient:
+
 - `accent-color` to change the color of the progress bar
 - `width` / `inline-size` to change the width of the progress bar
 - `height`/`block-size` applies inconsistently — test first
@@ -99,6 +100,7 @@ progress::-moz-progress-bar {
 ### 3. Indeterminate state styling
 
 **Add a custom animation for the indeterminate state:** Turn the fill pseudo-element into a short segment and slide it along the track.
+
 - Style the fill itself; do NOT recreate it as a background on `progress`.
 - The indeterminate fill exists only through its animation: the keyframes set its length with a real `inline-size` (this beats Chromium's UA inline `inline-size`) and moves it with `translate`. Do NOT use `scale` for the length; it distorts any pattern painted on the fill.
 - `translate` percentages resolve against the fill's own width, so express positions in track units instead: make `progress` an inline-size container and use `cqi` in the keyframes. Include `margin-right: auto` in `from, to` so Chromium lays the fill out at the physical left in RTL too.
@@ -112,7 +114,8 @@ progress::-moz-progress-bar {
 
 ```css
 progress:dir(rtl) {
-  --progress-bar-indeterminate-animation: progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
+  --progress-bar-indeterminate-animation: progress-bar-indeterminate
+    var(--progress-bar-indeterminate-animation-duration) infinite linear reverse;
 }
 ```
 
@@ -137,9 +140,10 @@ progress {
 
 progress:indeterminate {
   --progress-bar-animation: var(
-      --progress-bar-indeterminate-animation,
-      progress-bar-indeterminate var(--progress-bar-indeterminate-animation-duration) infinite linear
-    );
+    --progress-bar-indeterminate-animation,
+    progress-bar-indeterminate
+      var(--progress-bar-indeterminate-animation-duration) infinite linear
+  );
 }
 
 /* Add to the existing pseudo-element rules */
@@ -153,24 +157,30 @@ progress::-moz-progress-bar {
 
 /* Physical: left to right regardless of direction (reverse under :dir(rtl) to mirror). */
 @keyframes progress-bar-indeterminate {
-  from, to {
+  from,
+  to {
     inline-size: var(--progress-bar-indeterminate-size);
     /* Pin to the physical left; Chromium would otherwise lay the fill out at the inline start */
     margin-right: auto;
   }
-  from { translate: -100%; } /* Own width: fully outside the left edge */
-  to { translate: 100cqi; }  /* Track width: fully outside the right edge */
+  from {
+    translate: -100%;
+  } /* Own width: fully outside the left edge */
+  to {
+    translate: 100cqi;
+  } /* Track width: fully outside the right edge */
 }
 ```
 
 ### Additional Accessibility Considerations
 
 In addition to the guidelines mentioned above:
-* **Announce completion without stealing focus**: Do not set `tabindex` or call `.focus()` on `<progress>`, as it is non-interactive and moving focus to it disrupts keyboard users. To announce when a background task finishes, update a polite status element (`role="status"` or `aria-live="polite"`).
-* **Do not add fallback text inside `<progress>`**: Text inside `<progress>` is ignored by modern browsers and is not used by assistive technologies.
-* Avoid `aria-busy` + `aria-describedby` on an unlabeled generic `<div>`. `aria-busy` has inconsistent screen reader support, and `aria-describedby` on an unnamed `<div>` without a role is ignored by assistive technologies. If a region's content is not ready while loading, hide it with `hidden` or `aria-hidden="true"`.
-* **DO** ensure proper contrast between the progress bar and track when adding custom styles.
-* **Consider alternatives to represent indeterminate state**: Indeterminate progress bar animations displayed in parallel to other content can be considered distracting for some users.
+
+- **Announce completion without stealing focus**: Do not set `tabindex` or call `.focus()` on `<progress>`, as it is non-interactive and moving focus to it disrupts keyboard users. To announce when a background task finishes, update a polite status element (`role="status"` or `aria-live="polite"`).
+- **Do not add fallback text inside `<progress>`**: Text inside `<progress>` is ignored by modern browsers and is not used by assistive technologies.
+- Avoid `aria-busy` + `aria-describedby` on an unlabeled generic `<div>`. `aria-busy` has inconsistent screen reader support, and `aria-describedby` on an unnamed `<div>` without a role is ignored by assistive technologies. If a region's content is not ready while loading, hide it with `hidden` or `aria-hidden="true"`.
+- **DO** ensure proper contrast between the progress bar and track when adding custom styles.
+- **Consider alternatives to represent indeterminate state**: Indeterminate progress bar animations displayed in parallel to other content can be considered distracting for some users.
 
 ## Fallback strategies
 

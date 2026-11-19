@@ -6,6 +6,7 @@ Chrome Extensions enforce a strict Content Security Policy that cannot be relaxe
 pages (popup, side panel, options, new tab, etc.).
 
 Blocked by default:
+
 - `eval()`, `new Function()`, `setTimeout("string")`
 - Inline `<script>` tags
 - Inline event handlers (`onclick="..."`, `onload="..."`, etc.)
@@ -16,7 +17,7 @@ Blocked by default:
 ```html
 <!-- ❌ BAD: Inline script -->
 <script>
-  document.getElementById('btn').onclick = () => alert('hi');
+  document.getElementById("btn").onclick = () => alert("hi");
 </script>
 
 <!-- ❌ BAD: Inline event handler -->
@@ -27,8 +28,9 @@ Blocked by default:
 ```
 
 In `popup.js`:
+
 ```js
-document.getElementById('btn').addEventListener('click', () => {
+document.getElementById("btn").addEventListener("click", () => {
   // Handle click
 });
 ```
@@ -71,28 +73,31 @@ Correct pattern:
 
 ```js
 // playground.js — send code to sandbox
-const iframe = document.getElementById('preview');
-iframe.contentWindow.postMessage({
-  html: htmlCode,
-  css: cssCode,
-  js: jsCode
-}, '*');
+const iframe = document.getElementById("preview");
+iframe.contentWindow.postMessage(
+  {
+    html: htmlCode,
+    css: cssCode,
+    js: jsCode,
+  },
+  "*",
+);
 
 // sandbox.js — receive and execute
-window.addEventListener('message', (event) => {
+window.addEventListener("message", (event) => {
   const { html, css, js } = event.data;
   // Clear previous content
-  document.body.innerHTML = '';
-  document.head.querySelectorAll('style.user-style').forEach(s => s.remove());
+  document.body.innerHTML = "";
+  document.head.querySelectorAll("style.user-style").forEach((s) => s.remove());
 
   // Apply HTML
-  const container = document.createElement('div');
+  const container = document.createElement("div");
   container.innerHTML = html;
   document.body.appendChild(container);
 
   // Apply CSS
-  const style = document.createElement('style');
-  style.className = 'user-style';
+  const style = document.createElement("style");
+  style.className = "user-style";
   style.textContent = css;
   document.head.appendChild(style);
 
@@ -100,8 +105,8 @@ window.addEventListener('message', (event) => {
   try {
     eval(js);
   } catch (e) {
-    const errEl = document.createElement('pre');
-    errEl.style.color = 'red';
+    const errEl = document.createElement("pre");
+    errEl.style.color = "red";
     errEl.textContent = e.message;
     document.body.appendChild(errEl);
   }
@@ -124,9 +129,9 @@ function updatePreview(htmlCode, cssCode, jsCode) {
 </body>
 </html>
 `;
-  const blob = new Blob([html], { type: 'text/html' });
+  const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
-  const iframe = document.getElementById('preview');
+  const iframe = document.getElementById("preview");
   // Revoke previous URL
   if (iframe.dataset.blobUrl) URL.revokeObjectURL(iframe.dataset.blobUrl);
   iframe.dataset.blobUrl = url;
@@ -137,7 +142,7 @@ function updatePreview(htmlCode, cssCode, jsCode) {
 ### Option 3: srcdoc Attribute
 
 ```js
-const iframe = document.getElementById('preview');
+const iframe = document.getElementById("preview");
 iframe.srcdoc = `
   <!DOCTYPE html>
   <style>${cssCode}</style>

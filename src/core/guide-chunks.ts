@@ -43,14 +43,25 @@ export interface ParseGuideFileOptions {
  * Returns null if the guide is empty or a draft stub.
  */
 export function parseGuideFile(
-  options: ParseGuideFileOptions
+  options: ParseGuideFileOptions,
 ): ParsedGuideFile | null {
-  const { filePath, target = "skills-cli", includedFiles = new Set<string>() } = options;
+  const {
+    filePath,
+    target = "skills-cli",
+    includedFiles = new Set<string>(),
+  } = options;
 
   const content = fs.readFileSync(filePath, "utf-8");
-  const { data, content: markdownBody, matter: frontmatter } = matter(content, {});
+  const {
+    data,
+    content: markdownBody,
+    matter: frontmatter,
+  } = matter(content, {});
 
-  if (stripAllComments(markdownBody).trim().length === 0 || isDraftStub(data.draft)) {
+  if (
+    stripAllComments(markdownBody).trim().length === 0 ||
+    isDraftStub(data.draft)
+  ) {
     return null;
   }
   if (!data.description || !frontmatter) {
@@ -71,7 +82,9 @@ export function parseGuideFile(
     ""
   ).trim();
   if (!title) {
-    throw new Error(`Guide has no H1 heading or frontmatter title: ${filePath}`);
+    throw new Error(
+      `Guide has no H1 heading or frontmatter title: ${filePath}`,
+    );
   }
 
   return {
@@ -124,7 +137,7 @@ export function formatChunkHeader(
   title: string,
   id: string,
   category: string,
-  featureIds: string[]
+  featureIds: string[],
 ): string {
   const header = `${title}\n${id} (${category})`;
   if (featureIds.length === 0) return header;
@@ -133,7 +146,7 @@ export function formatChunkHeader(
     const name = getFeatureName(rawFid);
     const fid = rawFid.replace(/^tmp-/, "");
     const aliases = [...new Set([fid, fid.replaceAll("-", " ")])].filter(
-      (a) => a.toLowerCase() !== name.toLowerCase()
+      (a) => a.toLowerCase() !== name.toLowerCase(),
     );
     return aliases.length > 0 ? `${name} (${aliases.join(", ")})` : name;
   });
@@ -171,7 +184,7 @@ export interface ExtractGuideChunksOptions {
  * Returns null if the guide is a draft or empty stub.
  */
 export function extractGuideChunks(
-  options: ExtractGuideChunksOptions
+  options: ExtractGuideChunksOptions,
 ): ExtractedGuideData | null {
   const {
     filePath,
@@ -187,13 +200,16 @@ export function extractGuideChunks(
     return null;
   }
 
-  const { title, description, featureIds, featuresUsed, processedMarkdown } = parsed;
+  const { title, description, featureIds, featuresUsed, processedMarkdown } =
+    parsed;
 
   const header = formatChunkHeader(title, id, category, featureIds);
   const summaryChunk = `# ${title}\n\n${description}`;
 
   const chunks = noChunking
-    ? [`${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`]
+    ? [
+        `${summaryChunk}\n\n${processedMarkdown.trim().replace(/^#\s+[^\n]*\n?/, "")}`,
+      ]
     : [...chunkMarkdown(processedMarkdown), summaryChunk];
 
   const embeddedChunks = chunks.map((chunk) => {
@@ -216,10 +232,16 @@ export function extractGuideChunks(
  * Scans all published guides in the corpus and generates the exact list of
  * chunks that need teacher embedding vectors.
  */
-export function scanCorpusChunks(target: BuildTarget = "skills-cli"): GuideChunk[] {
+export function scanCorpusChunks(
+  target: BuildTarget = "skills-cli",
+): GuideChunk[] {
   const readyGuides = scanAllGuides().filter((inv) => {
     const excluded = config.monoskill.excludeFromBundling || [];
-    return inv.isPublished && !excluded.includes(inv.category) && !excluded.includes(inv.name);
+    return (
+      inv.isPublished &&
+      !excluded.includes(inv.category) &&
+      !excluded.includes(inv.name)
+    );
   });
 
   const allChunks: GuideChunk[] = [];

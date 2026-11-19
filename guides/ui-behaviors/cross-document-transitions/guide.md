@@ -46,17 +46,22 @@ You can target the old and new states of the transition using pseudo-elements to
 }
 
 @keyframes slide-out {
-  to { transform: translateX(-20%); opacity: 0; }
+  to {
+    transform: translateX(-20%);
+    opacity: 0;
+  }
 }
 
 @keyframes slide-in {
-  from { transform: translateX(100%); }
+  from {
+    transform: translateX(100%);
+  }
 }
 ```
 
 #### 3. Create Directional Transitions (Optional)
 
-You may want different transition effects depending on the pages you are navigating between. For instance, when navigating from a home page to a contact page, you may want the effect of new content coming from the right. When navigating back to the home page, it wouldn't make sense to have the same effect. 
+You may want different transition effects depending on the pages you are navigating between. For instance, when navigating from a home page to a contact page, you may want the effect of new content coming from the right. When navigating back to the home page, it wouldn't make sense to have the same effect.
 
 If the page you are navigating to will always have the same transition type, regardless of how you get to the page, you can specify it with `types` in the `@view-transition` rule.
 
@@ -76,7 +81,10 @@ You can also conditionally specify transition types inside of an event listener 
 window.addEventListener("pagereveal", async (e) => {
   if (e.viewTransition && window.navigation?.activation) {
     // Use application-specific logic to compute a transition type
-     const transitionType = yourTransitionTypeLogic(navigation.activation.from, navigation.activation.entry);
+    const transitionType = yourTransitionTypeLogic(
+      navigation.activation.from,
+      navigation.activation.entry,
+    );
     e.viewTransition.types.add(transitionType);
   }
 });
@@ -116,7 +124,7 @@ If a browser does not support view transitions, or cross-document view transitio
 To check for support in JavaScript:
 
 ```javascript
-if ('onpagereveal' in window) {
+if ("onpagereveal" in window) {
   // Browser supports cross-document view transitions
 }
 ```

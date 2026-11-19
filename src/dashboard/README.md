@@ -32,6 +32,7 @@ pnpm dashboard
 ```
 
 ### Parity Testing
+
 To ensure your changes will work on the static deployment host, you can run the dashboard in a "Static" mode that serves files via `statikk` to mimic static deployment structure:
 
 ```bash
@@ -44,6 +45,7 @@ STATIC=true gd dashboard
 If you make modifications to the `eval-view` code (HTML, CSS, JS), you can deploy your changes directly to the live GitHub Pages site using the built-in deploy script.
 
 From the **project root directory**, run:
+
 ```bash
 gd deploy
 ```

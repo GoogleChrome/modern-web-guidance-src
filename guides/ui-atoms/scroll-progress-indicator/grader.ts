@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -18,11 +18,14 @@ async function findProgressElementHandle(page: any) {
     return new Promise((resolve) => {
       window.scrollTo(0, 0);
       setTimeout(() => {
-        const starts = Array.from(document.querySelectorAll('*')).map(el => ({ el, w: el.getBoundingClientRect().width }));
-        
+        const starts = Array.from(document.querySelectorAll("*")).map((el) => ({
+          el,
+          w: el.getBoundingClientRect().width,
+        }));
+
         // Scroll to bottom
         window.scrollTo(0, document.body.scrollHeight);
-        
+
         setTimeout(() => {
           requestAnimationFrame(() => {
             let maxDiff = 0;
@@ -36,7 +39,7 @@ async function findProgressElementHandle(page: any) {
             }
             // Scroll back up to not pollute other tests' state
             window.scrollTo(0, 0);
-            
+
             if (bestEl && maxDiff > 10) {
               resolve(bestEl);
             } else {
@@ -50,12 +53,14 @@ async function findProgressElementHandle(page: any) {
 }
 
 test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
-
   test.beforeEach(async ({ page }) => {
     const TARGET_URL = `http://localhost/${demoName}`;
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -67,7 +72,9 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     await page.goto(TARGET_URL);
   });
 
-  test(`The agent has defined an @keyframes block that animates transform: scaleX() from 0 to 1 (or similar scaling)`, async ({ page }) => {
+  test(`The agent has defined an @keyframes block that animates transform: scaleX() from 0 to 1 (or similar scaling)`, async ({
+    page,
+  }) => {
     const handle = await findProgressElementHandle(page);
 
     const transformChanges = await handle.evaluate((el: Element | null) => {
@@ -76,14 +83,18 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
         window.scrollTo(0, 0);
         setTimeout(() => {
           const startTransform = window.getComputedStyle(el).transform;
-          
+
           window.scrollTo(0, document.body.scrollHeight);
           setTimeout(() => {
             const endTransform = window.getComputedStyle(el).transform;
             window.scrollTo(0, 0); // Reset
-            
+
             // It should change from matrix(0...) to matrix(1...) or similar
-            resolve(startTransform !== endTransform && startTransform !== 'none' && endTransform !== 'none');
+            resolve(
+              startTransform !== endTransform &&
+                startTransform !== "none" &&
+                endTransform !== "none",
+            );
           }, 100);
         }, 50);
       });
@@ -92,45 +103,59 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(transformChanges).toBe(true);
   });
 
-  test(`The agent has applied the animation to the progress indicator element using animation-timeline: scroll()`, async ({ page }) => {
+  test(`The agent has applied the animation to the progress indicator element using animation-timeline: scroll()`, async ({
+    page,
+  }) => {
     const handle = await findProgressElementHandle(page);
 
     const hasTimeline = await handle.evaluate((el: any) => {
-      if (!el) return false; const style = window.getComputedStyle(el) as any;
-      return style.animationTimeline !== 'auto';
+      if (!el) return false;
+      const style = window.getComputedStyle(el) as any;
+      return style.animationTimeline !== "auto";
     });
 
     expect(hasTimeline).toBe(true);
   });
 
-  test(`The progress indicator element has position: fixed or position: absolute to stay in view`, async ({ page }) => {
+  test(`The progress indicator element has position: fixed or position: absolute to stay in view`, async ({
+    page,
+  }) => {
     const handle = await findProgressElementHandle(page);
 
     const isFixedOrAbsolute = await handle.evaluate((el: any) => {
-      if (!el) return false; const style = window.getComputedStyle(el);
-      return style.position === 'fixed' || style.position === 'absolute';
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      return style.position === "fixed" || style.position === "absolute";
     });
 
     expect(isFixedOrAbsolute).toBe(true);
   });
 
-  test(`The progress indicator element has transform-origin set to the start (e.g., 0 50% or left) so it scales from the correct side`, async ({ page }) => {
+  test(`The progress indicator element has transform-origin set to the start (e.g., 0 50% or left) so it scales from the correct side`, async ({
+    page,
+  }) => {
     const handle = await findProgressElementHandle(page);
 
     const hasCorrectOrigin = await handle.evaluate((el: any) => {
-      if (!el) return false; const style = window.getComputedStyle(el);
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
       // transform-origin computes to px values, '0px 50%' for '0 50%' or 'left center'
-      return style.transformOrigin.startsWith('0px');
+      return style.transformOrigin.startsWith("0px");
     });
 
     expect(hasCorrectOrigin).toBe(true);
   });
 
-  test(`The implementation includes feature detection using @supports for scroll-driven animations`, async ({ page }) => {
+  test(`The implementation includes feature detection using @supports for scroll-driven animations`, async ({
+    page,
+  }) => {
     const hasSupports = await page.evaluate(() => {
       function checkRules(rules: any): boolean {
         for (const rule of rules) {
-          if (rule instanceof CSSSupportsRule && rule.conditionText.includes('animation-timeline')) {
+          if (
+            rule instanceof CSSSupportsRule &&
+            rule.conditionText.includes("animation-timeline")
+          ) {
             return true;
           }
           if (rule.cssRules) {
@@ -143,10 +168,10 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
         try {
           if (checkRules(document.styleSheets[i].cssRules)) return true;
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-             // Ignore cross-origin stylesheet errors
+          if (e instanceof DOMException && e.name === "SecurityError") {
+            // Ignore cross-origin stylesheet errors
           } else {
-             throw e;
+            throw e;
           }
         }
       }
@@ -155,11 +180,16 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasSupports).toBe(true);
   });
 
-  test(`The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference)`, async ({ page }) => {
+  test(`The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion: no-preference)`, async ({
+    page,
+  }) => {
     const hasMedia = await page.evaluate(() => {
       function checkRules(rules: any): boolean {
         for (const rule of rules) {
-          if (rule instanceof CSSMediaRule && rule.conditionText.includes('prefers-reduced-motion')) {
+          if (
+            rule instanceof CSSMediaRule &&
+            rule.conditionText.includes("prefers-reduced-motion")
+          ) {
             return true;
           }
           if (rule.cssRules) {
@@ -172,10 +202,10 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
         try {
           if (checkRules(document.styleSheets[i].cssRules)) return true;
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') {
-             // Ignore cross-origin stylesheet errors
+          if (e instanceof DOMException && e.name === "SecurityError") {
+            // Ignore cross-origin stylesheet errors
           } else {
-             throw e;
+            throw e;
           }
         }
       }
@@ -184,27 +214,43 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
     expect(hasMedia).toBe(true);
   });
 
-  test(`The implementation DOES NOT add any scroll event listeners`, async ({ page }) => {
+  test(`The implementation DOES NOT add any scroll event listeners`, async ({
+    page,
+  }) => {
     const client = await page.context().newCDPSession(page);
-    
-    const { result } = await client.send('Runtime.evaluate', { expression: 'window' });
-    const { listeners: windowListeners } = await client.send('DOMDebugger.getEventListeners', { objectId: result.objectId! });
-    
-    const { result: docResult } = await client.send('Runtime.evaluate', { expression: 'document' });
-    const { listeners: docListeners } = await client.send('DOMDebugger.getEventListeners', { objectId: docResult.objectId! });
-    
-    const hasScrollListener = windowListeners.some(l => l.type === 'scroll') || docListeners.some(l => l.type === 'scroll');
-    
+
+    const { result } = await client.send("Runtime.evaluate", {
+      expression: "window",
+    });
+    const { listeners: windowListeners } = await client.send(
+      "DOMDebugger.getEventListeners",
+      { objectId: result.objectId! },
+    );
+
+    const { result: docResult } = await client.send("Runtime.evaluate", {
+      expression: "document",
+    });
+    const { listeners: docListeners } = await client.send(
+      "DOMDebugger.getEventListeners",
+      { objectId: docResult.objectId! },
+    );
+
+    const hasScrollListener =
+      windowListeners.some((l) => l.type === "scroll") ||
+      docListeners.some((l) => l.type === "scroll");
+
     expect(hasScrollListener).toBe(false);
   });
 
-  test(`The purely decorative progress indicator element MUST either be empty (no text or image content) or define aria-hidden="true" to hide its content from assistive technology reading trees`, async ({ page }) => {
+  test(`The purely decorative progress indicator element MUST either be empty (no text or image content) or define aria-hidden="true" to hide its content from assistive technology reading trees`, async ({
+    page,
+  }) => {
     const isAccessibleOrHidden = await page.evaluate(() => {
       const semantic = document.querySelector('progress, [role="progressbar"]');
       if (semantic) {
         return Boolean(
-          semantic.getAttribute('aria-label')?.trim() ||
-            semantic.getAttribute('aria-labelledby')?.trim(),
+          semantic.getAttribute("aria-label")?.trim() ||
+          semantic.getAttribute("aria-labelledby")?.trim(),
         );
       }
       const allMatched = Array.from(
@@ -219,18 +265,24 @@ test.describe(`Scroll Progress Indicator Expectations: ${demoName}`, () => {
       return (
         decorative.length > 0 &&
         decorative.every((el) => {
-          if (el.getAttribute('aria-hidden') === 'true' || el.closest('[aria-hidden="true"]')) {
+          if (
+            el.getAttribute("aria-hidden") === "true" ||
+            el.closest('[aria-hidden="true"]')
+          ) {
             return true;
           }
           const hasText = Boolean(el.textContent?.trim());
           const hasImageContent =
-            el.matches('img, svg, picture, video, canvas, object, embed') ||
-            Boolean(el.querySelector('img, svg, picture, video, canvas, object, embed'));
+            el.matches("img, svg, picture, video, canvas, object, embed") ||
+            Boolean(
+              el.querySelector(
+                "img, svg, picture, video, canvas, object, embed",
+              ),
+            );
           return !hasText && !hasImageContent;
         })
       );
     });
     expect(isAccessibleOrHidden).toBe(true);
   });
-
 });

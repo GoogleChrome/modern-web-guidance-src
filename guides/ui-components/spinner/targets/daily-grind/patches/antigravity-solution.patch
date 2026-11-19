@@ -4,7 +4,7 @@ index 66c9173..4fcd34e 100644
 +++ b/index.html
 @@ -121,7 +121,10 @@
      }
- 
+
      .btn {
 -      display: inline-block;
 +      display: inline-flex;
@@ -20,7 +20,7 @@ index 66c9173..4fcd34e 100644
        transition: background 0.3s;
 +      cursor: pointer;
      }
- 
+
      .btn:hover {
 @@ -152,6 +156,131 @@
        text-decoration: none;
@@ -153,7 +153,7 @@ index 66c9173..4fcd34e 100644
 +    }
    </style>
  </head>
- 
+
 @@ -171,27 +300,39 @@
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
@@ -164,7 +164,7 @@ index 66c9173..4fcd34e 100644
 +      <progress aria-label="Loading" class="loading-spinner" hidden></progress>
 +    </a>
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section id="seasonal-favorites" aria-live="polite">
@@ -202,7 +202,7 @@ index 66c9173..4fcd34e 100644
 @@ -207,6 +348,47 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    document.addEventListener('DOMContentLoaded', () => {
 +      const orderBtn = document.getElementById('order-now-btn');
@@ -245,5 +245,5 @@ index 66c9173..4fcd34e 100644
 +    });
 +  </script>
  </body>
- 
+
  </html>

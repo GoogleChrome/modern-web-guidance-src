@@ -10,11 +10,12 @@ web-feature-ids:
 {#
 Maintainer note: Sections 1, 2, and 3 of this guide are synced with the
 upstream Emscripten "Best Practices" documentation:
+
 - Published page: https://emscripten.org/docs/compiling/best_practices.html
 - Upstream source: site/source/docs/compiling/best_practices.rst in
   https://github.com/emscripten-core/emscripten
-When updating upstream Emscripten best practices, keep Sections 1-3 aligned.
-#}
+  When updating upstream Emscripten best practices, keep Sections 1-3 aligned.
+  #}
 
 Use Emscripten (`emcc` and `em++`) to compile C and C++ into high-performance
 WebAssembly (Wasm) modules for the browser.
@@ -123,7 +124,7 @@ Instead, design C/C++ entry points to process entire buffers or memory regions
 in a single call and read or write the contiguous buffer in linear memory:
 
 ```js
-import initRenderer from './renderer.js';
+import initRenderer from "./renderer.js";
 
 const wasm = await initRenderer();
 const byteLength = width * height * 4;

@@ -5,7 +5,7 @@ index 66c9173..2ba5230 100644
 @@ -115,6 +115,31 @@
        text-align: center;
      }
- 
+
 +    .card {
 +      /* Only apply view-transition naming where @view-transition is supported */
 +      @supports at-rule(@view-transition) {

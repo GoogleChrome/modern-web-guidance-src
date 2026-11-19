@@ -1,8 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 // Native ONNX (onnxruntime-node). TfjsEmbedder exists for the published bundle, which can't ship
 // native binaries, but its pure-JS CPU backend is ~100x slower here.
-import { Embedder } from '../rag/transformers-embedder.ts';
+import { Embedder } from "../rag/transformers-embedder.ts";
 
 const embedCache = new Map<string, Promise<number[]>>();
 
@@ -31,27 +31,27 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
 
 export function cleanText(text: string): string {
   return text
-    .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, '') // Remove list bullets/numbering
-    .replace(/^should\s+/i, '')              // Remove "should" prefix
-    .replace(/[`"']/g, '')                   // Strip backticks/quotes
-    .replace(/\s+/g, ' ')
+    .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, "") // Remove list bullets/numbering
+    .replace(/^should\s+/i, "") // Remove "should" prefix
+    .replace(/[`"']/g, "") // Strip backticks/quotes
+    .replace(/\s+/g, " ")
     .trim();
 }
-
 
 /**
  * Extracts test titles from a Playwright grader.ts file.
  */
 export function extractTestTitles(graderFilePath: string): string[] {
   if (!fs.existsSync(graderFilePath)) return [];
-  const content = fs.readFileSync(graderFilePath, 'utf8');
+  const content = fs.readFileSync(graderFilePath, "utf8");
 
   const titles: string[] = [];
-  const testRegex = /(?:^|\s)test(?:\.(?:only|skip))?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
+  const testRegex =
+    /(?:^|\s)test(?:\.(?:only|skip))?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
   let match: RegExpExecArray | null;
   while ((match = testRegex.exec(content)) !== null) {
     const rawTitle = match[2].trim();
-    titles.push(rawTitle.replace(/\s+/g, ' '));
+    titles.push(rawTitle.replace(/\s+/g, " "));
   }
   return titles;
 }
@@ -61,7 +61,7 @@ export function extractTestTitles(graderFilePath: string): string[] {
  * Combines any indented sub-bullets into their parent expectation.
  */
 export function parseVerifiableExpectations(content: string): string[] {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const items: string[] = [];
 
   for (const rawLine of lines) {
@@ -103,7 +103,7 @@ export interface GraderCoverageResult {
 export async function validateGraderExpectationCoverage(
   expectationsPath: string,
   graderPath: string,
-  threshold = 0.50
+  threshold = 0.5,
 ): Promise<GraderCoverageResult> {
   if (!fs.existsSync(expectationsPath) || !fs.existsSync(graderPath)) {
     return {
@@ -111,11 +111,13 @@ export async function validateGraderExpectationCoverage(
       graderPath,
       expectationsPath,
       matches: [],
-      missing: []
+      missing: [],
     };
   }
 
-  const expectations = parseVerifiableExpectations(fs.readFileSync(expectationsPath, 'utf8'));
+  const expectations = parseVerifiableExpectations(
+    fs.readFileSync(expectationsPath, "utf8"),
+  );
   const testTitles = extractTestTitles(graderPath);
 
   if (expectations.length === 0) {
@@ -124,15 +126,15 @@ export async function validateGraderExpectationCoverage(
       graderPath,
       expectationsPath,
       matches: [],
-      missing: []
+      missing: [],
     };
   }
 
   if (testTitles.length === 0) {
-    const missing: ExpectationMatch[] = expectations.map(exp => ({
+    const missing: ExpectationMatch[] = expectations.map((exp) => ({
       expectation: exp,
       isCovered: false,
-      bestMatchTest: '',
+      bestMatchTest: "",
       similarity: 0,
     }));
     return {
@@ -150,7 +152,7 @@ export async function validateGraderExpectationCoverage(
   function getVec(t: string): Promise<number[]> {
     let pending = embedCache.get(t);
     if (!pending) {
-      pending = embedder.embed(t).catch(err => {
+      pending = embedder.embed(t).catch((err) => {
         embedCache.delete(t);
         throw err;
       });
@@ -160,9 +162,11 @@ export async function validateGraderExpectationCoverage(
   }
 
   const rawTestVectors = await Promise.all(testTitles.map(getVec));
-  const cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
+  const cleanedTestVectors = await Promise.all(
+    testTitles.map((t) => getVec(cleanText(t))),
+  );
 
-  const expectationEntries = expectations.map(exp => {
+  const expectationEntries = expectations.map((exp) => {
     const firstSentence = exp.split(/[.!?]\s+/)[0];
     return {
       exp,
@@ -170,8 +174,12 @@ export async function validateGraderExpectationCoverage(
     };
   });
 
-  const rawExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.exp)));
-  const cleanedExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.cleanedClause)));
+  const rawExpVectors = await Promise.all(
+    expectationEntries.map((e) => getVec(e.exp)),
+  );
+  const cleanedExpVectors = await Promise.all(
+    expectationEntries.map((e) => getVec(e.cleanedClause)),
+  );
 
   const matches: ExpectationMatch[] = [];
 
@@ -180,7 +188,7 @@ export async function validateGraderExpectationCoverage(
     const cleanedExpVec = cleanedExpVectors[eIdx];
 
     let bestScore = -1;
-    let bestTestTitle = '';
+    let bestTestTitle = "";
 
     for (let i = 0; i < testTitles.length; i++) {
       const rawSim = cosineSimilarity(rawExpVec, rawTestVectors[i]);
@@ -201,7 +209,7 @@ export async function validateGraderExpectationCoverage(
     });
   }
 
-  const missing = matches.filter(m => !m.isCovered);
+  const missing = matches.filter((m) => !m.isCovered);
 
   return {
     isComplete: missing.length === 0,
@@ -215,23 +223,32 @@ export async function validateGraderExpectationCoverage(
 /**
  * Formats a clear, actionable failure message when expectations are missing coverage in a grader.
  */
-export function formatCoverageFailureMessage(result: GraderCoverageResult, repoRoot = ''): string {
-  const relGrader = repoRoot ? path.relative(repoRoot, result.graderPath) : result.graderPath;
-  const relExp = repoRoot ? path.relative(repoRoot, result.expectationsPath) : result.expectationsPath;
+export function formatCoverageFailureMessage(
+  result: GraderCoverageResult,
+  repoRoot = "",
+): string {
+  const relGrader = repoRoot
+    ? path.relative(repoRoot, result.graderPath)
+    : result.graderPath;
+  const relExp = repoRoot
+    ? path.relative(repoRoot, result.expectationsPath)
+    : result.expectationsPath;
 
   const header = `❌ Uncovered expectation(s) found in grader: ${relGrader}\nSpec: ${relExp}\n`;
 
-  const details = result.missing.map((m, idx) => {
-    const bestTestSnippet = m.bestMatchTest
-      ? `"${m.bestMatchTest}" (similarity: ${m.similarity.toFixed(2)})`
-      : 'None';
+  const details = result.missing
+    .map((m, idx) => {
+      const bestTestSnippet = m.bestMatchTest
+        ? `"${m.bestMatchTest}" (similarity: ${m.similarity.toFixed(2)})`
+        : "None";
 
-    return `${idx + 1}. Expectation: "${m.expectation}"
+      return `${idx + 1}. Expectation: "${m.expectation}"
    Closest test found: ${bestTestSnippet}
    👉 Action required:
       - If this requirement is NOT yet tested in this grader: Add a test case verifying this behavior.
       - If this requirement IS already tested: Update/rephrase the test name in ${relGrader} so it more clearly describes the requirement.`;
-  }).join('\n\n');
+    })
+    .join("\n\n");
 
   return `${header}\n${details}`;
 }

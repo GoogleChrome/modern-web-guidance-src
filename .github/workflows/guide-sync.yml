@@ -5,14 +5,14 @@ on:
     branches:
       - main
     paths:
-      - 'guides/**'
+      - "guides/**"
   pull_request:
     types:
       - opened
       - synchronize
       - reopened
     paths:
-      - 'guides/**'
+      - "guides/**"
   issues:
     types:
       - opened
@@ -20,13 +20,13 @@ on:
       - closed
       - reopened
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: "0 */6 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Run in dry run mode'
+        description: "Run in dry run mode"
         required: true
-        default: 'true'
+        default: "true"
         type: boolean
 
 permissions:
@@ -59,7 +59,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

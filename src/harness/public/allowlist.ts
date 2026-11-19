@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from "node:fs";
+import path from "node:path";
 
 /**
  * The public allowlist file (`src/harness/public/allowlist.json`). It is the
@@ -23,10 +23,17 @@ export interface PublicAllowlist {
    * cap keeps an agent whose recent runs are unreleased from being aged out
    * entirely by the others.
    */
-  retention?: { maxAgeDays?: number; maxSuites?: number; maxSuitesPerAgent?: number };
+  retention?: {
+    maxAgeDays?: number;
+    maxSuites?: number;
+    maxSuitesPerAgent?: number;
+  };
 }
 
-export const DEFAULT_ALLOWLIST_PATH = path.join(import.meta.dirname, 'allowlist.json');
+export const DEFAULT_ALLOWLIST_PATH = path.join(
+  import.meta.dirname,
+  "allowlist.json",
+);
 
 /** Suite ids and model names: anything without whitespace. */
 const NON_BLANK_RE = /^\S+$/;
@@ -35,13 +42,29 @@ const EXACT_ID_RE = /^[^*?\s]+$/;
 /** Guide folder names; also keeps `--guide` values out of paths they should not reach. */
 const GUIDE_NAME_RE = /^[\w.-]+$/;
 
-const TOP_LEVEL_KEYS = new Set(['$schema', 'include', 'exclude', 'overrides', 'releasedModels', 'retention']);
-const REQUIRED_KEYS = ['include', 'exclude', 'overrides', 'releasedModels'] as const;
-const OVERRIDE_KEYS = new Set(['id', 'excludeGuides']);
-const RETENTION_KEYS = new Set(['maxAgeDays', 'maxSuites', 'maxSuitesPerAgent']);
+const TOP_LEVEL_KEYS = new Set([
+  "$schema",
+  "include",
+  "exclude",
+  "overrides",
+  "releasedModels",
+  "retention",
+]);
+const REQUIRED_KEYS = [
+  "include",
+  "exclude",
+  "overrides",
+  "releasedModels",
+] as const;
+const OVERRIDE_KEYS = new Set(["id", "excludeGuides"]);
+const RETENTION_KEYS = new Set([
+  "maxAgeDays",
+  "maxSuites",
+  "maxSuitesPerAgent",
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -52,72 +75,110 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 function shapeProblems(value: unknown): string[] {
   const problems: string[] = [];
-  const report = (where: string, problem: string): void => { problems.push(`${where} ${problem}`.trim()); };
+  const report = (where: string, problem: string): void => {
+    problems.push(`${where} ${problem}`.trim());
+  };
 
-  const checkObjectKeys = (where: string, obj: Record<string, unknown>, allowed: Set<string>, required: readonly string[]): void => {
+  const checkObjectKeys = (
+    where: string,
+    obj: Record<string, unknown>,
+    allowed: Set<string>,
+    required: readonly string[],
+  ): void => {
     for (const key of required) {
       if (!(key in obj)) report(where, `must have required property '${key}'`);
     }
     for (const key of Object.keys(obj)) {
-      if (!allowed.has(key)) report(where, `must NOT have additional properties (${JSON.stringify(key)})`);
+      if (!allowed.has(key))
+        report(
+          where,
+          `must NOT have additional properties (${JSON.stringify(key)})`,
+        );
     }
   };
 
-  const checkStringArray = (where: string, items: unknown, pattern: RegExp, minItems = 0): void => {
+  const checkStringArray = (
+    where: string,
+    items: unknown,
+    pattern: RegExp,
+    minItems = 0,
+  ): void => {
     if (!Array.isArray(items)) {
-      report(where, 'must be array');
+      report(where, "must be array");
       return;
     }
-    if (items.length < minItems) report(where, `must NOT have fewer than ${minItems} items`);
-    if (new Set(items.map(item => JSON.stringify(item))).size !== items.length) report(where, 'must NOT have duplicate items');
+    if (items.length < minItems)
+      report(where, `must NOT have fewer than ${minItems} items`);
+    if (
+      new Set(items.map((item) => JSON.stringify(item))).size !== items.length
+    )
+      report(where, "must NOT have duplicate items");
     items.forEach((item, i) => {
-      if (typeof item !== 'string') report(`${where}/${i}`, 'must be string');
-      else if (!pattern.test(item)) report(`${where}/${i}`, `must match pattern "${pattern.source}"`);
+      if (typeof item !== "string") report(`${where}/${i}`, "must be string");
+      else if (!pattern.test(item))
+        report(`${where}/${i}`, `must match pattern "${pattern.source}"`);
     });
   };
 
   if (!isRecord(value)) {
-    report('/', 'must be object');
+    report("/", "must be object");
     return problems;
   }
-  checkObjectKeys('/', value, TOP_LEVEL_KEYS, REQUIRED_KEYS);
-  if ('$schema' in value && typeof value['$schema'] !== 'string') report('/$schema', 'must be string');
-  if ('include' in value) checkStringArray('/include', value['include'], NON_BLANK_RE);
-  if ('exclude' in value) checkStringArray('/exclude', value['exclude'], EXACT_ID_RE);
-  if ('releasedModels' in value) checkStringArray('/releasedModels', value['releasedModels'], NON_BLANK_RE);
+  checkObjectKeys("/", value, TOP_LEVEL_KEYS, REQUIRED_KEYS);
+  if ("$schema" in value && typeof value["$schema"] !== "string")
+    report("/$schema", "must be string");
+  if ("include" in value)
+    checkStringArray("/include", value["include"], NON_BLANK_RE);
+  if ("exclude" in value)
+    checkStringArray("/exclude", value["exclude"], EXACT_ID_RE);
+  if ("releasedModels" in value)
+    checkStringArray("/releasedModels", value["releasedModels"], NON_BLANK_RE);
 
-  if ('overrides' in value) {
-    const overrides = value['overrides'];
+  if ("overrides" in value) {
+    const overrides = value["overrides"];
     if (!Array.isArray(overrides)) {
-      report('/overrides', 'must be array');
+      report("/overrides", "must be array");
     } else {
       overrides.forEach((override, i) => {
         const where = `/overrides/${i}`;
         if (!isRecord(override)) {
-          report(where, 'must be object');
+          report(where, "must be object");
           return;
         }
-        checkObjectKeys(where, override, OVERRIDE_KEYS, ['id', 'excludeGuides']);
-        if ('id' in override) {
-          if (typeof override['id'] !== 'string') report(`${where}/id`, 'must be string');
-          else if (!EXACT_ID_RE.test(override['id'])) report(`${where}/id`, `must match pattern "${EXACT_ID_RE.source}"`);
+        checkObjectKeys(where, override, OVERRIDE_KEYS, [
+          "id",
+          "excludeGuides",
+        ]);
+        if ("id" in override) {
+          if (typeof override["id"] !== "string")
+            report(`${where}/id`, "must be string");
+          else if (!EXACT_ID_RE.test(override["id"]))
+            report(`${where}/id`, `must match pattern "${EXACT_ID_RE.source}"`);
         }
-        if ('excludeGuides' in override) checkStringArray(`${where}/excludeGuides`, override['excludeGuides'], GUIDE_NAME_RE, 1);
+        if ("excludeGuides" in override)
+          checkStringArray(
+            `${where}/excludeGuides`,
+            override["excludeGuides"],
+            GUIDE_NAME_RE,
+            1,
+          );
       });
     }
   }
 
-  if ('retention' in value) {
-    const retention = value['retention'];
+  if ("retention" in value) {
+    const retention = value["retention"];
     if (!isRecord(retention)) {
-      report('/retention', 'must be object');
+      report("/retention", "must be object");
     } else {
-      checkObjectKeys('/retention', retention, RETENTION_KEYS, []);
+      checkObjectKeys("/retention", retention, RETENTION_KEYS, []);
       for (const key of RETENTION_KEYS) {
         if (!(key in retention)) continue;
         const limit = retention[key];
-        if (!Number.isInteger(limit)) report(`/retention/${key}`, 'must be integer');
-        else if ((limit as number) < 1) report(`/retention/${key}`, 'must be >= 1');
+        if (!Number.isInteger(limit))
+          report(`/retention/${key}`, "must be integer");
+        else if ((limit as number) < 1)
+          report(`/retention/${key}`, "must be >= 1");
       }
     }
   }
@@ -128,7 +189,9 @@ function shapeProblems(value: unknown): string[] {
 export function assertAllowlistShape(value: unknown, source: string): void {
   const problems = shapeProblems(value);
   if (problems.length > 0) {
-    throw new Error(`${source} does not match the allowlist schema:\n  - ${problems.join('\n  - ')}`);
+    throw new Error(
+      `${source} does not match the allowlist schema:\n  - ${problems.join("\n  - ")}`,
+    );
   }
 }
 
@@ -138,34 +201,49 @@ export function parseAllowlist(text: string, source: string): PublicAllowlist {
   try {
     parsed = JSON.parse(text);
   } catch (err) {
-    throw new Error(`${source} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
+    throw new Error(
+      `${source} is not valid JSON: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
   }
   assertAllowlistShape(parsed, source);
-  const { $schema: _schema, ...allowlist } = parsed as PublicAllowlist & { $schema?: string };
+  const { $schema: _schema, ...allowlist } = parsed as PublicAllowlist & {
+    $schema?: string;
+  };
   return allowlist;
 }
 
 /** Parses and policy-checks allowlist JSON from any source (a file, `git show`, ...). */
-export function parseValidatedAllowlist(text: string, source: string): PublicAllowlist {
+export function parseValidatedAllowlist(
+  text: string,
+  source: string,
+): PublicAllowlist {
   const allowlist = parseAllowlist(text, source);
   const problems = validateAllowlistPolicy(allowlist);
   if (problems.length > 0) {
-    throw new Error(`${source} violates allowlist policy:\n  - ${problems.join('\n  - ')}`);
+    throw new Error(
+      `${source} violates allowlist policy:\n  - ${problems.join("\n  - ")}`,
+    );
   }
   return allowlist;
 }
 
 /** Loads and policy-checks the allowlist; the one entry point every caller should use. */
-export function loadValidatedAllowlist(filePath = DEFAULT_ALLOWLIST_PATH): PublicAllowlist {
-  return parseValidatedAllowlist(fs.readFileSync(filePath, 'utf8'), filePath);
+export function loadValidatedAllowlist(
+  filePath = DEFAULT_ALLOWLIST_PATH,
+): PublicAllowlist {
+  return parseValidatedAllowlist(fs.readFileSync(filePath, "utf8"), filePath);
 }
 
 /** Suite IDs from `candidates` that match an `include` pattern and are not excluded. Sorted. */
-export function selectSuites(allowlist: PublicAllowlist, candidates: readonly string[]): string[] {
+export function selectSuites(
+  allowlist: PublicAllowlist,
+  candidates: readonly string[],
+): string[] {
   const includes = allowlist.include.map(globToRegExp);
   const excluded = new Set(allowlist.exclude);
   return candidates
-    .filter(id => !excluded.has(id) && includes.some(re => re.test(id)))
+    .filter((id) => !excluded.has(id) && includes.some((re) => re.test(id)))
     .sort();
 }
 
@@ -174,13 +252,17 @@ export function selectSuites(allowlist: PublicAllowlist, candidates: readonly st
  * them when unset). `maxSuites` is applied after the agent/model gate so
  * "keep 30" means 30 publishable suites rather than 30 minus unreleased runs.
  */
-export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAllowlist, suites: readonly T[], now = new Date()): T[] {
+export function withinMaxAge<T extends { createdAt: Date }>(
+  allowlist: PublicAllowlist,
+  suites: readonly T[],
+  now = new Date(),
+): T[] {
   const { maxAgeDays } = allowlist.retention ?? {};
   if (maxAgeDays === undefined) {
     return [...suites];
   }
   const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
-  return suites.filter(suite => suite.createdAt.getTime() >= cutoff);
+  return suites.filter((suite) => suite.createdAt.getTime() >= cutoff);
 }
 
 /**
@@ -189,13 +271,17 @@ export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAll
  * slot. The per-agent cap runs first so a prolific agent cannot push another
  * agent's older suites out of the global budget.
  */
-export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
+export function withinSuiteCaps<
+  T extends { suiteId?: string; id?: string; agent?: string },
+>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
   const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
   const perAgent = new Map<string, number>();
   const kept: T[] = [];
-  const curatedIds = new Set(allowlist.include.filter(id => isCuratedSuite(id, allowlist)));
+  const curatedIds = new Set(
+    allowlist.include.filter((id) => isCuratedSuite(id, allowlist)),
+  );
   for (const suite of newestFirstSuites) {
-    const id = suite.suiteId ?? suite.id ?? '';
+    const id = suite.suiteId ?? suite.id ?? "";
     if (curatedIds.has(id)) {
       kept.push(suite);
       continue;
@@ -203,7 +289,7 @@ export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent
     if (maxSuites !== undefined && kept.length >= maxSuites) {
       break;
     }
-    const agent = suite.agent ?? '';
+    const agent = suite.agent ?? "";
     const seen = perAgent.get(agent) ?? 0;
     if (maxSuitesPerAgent !== undefined && seen >= maxSuitesPerAgent) {
       continue;
@@ -215,8 +301,12 @@ export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent
 }
 
 /** Returns a copy sorted newest-first by `createdAt`. */
-export function newestFirst<T extends { createdAt: Date }>(suites: readonly T[]): T[] {
-  return [...suites].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+export function newestFirst<T extends { createdAt: Date }>(
+  suites: readonly T[],
+): T[] {
+  return [...suites].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  );
 }
 
 /** The run time embedded in nightly ids, e.g. `nightly-2026-10-20_20-43-48-codex_cli`. */
@@ -234,7 +324,16 @@ export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
   const match = SUITE_ID_TIME_RE.exec(suiteId);
   if (match) {
     const [, y, mo, d, h, mi, s] = match;
-    return new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)));
+    return new Date(
+      Date.UTC(
+        Number(y),
+        Number(mo) - 1,
+        Number(d),
+        Number(h),
+        Number(mi),
+        Number(s),
+      ),
+    );
   }
   const dateMatch = SUITE_ID_DATE_RE.exec(suiteId);
   if (dateMatch) {
@@ -252,8 +351,11 @@ export function suiteCreatedAt(suiteId: string, fallback: Date): Date {
  */
 export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
   const problems = allowlist.include
-    .filter(pattern => isGlob(pattern) && !pattern.startsWith('nightly-'))
-    .map(pattern => `include pattern "${pattern}" uses wildcards but does not start with "nightly-"`);
+    .filter((pattern) => isGlob(pattern) && !pattern.startsWith("nightly-"))
+    .map(
+      (pattern) =>
+        `include pattern "${pattern}" uses wildcards but does not start with "nightly-"`,
+    );
   const seen = new Set<string>();
   for (const { id } of allowlist.overrides) {
     if (seen.has(id)) {
@@ -265,14 +367,20 @@ export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
 }
 
 /** The override entry for a suite, if any. */
-export function overrideFor(allowlist: PublicAllowlist, suiteId: string): { excludeGuides: string[] } | undefined {
-  return allowlist.overrides.find(entry => entry.id === suiteId);
+export function overrideFor(
+  allowlist: PublicAllowlist,
+  suiteId: string,
+): { excludeGuides: string[] } | undefined {
+  return allowlist.overrides.find((entry) => entry.id === suiteId);
 }
 
 /**
  * True when a suite is an explicit non-scheduled (baseline/curated) run admitted by the allowlist.
  */
-export function isCuratedSuite(suiteId: string, allowlist?: PublicAllowlist): boolean {
+export function isCuratedSuite(
+  suiteId: string,
+  allowlist?: PublicAllowlist,
+): boolean {
   if (allowlist && !allowlist.include.includes(suiteId)) {
     return false;
   }
@@ -285,19 +393,19 @@ export function isCuratedSuite(suiteId: string, allowlist?: PublicAllowlist): bo
  * literal. Kept deliberately small so the allowlist stays easy to review.
  */
 export function globToRegExp(glob: string): RegExp {
-  let source = '';
+  let source = "";
   for (const char of glob) {
-    if (char === '*') {
-      source += '.*';
-    } else if (char === '?') {
-      source += '.';
+    if (char === "*") {
+      source += ".*";
+    } else if (char === "?") {
+      source += ".";
     } else {
-      source += char.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      source += char.replace(/[.+^${}()|[\]\\]/g, "\\$&");
     }
   }
   return new RegExp(`^${source}$`);
 }
 
 function isGlob(text: string): boolean {
-  return text.includes('*') || text.includes('?');
+  return text.includes("*") || text.includes("?");
 }

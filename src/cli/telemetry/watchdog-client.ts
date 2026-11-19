@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { spawn, type ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { spawn, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-import type { WatchdogMessage } from './types.ts';
+import type { WatchdogMessage } from "./types.ts";
 
 export class WatchdogClient {
   #childProcess: ChildProcess | null = null;
@@ -29,7 +29,7 @@ export class WatchdogClient {
     }
 
     const watchdogPath = fileURLToPath(
-      new URL('./watchdog/main.js', import.meta.url)
+      new URL("./watchdog/main.js", import.meta.url),
     );
 
     const args = [watchdogPath];
@@ -38,21 +38,21 @@ export class WatchdogClient {
       args.push(`--clearcut-endpoint=${this.#config.clearcutEndpoint}`);
     }
     if (this.#config.clearcutIncludePidHeader) {
-      args.push('--clearcut-include-pid-header');
+      args.push("--clearcut-include-pid-header");
     }
 
     this.#childProcess = spawn(process.execPath, args, {
-      stdio: ['pipe', 'ignore', 'ignore'],
+      stdio: ["pipe", "ignore", "ignore"],
       detached: true,
     });
 
     this.#childProcess.unref();
 
-    this.#childProcess.on('error', () => {
+    this.#childProcess.on("error", () => {
       // Fail silently: internal telemetry errors should not affect the user
     });
 
-    this.#childProcess.on('exit', () => {
+    this.#childProcess.on("exit", () => {
       // Silently handle watchdog termination
     });
 
@@ -67,7 +67,7 @@ export class WatchdogClient {
       childProcess.pid
     ) {
       try {
-        const line = JSON.stringify(message) + '\n';
+        const line = JSON.stringify(message) + "\n";
         childProcess.stdin.write(line);
       } catch {
         // Fail silently if writing to watchdog stdin fails

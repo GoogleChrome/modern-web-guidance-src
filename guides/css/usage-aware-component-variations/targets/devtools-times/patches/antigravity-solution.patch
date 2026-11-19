@@ -39,26 +39,26 @@ index f089dc0..d4f6139 100644
 --- a/src/components/BookmarkButton.tsx
 +++ b/src/components/BookmarkButton.tsx
 @@ -1,13 +1,14 @@
- 
+
 -import React, { useState, useEffect } from 'react';
 -import { BookmarkIcon } from '@heroicons/react/24/outline'
 +import React, { useState } from 'react';
 +import { BookmarkIcon } from '@heroicons/react/24/outline';
- 
+
  interface Props {
    slug: string;
    initialIsBookmarked: boolean;
 +  className?: string;
  }
- 
+
 -export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
 +export default function BookmarkButton({ slug, initialIsBookmarked, className = '' }: Props) {
    const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
- 
+
    const handleClick = async () => {
 @@ -23,8 +24,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
    };
- 
+
    return (
 -    <button onClick={handleClick} className="p-1">
 -      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
@@ -83,7 +83,7 @@ index 29e7e50..7b0e8cd 100644
      articles: CollectionEntry<'articles'>[];
 +    featured?: boolean;
  }
- 
+
 -const { title, articles } = Astro.props;
 +const { title, articles, featured = (title === "Top News") } = Astro.props;
  ---
@@ -102,14 +102,14 @@ index e015eae..cd575aa 100644
      articles: CollectionEntry<'articles'>[];
 +    featured?: boolean;
  }
- 
+
 -const { title, articles } = Astro.props;
 +const { title, articles, featured = (title === "Top News") } = Astro.props;
- 
+
  if (articles.length < 4) {
      throw new Error("TeaserGridVariant requires at least 4 articles.");
 @@ -26,7 +27,7 @@ const readingList = await Astro.session?.get('readingList') || [];
- 
+
  const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + topArticle.data.category.slice(1);
  ---
 -<section class="p-4 md:p-6">
@@ -175,20 +175,20 @@ index 92f6399..9043421 100644
 +++ b/src/pages/index.astro
 @@ -55,7 +55,7 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6 featured">
          <ArticleTeaser article={topArticle} large={true} />
      </main>
- 
+
 @@ -65,7 +65,7 @@ politicsArticles[2] = {
          </section>
- 
+
          <!-- "Top News" section with the new grid variant -->
 -        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
 +        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} featured={true} />
- 
+
          <section class="p-4 md:p-6 text-center">
              <Ad client:visible />
 diff --git a/src/styles/global.css b/src/styles/global.css

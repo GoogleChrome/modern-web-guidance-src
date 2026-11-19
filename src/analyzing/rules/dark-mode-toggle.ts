@@ -4,20 +4,29 @@ import {
   type BinaryExpression,
   type CallExpression,
   type SourceFile,
-} from 'ts-morph';
-import { unwrapExpression } from '../scanners/ast-helpers.ts';
+} from "ts-morph";
+import { unwrapExpression } from "../scanners/ast-helpers.ts";
 import type {
   AnalyzerMatch,
   AnalyzerRule,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const DARK_MODE_TOGGLE_GUIDE_HASH = 'e499ab00959e';
+export const DARK_MODE_TOGGLE_GUIDE_HASH = "e499ab00959e";
 
 const DARK_MODE_TOGGLE_FAST_TOKENS = [
-  ['localStorage'],
-  ['theme', 'Theme', 'dark', 'Dark', 'color-scheme', 'colorScheme', 'mode', 'Mode'],
+  ["localStorage"],
+  [
+    "theme",
+    "Theme",
+    "dark",
+    "Dark",
+    "color-scheme",
+    "colorScheme",
+    "mode",
+    "Mode",
+  ],
 ] as const;
 
 const DARK_MODE_TOGGLE_GUARD_TOKENS = [
@@ -43,12 +52,15 @@ function isDarkClassListCall(callExpr: CallExpression): boolean {
   }
 
   const method = callee.getName();
-  if (method !== 'toggle' && method !== 'add' && method !== 'remove') {
+  if (method !== "toggle" && method !== "add" && method !== "remove") {
     return false;
   }
 
   const classListExpr = unwrapExpression(callee.getExpression());
-  if (!Node.isPropertyAccessExpression(classListExpr) || classListExpr.getName() !== 'classList') {
+  if (
+    !Node.isPropertyAccessExpression(classListExpr) ||
+    classListExpr.getName() !== "classList"
+  ) {
     return false;
   }
 
@@ -62,7 +74,10 @@ function isDarkClassListCall(callExpr: CallExpression): boolean {
     return false;
   }
   const argUnwrapped = unwrapExpression(firstArg);
-  if (!Node.isStringLiteral(argUnwrapped) && !Node.isNoSubstitutionTemplateLiteral(argUnwrapped)) {
+  if (
+    !Node.isStringLiteral(argUnwrapped) &&
+    !Node.isNoSubstitutionTemplateLiteral(argUnwrapped)
+  ) {
     return false;
   }
 
@@ -74,7 +89,10 @@ function isDarkClassListCall(callExpr: CallExpression): boolean {
 
 function isDataThemeSetAttributeCall(callExpr: CallExpression): boolean {
   const callee = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(callee) || callee.getName() !== 'setAttribute') {
+  if (
+    !Node.isPropertyAccessExpression(callee) ||
+    callee.getName() !== "setAttribute"
+  ) {
     return false;
   }
 
@@ -88,16 +106,19 @@ function isDataThemeSetAttributeCall(callExpr: CallExpression): boolean {
     return false;
   }
   const argUnwrapped = unwrapExpression(firstArg);
-  if (!Node.isStringLiteral(argUnwrapped) && !Node.isNoSubstitutionTemplateLiteral(argUnwrapped)) {
+  if (
+    !Node.isStringLiteral(argUnwrapped) &&
+    !Node.isNoSubstitutionTemplateLiteral(argUnwrapped)
+  ) {
     return false;
   }
 
   const attrName = argUnwrapped.getLiteralText().trim().toLowerCase();
   return (
-    attrName === 'data-theme' ||
-    attrName === 'data-color-mode' ||
-    attrName === 'data-bs-theme' ||
-    attrName === 'data-color-scheme'
+    attrName === "data-theme" ||
+    attrName === "data-color-mode" ||
+    attrName === "data-bs-theme" ||
+    attrName === "data-color-scheme"
   );
 }
 
@@ -112,12 +133,19 @@ function isDatasetThemeAssignment(binExpr: BinaryExpression): boolean {
   }
 
   const propName = left.getName();
-  if (propName !== 'theme' && propName !== 'colorMode' && propName !== 'bsTheme') {
+  if (
+    propName !== "theme" &&
+    propName !== "colorMode" &&
+    propName !== "bsTheme"
+  ) {
     return false;
   }
 
   const datasetExpr = unwrapExpression(left.getExpression());
-  if (!Node.isPropertyAccessExpression(datasetExpr) || datasetExpr.getName() !== 'dataset') {
+  if (
+    !Node.isPropertyAccessExpression(datasetExpr) ||
+    datasetExpr.getName() !== "dataset"
+  ) {
     return false;
   }
 
@@ -125,7 +153,7 @@ function isDatasetThemeAssignment(binExpr: BinaryExpression): boolean {
 }
 
 export const darkModeToggleJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+  kind: "js",
   fastTokens: DARK_MODE_TOGGLE_FAST_TOKENS,
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] {
     for (const guard of DARK_MODE_TOGGLE_GUARD_TOKENS) {
@@ -144,8 +172,13 @@ export const darkModeToggleJsMatcher: JsRuleMatcher = {
       return [];
     }
 
-    for (const callExpr of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      if (isDarkClassListCall(callExpr) || isDataThemeSetAttributeCall(callExpr)) {
+    for (const callExpr of sourceFile.getDescendantsOfKind(
+      SyntaxKind.CallExpression,
+    )) {
+      if (
+        isDarkClassListCall(callExpr) ||
+        isDataThemeSetAttributeCall(callExpr)
+      ) {
         return [
           {
             line: callExpr.getStartLineNumber(),
@@ -156,7 +189,9 @@ export const darkModeToggleJsMatcher: JsRuleMatcher = {
       }
     }
 
-    for (const binExpr of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    for (const binExpr of sourceFile.getDescendantsOfKind(
+      SyntaxKind.BinaryExpression,
+    )) {
       if (isDatasetThemeAssignment(binExpr)) {
         return [
           {
@@ -173,8 +208,8 @@ export const darkModeToggleJsMatcher: JsRuleMatcher = {
 };
 
 export const darkModeToggleRule: AnalyzerRule = {
-  id: 'dark-mode-toggle',
-  guideId: 'dark-mode-toggle',
+  id: "dark-mode-toggle",
+  guideId: "dark-mode-toggle",
   guideHash: DARK_MODE_TOGGLE_GUIDE_HASH,
   summary:
     'Dark mode toggles that persist theme overrides in localStorage and toggle root .dark classes or data-theme attributes should update <meta name="color-scheme"> ("light dark", "light", "dark") paired with CSS color-scheme and light-dark().',
@@ -186,11 +221,9 @@ export const darkModeToggleRule: AnalyzerRule = {
     dropWhen: [
       'The code already updates <meta name="color-scheme"> content ("light dark", "light", "dark").',
       'The code only reads matchMedia("(prefers-color-scheme: dark)") without a user toggle or localStorage override (covered by dark-mode).',
-      'The code switches multi-brand or syntax-editor color palettes (e.g. Monaco/Ace editor themes) rather than light/dark page color scheme.',
+      "The code switches multi-brand or syntax-editor color palettes (e.g. Monaco/Ace editor themes) rather than light/dark page color scheme.",
     ],
   },
 };
 
-export default [
-  darkModeToggleRule,
-] satisfies readonly AnalyzerRule[];
+export default [darkModeToggleRule] satisfies readonly AnalyzerRule[];

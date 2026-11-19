@@ -1,29 +1,31 @@
-import { posix } from 'node:path';
+import { posix } from "node:path";
 import type {
   AnalyzerMatch,
   DependencyMatcherContext,
   DependencyRuleMatcher,
-} from '../schema.ts';
-import { isCandidateVendoredFile } from './file-filter.ts';
+} from "../schema.ts";
+import { isCandidateVendoredFile } from "./file-filter.ts";
 
 const EXTENSIONS_TO_STRIP: readonly string[] = [
-  '.min.js',
-  '.bundle.js',
-  '.pack.js',
-  '-opt.js',
-  '.opt.js',
-  '.min.css',
-  '.bundle.css',
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.css',
+  ".min.js",
+  ".bundle.js",
+  ".pack.js",
+  "-opt.js",
+  ".opt.js",
+  ".min.css",
+  ".bundle.css",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".css",
 ];
 
 const VERSION_SUFFIX_REGEX = /[-._]v?\d+(?:\.\d+)*(?:[-._][a-z0-9.]+)?$/i;
 const LEADING_COMMENT_RE = /^\s*(?:\/\*[\s\S]*?(?:\*\/|$)|(?:\/\/[^\n]*\n)+)/;
-const BANNER_MARKER_RE = /\/\*!|@(?:license|preserve|author|version)|copyright|license/i;
-const AUTHOR_OR_COPYRIGHT_LINE_RE = /copyright|@author|\bauthors?\b\s*[:-]|\(c\)\s*\d{4}/i;
+const BANNER_MARKER_RE =
+  /\/\*!|@(?:license|preserve|author|version)|copyright|license/i;
+const AUTHOR_OR_COPYRIGHT_LINE_RE =
+  /copyright|@author|\bauthors?\b\s*[:-]|\(c\)\s*\d{4}/i;
 
 function stripKnownExtension(filename: string): string {
   const lower = filename.toLowerCase();
@@ -32,7 +34,7 @@ function stripKnownExtension(filename: string): string {
 }
 
 function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 interface NormalizedPackage {
@@ -44,33 +46,38 @@ interface NormalizedPackage {
 
 function normalizePackageName(pkgName: string): NormalizedPackage {
   const raw = pkgName.toLowerCase();
-  const unscoped = raw.replace(/^@[^/]+\//, '');
-  const base = unscoped.replace(/[.-]js$/, '');
-  const core = base.replace(/^(?:jquery|vanilla)[.-]/, '');
+  const unscoped = raw.replace(/^@[^/]+\//, "");
+  const base = unscoped.replace(/[.-]js$/, "");
+  const core = base.replace(/^(?:jquery|vanilla)[.-]/, "");
   return { raw, unscoped, base, core };
 }
 
 function buildFilenameCandidates(baseName: string): ReadonlySet<string> {
-  const stemNoVersion = stripKnownExtension(baseName).replace(VERSION_SUFFIX_REGEX, '');
+  const stemNoVersion = stripKnownExtension(baseName).replace(
+    VERSION_SUFFIX_REGEX,
+    "",
+  );
   const rawLower = stemNoVersion.toLowerCase();
-  const kebabStem = stemNoVersion.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-  const withoutJquerySuffix = rawLower.replace(/[.-]jquery$/, '');
-  const withoutJqueryAffixes = withoutJquerySuffix.replace(/^jquery[.-]/, '');
+  const kebabStem = stemNoVersion
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase();
+  const withoutJquerySuffix = rawLower.replace(/[.-]jquery$/, "");
+  const withoutJqueryAffixes = withoutJquerySuffix.replace(/^jquery[.-]/, "");
 
   return new Set([
     rawLower,
     kebabStem,
     withoutJquerySuffix,
     withoutJqueryAffixes,
-    rawLower.replace(/\./g, '-'),
+    rawLower.replace(/\./g, "-"),
   ]);
 }
 
 const STRICT_SINGLE_WORD_PACKAGES: ReadonlySet<string> = new Set([
-  'chosen',
-  'aos',
-  'countries',
-  'country',
+  "chosen",
+  "aos",
+  "countries",
+  "country",
 ]);
 
 function extractCleanedBanner(content: string): string | null {
@@ -79,19 +86,22 @@ function extractCleanedBanner(content: string): string | null {
     return null;
   }
   return commentMatch[0]
-    .split('\n')
+    .split("\n")
     .filter((line) => !AUTHOR_OR_COPYRIGHT_LINE_RE.test(line))
-    .join('\n');
+    .join("\n");
 }
 
-function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPackage): boolean {
+function bannerIdentifiesPackage(
+  cleanedComment: string,
+  pkgNorm: NormalizedPackage,
+): boolean {
   // If the raw package name ends with '.js' (e.g. 'mark.js', 'sal.js'),
   // strictly require the '.js' suffix in banner matching (or 'markjs' / 'jquery.mark') - never bare '\bmark\b' or '\bsal\b'!
-  if (pkgNorm.raw.endsWith('.js')) {
+  if (pkgNorm.raw.endsWith(".js")) {
     const baseEsc = escapeRegExp(pkgNorm.base);
     const jsPattern = new RegExp(
       `\\b(?:(?:jquery|vanilla)[.-])?${baseEsc}(?:\\.[a-z0-9]+)?\\.js\\b|\\b${baseEsc}js\\b|\\bjquery\\.${baseEsc}\\b`,
-      'i',
+      "i",
     );
     return jsPattern.test(cleanedComment);
   }
@@ -105,8 +115,8 @@ function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPack
 
   if (isStrictSingleWord) {
     if (
-      (pkgNorm.raw.includes('-') || pkgNorm.raw.includes('.')) &&
-      new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, 'i').test(cleanedComment)
+      (pkgNorm.raw.includes("-") || pkgNorm.raw.includes(".")) &&
+      new RegExp(`\\b${escapeRegExp(pkgNorm.raw)}\\b`, "i").test(cleanedComment)
     ) {
       return true;
     }
@@ -119,7 +129,7 @@ function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPack
         `\\b${coreEsc}\\s+v?\\d+(?:\\.\\d+)*\\b|` +
         `\\b${coreEsc}\\s*\\(\\s*v?\\d+|` +
         `\\b${coreEsc}\\s*[,:—–\\-]\\s+`,
-      'i',
+      "i",
     );
     return strictPattern.test(cleanedComment);
   }
@@ -129,14 +139,14 @@ function bannerIdentifiesPackage(cleanedComment: string, pkgNorm: NormalizedPack
     pkgNorm.unscoped,
     pkgNorm.base,
     pkgNorm.core,
-    ...(pkgNorm.base.includes('-') ? [pkgNorm.base.replace(/-/g, '')] : []),
+    ...(pkgNorm.base.includes("-") ? [pkgNorm.base.replace(/-/g, "")] : []),
   ]);
 
   for (const word of wordsToMatch) {
     const pattern =
       word.length < 3
-        ? new RegExp(`\\b${escapeRegExp(word)}\\.js\\b`, 'i')
-        : new RegExp(`\\b${escapeRegExp(word)}\\b`, 'i');
+        ? new RegExp(`\\b${escapeRegExp(word)}\\.js\\b`, "i")
+        : new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
     if (pattern.test(cleanedComment)) {
       return true;
     }
@@ -158,23 +168,27 @@ function matchesVendoredPackage(
     candidates.has(pkgNorm.unscoped) ||
     candidates.has(pkgNorm.base) ||
     candidates.has(pkgNorm.core) ||
-    (pkgNorm.core === 'moment' &&
-      (lowerBase.startsWith('moment-with-') ||
-        lowerBase.startsWith('moment.') ||
-        lowerBase.startsWith('moment-timezone'))) ||
-    (pkgNorm.raw === 'dompurify' && candidates.has('purify'))
+    (pkgNorm.core === "moment" &&
+      (lowerBase.startsWith("moment-with-") ||
+        lowerBase.startsWith("moment.") ||
+        lowerBase.startsWith("moment-timezone"))) ||
+    (pkgNorm.raw === "dompurify" && candidates.has("purify"))
   ) {
     return true;
   }
 
   const cleanedBanner = getCleanedBanner();
-  return cleanedBanner !== null && bannerIdentifiesPackage(cleanedBanner, pkgNorm);
+  return (
+    cleanedBanner !== null && bannerIdentifiesPackage(cleanedBanner, pkgNorm)
+  );
 }
 
 /**
  * Scans a vendored or minified library file against rules with DependencyRuleMatchers in a single pass.
  */
-export function scanVendoredLibraryRules<T extends { readonly matcher: DependencyRuleMatcher }>(
+export function scanVendoredLibraryRules<
+  T extends { readonly matcher: DependencyRuleMatcher },
+>(
   relPath: string,
   content: string,
   rules: readonly T[],
@@ -183,7 +197,7 @@ export function scanVendoredLibraryRules<T extends { readonly matcher: Dependenc
     return [];
   }
 
-  const baseName = posix.basename(relPath.replace(/\\/g, '/'));
+  const baseName = posix.basename(relPath.replace(/\\/g, "/"));
   const lowerBase = baseName.toLowerCase();
   const candidates = buildFilenameCandidates(baseName);
   let cleanedBanner: string | null | undefined;
@@ -209,7 +223,7 @@ export function scanVendoredLibraryRules<T extends { readonly matcher: Dependenc
       continue;
     }
 
-    const pkgResult = matcher.matchPackage?.(matchedPackageName, '*', dummyCtx);
+    const pkgResult = matcher.matchPackage?.(matchedPackageName, "*", dummyCtx);
     const message = pkgResult
       ? `Vendored legacy library "${baseName}" (${matchedPackageName}): ${pkgResult.message}`
       : `Vendored legacy library "${baseName}" (${matchedPackageName}) targeted for modernization.`;
@@ -244,7 +258,7 @@ export function scanVendoredLibraryFile(
   ).map(({ match }) => match);
 }
 
-const RUNTIME_DEPENDENCY_FIELDS = ['dependencies', 'peerDependencies'] as const;
+const RUNTIME_DEPENDENCY_FIELDS = ["dependencies", "peerDependencies"] as const;
 
 /**
  * Constructs a `DependencyRuleMatcher` for `packages` using a message formatter
@@ -259,7 +273,7 @@ export function createDependencyMatcher(
   ) => string | null,
 ): DependencyRuleMatcher {
   return {
-    kind: 'dependency',
+    kind: "dependency",
     packages,
     matchPackage(pkgName, versionRange, ctx) {
       const message = formatMessage(pkgName, versionRange, ctx);
@@ -269,36 +283,36 @@ export function createDependencyMatcher(
 }
 
 const FRONTEND_FRAMEWORK_PACKAGES: ReadonlySet<string> = new Set([
-  'react',
-  'react-dom',
-  'vue',
-  'svelte',
-  '@sveltejs/kit',
-  'next',
-  'nuxt',
-  'astro',
-  '@angular/core',
-  'lit',
-  'preact',
-  'solid-js',
-  '@remix-run/react',
-  '@builder.io/qwik',
-  'qwik',
-  'alpinejs',
+  "react",
+  "react-dom",
+  "vue",
+  "svelte",
+  "@sveltejs/kit",
+  "next",
+  "nuxt",
+  "astro",
+  "@angular/core",
+  "lit",
+  "preact",
+  "solid-js",
+  "@remix-run/react",
+  "@builder.io/qwik",
+  "qwik",
+  "alpinejs",
 ]);
 
 const BACKEND_SERVER_PACKAGES: ReadonlySet<string> = new Set([
-  'express',
-  'fastify',
-  'koa',
-  '@nestjs/core',
-  '@hapi/hapi',
-  'hapi',
-  'restify',
+  "express",
+  "fastify",
+  "koa",
+  "@nestjs/core",
+  "@hapi/hapi",
+  "hapi",
+  "restify",
 ]);
 
 function isRecord(val: unknown): val is Readonly<Record<string, unknown>> {
-  return typeof val === 'object' && val !== null && !Array.isArray(val);
+  return typeof val === "object" && val !== null && !Array.isArray(val);
 }
 
 function getDependencyObject(
@@ -313,11 +327,14 @@ function hasAnyPackage(
   deps: Readonly<Record<string, unknown>> | null,
   targetPackages: ReadonlySet<string>,
 ): boolean {
-  return deps !== null && Object.keys(deps).some((pkgName) => targetPackages.has(pkgName));
+  return (
+    deps !== null &&
+    Object.keys(deps).some((pkgName) => targetPackages.has(pkgName))
+  );
 }
 
 function hasNonEmptyField(value: unknown): boolean {
-  return typeof value === 'string'
+  return typeof value === "string"
     ? value.trim().length > 0
     : isRecord(value) && Object.keys(value).length > 0;
 }
@@ -338,10 +355,17 @@ export function isPureNodeBackendOrCliPackage(
     return false;
   }
 
-  const depFields = ['dependencies', 'devDependencies', 'peerDependencies'] as const;
+  const depFields = [
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+  ] as const;
   if (
     depFields.some((field) =>
-      hasAnyPackage(getDependencyObject(pkgRecord, field), FRONTEND_FRAMEWORK_PACKAGES),
+      hasAnyPackage(
+        getDependencyObject(pkgRecord, field),
+        FRONTEND_FRAMEWORK_PACKAGES,
+      ),
     )
   ) {
     return false;
@@ -349,7 +373,10 @@ export function isPureNodeBackendOrCliPackage(
 
   return (
     hasNonEmptyField(pkgRecord.bin) ||
-    hasAnyPackage(getDependencyObject(pkgRecord, 'dependencies'), BACKEND_SERVER_PACKAGES)
+    hasAnyPackage(
+      getDependencyObject(pkgRecord, "dependencies"),
+      BACKEND_SERVER_PACKAGES,
+    )
   );
 }
 
@@ -371,18 +398,18 @@ function findPackageLine(
   let pendingLine = 1;
 
   for (const [token] of packageJsonContent.matchAll(JSON_TOKEN_RE)) {
-    if (token === '\n') {
+    if (token === "\n") {
       line++;
-    } else if (token === '{' || token === '[') {
+    } else if (token === "{" || token === "[") {
       depth++;
       pendingString = null;
-    } else if (token === '}' || token === ']') {
+    } else if (token === "}" || token === "]") {
       if (inTargetField && depth === 2) {
         return 1;
       }
       depth--;
       pendingString = null;
-    } else if (token === ':') {
+    } else if (token === ":") {
       if (depth === 1) {
         inTargetField = pendingString === field;
       } else if (inTargetField && depth === 2 && pendingString === pkgName) {
@@ -390,7 +417,9 @@ function findPackageLine(
       }
       pendingString = null;
     } else {
-      pendingString = token.includes('\\') ? String(JSON.parse(token)) : token.slice(1, -1);
+      pendingString = token.includes("\\")
+        ? String(JSON.parse(token))
+        : token.slice(1, -1);
       pendingLine = line;
     }
   }
@@ -401,7 +430,9 @@ function findPackageLine(
 /**
  * Scans `package.json` content against rules with DependencyRuleMatchers in a single parse pass.
  */
-export function scanPackageJsonRules<T extends { readonly matcher: DependencyRuleMatcher }>(
+export function scanPackageJsonRules<
+  T extends { readonly matcher: DependencyRuleMatcher },
+>(
   filePath: string,
   packageJsonContent: string,
   rules: readonly T[],
@@ -437,7 +468,7 @@ export function scanPackageJsonRules<T extends { readonly matcher: DependencyRul
       depEntries.push({
         field,
         pkgName,
-        versionRange: typeof versionVal === 'string' ? versionVal : '*',
+        versionRange: typeof versionVal === "string" ? versionVal : "*",
       });
     }
   }
@@ -462,7 +493,11 @@ export function scanPackageJsonRules<T extends { readonly matcher: DependencyRul
         ? matcher.matchPackage(entry.pkgName, entry.versionRange, ctx)?.message
         : `Legacy package "${entry.pkgName}" found (${entry.versionRange}) targeted for modernization.`;
       if (message !== undefined) {
-        entry.line ??= findPackageLine(packageJsonContent, entry.field, entry.pkgName);
+        entry.line ??= findPackageLine(
+          packageJsonContent,
+          entry.field,
+          entry.pkgName,
+        );
         results.push({
           rule,
           match: { line: entry.line, message },

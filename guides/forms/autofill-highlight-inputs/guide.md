@@ -47,6 +47,7 @@ input:autofill {
 ```
 
 Caveats:
+
 - The UA text color is `FieldText`: black in a light color scheme, white in a dark one. Keep the fill legible against it (e.g. via `light-dark()`), so the field stays readable even if the text color override does not apply.
 - The fill is painted over the browser's color, not your page background, so use an opaque `--autofill-background-color`.
 - The rule replaces any other `box-shadow` on the field (e.g. a focus ring done with `box-shadow`); repeat those shadows in the same declaration.

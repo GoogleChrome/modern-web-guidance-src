@@ -522,7 +522,7 @@ index 92f6399..fc440ee 100644
 -
 -        <!-- "Politics" section with the new grid variant -->
 -        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
--        
+-
 +        <section class="details"><div class="detail-intro"><span class="eyebrow">SMALL CODE. BIG IDEAS.</span><h2>Nine spheres.<br />Infinite bounces.</h2></div><div class="detail"><span class="detail-icon">↗</span><h3>Follow every ray</h3><p>Monte Carlo path tracing simulates how light bounces, reflects, and finds its way to the camera.</p></div><div class="detail"><span class="detail-icon glass-icon">◈</span><h3>A study in materials</h3><p>Diffuse walls, a perfect mirror, and a glass sphere. Simple ingredients. Beautiful interactions.</p></div><div class="detail"><span class="detail-icon code-icon">{ }</span><h3>C++ meets the browser</h3><p>The original smallpt, compiled to WebAssembly. Real rendering, with nothing to install.</p></div></section>
 +      </main>
 +      <footer><div><strong>smallpt</strong><span class="footer-dot">·</span>A little experiment in light.</div><div>Originally by <a href="https://www.kevinbeason.com/smallpt/" target="_blank" rel="noreferrer">Kevin Beason ↗</a><span class="footer-dot">/</span>Built for the curious.</div></footer>

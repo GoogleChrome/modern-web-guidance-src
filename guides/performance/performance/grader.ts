@@ -25,14 +25,14 @@
  * Expectations 49-50 (Dynamic import and bundler vendor chunking): SKIPPED - The base application has no bundler or multi-module JS application code.
  */
 
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -42,9 +42,12 @@ const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -54,28 +57,41 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     });
   });
 
-  test('1. Resource hints (preconnect or dns-prefetch) are utilized for external origins', async ({ page }) => {
+  test("1. Resource hints (preconnect or dns-prefetch) are utilized for external origins", async ({
+    page,
+  }) => {
     await page.goto(demoUrl);
-    const hints = await page.locator('head link[rel="preconnect"], head link[rel="dns-prefetch"]').count();
+    const hints = await page
+      .locator('head link[rel="preconnect"], head link[rel="dns-prefetch"]')
+      .count();
     expect(hints).toBeGreaterThan(0);
   });
 
-  test('2. Critical CSS is inlined in <head> without @import and without render-blocking scripts', async ({ page }) => {
+  test("2. Critical CSS is inlined in <head> without @import and without render-blocking scripts", async ({
+    page,
+  }) => {
     await page.goto(demoUrl);
     const result = await page.evaluate(() => {
-      const hasInlineStyle = document.querySelectorAll('head style').length > 0;
-      const hasImport = Array.from(document.querySelectorAll('style')).some(s =>
-        /@import\b/i.test(s.textContent || '')
+      const hasInlineStyle = document.querySelectorAll("head style").length > 0;
+      const hasImport = Array.from(document.querySelectorAll("style")).some(
+        (s) => /@import\b/i.test(s.textContent || ""),
       );
-      const blockingHeadScripts = Array.from(document.querySelectorAll('head script[src]')).filter(script => {
-        const isModule = script.getAttribute('type') === 'module';
-        const isAsync = script.hasAttribute('async');
-        const isDefer = script.hasAttribute('defer');
-        const isRenderBlockingIntentional = script.getAttribute('blocking') === 'render';
-        return !isModule && !isAsync && !isDefer && !isRenderBlockingIntentional;
+      const blockingHeadScripts = Array.from(
+        document.querySelectorAll("head script[src]"),
+      ).filter((script) => {
+        const isModule = script.getAttribute("type") === "module";
+        const isAsync = script.hasAttribute("async");
+        const isDefer = script.hasAttribute("defer");
+        const isRenderBlockingIntentional =
+          script.getAttribute("blocking") === "render";
+        return (
+          !isModule && !isAsync && !isDefer && !isRenderBlockingIntentional
+        );
       }).length;
       const hasPerfOptimization =
-        document.querySelectorAll('link[rel="preconnect"], link[rel="dns-prefetch"], link[rel="preload"], [fetchpriority="high"]').length > 0;
+        document.querySelectorAll(
+          'link[rel="preconnect"], link[rel="dns-prefetch"], link[rel="preload"], [fetchpriority="high"]',
+        ).length > 0;
       return {
         hasInlineStyle,
         hasImport,
@@ -89,12 +105,20 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(result.hasPerfOptimization).toBe(true);
   });
 
-  test('3. LCP hero image is prioritized with fetchpriority="high"', async ({ page }) => {
+  test('3. LCP hero image is prioritized with fetchpriority="high"', async ({
+    page,
+  }) => {
     await page.goto(demoUrl);
     const lcpPriority = await page.evaluate(() => {
-      const preloadHigh = document.querySelector('link[rel="preload"][as="image"][fetchpriority="high"]');
-      const imgHigh = document.querySelector('.hero img[fetchpriority="high"], header img[fetchpriority="high"], img[fetchpriority="high"]');
-      const allHighCount = document.querySelectorAll('[fetchpriority="high"]').length;
+      const preloadHigh = document.querySelector(
+        'link[rel="preload"][as="image"][fetchpriority="high"]',
+      );
+      const imgHigh = document.querySelector(
+        '.hero img[fetchpriority="high"], header img[fetchpriority="high"], img[fetchpriority="high"]',
+      );
+      const allHighCount = document.querySelectorAll(
+        '[fetchpriority="high"]',
+      ).length;
       return {
         hasHighPriorityLcp: Boolean(preloadHigh || imgHigh),
         notOverused: allHighCount >= 1 && allHighCount <= 2,
@@ -104,12 +128,17 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(lcpPriority.notOverused).toBe(true);
   });
 
-  test('4. LCP image is discoverable in static HTML without JavaScript and is not lazy-loaded', async ({ browser }) => {
+  test("4. LCP image is discoverable in static HTML without JavaScript and is not lazy-loaded", async ({
+    browser,
+  }) => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
       } else {
@@ -118,10 +147,16 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     });
     await page.goto(demoUrl);
     const staticLcp = await page.evaluate(() => {
-      const preload = document.querySelector('link[rel="preload"][as="image"][fetchpriority="high"]');
-      const heroImg = document.querySelector('.hero img, header img, img[fetchpriority="high"]');
+      const preload = document.querySelector(
+        'link[rel="preload"][as="image"][fetchpriority="high"]',
+      );
+      const heroImg = document.querySelector(
+        '.hero img, header img, img[fetchpriority="high"]',
+      );
       if (!preload && !heroImg) return { found: false, notLazy: false };
-      const isLazy = heroImg ? heroImg.getAttribute('loading') === 'lazy' : false;
+      const isLazy = heroImg
+        ? heroImg.getAttribute("loading") === "lazy"
+        : false;
       return {
         found: true,
         notLazy: !isLazy,
@@ -132,29 +167,47 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(staticLcp.notLazy).toBe(true);
   });
 
-  test('5. Modern image formats and explicit image dimensions are used without lazy-loading above the fold', async ({ page }) => {
+  test("5. Modern image formats and explicit image dimensions are used without lazy-loading above the fold", async ({
+    page,
+  }) => {
     await page.goto(demoUrl);
     const mediaCheck = await page.evaluate(() => {
       const hasModernFormat =
-        document.querySelectorAll('picture source[type="image/avif"], picture source[type="image/webp"]').length > 0 ||
-        Array.from(document.querySelectorAll('img')).some(img => {
-          const src = img.getAttribute('src') || '';
-          const srcset = img.getAttribute('srcset') || '';
-          return /auto=format|\.webp|\.avif/i.test(src) || /\.webp|\.avif|auto=format/i.test(srcset);
+        document.querySelectorAll(
+          'picture source[type="image/avif"], picture source[type="image/webp"]',
+        ).length > 0 ||
+        Array.from(document.querySelectorAll("img")).some((img) => {
+          const src = img.getAttribute("src") || "";
+          const srcset = img.getAttribute("srcset") || "";
+          return (
+            /auto=format|\.webp|\.avif/i.test(src) ||
+            /\.webp|\.avif|auto=format/i.test(srcset)
+          );
         }) ||
-        Array.from(document.querySelectorAll('link[rel="preload"][as="image"]')).some(link => {
-          const href = link.getAttribute('href') || '';
-          const imagesrcset = link.getAttribute('imagesrcset') || '';
-          return /auto=format|\.webp|\.avif/i.test(href) || /\.webp|\.avif|auto=format/i.test(imagesrcset);
+        Array.from(
+          document.querySelectorAll('link[rel="preload"][as="image"]'),
+        ).some((link) => {
+          const href = link.getAttribute("href") || "";
+          const imagesrcset = link.getAttribute("imagesrcset") || "";
+          return (
+            /auto=format|\.webp|\.avif/i.test(href) ||
+            /\.webp|\.avif|auto=format/i.test(imagesrcset)
+          );
         });
 
-      const images = Array.from(document.querySelectorAll('img'));
-      const missingDimensions = images.filter(img => {
+      const images = Array.from(document.querySelectorAll("img"));
+      const missingDimensions = images.filter((img) => {
         const rect = img.getBoundingClientRect();
-        return rect.width > 50 && (!img.hasAttribute('width') || !img.hasAttribute('height'));
+        return (
+          rect.width > 50 &&
+          (!img.hasAttribute("width") || !img.hasAttribute("height"))
+        );
       }).length;
 
-      const hasPriorityLcp = document.querySelectorAll('link[rel="preload"][as="image"], img[fetchpriority="high"], .hero img').length > 0;
+      const hasPriorityLcp =
+        document.querySelectorAll(
+          'link[rel="preload"][as="image"], img[fetchpriority="high"], .hero img',
+        ).length > 0;
       return {
         hasModernFormat: hasModernFormat && hasPriorityLcp,
         missingDimensions,
@@ -164,12 +217,18 @@ test.describe(`Performance Optimization Expectations: ${demoName}`, () => {
     expect(mediaCheck.missingDimensions).toBe(0);
   });
 
-  test('6. The implementation does not apply content-visibility to small simpler pages and does not overuse will-change', async ({ page }) => {
+  test("6. The implementation does not apply content-visibility to small simpler pages and does not overuse will-change", async ({
+    page,
+  }) => {
     await page.goto(demoUrl);
     const containmentResult = await page.evaluate(() => {
-      const allElements = Array.from(document.querySelectorAll('*'));
-      const cvElements = allElements.filter(el => window.getComputedStyle(el).contentVisibility === 'auto');
-      const willChangeCount = allElements.filter(el => window.getComputedStyle(el).willChange !== 'auto').length;
+      const allElements = Array.from(document.querySelectorAll("*"));
+      const cvElements = allElements.filter(
+        (el) => window.getComputedStyle(el).contentVisibility === "auto",
+      );
+      const willChangeCount = allElements.filter(
+        (el) => window.getComputedStyle(el).willChange !== "auto",
+      ).length;
 
       return {
         hasCvOnSmallPage: cvElements.length > 0,

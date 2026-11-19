@@ -43,23 +43,23 @@ body {
 <form>
   <!-- Checkbox -->
   <label for="subscribe">
-    <input type="checkbox" id="subscribe" checked>
+    <input type="checkbox" id="subscribe" checked />
     Subscribe to newsletter
   </label>
 
   <!-- Radio Buttons -->
   <label for="plan-monthly">
-    <input type="radio" id="plan-monthly" name="plan" value="monthly">
+    <input type="radio" id="plan-monthly" name="plan" value="monthly" />
     Monthly
   </label>
   <label for="plan-yearly">
-    <input type="radio" id="plan-yearly" name="plan" value="yearly" checked>
+    <input type="radio" id="plan-yearly" name="plan" value="yearly" checked />
     Yearly
   </label>
 
   <!-- Range Slider -->
   <label for="volume">Volume:</label>
-  <input type="range" id="volume" min="0" max="100" value="70">
+  <input type="range" id="volume" min="0" max="100" value="70" />
 
   <!-- Progress Bar -->
   <label for="file">Upload Progress:</label>
@@ -86,16 +86,25 @@ For browsers that do not support `accent-color`, the form controls fall back to 
 You MUST use the `@supports not` rule to apply custom fallback styles only when `accent-color` is not supported. This ensures you leverage the simplicity of `accent-color` for modern browsers while guaranteeing a consistent branded experience for older ones.
 
 #### 1. HTML Structure
+
 Ensure your labels wrap the text in a `<span>` to allow for sibling selectors in CSS:
+
 ```html
 <label for="subscribe-fallback">
-  <input type="checkbox" id="subscribe-fallback" class="visually-hidden" checked>
+  <input
+    type="checkbox"
+    id="subscribe-fallback"
+    class="visually-hidden"
+    checked
+  />
   <span>Subscribe to newsletter</span>
 </label>
 ```
 
 #### 2. CSS Fallback
+
 Apply custom styles within a `@supports not` block:
+
 ```css
 /* Fallback for older browsers without accent-color */
 @supports not (accent-color: var(--brand-color)) {
@@ -173,7 +182,11 @@ Apply custom styles within a `@supports not` block:
     width: 100%;
     height: 8px;
     /* Use gradient to show progress for a static value (e.g., 70%) or update with JS */
-    background: linear-gradient(to right, var(--brand-color, #6200ee) 70%, #ccc 70%);
+    background: linear-gradient(
+      to right,
+      var(--brand-color, #6200ee) 70%,
+      #ccc 70%
+    );
     border-radius: 4px;
   }
 
@@ -244,18 +257,24 @@ Apply custom styles within a `@supports not` block:
 To make the progress fill move with the thumb on a range slider in Webkit browsers (without `accent-color`), you can use a CSS variable and a small amount of JavaScript.
 
 1. **Update CSS**: Use a CSS variable for the gradient stop:
+
 ```css
 input[type="range"]::-webkit-slider-runnable-track {
-  background: linear-gradient(to right, var(--brand-color) var(--progress, 0%), #ccc var(--progress, 0%));
+  background: linear-gradient(
+    to right,
+    var(--brand-color) var(--progress, 0%),
+    #ccc var(--progress, 0%)
+  );
 }
 ```
 
 2. **Add JavaScript**: Update the variable on the `input` event:
+
 ```javascript
-if (!CSS.supports('accent-color')) {
-  const slider = document.getElementById('volume');
-  slider.addEventListener('input', (e) => {
-    e.target.style.setProperty('--progress', `${e.target.value}%`);
+if (!CSS.supports("accent-color")) {
+  const slider = document.getElementById("volume");
+  slider.addEventListener("input", (e) => {
+    e.target.style.setProperty("--progress", `${e.target.value}%`);
   });
 }
 ```

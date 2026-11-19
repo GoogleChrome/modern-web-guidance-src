@@ -18,7 +18,7 @@ index 66c9173..88300eb 100644
        top: 0;
        z-index: 1000;
      }
- 
+
      .logo {
 +      flex: 0 0 auto;
 +      white-space: nowrap;
@@ -26,7 +26,7 @@ index 66c9173..88300eb 100644
        font-weight: bold;
        letter-spacing: 1px;
 @@ -48,24 +51,47 @@
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: nowrap;
@@ -35,12 +35,12 @@ index 66c9173..88300eb 100644
 +      overflow-x: auto;
        list-style: none;
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      flex: 0 0 auto;
      }
- 
+
      nav a {
 +      display: block;
 +      white-space: nowrap;
@@ -49,13 +49,13 @@ index 66c9173..88300eb 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
        color: var(--accent);
      }
- 
+
 +    nav a:focus-visible {
 +      outline: 2px solid var(--accent);
 +      outline-offset: -2px;
@@ -76,9 +76,9 @@ index 66c9173..88300eb 100644
        border: 1px solid var(--accent);
        padding: 5px 12px;
 @@ -157,7 +183,7 @@
- 
+
  <body>
- 
+
 -  <nav>
 +  <nav aria-label="Main navigation">
      <div class="logo">THE DAILY GRIND</div>

@@ -51,9 +51,9 @@ index 66c9173..e3edab1 100644
        --primary: #4e342e;
        --secondary: #d7ccc8;
 @@ -157,6 +183,14 @@
- 
+
  <body>
- 
+
 +  <aside class="migration-banner" role="region" aria-label="App migration notice">
 +    <h2>The Daily Grind has moved</h2>
 +    <p>We've moved to a new address! If your browser does not migrate the app automatically, please visit and install the new version at

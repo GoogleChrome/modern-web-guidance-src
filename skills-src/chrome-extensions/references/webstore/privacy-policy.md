@@ -3,6 +3,7 @@
 ## When is a Privacy Policy Required?
 
 A privacy policy URL is **required** if your extension:
+
 - Handles personal or sensitive user data (as defined by CWS policies)
 - Uses any of these permissions: `identity`, `cookies`, `webRequest`, `browsingData`,
   `history`, `bookmarks`, `topSites`, `<all_urls>` host permission
@@ -15,6 +16,7 @@ It demonstrates professionalism and can prevent delays if a reviewer flags your 
 ## Where to Host It
 
 The privacy policy must be at a publicly accessible URL. Options:
+
 - **GitHub Pages**: Free, version-controlled. Create a `privacy.md` in a `docs/` branch.
 - **GitHub Gist**: Quick and dirty. Create a public gist and link to the raw URL.
 - **Project website**: If you have one, add a `/privacy` page.

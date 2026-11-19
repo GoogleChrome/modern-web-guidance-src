@@ -30,13 +30,13 @@ At build time, compute the hash once and inline it into your code:
 
 ```javascript
 // build-hash.js (Node.js)
-import { readFile } from 'node:fs/promises';
+import { readFile } from "node:fs/promises";
 
-const bytes = await readFile('dist/assets/shared-library.js');
-const digest = await crypto.subtle.digest('SHA-256', bytes);
+const bytes = await readFile("dist/assets/shared-library.js");
+const digest = await crypto.subtle.digest("SHA-256", bytes);
 const hex = Array.from(new Uint8Array(digest), (byte) =>
-  byte.toString(16).padStart(2, '0'),
-).join('');
+  byte.toString(16).padStart(2, "0"),
+).join("");
 ```
 
 At runtime, load every large shared asset through one reusable helper that looks the file up by that hash:
@@ -67,7 +67,7 @@ async function loadAsset(url, hash, origins) {
     } catch (err) {
       // A NotFoundError does not prove the file is absent from COS. Fall
       // back to the network either way; never treat it as fatal.
-      blocked = err.name === 'NotAllowedError';
+      blocked = err.name === "NotAllowedError";
     }
   }
 
@@ -98,15 +98,15 @@ async function loadAsset(url, hash, origins) {
 }
 
 const library = await loadAsset(
-  '/assets/shared-library.js',
+  "/assets/shared-library.js",
   {
-    algorithm: 'SHA-256',
+    algorithm: "SHA-256",
     // Example-only hash value; use the hex string from your build step.
-    value: '8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4',
+    value: "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
   },
   // MANDATORY: origins: '*' is only appropriate for genuinely popular,
   // non-proprietary resources.
-  '*',
+  "*",
 );
 ```
 

@@ -16,35 +16,38 @@
  *   PI_WORKERS              - Concurrent worker count (defaults to 10)
  */
 
-import { mergeSuiteConfig, Agents } from './config.ts';
+import { mergeSuiteConfig, Agents } from "./config.ts";
 
 function buildPiSuiteName(): string {
   if (process.env.PI_SUITE_NAME) {
     return process.env.PI_SUITE_NAME;
   }
   const timestamp = new Date()
-    .toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' })
-    .replace(' ', '_')
-    .replace(/:/g, '-');
+    .toLocaleString("sv-SE", { timeZone: "America/Los_Angeles" })
+    .replace(" ", "_")
+    .replace(/:/g, "-");
   const rawModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
   if (!rawModel) {
     return `pi-eval-${timestamp}`;
   }
-  const baseModel = rawModel.split(':')[0] || rawModel;
-  const modelSlug = (baseModel.split('/').pop() || baseModel)
-    .replace(/[^a-zA-Z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+  const baseModel = rawModel.split(":")[0] || rawModel;
+  const modelSlug = (baseModel.split("/").pop() || baseModel)
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .toLowerCase();
   return `pi-${modelSlug}-${timestamp}`;
 }
 
-const parsedWorkers = process.env.PI_WORKERS ? Number.parseInt(process.env.PI_WORKERS, 10) : NaN;
+const parsedWorkers = process.env.PI_WORKERS
+  ? Number.parseInt(process.env.PI_WORKERS, 10)
+  : NaN;
 
 export default mergeSuiteConfig({
   name: buildPiSuiteName(),
   agent: Agents.PI,
   numRuns: 1,
   tasks: [], // Empty = run all tasks, or pass task arguments to `gd eval`
-  skillsToEnable: ['modern-web-guidance'],
-  workerCount: Number.isFinite(parsedWorkers) && parsedWorkers > 0 ? parsedWorkers : 10,
+  skillsToEnable: ["modern-web-guidance"],
+  workerCount:
+    Number.isFinite(parsedWorkers) && parsedWorkers > 0 ? parsedWorkers : 10,
 });

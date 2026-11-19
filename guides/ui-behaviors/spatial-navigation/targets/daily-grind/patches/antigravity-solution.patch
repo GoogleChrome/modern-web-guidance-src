@@ -5,7 +5,7 @@ index 66c9173..8a26736 100644
 @@ -135,6 +135,20 @@
        background: #3e2723;
      }
- 
+
 +    .btn:focus,
 +    .btn:focus-visible,
 +    .btn.active {
@@ -52,10 +52,10 @@ index 66c9173..8a26736 100644
 @@ -207,6 +221,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script src="spatial-navigation.js"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..bb70d39 100644
@@ -137,7 +137,7 @@ index 0000000..e5a214e
 +   */
 +  function getCandidates(container) {
 +    const raw = Array.from(container.querySelectorAll(CANDIDATE_SELECTOR));
-+    
++
 +    // Filter visible elements
 +    const visible = raw.filter(el => {
 +      // If there are nested spatial containers, keep candidates scoped to nearest container

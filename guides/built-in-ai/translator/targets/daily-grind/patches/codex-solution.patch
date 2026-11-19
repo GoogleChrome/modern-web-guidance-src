@@ -439,7 +439,7 @@ index 66c9173..a4a3175 100644
 -      </div>
 -    </section>
 -  </main>
- 
+
 -  <footer>
 -    <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -502,7 +502,7 @@ index 66c9173..a4a3175 100644
 +          </div>
 +          <a class="text-link text-link-dark" href="/menu">See the full menu <span aria-hidden="true">↗</span></a>
 +        </div>
- 
+
 -</body>
 +        <div class="menu-grid" id="translatable-menu">
 +          <article class="menu-card menu-card-featured">
@@ -547,7 +547,7 @@ index 66c9173..a4a3175 100644
 +        </div>
 +      </section>
 +    </main>
- 
+
 +    <footer id="visit">
 +      <div class="footer-brand">
 +        <span class="logo-mark logo-mark-light" aria-hidden="true">DG</span>

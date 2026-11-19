@@ -46,7 +46,7 @@ const isBookmarked = readingList.includes(article.slug);
         <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
             {article.data.title}
         </h1>
-        
+
         <!-- Sub-headline / Lead Paragraph -->
         <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
             {article.data.summary}
@@ -61,7 +61,7 @@ const isBookmarked = readingList.includes(article.slug);
         <figure class="mb-5">
             {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
             {article.data.prompt_comment ? (
-                <img 
+                <img
                     src={article.data.image}
                     alt={article.data.title}
                     width="1200"
@@ -70,9 +70,9 @@ const isBookmarked = readingList.includes(article.slug);
                     crossorigin="use-credentials"
                 />
             ) : (
-                <Image 
-                    src={articleImage} 
-                    alt={article.data.title} 
+                <Image
+                    src={articleImage}
+                    alt={article.data.title}
                     width={1200}
                     height={675}
                     format="webp"

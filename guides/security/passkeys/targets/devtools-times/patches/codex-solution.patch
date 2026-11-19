@@ -3,9 +3,9 @@ index 4479b53..bd6b5d8 100644
 --- a/README.md
 +++ b/README.md
 @@ -9,6 +9,72 @@ pnpm install && pnpm run start
- 
+
  The application will now be running on `http://localhost:11224`.
- 
+
 +## Passkey UI integration
 +
 +Sign-in and sign-up use the existing external Times authentication service.
@@ -73,7 +73,7 @@ index 4479b53..bd6b5d8 100644
 +reauthentication. No application server was started for build verification.
 +
  ## Tech Stack
- 
+
  - **[Astro](https://astro.build/)**: The web framework for building content-driven websites.
 diff --git a/package.json b/package.json
 index bfffcf0..bf5c217 100644
@@ -322,7 +322,7 @@ index a7c52b6..faa77b7 100644
 @@ -1,99 +1,5 @@
 -import React, { useState } from 'react';
 +import AuthForm from './AuthForm';
- 
+
  export default function SignInForm() {
 -  const [username, setUsername] = useState('');
 -  const [password, setPassword] = useState('');
@@ -365,13 +365,13 @@ index a7c52b6..faa77b7 100644
 -  return (
 -    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
--      
+-
 -      {error && (
 -        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 -          {error}
 -        </div>
 -      )}
--      
+-
 -      {success && (
 -        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
 -          {success}
@@ -392,7 +392,7 @@ index a7c52b6..faa77b7 100644
 -            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 -          />
 -        </div>
--        
+-
 -        <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
 -            Password
@@ -428,7 +428,7 @@ index 589fe62..3137e04 100644
 @@ -1,104 +1,5 @@
 -import React, { useState } from 'react';
 +import AuthForm from './AuthForm';
- 
+
  export default function SignUpForm() {
 -  const [username, setUsername] = useState('');
 -  const [password, setPassword] = useState('');
@@ -472,13 +472,13 @@ index 589fe62..3137e04 100644
 -  return (
 -    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
--      
+-
 -      {error && (
 -        <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 -          {error}
 -        </div>
 -      )}
--      
+-
 -      {success && (
 -        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
 -          {success}
@@ -499,7 +499,7 @@ index 589fe62..3137e04 100644
 -            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
 -          />
 -        </div>
--        
+-
 -        <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
 -            Password

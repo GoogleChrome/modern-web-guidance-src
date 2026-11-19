@@ -12,18 +12,22 @@ This guide details how to automatically and silently register a passkey for a us
 
 ## The Right Trigger Moment
 
-Automatic passkey creation (also known as Conditional Create or silent post-login promotion) MUST only be triggered **immediately after a successful, full sign-in that involved a password**. 
-* Do not attempt conditional creation for passwordless flows (e.g., magic links, SMS OTP, or identity federation).
-* If multi-factor authentication is required, you MUST wait until all factors have succeeded before initiating conditional creation.
-* Ensure a valid, authenticated user session is active before making requests to creation endpoints.
+Automatic passkey creation (also known as Conditional Create or silent post-login promotion) MUST only be triggered **immediately after a successful, full sign-in that involved a password**.
+
+- Do not attempt conditional creation for passwordless flows (e.g., magic links, SMS OTP, or identity federation).
+- If multi-factor authentication is required, you MUST wait until all factors have succeeded before initiating conditional creation.
+- Ensure a valid, authenticated user session is active before making requests to creation endpoints.
 
 ## Implementation Steps
 
 ### 1. Abort Prior Autofill Actions
+
 If the sign-in page utilizes form autofill (Conditional UI/Get), the active credential get call must be aborted to prevent browser conflicts.
-* Call `abortController.abort()` on the `AbortController` attached to the pending `navigator.credentials.get()` autofill request before calling `navigator.credentials.create()`.
+
+- Call `abortController.abort()` on the `AbortController` attached to the pending `navigator.credentials.get()` autofill request before calling `navigator.credentials.create()`.
 
 ### 2. Feature Detection
+
 Determine whether Conditional Create is available by checking `conditionalCreate` with `PublicKeyCredential.getClientCapabilities()`.
 
 ```javascript
@@ -34,24 +38,28 @@ if (capabilities.conditionalCreate) {
 ```
 
 ### 3. Create a passkey with Conditional Create
-* Ensure the server's registration options endpoint includes the predefined RP ID in `rp.id` so `publicKey.rp.id` is populated if `PublicKeyCredential.signalUnknownCredential()` runs in Step 6, because omitting `rp.id` in WebAuthn creation options leaves `publicKey.rp.id` undefined on the client.
-* Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
-* Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
+
+- Ensure the server's registration options endpoint includes the predefined RP ID in `rp.id` so `publicKey.rp.id` is populated if `PublicKeyCredential.signalUnknownCredential()` runs in Step 6, because omitting `rp.id` in WebAuthn creation options leaves `publicKey.rp.id` undefined on the client.
+- Populate `excludeCredentials` with the user's existing passkey credential IDs to avoid registering duplicate keys.
+- Pass `mediation: 'conditional'` within the `navigator.credentials.create()` options. This signals the browser to handle the passkey creation flow silently in the background or contextually without throwing obtrusive modal dialogs.
 
 ### 4. Silent Error Handling
-* Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
+
+- Wrap the passkey creation prompt (`navigator.credentials.create`) in a try/catch block. You MUST catch and silently ignore typical user-facing exceptions (`InvalidStateError`, `NotAllowedError`, `AbortError`) without rendering any error UI to the user.
 
 ### 5. Server-Side User Presence Verification
-* The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
+
+- The server-side verification endpoint MUST relax the User Presence (UP) requirement (`requireUserPresence: false`) **ONLY** when verifying credentials produced by a conditional-create trigger. Strict presence verification must remain active for standard explicit creations.
 
 ### 6. Handle Failed Server Verification gracefully
-* If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rp.id, credentialId: encodedResponse.id })` to prevent orphaned credentials from lingering in the passkey provider. Always read `rpId` from `publicKey.rp.id` in the server's creation options; **DO NOT** derive `rpId` from `window.location.hostname` on the client, which can mismatch a parent-domain or related-origin RP ID.
+
+- If `navigator.credentials.create()` succeeds but the server verification fetch returns a bad response (e.g., signature verification fails), invoke `PublicKeyCredential.signalUnknownCredential({ rpId: publicKey.rp.id, credentialId: encodedResponse.id })` to prevent orphaned credentials from lingering in the passkey provider. Always read `rpId` from `publicKey.rp.id` in the server's creation options; **DO NOT** derive `rpId` from `window.location.hostname` on the client, which can mismatch a parent-domain or related-origin RP ID.
 
 ## Code Example
 
 ```javascript
 // optionsFetch and registerVerifyFetch are app-defined server endpoint requests
-import { optionsFetch, registerVerifyFetch } from './api.js';
+import { optionsFetch, registerVerifyFetch } from "./api.js";
 
 async function triggerConditionalCreate(loginAbortController) {
   const capabilities = await PublicKeyCredential.getClientCapabilities();
@@ -64,21 +72,24 @@ async function triggerConditionalCreate(loginAbortController) {
 
   // 2. Fetch creation options signaling the backend that this is a conditional request (server options must include rp.id)
   const creationOptionsJSON = await optionsFetch({ conditional: true });
-  const publicKey = PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
+  const publicKey =
+    PublicKeyCredential.parseCreationOptionsFromJSON(creationOptionsJSON);
 
   let credential;
   try {
     // 3. Invoke silent credentials creation prompt
-    credential = await navigator.credentials.create({ 
+    credential = await navigator.credentials.create({
       publicKey,
-      mediation: 'conditional' // Silent background creation mediation
+      mediation: "conditional", // Silent background creation mediation
     });
   } catch (e) {
     // 4. Silently swallow common WebAuthn browser exceptions
-    if (['InvalidStateError', 'NotAllowedError', 'AbortError'].includes(e.name)) {
-      return; 
+    if (
+      ["InvalidStateError", "NotAllowedError", "AbortError"].includes(e.name)
+    ) {
+      return;
     }
-    console.error('Unexpected conditional create error:', e);
+    console.error("Unexpected conditional create error:", e);
     return;
   }
 
@@ -91,16 +102,16 @@ async function triggerConditionalCreate(loginAbortController) {
       if (PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
           rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
-          credentialId: encodedResponse.id
+          credentialId: encodedResponse.id,
         });
       }
     }
   } catch (serverErr) {
-    console.error('Verification network failure:', serverErr);
+    console.error("Verification network failure:", serverErr);
     if (PublicKeyCredential.signalUnknownCredential) {
       await PublicKeyCredential.signalUnknownCredential({
         rpId: publicKey.rp.id, // Always use the server-provided rp.id; DO NOT use window.location.hostname
-        credentialId: encodedResponse.id
+        credentialId: encodedResponse.id,
       });
     }
   }
@@ -117,7 +128,7 @@ Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is av
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-import 'webauthn-polyfills';
+import "webauthn-polyfills";
 ```
 
 Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
@@ -127,7 +138,8 @@ Without a bundler, serve the package from your own origin, or import it from a C
 {{ BASELINE_STATUS("webauthn-signals") }}
 
 The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
-*   **Fallback Experience**: Gated via `if (PublicKeyCredential.signalUnknownCredential)`. If unsupported, the background verification sync is bypassed gracefully without throwing browser exceptions.
+
+- **Fallback Experience**: Gated via `if (PublicKeyCredential.signalUnknownCredential)`. If unsupported, the background verification sync is bypassed gracefully without throwing browser exceptions.
 
 ### Easy JSON Serialization Fallback
 
@@ -137,7 +149,7 @@ Load `webauthn-polyfills` so `PublicKeyCredential.parseCreationOptionsFromJSON()
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-import 'webauthn-polyfills';
+import "webauthn-polyfills";
 ```
 
 Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.

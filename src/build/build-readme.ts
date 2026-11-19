@@ -6,46 +6,49 @@ import { scanAllGuides } from "../core/guide-validation.ts";
 import { getFeatureName } from "../core/baseline.ts";
 import { rootDir } from "../core/paths.ts";
 
-
 const CAT = {
-  CSS: 'CSS & Layout',
-  HTML: 'HTML & DOM',
-  JS: 'JavaScript & APIs'
+  CSS: "CSS & Layout",
+  HTML: "HTML & DOM",
+  JS: "JavaScript & APIs",
 } as const;
 
 const CAT_PRIORITY = [CAT.CSS, CAT.HTML, CAT.JS] as const;
 
 const CSS_ROOTS = new Set([
-  'css', 
-  'scrolling', 
-  'animation', 
-  'view-transitions', 
-  'clipping-shapes-masking'
+  "css",
+  "scrolling",
+  "animation",
+  "view-transitions",
+  "clipping-shapes-masking",
 ]);
 
-const HTML_ROOTS = new Set([
-  'html', 
-  'dom', 
-  'resource-hints'
-]);
+const HTML_ROOTS = new Set(["html", "dom", "resource-hints"]);
 
-const getRoot = (g: string): string => groups[g]?.parent ? getRoot(groups[g].parent) : g;
+const getRoot = (g: string): string =>
+  groups[g]?.parent ? getRoot(groups[g].parent) : g;
 
 function getCategoryForFeature(id: string): string {
   const feat = features[id];
   const featGroups = [feat?.group ?? []].flat();
 
-  const resolved = new Set(featGroups.map(g => {
-    const r = getRoot(g);
-    return CSS_ROOTS.has(r) ? CAT.CSS : HTML_ROOTS.has(r) ? CAT.HTML : CAT.JS;
-  }));
+  const resolved = new Set(
+    featGroups.map((g) => {
+      const r = getRoot(g);
+      return CSS_ROOTS.has(r) ? CAT.CSS : HTML_ROOTS.has(r) ? CAT.HTML : CAT.JS;
+    }),
+  );
 
-  const matchedCat = CAT_PRIORITY.find(c => resolved.has(c));
+  const matchedCat = CAT_PRIORITY.find((c) => resolved.has(c));
   if (matchedCat) return matchedCat;
 
   // Fallback checks on ID itself (for features without groups)
-  const cssIds = ['anchor-positioning', 'container-anchor-position-queries', 'highlight', 'scroll-initial-target'];
-  const htmlIds = ['link-rel-expect', 'invoker-commands', 'interest-invokers'];
+  const cssIds = [
+    "anchor-positioning",
+    "container-anchor-position-queries",
+    "highlight",
+    "scroll-initial-target",
+  ];
+  const htmlIds = ["link-rel-expect", "invoker-commands", "interest-invokers"];
 
   if (cssIds.includes(id)) return CAT.CSS;
   if (htmlIds.includes(id)) return CAT.HTML;
@@ -55,7 +58,7 @@ function getCategoryForFeature(id: string): string {
 
 function listToMarkdownTable(items: string[], colCount = 3): string {
   const rowCount = Math.ceil(items.length / colCount);
-  let md = '| | | |\n| :--- | :--- | :--- |\n';
+  let md = "| | | |\n| :--- | :--- | :--- |\n";
   for (let r = 0; r < rowCount; r++) {
     const rowItems = [];
     for (let c = 0; c < colCount; c++) {
@@ -63,18 +66,23 @@ function listToMarkdownTable(items: string[], colCount = 3): string {
       if (idx < items.length) {
         rowItems.push(items[idx]);
       } else {
-        rowItems.push('');
+        rowItems.push("");
       }
     }
-    md += `| ${rowItems.join(' | ')} |\n`;
+    md += `| ${rowItems.join(" | ")} |\n`;
   }
   return md;
 }
 
 export function getFeaturesAndUseCases() {
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished && inv.featureIds.length > 0);
+  const readyGuides = scanAllGuides().filter(
+    (inv) => inv.isPublished && inv.featureIds.length > 0,
+  );
   const allFeatureIds = new Set<string>();
-  const categoryMap = new Map<string, { id: string; category: string; description: string }[]>();
+  const categoryMap = new Map<
+    string,
+    { id: string; category: string; description: string }[]
+  >();
 
   for (const guide of readyGuides) {
     const guidePath = path.join(guide.dir, "guide.md");
@@ -85,9 +93,9 @@ export function getFeaturesAndUseCases() {
       const content = fs.readFileSync(guidePath, "utf-8");
       const { data } = matter(content);
       if (data.description) description = data.description;
-    } catch { }
+    } catch {}
 
-    guide.featureIds.forEach(id => allFeatureIds.add(id));
+    guide.featureIds.forEach((id) => allFeatureIds.add(id));
 
     if (!categoryMap.has(guide.category)) {
       categoryMap.set(guide.category, []);
@@ -95,7 +103,7 @@ export function getFeaturesAndUseCases() {
     categoryMap.get(guide.category)!.push({
       id: guide.name,
       category: guide.category,
-      description
+      description,
     });
   }
 
@@ -106,20 +114,20 @@ export function getFeaturesAndUseCases() {
   };
 }
 
-export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[]) {
-  const {
-    readyGuides,
-    allFeatureIds,
-    categoryMap,
-  } = getFeaturesAndUseCases();
+export function updateReadmeWithFeaturesAndUseCases(
+  targetDirs: string | string[],
+) {
+  const { readyGuides, allFeatureIds, categoryMap } = getFeaturesAndUseCases();
 
   // Determine all features to generate the summary text
   const allFeaturesSorted = Array.from(allFeatureIds)
-    .map(fId => ({ id: fId, name: getFeatureName(fId) }))
+    .map((fId) => ({ id: fId, name: getFeatureName(fId) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // Sort categories alphabetically by slug
-  const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => a.localeCompare(b));
+  const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) =>
+    a.localeCompare(b),
+  );
 
   let dynamicMd = `#### The full list\n\n`;
 
@@ -127,7 +135,7 @@ export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[
   const categories: Record<string, { id: string; name: string }[]> = {
     [CAT.HTML]: [],
     [CAT.CSS]: [],
-    [CAT.JS]: []
+    [CAT.JS]: [],
   };
 
   for (const f of allFeaturesSorted) {
@@ -145,12 +153,12 @@ export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[
 
     dynamicMd += `### ${cat} (${list.length} features)\n\n`;
 
-    const linkedItems = list.map(f => {
-      const escapedName = f.name.replace(/</g, '&lt;');
+    const linkedItems = list.map((f) => {
+      const escapedName = f.name.replace(/</g, "&lt;");
       return `[${escapedName}](https://web-platform-dx.github.io/web-features-explorer/features/${f.id}/)`;
     });
 
-    dynamicMd += listToMarkdownTable(linkedItems) + '\n';
+    dynamicMd += listToMarkdownTable(linkedItems) + "\n";
   }
 
   dynamicMd += `</details>\n\n`;
@@ -163,7 +171,9 @@ export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[
     ucs.sort((a, b) => a.id.localeCompare(b.id));
     for (const uc of ucs) {
       const url = `https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/guides/${uc.category}/${uc.id}.md`;
-      const escapedDescription = uc.description.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const escapedDescription = uc.description
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
       dynamicMd += `- **[${uc.id}](${url})**: ${escapedDescription}\n`;
     }
     dynamicMd += `\n`;
@@ -180,31 +190,38 @@ export function updateReadmeWithFeaturesAndUseCases(targetDirs: string | string[
       destReadmePath,
       "<!-- INJECT_SKILL_COVERAGE_START -->",
       "<!-- INJECT_SKILL_COVERAGE_END -->",
-      dynamicMd
+      dynamicMd,
     );
     updateFileBetweenMarkers(
       destReadmePath,
       "<!-- INJECT_EVAL_RESULTS_START -->",
       "<!-- INJECT_EVAL_RESULTS_END -->",
-      evalsMd
+      evalsMd,
     );
   }
 
-  return { featuresCount: allFeaturesSorted.length, useCasesCount: readyGuides.length };
+  return {
+    featuresCount: allFeaturesSorted.length,
+    useCasesCount: readyGuides.length,
+  };
 }
 
 function generateEvalsResultsTable(): string {
-  let evalsMd = '';
-  const evalsSummaryPath = path.join(rootDir, 'src/build/eval-results-summary.json');
+  let evalsMd = "";
+  const evalsSummaryPath = path.join(
+    rootDir,
+    "src/build/eval-results-summary.json",
+  );
   if (!fs.existsSync(evalsSummaryPath)) {
     throw new Error(`Missing evals summary file: ${evalsSummaryPath}`);
   }
 
   try {
-    const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, 'utf-8'));
+    const evalsData = JSON.parse(fs.readFileSync(evalsSummaryPath, "utf-8"));
     if (Array.isArray(evalsData) && evalsData.length > 0) {
-      evalsMd += '| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |\n';
-      evalsMd += '| :--- | :--- | :---: | :---: |\n';
+      evalsMd +=
+        "| Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |\n";
+      evalsMd += "| :--- | :--- | :---: | :---: |\n";
 
       // Stratified Recency Selection Algorithm
       const selectedRuns: any[] = [];
@@ -212,7 +229,7 @@ function generateEvalsResultsTable(): string {
 
       for (const run of evalsData) {
         let cleanModel = run.model;
-        if (cleanModel.startsWith('claude-')) {
+        if (cleanModel.startsWith("claude-")) {
           cleanModel = cleanModel.slice(7);
         }
         const key = `${run.agent}|||${cleanModel}`;
@@ -223,7 +240,10 @@ function generateEvalsResultsTable(): string {
       }
 
       for (const key of Object.keys(groups)) {
-        groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        groups[key].sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
       }
 
       const K = 2;
@@ -236,29 +256,40 @@ function generateEvalsResultsTable(): string {
       }
 
       if (selectedRuns.length > 10) {
-        selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        selectedRuns.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
         selectedRuns.splice(10);
       } else if (selectedRuns.length < 10) {
-        remainingPool.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        remainingPool.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
         const fillCount = 10 - selectedRuns.length;
         selectedRuns.push(...remainingPool.slice(0, fillCount));
       }
 
-      selectedRuns.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      selectedRuns.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
 
       for (const run of selectedRuns) {
         const suiteLabel = formatSuiteLabel(run.testId, run.timestamp);
         const agentModel = formatAgentModel(run.agent, run.model);
         const tasks = run.taskCount;
         const assertions = run.assertionCount;
-        const tasksAssertions = assertions ? `${tasks} / ${assertions}` : `${tasks}`;
+        const tasksAssertions = assertions
+          ? `${tasks} / ${assertions}`
+          : `${tasks}`;
         const uplift = formatUplift(run.unguidedPassRate, run.guidedPassRate);
 
         evalsMd += `| ${suiteLabel} | ${agentModel} | ${tasksAssertions} | ${uplift} |\n`;
       }
     }
   } catch (e) {
-    console.error('Failed to parse evals summary:', e);
+    console.error("Failed to parse evals summary:", e);
   }
 
   return evalsMd;
@@ -266,16 +297,21 @@ function generateEvalsResultsTable(): string {
 
 function formatAgentModel(agent: string, model: string): string {
   let cleanModel = model;
-  if (cleanModel.startsWith('claude-')) {
+  if (cleanModel.startsWith("claude-")) {
     cleanModel = cleanModel.slice(7);
   }
-  const modelStr = cleanModel && cleanModel !== 'unknown' ? ` (${cleanModel})` : '';
+  const modelStr =
+    cleanModel && cleanModel !== "unknown" ? ` (${cleanModel})` : "";
   return `${agent}${modelStr}`;
 }
 
 function formatSuiteLabel(testId: string, timestamp: string): string {
   const date = new Date(timestamp);
-  const dateStr = date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+  const dateStr = date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+  });
   return dateStr;
 }
 
@@ -285,17 +321,20 @@ function formatUplift(unguided: number, guided: number): string {
   return `${unguided}% → ${guided}% (**${upliftStr}**)`;
 }
 
-function updateFileBetweenMarkers(filePath: string, markerStart: string, markerEnd: string, newContent: string) {
+function updateFileBetweenMarkers(
+  filePath: string,
+  markerStart: string,
+  markerEnd: string,
+  newContent: string,
+) {
   if (!fs.existsSync(filePath)) return;
-  let content = fs.readFileSync(filePath, 'utf8');
+  let content = fs.readFileSync(filePath, "utf8");
   const startIndex = content.indexOf(markerStart);
   const endIndex = content.indexOf(markerEnd);
   if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
     const before = content.substring(0, startIndex + markerStart.length);
     const after = content.substring(endIndex);
-    content = before + '\n' + newContent.trim() + '\n' + after;
-    fs.writeFileSync(filePath, content, 'utf8');
+    content = before + "\n" + newContent.trim() + "\n" + after;
+    fs.writeFileSync(filePath, content, "utf8");
   }
 }
-
-

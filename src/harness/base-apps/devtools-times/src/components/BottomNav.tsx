@@ -32,13 +32,13 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
                         return (
-                            <div 
+                            <div
                                 key={groupName}
                                 onMouseEnter={() => setActiveCategory(groupName)}
                                 className="h-full flex items-center"
                             >
-                                <a 
-                                    href="#" 
+                                <a
+                                    href="#"
                                     className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
                                 >
                                     <span>{groupName}</span>
@@ -51,8 +51,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
                     })}
                 </nav>
             </div>
-            <FlyoutMenu 
-                isOpen={activeCategory !== null} 
+            <FlyoutMenu
+                isOpen={activeCategory !== null}
                 categories={activeSubCategories.filter(c => categories.includes(c))}
                 articles={articles}
                 reports={filteredReports}

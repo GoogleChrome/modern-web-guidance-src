@@ -3,49 +3,48 @@ import {
   SyntaxKind,
   type CallExpression,
   type ObjectLiteralExpression,
-} from 'ts-morph';
+} from "ts-morph";
 import {
   isLibraryReference,
   isProtectedByFeatureGuard,
   resolveLocalExpression,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
-import { createJsCallMatcher } from '../scanners/js-scanner.ts';
-import type {
-  AnalyzerRule,
-  JsRuleMatcher,
-} from '../schema.ts';
+} from "../scanners/ast-helpers.ts";
+import { createJsCallMatcher } from "../scanners/js-scanner.ts";
+import type { AnalyzerRule, JsRuleMatcher } from "../schema.ts";
 
-export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = 'c28b54e4a72e';
+export const INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH = "c28b54e4a72e";
 
 const INTEREST_GUARD_TOKENS = [
-  'interestfor',
-  'interesttarget',
-  'popover',
+  "interestfor",
+  "interesttarget",
+  "popover",
 ] as const;
 
 const NON_SIMPLE_TIPPY_OPTION_KEYS: ReadonlySet<string> = new Set([
-  'interactive',
-  'followCursor',
-  'allowHTML',
-  'onShow',
-  'onShown',
-  'onTrigger',
-  'onUntrigger',
-  'onCreate',
-  'onMount',
-  'onHide',
-  'onHidden',
-  'onClickOutside',
-  'popperOptions',
-  'plugins',
-  'sticky',
-  'inlinePositioning',
-  'appendTo',
-  'render',
+  "interactive",
+  "followCursor",
+  "allowHTML",
+  "onShow",
+  "onShown",
+  "onTrigger",
+  "onUntrigger",
+  "onCreate",
+  "onMount",
+  "onHide",
+  "onHidden",
+  "onClickOutside",
+  "popperOptions",
+  "plugins",
+  "sticky",
+  "inlinePositioning",
+  "appendTo",
+  "render",
 ]);
 
-function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression): boolean {
+function isInteractiveOrClickPopoverConfig(
+  optionsObj: ObjectLiteralExpression,
+): boolean {
   for (const prop of optionsObj.getProperties()) {
     if (
       !Node.isPropertyAssignment(prop) &&
@@ -58,13 +57,16 @@ function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression):
     if (NON_SIMPLE_TIPPY_OPTION_KEYS.has(name)) {
       if (Node.isPropertyAssignment(prop)) {
         const init = prop.getInitializer();
-        if (init && unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword) {
+        if (
+          init &&
+          unwrapExpression(init).getKind() === SyntaxKind.FalseKeyword
+        ) {
           continue;
         }
       }
       return true;
     }
-    if (name === 'content') {
+    if (name === "content") {
       if (Node.isMethodDeclaration(prop)) {
         return true;
       }
@@ -81,13 +83,16 @@ function isInteractiveOrClickPopoverConfig(optionsObj: ObjectLiteralExpression):
         }
       }
     }
-    if (name === 'trigger' && Node.isPropertyAssignment(prop)) {
+    if (name === "trigger" && Node.isPropertyAssignment(prop)) {
       const init = prop.getInitializer();
       if (init) {
         const unwrapped = unwrapExpression(init);
-        if (Node.isStringLiteral(unwrapped) || Node.isNoSubstitutionTemplateLiteral(unwrapped)) {
+        if (
+          Node.isStringLiteral(unwrapped) ||
+          Node.isNoSubstitutionTemplateLiteral(unwrapped)
+        ) {
           const triggerText = unwrapped.getLiteralText();
-          if (triggerText.includes('click') || triggerText.includes('manual')) {
+          if (triggerText.includes("click") || triggerText.includes("manual")) {
             return true;
           }
         }
@@ -105,7 +110,7 @@ function matchTippyCall(callExpr: CallExpression): string | null {
   }
 
   const callee = unwrapExpression(callExpr.getExpression());
-  if (!isLibraryReference(callee, 'tippy', ['tippy.js', '@tippyjs/react'])) {
+  if (!isLibraryReference(callee, "tippy", ["tippy.js", "@tippyjs/react"])) {
     return null;
   }
 
@@ -137,7 +142,9 @@ function isGuardedByInterestCheck(node: Node): boolean {
       const condText = current.getExpression().getText();
       if (
         INTEREST_GUARD_TOKENS.some((tok) => condText.includes(tok)) &&
-        current.getExpression().getDescendantsOfKind(SyntaxKind.ExclamationToken).length > 0 &&
+        current
+          .getExpression()
+          .getDescendantsOfKind(SyntaxKind.ExclamationToken).length > 0 &&
         node.getStart() >= current.getThenStatement().getStart() &&
         node.getEnd() <= current.getThenStatement().getEnd()
       ) {
@@ -149,27 +156,28 @@ function isGuardedByInterestCheck(node: Node): boolean {
   return false;
 }
 
-export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: ['tippy'],
-  isGuarded: isGuardedByInterestCheck,
-  matchCall: matchTippyCall,
-});
+export const interestTriggeredTooltipsJsMatcher: JsRuleMatcher =
+  createJsCallMatcher({
+    fastTokens: ["tippy"],
+    isGuarded: isGuardedByInterestCheck,
+    matchCall: matchTippyCall,
+  });
 
 export const interestTriggeredTooltipsJsRule: AnalyzerRule = {
-  id: 'interest-triggered-tooltips/js-tooltip',
-  guideId: 'interest-triggered-tooltips',
+  id: "interest-triggered-tooltips/js-tooltip",
+  guideId: "interest-triggered-tooltips",
   guideHash: INTEREST_TRIGGERED_TOOLTIPS_GUIDE_HASH,
   summary:
     'JavaScript tippy() hover tooltip calls should be modernized with declarative HTML interestfor, popover="hint", and CSS Anchor Positioning.',
   matcher: interestTriggeredTooltipsJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'JavaScript calls tippy(target, options) to attach hover/focus tooltips without interactive click menus.',
-      'Custom mouseenter hover delay timeouts position tooltip div elements.',
+      "JavaScript calls tippy(target, options) to attach hover/focus tooltips without interactive click menus.",
+      "Custom mouseenter hover delay timeouts position tooltip div elements.",
     ],
     dropWhen: [
       'The tippy() instance configures interactive: true or trigger: "click" for interactive menus or forms.',
-      'The code uses native HTML title attributes, static pure-CSS [data-tooltip]::after tooltips, or is guarded by an interestfor / interesttarget check.',
+      "The code uses native HTML title attributes, static pure-CSS [data-tooltip]::after tooltips, or is guarded by an interestfor / interesttarget check.",
     ],
   },
 };

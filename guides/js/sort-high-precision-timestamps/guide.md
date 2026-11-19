@@ -26,14 +26,26 @@ To parse, sort, and measure intervals between high-precision timestamps:
 ```javascript
 // Events received with nanosecond-precision ISO 8601 timestamps.
 const rawEvents = [
-  { nodeId: 'api-2', eventType: 'db.query', ts: '2026-04-01T12:00:00.000123456Z' },
-  { nodeId: 'api-1', eventType: 'request.start', ts: '2026-04-01T12:00:00.000120000Z' },
-  { nodeId: 'api-2', eventType: 'request.end', ts: '2026-04-01T12:00:00.000987654Z' },
+  {
+    nodeId: "api-2",
+    eventType: "db.query",
+    ts: "2026-04-01T12:00:00.000123456Z",
+  },
+  {
+    nodeId: "api-1",
+    eventType: "request.start",
+    ts: "2026-04-01T12:00:00.000120000Z",
+  },
+  {
+    nodeId: "api-2",
+    eventType: "request.end",
+    ts: "2026-04-01T12:00:00.000987654Z",
+  },
 ];
 
 // 1. Parse recorded timestamps as Temporal.Instant (never `new Date(ts)`,
 // which drops everything below the millisecond).
-const events = rawEvents.map(evt => ({
+const events = rawEvents.map((evt) => ({
   ...evt,
   timestamp: Temporal.Instant.from(evt.ts),
 }));
@@ -41,7 +53,9 @@ const events = rawEvents.map(evt => ({
 // 2. Sort chronologically with the static compare() method
 function sequenceEvents(items) {
   // Instant.compare returns -1, 0, or 1, which is what sort() expects.
-  return [...items].sort((a, b) => Temporal.Instant.compare(a.timestamp, b.timestamp));
+  return [...items].sort((a, b) =>
+    Temporal.Instant.compare(a.timestamp, b.timestamp),
+  );
 }
 
 // 3. Calculate and display the interval between consecutive events
@@ -56,7 +70,9 @@ function analyzeTrace(sortedEvents) {
     // 4. toLocaleString() formats the duration for people (e.g., "3μs 456ns").
     // Avoid gap.total('nanoseconds'): spans over ~104 days exceed Number.MAX_SAFE_INTEGER.
     // 'en-US' is used here for deterministic output; pass undefined to use the user's locale.
-    console.log(`${prev.eventType} → ${curr.eventType}: ${gap.toLocaleString('en-US', { style: 'narrow' })}`);
+    console.log(
+      `${prev.eventType} → ${curr.eventType}: ${gap.toLocaleString("en-US", { style: "narrow" })}`,
+    );
   }
 }
 

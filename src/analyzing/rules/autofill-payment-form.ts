@@ -3,9 +3,9 @@ import type {
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = 'b673d8824bbc';
+export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = "b673d8824bbc";
 
 const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 
@@ -15,16 +15,18 @@ const FORM_TAG_REGEX = /<\/?form\b([^>]*)>/gi;
 function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   // Preserve line numbers when masking comments and script blocks
   const maskedText = documentText
-    .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, ' '))
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) => match.replace(/[^\n]/g, ' '));
-  const lines = maskedText.split('\n');
-  const textBefore = lines.slice(0, targetLine).join('\n');
+    .replace(/<!--[\s\S]*?-->/g, (match) => match.replace(/[^\n]/g, " "))
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (match) =>
+      match.replace(/[^\n]/g, " "),
+    );
+  const lines = maskedText.split("\n");
+  const textBefore = lines.slice(0, targetLine).join("\n");
 
   let depth = 0;
   for (const match of textBefore.matchAll(FORM_TAG_REGEX)) {
-    if (match[0].startsWith('</')) {
+    if (match[0].startsWith("</")) {
       depth = Math.max(0, depth - 1);
-    } else if (!match[1]?.trim().endsWith('/')) {
+    } else if (!match[1]?.trim().endsWith("/")) {
       depth++;
     }
   }
@@ -34,25 +36,25 @@ function isEnclosedInForm(documentText: string, targetLine: number): boolean {
   }
 
   // Same-line form check: line contains <form or <Form before element
-  const currentLine = lines[targetLine - 1] ?? '';
+  const currentLine = lines[targetLine - 1] ?? "";
   const formIndex = currentLine.search(/<form\b/i);
   const inputIndex = currentLine.search(/<(?:input|select)\b/i);
   return formIndex !== -1 && (inputIndex === -1 || formIndex < inputIndex);
 }
 
 const VALID_PAYMENT_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
-  'cc-number',
-  'cc-name',
-  'cc-given-name',
-  'cc-additional-name',
-  'cc-family-name',
-  'cc-exp',
-  'cc-exp-month',
-  'cc-exp-year',
-  'cc-csc',
-  'cc-type',
-  'transaction-amount',
-  'transaction-currency',
+  "cc-number",
+  "cc-name",
+  "cc-given-name",
+  "cc-additional-name",
+  "cc-family-name",
+  "cc-exp",
+  "cc-exp-month",
+  "cc-exp-year",
+  "cc-csc",
+  "cc-type",
+  "transaction-amount",
+  "transaction-currency",
 ]);
 
 const CARD_NUMBER_REGEX =
@@ -80,38 +82,44 @@ const CARDHOLDER_NAME_REGEX =
   /(?:cc[-_]?name|cardholder[-_]?name|name[-_]?on[-_]?card|\bcardholder\b)/i;
 
 const SUPPORTED_EXTENSIONS = [
-  '.html',
-  '.htm',
-  '.jsx',
-  '.tsx',
-  '.vue',
-  '.svelte',
-  '.astro',
-  '.php',
+  ".html",
+  ".htm",
+  ".jsx",
+  ".tsx",
+  ".vue",
+  ".svelte",
+  ".astro",
+  ".php",
 ];
 
-const TEST_PATH_SUBSTRINGS = ['/test/', '/tests/', '/fixtures/', '/fixture/', '__tests__'];
+const TEST_PATH_SUBSTRINGS = [
+  "/test/",
+  "/tests/",
+  "/fixtures/",
+  "/fixture/",
+  "__tests__",
+];
 
 const NON_PAYMENT_INPUT_TYPES = new Set([
-  'search',
-  'submit',
-  'button',
-  'reset',
-  'checkbox',
-  'radio',
-  'email',
-  'url',
-  'tel',
-  'range',
-  'file',
+  "search",
+  "submit",
+  "button",
+  "reset",
+  "checkbox",
+  "radio",
+  "email",
+  "url",
+  "tel",
+  "range",
+  "file",
 ]);
 
 export const autofillPaymentFormMatcher: DomRuleMatcher = {
-  kind: 'dom',
-  selector: 'input',
-  fastTokens: ['card', 'cvv', 'cvc', 'csc', 'exp', 'credit', 'cc-'],
+  kind: "dom",
+  selector: "input",
+  fastTokens: ["card", "cvv", "cvc", "csc", "exp", "credit", "cc-"],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
+  skipIfDynamicAttributes: ["autocomplete", "autoComplete"],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     // 1. High-precision file type constraint
     const lowerPath = ctx.filePath.toLowerCase();
@@ -123,11 +131,12 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     }
 
     // 2. Skip non-interactive, disabled, display, or non-payment inputs
-    const rawType = element.getAttribute('type')?.toLowerCase().trim() ?? 'text';
+    const rawType =
+      element.getAttribute("type")?.toLowerCase().trim() ?? "text";
     if (
-      element.hasAttribute('disabled') ||
-      element.hasAttribute('readonly') ||
-      element.hasAttribute('hidden') ||
+      element.hasAttribute("disabled") ||
+      element.hasAttribute("readonly") ||
+      element.hasAttribute("hidden") ||
       NON_PAYMENT_INPUT_TYPES.has(rawType)
     ) {
       return null;
@@ -137,39 +146,45 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     for (const [attrName, attrVal] of Object.entries(element.attributes)) {
       const lowerAttr = attrName.toLowerCase();
       if (
-        (lowerAttr.startsWith(':') ||
-          lowerAttr.startsWith('v-bind') ||
-          lowerAttr.startsWith('[') ||
-          lowerAttr.startsWith('bind:') ||
-          attrName.includes('$attrs') ||
-          attrName.includes('restProps') ||
-          attrName.includes('attributes')) &&
-        (lowerAttr.includes('autocomplete') ||
-          attrName.includes('bind') ||
-          attrName.includes('attrs') ||
-          attrName.includes('props'))
+        (lowerAttr.startsWith(":") ||
+          lowerAttr.startsWith("v-bind") ||
+          lowerAttr.startsWith("[") ||
+          lowerAttr.startsWith("bind:") ||
+          attrName.includes("$attrs") ||
+          attrName.includes("restProps") ||
+          attrName.includes("attributes")) &&
+        (lowerAttr.includes("autocomplete") ||
+          attrName.includes("bind") ||
+          attrName.includes("attrs") ||
+          attrName.includes("props"))
       ) {
         return null;
       }
       if (
-        lowerAttr === 'autocomplete' &&
-        (attrVal.includes('{') || attrVal.includes('<?') || attrVal.includes('<%'))
+        lowerAttr === "autocomplete" &&
+        (attrVal.includes("{") ||
+          attrVal.includes("<?") ||
+          attrVal.includes("<%"))
       ) {
         return null;
       }
     }
 
     // 4. Must be enclosed within a form or explicitly bound via the `form` attribute
-    if (!element.hasAttribute('form') && !isEnclosedInForm(ctx.documentText, element.line)) {
+    if (
+      !element.hasAttribute("form") &&
+      !isEnclosedInForm(ctx.documentText, element.line)
+    ) {
       return null;
     }
 
     // 5. Inspect identifiers to classify payment field
-    const name = element.getAttribute('name') ?? '';
-    const id = element.getAttribute('id') ?? '';
-    const placeholder = element.getAttribute('placeholder') ?? '';
-    const ariaLabel = element.getAttribute('aria-label') ?? '';
-    const combinedIdentifiers = `${name} ${id} ${placeholder} ${ariaLabel}`.toLowerCase();
+    const name = element.getAttribute("name") ?? "";
+    const id = element.getAttribute("id") ?? "";
+    const placeholder = element.getAttribute("placeholder") ?? "";
+    const ariaLabel = element.getAttribute("aria-label") ?? "";
+    const combinedIdentifiers =
+      `${name} ${id} ${placeholder} ${ariaLabel}`.toLowerCase();
 
     if (
       NON_PAYMENT_SEARCH_FILTER_REGEX.test(combinedIdentifiers) ||
@@ -179,7 +194,7 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     }
 
     // 6. Security code with type="password" anti-pattern check
-    if (rawType === 'password') {
+    if (rawType === "password") {
       if (CARD_CSC_REGEX.test(combinedIdentifiers)) {
         return {
           message:
@@ -191,7 +206,7 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
     }
 
     // 7. Card number with type="number" anti-pattern check
-    if (rawType === 'number' && CARD_NUMBER_REGEX.test(combinedIdentifiers)) {
+    if (rawType === "number" && CARD_NUMBER_REGEX.test(combinedIdentifiers)) {
       return {
         message:
           'Payment card number input uses type="number"; modernize to type="text" with inputmode="numeric" and autocomplete="cc-number".',
@@ -200,7 +215,8 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
 
     // 8. Check existing autocomplete attribute value
     const autocompleteAttr =
-      element.getAttribute('autocomplete') ?? element.getAttribute('autoComplete');
+      element.getAttribute("autocomplete") ??
+      element.getAttribute("autoComplete");
     if (
       autocompleteAttr
         ?.trim()
@@ -229,12 +245,19 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
         /(?:cc[-_]?exp|card[-_]?exp|exp[-_]?date|exp[-_]?month|exp[-_]?year)\b/i.test(
           combinedIdentifiers,
         );
-      if (!isExplicitExpFormat && !PAYMENT_CONTEXT_REGEX.test(ctx.documentText)) {
+      if (
+        !isExplicitExpFormat &&
+        !PAYMENT_CONTEXT_REGEX.test(ctx.documentText)
+      ) {
         return null;
       }
       const isMonth = /month/i.test(combinedIdentifiers);
       const isYear = /year/i.test(combinedIdentifiers);
-      const targetToken = isMonth ? 'cc-exp-month' : isYear ? 'cc-exp-year' : 'cc-exp';
+      const targetToken = isMonth
+        ? "cc-exp-month"
+        : isYear
+          ? "cc-exp-year"
+          : "cc-exp";
       return {
         message: `Payment card expiration input inside form lacks autocomplete="${targetToken}".`,
       };
@@ -247,9 +270,13 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
       };
     }
 
-    const isExplicitCardholder = CARDHOLDER_NAME_REGEX.test(combinedIdentifiers);
+    const isExplicitCardholder =
+      CARDHOLDER_NAME_REGEX.test(combinedIdentifiers);
     const isGenericCardName = /(?:card[-_]?name)\b/i.test(combinedIdentifiers);
-    if (isExplicitCardholder || (isGenericCardName && PAYMENT_CONTEXT_REGEX.test(ctx.documentText))) {
+    if (
+      isExplicitCardholder ||
+      (isGenericCardName && PAYMENT_CONTEXT_REGEX.test(ctx.documentText))
+    ) {
       return {
         message:
           'Payment cardholder name input inside form lacks autocomplete="cc-name".',
@@ -261,27 +288,25 @@ export const autofillPaymentFormMatcher: DomRuleMatcher = {
 };
 
 export const autofillPaymentFormRule: AnalyzerRule = {
-  id: 'autofill-payment-form',
-  guideId: 'autofill-payment-form',
+  id: "autofill-payment-form",
+  guideId: "autofill-payment-form",
   guideHash: AUTOFILL_PAYMENT_FORM_GUIDE_HASH,
   summary:
     'Payment card input in checkout form should specify standard autocomplete="cc-*" attributes and avoid type="password" or type="number".',
   matcher: autofillPaymentFormMatcher,
   verifierRubric: {
     keepWhen: [
-      'The input is part of a payment, checkout, or billing form collecting payment card details (card number, expiration, security code, or cardholder name).',
+      "The input is part of a payment, checkout, or billing form collecting payment card details (card number, expiration, security code, or cardholder name).",
       'The payment card input lacks an autocomplete attribute (e.g. autocomplete="cc-number", "cc-exp", "cc-csc", "cc-name") or specifies autocomplete="off", preventing browser payment autofill.',
       'The card number uses type="number" or card security code uses type="password", contrary to payment form best practices.',
     ],
     dropWhen: [
       'The input already provides a valid payment autocomplete token (such as "cc-number", "cc-exp", "cc-csc", "cc-name").',
-      'The input collects non-card numbers such as bank routing numbers, IBAN, gift cards, loyalty cards, or phone numbers.',
-      'The input is disabled, readonly, hidden, or display-only.',
-      'The autocomplete attribute is bound dynamically via framework attributes or JSX spread.',
+      "The input collects non-card numbers such as bank routing numbers, IBAN, gift cards, loyalty cards, or phone numbers.",
+      "The input is disabled, readonly, hidden, or display-only.",
+      "The autocomplete attribute is bound dynamically via framework attributes or JSX spread.",
     ],
   },
 };
 
-export default [
-  autofillPaymentFormRule,
-] satisfies readonly AnalyzerRule[];
+export default [autofillPaymentFormRule] satisfies readonly AnalyzerRule[];

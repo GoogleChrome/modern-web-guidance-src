@@ -5,7 +5,7 @@ index 66c9173..3aa1ade 100644
 @@ -27,6 +27,34 @@
        background-color: var(--light);
      }
- 
+
 +    /* Interactive Feedback */
 +    :where(a, button) {
 +      transition: box-shadow 150ms ease-out, scale 150ms ease-out, background 150ms ease-out, color 150ms ease-out;
@@ -38,16 +38,16 @@ index 66c9173..3aa1ade 100644
      nav {
        background: var(--primary);
 @@ -48,6 +76,7 @@
- 
+
      nav ul {
        display: flex;
 +      align-items: center;
        list-style: none;
      }
- 
+
 @@ -56,20 +85,34 @@
      }
- 
+
      nav a {
 +      display: inline-block;
        color: white;
@@ -58,13 +58,13 @@ index 66c9173..3aa1ade 100644
        font-size: 0.9rem;
 -      transition: color 0.3s;
      }
- 
+
      nav a:hover {
        color: var(--accent);
 +      text-decoration-color: currentColor;
 +      text-decoration-thickness: 2px;
      }
- 
+
      .logout-link {
 +      background: transparent;
 +      color: white;
@@ -80,12 +80,12 @@ index 66c9173..3aa1ade 100644
 +      color: var(--accent);
 +      border-color: var(--accent);
      }
- 
+
      /* Hero Section */
 @@ -100,11 +143,20 @@
        padding: 0 20px;
      }
- 
+
 -    .grid {
 -      display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -105,7 +105,7 @@ index 66c9173..3aa1ade 100644
 +      flex: 0 0 85%;
 +      scroll-snap-align: start;
      }
- 
+
      .card {
 @@ -113,6 +165,7 @@
        border-radius: 8px;
@@ -113,12 +113,12 @@ index 66c9173..3aa1ade 100644
        text-align: center;
 +      position: relative;
      }
- 
+
      .card h3 {
 @@ -120,19 +173,92 @@
        color: var(--primary);
      }
- 
+
 +    .card .actions {
 +      opacity: 0;
 +      transition: opacity 150ms ease-out;
@@ -147,7 +147,7 @@ index 66c9173..3aa1ade 100644
 +      font-size: 1rem;
 +      cursor: pointer;
      }
- 
+
      .btn:hover {
        background: #3e2723;
 +      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
@@ -207,11 +207,11 @@ index 66c9173..3aa1ade 100644
 +        opacity: 0;
 +      }
      }
- 
+
      footer {
 @@ -147,11 +273,19 @@
      }
- 
+
      .footer-links a {
 +      display: inline-block;
        margin: 0 10px;
@@ -229,7 +229,7 @@ index 66c9173..3aa1ade 100644
 +    }
    </style>
  </head>
- 
+
 @@ -164,7 +298,7 @@
        <li><a href="/locations">Locations</a></li>
        <li><a href="/rewards">Rewards</a></li>
@@ -238,7 +238,7 @@ index 66c9173..3aa1ade 100644
 +      <li><button type="button" class="logout-link">Logout</button></li>
      </ul>
    </nav>
- 
+
 @@ -177,21 +311,42 @@
    <main class="container">
      <section>
@@ -289,7 +289,7 @@ index 66c9173..3aa1ade 100644
 @@ -207,6 +362,23 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    if (!CSS.supports('position-area: bottom')) {
 +      document.querySelectorAll('.detail-popover').forEach((popover) => {
@@ -308,5 +308,5 @@ index 66c9173..3aa1ade 100644
 +  </script>
 +
  </body>
- 
+
  </html>

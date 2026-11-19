@@ -88,7 +88,7 @@ index 66c9173..9103a69 100644
 +    }
    </style>
  </head>
- 
+
 @@ -160,53 +240,346 @@
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -105,7 +105,7 @@ index 66c9173..9103a69 100644
 +      <li><a href="/logout" class="logout-link" data-translate>Logout</a></li>
      </ul>
    </nav>
- 
+
 +  <div class="translate-bar" id="translate-bar">
 +    <label for="target-language">Read this page in</label>
 +    <select id="target-language">
@@ -129,7 +129,7 @@ index 66c9173..9103a69 100644
 +    <p data-translate>Ethically sourced, locally roasted, delivered to your cup.</p>
 +    <a href="/order-online" class="btn" data-translate>Order Now</a>
    </header>
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -175,7 +175,7 @@ index 66c9173..9103a69 100644
 +      </p>
 +    </section>
    </main>
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -190,7 +190,7 @@ index 66c9173..9103a69 100644
 -    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
 +    <p data-translate>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      'use strict';
@@ -457,5 +457,5 @@ index 66c9173..9103a69 100644
 +  </script>
 +
  </body>
- 
+
  </html>

@@ -8,9 +8,11 @@ web-feature-ids:
 # Style a Form Group When a Field Is Invalid with :has()
 
 ## The Problem
-Often, an error state requires styling elements *outside* the input itself—for example, changing the color of a parent `fieldset` border, highlighting the `<label>`, or showing a global error icon in the card header. Historically, this required JavaScript to toggle classes on parent elements.
+
+Often, an error state requires styling elements _outside_ the input itself—for example, changing the color of a parent `fieldset` border, highlighting the `<label>`, or showing a global error icon in the card header. Historically, this required JavaScript to toggle classes on parent elements.
 
 ## The Solution
+
 By combining `:has()` with `:user-invalid`, we can declaratively style any ancestor based on the validity state of a specific descendant. This keeps all presentation logic in CSS.
 
 ### Implementation Strategy
@@ -22,6 +24,7 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 ## Implementation Guide
 
 ### 1. HTML Structure
+
 ```html
 <form>
   <div class="card-section">
@@ -32,13 +35,14 @@ By combining `:has()` with `:user-invalid`, we can declaratively style any ances
 
     <div class="field">
       <label for="username">Username</label>
-      <input type="text" id="username" required>
+      <input type="text" id="username" required />
     </div>
   </div>
 </form>
 ```
 
 ### 2. CSS
+
 ```css
 /* Default State */
 .card-section {
@@ -68,6 +72,7 @@ Parent styling only adds emphasis: it doesn't say which field is wrong or why, s
 {{ BASELINE_STATUS("user-pseudos") }}
 
 ### CSS for Fallback
+
 We use a class `.has-error` on the parent to mimic the `:has()` behavior.
 
 ```css
@@ -88,49 +93,63 @@ We use a class `.has-error` on the parent to mimic the `:has()` behavior.
 
 ```js
 // 1. Initialize the generic fallback
-const form = document.querySelector('#demo-form');
+const form = document.querySelector("#demo-form");
 UserInvalidFallback.init(form);
 
 // 2. Add specialized "parent styling" logic (Separate from fallback)
-const supportsHas = CSS.supports('selector(:has(a))');
+const supportsHas = CSS.supports("selector(:has(a))");
 if (!supportsHas) {
   // Listen for changes to form validity after interaction
-  form.addEventListener('blur', (e) => {
-    if (!e.target.matches('input, select, textarea')) return;
+  form.addEventListener(
+    "blur",
+    (e) => {
+      if (!e.target.matches("input, select, textarea")) return;
 
-    // Find the container we want to style (sync with CSS)
-    const container = e.target.closest('.card-section');
-    if (!container) return;
+      // Find the container we want to style (sync with CSS)
+      const container = e.target.closest(".card-section");
+      if (!container) return;
 
-    // Check if ANY input in this container is invalid. Match :user-invalid as well as the
-    // fallback class: a browser can support :user-invalid but not :has().
-    const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
-    container.classList.toggle('has-error-fallback', !!hasError);
-  }, true); // Capture phase to ensure we run after the fallback's blur listener
+      // Check if ANY input in this container is invalid. Match :user-invalid as well as the
+      // fallback class: a browser can support :user-invalid but not :has().
+      const hasError = container.querySelector(
+        ":is(:user-invalid, .user-invalid-fallback)",
+      );
+      container.classList.toggle("has-error-fallback", !!hasError);
+    },
+    true,
+  ); // Capture phase to ensure we run after the fallback's blur listener
 
   // Also handle input events for immediate cleanup
-  form.addEventListener('input', (e) => {
-    const container = e.target.closest('.card-section');
+  form.addEventListener("input", (e) => {
+    const container = e.target.closest(".card-section");
     if (container) {
-      const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
-      container.classList.toggle('has-error-fallback', !!hasError);
+      const hasError = container.querySelector(
+        ":is(:user-invalid, .user-invalid-fallback)",
+      );
+      container.classList.toggle("has-error-fallback", !!hasError);
     }
   });
 
   // A submit attempt flags every failing field through the invalid event, the only event
   // it fires on fields the user never touched. invalid doesn't bubble, so use the capture phase.
-  form.addEventListener('invalid', (e) => {
-    const container = e.target.closest('.card-section');
-    if (container) {
-      const hasError = container.querySelector(':is(:user-invalid, .user-invalid-fallback)');
-      container.classList.toggle('has-error-fallback', !!hasError);
-    }
-  }, true);
+  form.addEventListener(
+    "invalid",
+    (e) => {
+      const container = e.target.closest(".card-section");
+      if (container) {
+        const hasError = container.querySelector(
+          ":is(:user-invalid, .user-invalid-fallback)",
+        );
+        container.classList.toggle("has-error-fallback", !!hasError);
+      }
+    },
+    true,
+  );
 
   // Handle form resets
-  form.addEventListener('reset', () => {
-    form.querySelectorAll('.has-error-fallback').forEach(el => {
-      el.classList.remove('has-error-fallback');
+  form.addEventListener("reset", () => {
+    form.querySelectorAll(".has-error-fallback").forEach((el) => {
+      el.classList.remove("has-error-fallback");
     });
   });
 }

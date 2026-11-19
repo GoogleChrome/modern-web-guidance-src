@@ -51,6 +51,7 @@ web-feature-ids:
 ### Respect reduced motion
 
 Always respect reduced motion preferences. Choose between `@media (prefers-reduced-motion: no-preference)` and `@media (prefers-reduced-motion: reduce)` based on whether reduced motion removes the animation entirely or only adjusts its parameters:
+
 - Use `@media (prefers-reduced-motion: no-preference)` when the reduced-motion strategy is to **not have the animation at all** (apply the animation only where needed rather than declaring it broadly and canceling it with `animation: none`).
 - Use `@media (prefers-reduced-motion: reduce)` when the reduced-motion strategy is to **change animation parameters** (such as slowing down `animation-duration`).
 
@@ -91,13 +92,13 @@ When `event.animation` is not available, you can usually find the `Animation` in
 
 - Web Animations API (`element.animate()`) animations do not have an `animationName`, so they cannot be matched by name when filtering `event.target.getAnimations()`.
 - Filtering by `animationName` for `AnimationEvent`s is ambiguous when multiple animations with the same name are attached to the same element.
-  - Note that filtering on `transitionProperty` for `TransitionEvent`s works as there is only one event per transition property. 
+  - Note that filtering on `transitionProperty` for `TransitionEvent`s works as there is only one event per transition property.
 - `event.target` always points to the originating DOM element, so it does not distinguish between animations running on the element itself versus one of its pseudo-elements — whereas `event.animation.effect.pseudoElement` exposes the target pseudo-element directly.
 
 ```js
 // Works in most basic CSS animation cases, but fails for WAAPI animations,
 // duplicate animation names on the same element, or pseudo-elements.
-document.addEventListener('animationstart', (event) => {
+document.addEventListener("animationstart", (event) => {
   const animation = event.target
     .getAnimations()
     .find((anim) => anim.animationName === event.animationName);
@@ -105,7 +106,7 @@ document.addEventListener('animationstart', (event) => {
 });
 
 // PREFERRED: Directly access the exact Animation object via event.animation
-document.addEventListener('animationstart', (event) => {
+document.addEventListener("animationstart", (event) => {
   const animation = event.animation;
   console.log(animation);
 });

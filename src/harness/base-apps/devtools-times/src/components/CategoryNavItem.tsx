@@ -12,13 +12,13 @@ const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategor
     const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
 
     return (
-        <div 
+        <div
             className="relative"
             onMouseEnter={() => setIsFlyoutOpen(true)}
             onMouseLeave={() => setIsFlyoutOpen(false)}
         >
-            <a 
-                href="#" 
+            <a
+                href="#"
                 className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
             >
                 <span>{groupName}</span>

@@ -4,7 +4,7 @@ index 66c9173..7aa44bc 100644
 +++ b/index.html
 @@ -28,7 +28,7 @@
      }
- 
+
      /* Navigation */
 -    nav {
 +    header nav {
@@ -14,13 +14,13 @@ index 66c9173..7aa44bc 100644
 @@ -46,26 +46,79 @@
        letter-spacing: 1px;
      }
- 
+
 -    nav ul {
 +    header nav ul {
        display: flex;
        list-style: none;
      }
- 
+
 -    nav ul li {
 +    header nav a,
 +    .footer-links a {
@@ -31,7 +31,7 @@ index 66c9173..7aa44bc 100644
 +    header nav ul li {
        margin-left: 20px;
      }
- 
+
 -    nav a {
 +    header nav a {
        color: white;
@@ -39,12 +39,12 @@ index 66c9173..7aa44bc 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    header nav a:hover {
        color: var(--accent);
      }
- 
+
 +    .visually-hidden:where(:not(:focus-within, :active)) {
 +      position: absolute !important;
 +      clip-path: inset(50%) !important;
@@ -98,7 +98,7 @@ index 66c9173..7aa44bc 100644
 @@ -146,6 +199,18 @@
        margin-bottom: 20px;
      }
- 
+
 +    .footer-links ul {
 +      list-style: none;
 +      display: flex;
@@ -115,9 +115,9 @@ index 66c9173..7aa44bc 100644
        margin: 0 10px;
        color: var(--text);
 @@ -157,7 +222,10 @@
- 
+
  <body>
- 
+
 -  <nav>
 +  <a href="#main-heading" class="skip-link visually-hidden">Skip to main content</a>
 +
@@ -136,7 +136,7 @@ index 66c9173..7aa44bc 100644
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
 -    <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 +  <main>
@@ -176,7 +176,7 @@ index 66c9173..7aa44bc 100644
        </div>
      </section>
    </main>
- 
+
    <footer>
 -    <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -194,4 +194,4 @@ index 66c9173..7aa44bc 100644
 +    </nav>
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+

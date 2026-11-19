@@ -5,7 +5,7 @@ index 66c9173..8385ada 100644
 @@ -135,6 +135,111 @@
        background: #3e2723;
      }
- 
+
 +    /* Customization checkboxes */
 +    :root {
 +      --icon-bean: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M12 2C7 2 4 7 4 12s3 10 8 10 8-5 8-10S17 2 12 2zm1.2 4.2c-1.6 2.2 1.6 3.6 0 5.6s-1.6 3.4-.4 6c-2.8-1-4.4-3.4-4.4-5.8 0-3 1.8-5.6 4.8-5.8z'/></svg>");

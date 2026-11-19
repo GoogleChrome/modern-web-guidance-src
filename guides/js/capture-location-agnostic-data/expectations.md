@@ -7,4 +7,3 @@
 - Legacy `Date` objects are not constructed from hand-assembled ISO strings (such as `` `${date}T00:00:00Z` ``); when a `Date` is produced from a Temporal value, it is constructed from the `epochMilliseconds` of a `Temporal.Instant` or `Temporal.ZonedDateTime`.
 - `Intl.DateTimeFormat.prototype.formatToParts()` is not used to extract year, month, or day parts; calendar fields are read from Temporal plain types and compared directly (for example, with `.equals()`).
 - The implementation MUST NOT attempt to modify `Temporal` instances directly, as they are immutable.
-

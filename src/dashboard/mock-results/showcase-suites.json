@@ -102,10 +102,7 @@
             "runtimeMs": 37476,
             "uncachedTokens": 45789,
             "totalTokens": 173881,
-            "guidesUsed": [
-              "swipe-to-remove",
-              "animate-to-intrinsic-sizes"
-            ],
+            "guidesUsed": ["swipe-to-remove", "animate-to-intrinsic-sizes"],
             "earlyFailure": false
           },
           "checks": [
@@ -280,9 +277,7 @@
             "runtimeMs": 21159,
             "uncachedTokens": 27947,
             "totalTokens": 115543,
-            "guidesUsed": [
-              "scrollability-affordance-hints"
-            ],
+            "guidesUsed": ["scrollability-affordance-hints"],
             "earlyFailure": false
           },
           "checks": [
@@ -394,9 +389,7 @@
             "runtimeMs": 19565,
             "uncachedTokens": 25874,
             "totalTokens": 116121,
-            "guidesUsed": [
-              "progress-ring"
-            ],
+            "guidesUsed": ["progress-ring"],
             "earlyFailure": false
           },
           "checks": [
@@ -508,10 +501,7 @@
             "runtimeMs": 26165,
             "uncachedTokens": 30307,
             "totalTokens": 122924,
-            "guidesUsed": [
-              "passkey-authentication",
-              "passkeys"
-            ],
+            "guidesUsed": ["passkey-authentication", "passkeys"],
             "earlyFailure": false
           },
           "checks": [
@@ -588,10 +578,7 @@
             "runtimeMs": 167086,
             "uncachedTokens": 88748,
             "totalTokens": 287831,
-            "guidesUsed": [
-              "menu",
-              "navbar"
-            ],
+            "guidesUsed": ["menu", "navbar"],
             "earlyFailure": false
           },
           "checks": [
@@ -794,9 +781,7 @@
             "runtimeMs": 14608,
             "uncachedTokens": 24001,
             "totalTokens": 111212,
-            "guidesUsed": [
-              "form-fields-automatically-fit-contents"
-            ],
+            "guidesUsed": ["form-fields-automatically-fit-contents"],
             "earlyFailure": false
           },
           "checks": [
@@ -987,10 +972,7 @@
             "runtimeMs": 169214,
             "uncachedTokens": 52191,
             "totalTokens": 196433,
-            "guidesUsed": [
-              "swipe-to-remove",
-              "animate-to-intrinsic-sizes"
-            ],
+            "guidesUsed": ["swipe-to-remove", "animate-to-intrinsic-sizes"],
             "earlyFailure": false
           },
           "checks": [
@@ -1282,11 +1264,7 @@
             "runtimeMs": 331961,
             "uncachedTokens": 54380,
             "totalTokens": 228100,
-            "guidesUsed": [
-              "progress-ring",
-              "css",
-              "html"
-            ],
+            "guidesUsed": ["progress-ring", "css", "html"],
             "earlyFailure": false
           },
           "checks": [
@@ -1398,10 +1376,7 @@
             "runtimeMs": 247890,
             "uncachedTokens": 51571,
             "totalTokens": 197514,
-            "guidesUsed": [
-              "passkey-authentication",
-              "passkeys"
-            ],
+            "guidesUsed": ["passkey-authentication", "passkeys"],
             "earlyFailure": false
           },
           "checks": [
@@ -1478,12 +1453,7 @@
             "runtimeMs": 490628,
             "uncachedTokens": 119396,
             "totalTokens": 426096,
-            "guidesUsed": [
-              "menu",
-              "accessibility",
-              "html",
-              "css"
-            ],
+            "guidesUsed": ["menu", "accessibility", "html", "css"],
             "earlyFailure": false
           },
           "checks": [
@@ -1686,10 +1656,7 @@
             "runtimeMs": 173645,
             "uncachedTokens": 43023,
             "totalTokens": 188439,
-            "guidesUsed": [
-              "form-fields-automatically-fit-contents",
-              "forms"
-            ],
+            "guidesUsed": ["form-fields-automatically-fit-contents", "forms"],
             "earlyFailure": false
           },
           "checks": [
@@ -1869,10 +1836,7 @@
             "runtimeMs": 150307,
             "uncachedTokens": 80857,
             "totalTokens": 367193,
-            "guidesUsed": [
-              "swipe-to-remove",
-              "accessibility"
-            ],
+            "guidesUsed": ["swipe-to-remove", "accessibility"],
             "earlyFailure": false
           },
           "checks": [
@@ -2047,9 +2011,7 @@
             "runtimeMs": 73639,
             "uncachedTokens": 28337,
             "totalTokens": 138673,
-            "guidesUsed": [
-              "scrollability-affordance-hints"
-            ],
+            "guidesUsed": ["scrollability-affordance-hints"],
             "earlyFailure": false
           },
           "checks": [
@@ -2161,10 +2123,7 @@
             "runtimeMs": 68860,
             "uncachedTokens": 31746,
             "totalTokens": 146946,
-            "guidesUsed": [
-              "progress-ring",
-              "html"
-            ],
+            "guidesUsed": ["progress-ring", "html"],
             "earlyFailure": false
           },
           "checks": [
@@ -2276,10 +2235,7 @@
             "runtimeMs": 189290,
             "uncachedTokens": 53257,
             "totalTokens": 483977,
-            "guidesUsed": [
-              "passkey-authentication",
-              "passkeys"
-            ],
+            "guidesUsed": ["passkey-authentication", "passkeys"],
             "earlyFailure": false
           },
           "checks": [
@@ -2356,9 +2312,7 @@
             "runtimeMs": 216698,
             "uncachedTokens": 35575,
             "totalTokens": 360055,
-            "guidesUsed": [
-              "menu"
-            ],
+            "guidesUsed": ["menu"],
             "earlyFailure": false
           },
           "checks": [
@@ -2596,10 +2550,7 @@
             "runtimeMs": 73476,
             "uncachedTokens": 22539,
             "totalTokens": 172939,
-            "guidesUsed": [
-              "form-fields-automatically-fit-contents",
-              "forms"
-            ],
+            "guidesUsed": ["form-fields-automatically-fit-contents", "forms"],
             "earlyFailure": false
           },
           "checks": [
@@ -2754,10 +2705,7 @@
             "runtimeMs": 169214,
             "uncachedTokens": 52191,
             "totalTokens": 196433,
-            "guidesUsed": [
-              "swipe-to-remove",
-              "animate-to-intrinsic-sizes"
-            ],
+            "guidesUsed": ["swipe-to-remove", "animate-to-intrinsic-sizes"],
             "earlyFailure": false
           },
           "checks": [
@@ -3049,11 +2997,7 @@
             "runtimeMs": 331961,
             "uncachedTokens": 54380,
             "totalTokens": 228100,
-            "guidesUsed": [
-              "progress-ring",
-              "css",
-              "html"
-            ],
+            "guidesUsed": ["progress-ring", "css", "html"],
             "earlyFailure": false
           },
           "checks": [
@@ -3165,10 +3109,7 @@
             "runtimeMs": 247890,
             "uncachedTokens": 51571,
             "totalTokens": 197514,
-            "guidesUsed": [
-              "passkey-authentication",
-              "passkeys"
-            ],
+            "guidesUsed": ["passkey-authentication", "passkeys"],
             "earlyFailure": false
           },
           "checks": [
@@ -3245,12 +3186,7 @@
             "runtimeMs": 490628,
             "uncachedTokens": 119396,
             "totalTokens": 426096,
-            "guidesUsed": [
-              "menu",
-              "accessibility",
-              "html",
-              "css"
-            ],
+            "guidesUsed": ["menu", "accessibility", "html", "css"],
             "earlyFailure": false
           },
           "checks": [
@@ -3453,10 +3389,7 @@
             "runtimeMs": 173645,
             "uncachedTokens": 43023,
             "totalTokens": 188439,
-            "guidesUsed": [
-              "form-fields-automatically-fit-contents",
-              "forms"
-            ],
+            "guidesUsed": ["form-fields-automatically-fit-contents", "forms"],
             "earlyFailure": false
           },
           "checks": [

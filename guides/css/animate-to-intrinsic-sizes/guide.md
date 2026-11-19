@@ -32,7 +32,7 @@ You can apply this pattern to any container (like a "Show More" section or a nav
   /* 1. Define a fixed initial size (or 0) and hide overflow */
   block-size: 100px;
   overflow: hidden;
-  
+
   /* 2. Transition the sizing property */
   transition: block-size 0.4s ease-out;
 }
@@ -69,7 +69,9 @@ You can also animate in the opposite direction—starting from a natural size an
   /* 1. Start with the natural content height */
   block-size: auto;
   overflow: hidden;
-  transition: block-size 0.5s ease-in-out, opacity 0.5s ease;
+  transition:
+    block-size 0.5s ease-in-out,
+    opacity 0.5s ease;
 }
 
 .collapsible-alert.is-dismissed {
@@ -91,32 +93,36 @@ You can also animate in the opposite direction—starting from a natural size an
 
 ```javascript
 // MANDATORY Accessibility Synchronization: Ensure elements collapsed to zero dimensions are removed from the assistive technology tree, and sync aria-expanded states on triggers.
-const alertElement = document.querySelector('.collapsible-alert');
+const alertElement = document.querySelector(".collapsible-alert");
 function dismissAlert() {
-  alertElement.classList.add('is-dismissed');
+  alertElement.classList.add("is-dismissed");
   // Waits for the transitions the class starts, ignoring any other animations
   // on the element; under reduced motion there are none
-  const transitions = alertElement.getAnimations().filter((animation) => animation instanceof CSSTransition);
-  Promise.allSettled(transitions.map((transition) => transition.finished)).then(() => {
-    if (alertElement.classList.contains('is-dismissed')) {
-      alertElement.hidden = true;
-    }
-  });
+  const transitions = alertElement
+    .getAnimations()
+    .filter((animation) => animation instanceof CSSTransition);
+  Promise.allSettled(transitions.map((transition) => transition.finished)).then(
+    () => {
+      if (alertElement.classList.contains("is-dismissed")) {
+        alertElement.hidden = true;
+      }
+    },
+  );
 }
 
 // Example trigger syncer
-const triggerBtn = document.querySelector('.accordion-trigger');
-triggerBtn?.addEventListener('click', () => {
-  const isExpanded = triggerBtn.getAttribute('aria-expanded') === 'true';
-  triggerBtn.setAttribute('aria-expanded', !isExpanded);
+const triggerBtn = document.querySelector(".accordion-trigger");
+triggerBtn?.addEventListener("click", () => {
+  const isExpanded = triggerBtn.getAttribute("aria-expanded") === "true";
+  triggerBtn.setAttribute("aria-expanded", !isExpanded);
 });
 ```
 
 ## Key constraints
 
-*   **Keyword-to-Keyword Restriction**: You cannot animate between two different keywords directly (e.g., from `min-content` to `max-content`). One end of the transition must be a fixed length or percentage (e.g., `0` to `auto`).
-*   **Calc-size Syntax**: Inside `calc-size()`, you cannot mix different intrinsic keywords in the same expression. The first argument (the basis) defines what `size` represents.
-*   **Opt-in Requirement**: Transitions to intrinsic keywords are disabled by default (`numeric-only`) to maintain backward compatibility. You must apply `interpolate-size: allow-keywords` to the element or an ancestor. `calc-size()` acts as a per-property override, automatically enabling interpolation whenever it is used.
+- **Keyword-to-Keyword Restriction**: You cannot animate between two different keywords directly (e.g., from `min-content` to `max-content`). One end of the transition must be a fixed length or percentage (e.g., `0` to `auto`).
+- **Calc-size Syntax**: Inside `calc-size()`, you cannot mix different intrinsic keywords in the same expression. The first argument (the basis) defines what `size` represents.
+- **Opt-in Requirement**: Transitions to intrinsic keywords are disabled by default (`numeric-only`) to maintain backward compatibility. You must apply `interpolate-size: allow-keywords` to the element or an ancestor. `calc-size()` acts as a per-property override, automatically enabling interpolation whenever it is used.
 
 ## Fallback strategies
 
@@ -125,8 +131,8 @@ triggerBtn?.addEventListener('click', () => {
 
 `interpolate-size` and `calc-size()` are progressive enhancements. Browsers that do not support them will perform an instant jump to the target size.
 
-*   **Graceful Degradation**: For simple `block-size: auto` transitions, standard browsers will simply toggle the size instantly, which is functional but less polished.
-*   **Manual keyword fallbacks**: When using `calc-size()`, always provide a standard keyword fallback for older browsers, as they will discard the entire `calc-size()` declaration.
+- **Graceful Degradation**: For simple `block-size: auto` transitions, standard browsers will simply toggle the size instantly, which is functional but less polished.
+- **Manual keyword fallbacks**: When using `calc-size()`, always provide a standard keyword fallback for older browsers, as they will discard the entire `calc-size()` declaration.
 
 ```css
 .card {

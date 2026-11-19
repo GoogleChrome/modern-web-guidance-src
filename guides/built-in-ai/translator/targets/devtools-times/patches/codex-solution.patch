@@ -49,7 +49,7 @@ index 22f7b64..08cf491 100644
 +    Translator?: TranslatorFactory;
    }
  }
- 
+
 -export {};
 \ No newline at end of file
 +export {};
@@ -290,28 +290,28 @@ index 24fea39..29dda25 100644
  import BookmarkButton from '../../components/BookmarkButton.tsx';
  import ArticleTeaser from '../../components/ArticleTeaser.astro';
 +import ArticleTranslator from '../../components/ArticleTranslator.tsx';
- 
+
  export const getStaticPaths = (async () => {
    const articles = await getCollection('articles');
 @@ -43,12 +44,12 @@ const isBookmarked = readingList.includes(article.slug);
          </div>
- 
+
          <!-- Headline -->
 -        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
 +        <h1 data-translate-title class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
              {article.data.title}
          </h1>
-         
+
          <!-- Sub-headline / Lead Paragraph -->
 -        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
 +        <p data-translate-summary class="text-lg md:text-xl text-gray-700 font-light mb-5">
              {article.data.summary}
          </p>
- 
+
 @@ -104,8 +105,10 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
          </div>
- 
+
 +        <ArticleTranslator client:load />
 +
          <!-- Article Body Content -->
@@ -319,11 +319,11 @@ index 24fea39..29dda25 100644
 +        <div data-translate-body class="prose max-w-none">
              <Content />
          </div>
- 
+
 @@ -123,4 +126,4 @@ const isBookmarked = readingList.includes(article.slug);
      </section>
- 
- 
+
+
 -</Layout>
 \ No newline at end of file
 +</Layout>

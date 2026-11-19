@@ -2,8 +2,16 @@ import { appendFileSync } from "fs";
 import path from "path";
 import { MODERN_WEB_LOG_FILE } from "../core/constants.ts";
 
-export function logToolResult(toolName: string, result: { id?: string; distance?: string | number; similarity?: string | number; count?: number }[]) {
-  if (process.env.ENABLE_FILE_LOGGING !== 'true') {
+export function logToolResult(
+  toolName: string,
+  result: {
+    id?: string;
+    distance?: string | number;
+    similarity?: string | number;
+    count?: number;
+  }[],
+) {
+  if (process.env.ENABLE_FILE_LOGGING !== "true") {
     return;
   }
   try {
@@ -12,7 +20,7 @@ export function logToolResult(toolName: string, result: { id?: string; distance?
     const logEntry = {
       timestamp: new Date().toISOString(),
       tool: toolName,
-      result
+      result,
     };
     appendFileSync(logPath, JSON.stringify(logEntry) + "\n", "utf8");
   } catch (err) {

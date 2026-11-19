@@ -5,11 +5,12 @@ To release updates for our AI skills (Claude Code, Gemini CLI / Antigravity, VS 
 ## Automated CI/CD Publishing
 
 Releases are published automatically via GitHub Actions:
-* **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
-* **Schedule**: Runs every Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT), publishing to the `latest` npm dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`.
-* **Manual Trigger (`workflow_dispatch`)**: Can be triggered manually via GitHub Actions **Run workflow** with:
-  * `dist_tag`: `next` (default) or `latest` (also updates the `next` dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`).
-  * `version`: Optional explicit semver override (e.g. `1.0.0`); leave blank to auto-increment the patch version.
+
+- **Workflow**: [`.github/workflows/publish.yml`](../.github/workflows/publish.yml)
+- **Schedule**: Runs every Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT), publishing to the `latest` npm dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`.
+- **Manual Trigger (`workflow_dispatch`)**: Can be triggered manually via GitHub Actions **Run workflow** with:
+  - `dist_tag`: `next` (default) or `latest` (also updates the `next` dist-tag and `main` branch of `GoogleChrome/modern-web-guidance`).
+  - `version`: Optional explicit semver override (e.g. `1.0.0`); leave blank to auto-increment the patch version.
 
 ## Manual Publishing via CLI
 
@@ -26,6 +27,7 @@ pnpm run publish-skills --tag latest --version 1.0.0
 ```
 
 **What the publishing pipeline does under the hood:**
+
 1. Collects the latest nightly eval benchmark summary from GCS.
 2. Resolves the target version (`vX.Y.Z`, either explicit `--version` or auto-incremented patch) and updates all distribution and plugin manifests.
 3. Compiles source guides and skills into the distribution format (`dist/skills-cli/`).
@@ -49,12 +51,13 @@ node src/build/generate-release-notes.ts v0.0.185
 ### Release Notes Structure
 
 The release notes automatically group changes into clear top-level sections:
-* `## 🆕 New Guides`: High-level summary of newly introduced guides and their use cases.
-* `## 🔄 Updated Guides`: Bullet points describing substantive guidance evolutions and API patterns.
-* `## 🗑️ Removed Guides`: Deprecated or deleted guidance.
-* `## 🌐 Browser Support Updates`: Grouped Baseline status shifts (`Widely available` → `Newly available` → `Limited availability`).
-* `## 🔌 Plugins`: Updates to agent marketplace manifests and plugin definitions.
-* `## 📊 Benchmark Evaluations`: Latest agent pass-rate uplifts.
+
+- `## 🆕 New Guides`: High-level summary of newly introduced guides and their use cases.
+- `## 🔄 Updated Guides`: Bullet points describing substantive guidance evolutions and API patterns.
+- `## 🗑️ Removed Guides`: Deprecated or deleted guidance.
+- `## 🌐 Browser Support Updates`: Grouped Baseline status shifts (`Widely available` → `Newly available` → `Limited availability`).
+- `## 🔌 Plugins`: Updates to agent marketplace manifests and plugin definitions.
+- `## 📊 Benchmark Evaluations`: Latest agent pass-rate uplifts.
 
 ## Local Development & Global Linking
 
@@ -70,5 +73,5 @@ This registers the package globally and places the `modern-web-guidance` binary 
 
 For Claude Code, the `modern-web-guidance` repository acts as a **single bundled plugin** (`googlechrome-skills`) rather than a marketplace catalog of individual plugins.
 
-* **Simplified Installation:** Users only need to run one install command to access the entire suite of curated web development skills.
-* **Ecosystem Alignment:** Both Gemini CLI and VS Code natively treat repositories as singular extensions. Consolidating the project into a single plugin ensures structural parity across all environments, cutting down the technical overhead of parsing nested manifests for every individual skill file.
+- **Simplified Installation:** Users only need to run one install command to access the entire suite of curated web development skills.
+- **Ecosystem Alignment:** Both Gemini CLI and VS Code natively treat repositories as singular extensions. Consolidating the project into a single plugin ensures structural parity across all environments, cutting down the technical overhead of parsing nested manifests for every individual skill file.

@@ -12,15 +12,15 @@ import {
   parse as parseCss,
   resolveSelector,
   type CSSRule,
-} from 'cssomnom';
+} from "cssomnom";
 import type {
   AnalyzerMatch,
   CssDeclaration,
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-} from '../schema.ts';
-import { matchesFastTokens } from './js-scanner.ts';
+} from "../schema.ts";
+import { matchesFastTokens } from "./js-scanner.ts";
 
 const CONDITION_PROP_RE = /\(\s*(--[\w-]+|[a-zA-Z-]+)\s*:/g;
 const DECL_PROP_RE = /(?:^|[;{])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
@@ -30,7 +30,11 @@ interface PreparedCssContext {
   readonly ctx: CssMatcherContext;
 }
 
-function collectPropertyNames(text: string, regex: RegExp, target: Set<string>): void {
+function collectPropertyNames(
+  text: string,
+  regex: RegExp,
+  target: Set<string>,
+): void {
   for (const match of text.matchAll(regex)) {
     if (match[1]) {
       target.add(match[1].toLowerCase());
@@ -46,7 +50,7 @@ function getEnclosingAtRule(rule: CSSRule): string | null {
       curr instanceof CSSKeyframesRule ||
       curr instanceof CSSAtRule
     ) {
-      const brace = curr.cssText.indexOf('{');
+      const brace = curr.cssText.indexOf("{");
       if (brace !== -1) return curr.cssText.slice(0, brace).trim();
     }
   }
@@ -72,7 +76,11 @@ function prepareCssContext(
 
   for (const rule of getRules(sheet)) {
     if (rule instanceof CSSConditionRule && rule.conditionText) {
-      collectPropertyNames(rule.conditionText, CONDITION_PROP_RE, allProperties);
+      collectPropertyNames(
+        rule.conditionText,
+        CONDITION_PROP_RE,
+        allProperties,
+      );
     }
     if (
       !(rule instanceof CSSStyleRule) &&
@@ -106,9 +114,9 @@ function prepareCssContext(
       },
       getPropertyValue: (p: string) => style.getPropertyValue(p) || null,
       hasProperty: (p: string) => {
-        const norm = p.startsWith('--') ? p : p.toLowerCase();
+        const norm = p.startsWith("--") ? p : p.toLowerCase();
         cachedPropSet ??= new Set(style);
-        return cachedPropSet.has(norm) || style.getPropertyValue(norm) !== '';
+        return cachedPropSet.has(norm) || style.getPropertyValue(norm) !== "";
       },
     });
   }
@@ -120,7 +128,8 @@ function prepareCssContext(
     stylesheetText: cssContent,
     rawFileText: rawFileText ?? cssContent,
     styleRules,
-    stylesheetHasProperty: (prop: string) => allProperties.has(prop.toLowerCase()),
+    stylesheetHasProperty: (prop: string) =>
+      allProperties.has(prop.toLowerCase()),
     stylesheetHasValue: (substr: string) => cssContent.includes(substr),
   };
 
@@ -173,7 +182,12 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
 }
 
 export function normalizeCssDeclValue(raw: string | null | undefined): string {
-  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
+  return (
+    raw
+      ?.replace(/\s*!important\s*$/i, "")
+      .trim()
+      .toLowerCase() ?? ""
+  );
 }
 
 export function scanCss(

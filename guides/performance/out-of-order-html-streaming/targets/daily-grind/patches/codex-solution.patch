@@ -27,7 +27,7 @@ index 66c9173..55d583b 100644
 +++ b/index.html
 @@ -108,6 +108,7 @@
      }
- 
+
      .card {
 +      min-height: 210px;
        background: white;
@@ -36,7 +36,7 @@ index 66c9173..55d583b 100644
 @@ -120,6 +121,11 @@
        color: var(--primary);
      }
- 
+
 +    .skeleton { background: var(--secondary); }
 +    .skeleton p { margin-top: 2rem; }
 +    .supplement { margin-top: 40px; }
@@ -47,7 +47,7 @@ index 66c9173..55d583b 100644
        background: var(--primary);
 @@ -175,9 +181,40 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -97,7 +97,7 @@ index 66c9173..55d583b 100644
 -    </section>
 -  </main>
 +  </template>
- 
+
 -  <footer>
 -    <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -295,9 +295,9 @@ index 66c9173..55d583b 100644
 +      void loadPromo();
 +    })();
 +  </script>
- 
+
  </body>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644
 --- a/package.json

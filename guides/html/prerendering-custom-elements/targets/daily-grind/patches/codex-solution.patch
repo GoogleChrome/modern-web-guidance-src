@@ -130,7 +130,7 @@ index 66c9173..2023915 100644
 @@ -107,19 +108,6 @@
        margin-top: 20px;
      }
- 
+
 -    .card {
 -      background: white;
 -      padding: 20px;

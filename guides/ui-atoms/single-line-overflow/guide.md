@@ -24,6 +24,7 @@ Keep the full text in the DOM and only adapt how it renders: the full text is th
 This guide does not cover use cases where wrapping is an acceptable option.
 
 There are two components to handling single-line text overflow:
+
 1. How to display the truncated text
 2. How can users find out what the full text is
 
@@ -102,7 +103,8 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
      The band is --fade-size while truncated, 0 otherwise. */
   mask:
     linear-gradient(black, black) no-clip subtract,
-    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 / calc(var(--truncated) * var(--fade-size)) 100% no-repeat no-clip;
+    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-pos) 0 /
+      calc(var(--truncated) * var(--fade-size)) 100% no-repeat no-clip;
   /* Sets the flag only while the text overflows: with no overflow the timeline is inactive and the animation has no effect */
   animation: truncated linear both;
   animation-timeline: scroll(self inline);
@@ -114,7 +116,8 @@ Use a mask that fades the end of the text. Only fade when the text overflows, or
 }
 
 @keyframes truncated {
-  from, to {
+  from,
+  to {
     --truncated: 1;
   }
 }
@@ -130,7 +133,12 @@ Put both versions in the markup and switch them with a container query on the ce
 
 ```html
 <!-- The wrapper is the container: size containment has no effect on table cells themselves -->
-<td><div class="day"><span class="long">Saturday</span><span class="short" aria-hidden="true">Sat</span></div></td>
+<td>
+  <div class="day">
+    <span class="long">Saturday</span
+    ><span class="short" aria-hidden="true">Sat</span>
+  </div>
+</td>
 ```
 
 ```css
@@ -194,7 +202,8 @@ Move the text by the difference between the element's width and its own: a perce
 
 /* The same flag as the fade, registered there so it does not inherit */
 @keyframes truncated {
-  from, to {
+  from,
+  to {
     --truncated: 1;
   }
 }
@@ -214,7 +223,9 @@ Move the text by the difference between the element's width and its own: a perce
       /* 1px short, so the text still overflows and the timeline stays active */
       translate: calc(1px - 100%);
       /* Example values. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
-      transition: margin-inline-start 2s ease-in, translate 2s ease-in;
+      transition:
+        margin-inline-start 2s ease-in,
+        translate 2s ease-in;
     }
 
     /* The overflow is on the left, so the text moves right */
@@ -269,7 +280,7 @@ Let the element grow to its text, and transition the growth. Set `interpolate-si
   }
 
   @media (prefers-reduced-motion: no-preference) {
-    transition: max-inline-size .3s;
+    transition: max-inline-size 0.3s;
   }
 }
 ```
@@ -302,7 +313,8 @@ No property reports truncation. Derive it from overflow: the element is truncate
   }
 
   @keyframes truncated {
-    from, to {
+    from,
+    to {
       --truncated: 1;
     }
   }
@@ -320,9 +332,12 @@ No property reports truncation. Derive it from overflow: the element is truncate
 - **In script**, when the result drives something CSS cannot (adding a tooltip, setting an attribute), compare `scrollWidth` to `clientWidth` in a `ResizeObserver`. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
 
   ```js
-  const observer = new ResizeObserver(entries => {
+  const observer = new ResizeObserver((entries) => {
     for (const { target } of entries) {
-      target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
+      target.classList.toggle(
+        "truncated",
+        target.scrollWidth > target.clientWidth,
+      );
     }
   });
   observer.observe(label);
@@ -337,14 +352,17 @@ No property reports truncation. Derive it from overflow: the element is truncate
 Without scroll-driven animations the fade never shows, the hint never shows, and the scroll reveal never starts: the text is clipped with no indication. If your Baseline target does not support them, toggle a class from script: a `ResizeObserver` compares `scrollWidth` to `clientWidth`, and the class sets the same flag as the keyframes. Run the check again when the text changes: `ResizeObserver` reacts only to size changes.
 
 ```js
-if (!CSS.supports('animation-timeline', 'scroll()')) {
-  const observer = new ResizeObserver(entries => {
+if (!CSS.supports("animation-timeline", "scroll()")) {
+  const observer = new ResizeObserver((entries) => {
     for (const { target } of entries) {
-      target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
+      target.classList.toggle(
+        "truncated",
+        target.scrollWidth > target.clientWidth,
+      );
     }
   });
 
-  for (const label of document.querySelectorAll('.label')) {
+  for (const label of document.querySelectorAll(".label")) {
     observer.observe(label);
   }
 }
@@ -374,7 +392,9 @@ Without style queries the fade still works, since it is on the element itself, b
     display: inline-block;
     margin-inline-start: 100%;
     translate: calc(1px - 100%);
-    transition: margin-inline-start 2s ease-in, translate 2s ease-in;
+    transition:
+      margin-inline-start 2s ease-in,
+      translate 2s ease-in;
   }
 }
 ```

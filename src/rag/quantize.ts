@@ -22,7 +22,10 @@ export function l2Normalize(v: Float32Array): Float32Array {
  * Guarantees 4-byte alignment regardless of Node Buffer slab pooling.
  */
 export function toAlignedFloat32Array(buf: Uint8Array): Float32Array {
-  const aligned = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  const aligned = buf.buffer.slice(
+    buf.byteOffset,
+    buf.byteOffset + buf.byteLength,
+  );
   return new Float32Array(aligned);
 }
 
@@ -41,7 +44,7 @@ export function dequantizeVectorRow(
   qTable: Int8Array,
   scales: Float32Array,
   index: number,
-  dims = STATIC_DIMS
+  dims = STATIC_DIMS,
 ): Float32Array {
   const scale = scales[index];
   if (!scale) {
@@ -61,7 +64,7 @@ export function dequantizeVectorRow(
  */
 export function quantizeVectors(
   vectors: Array<ArrayLike<number>>,
-  dims = STATIC_DIMS
+  dims = STATIC_DIMS,
 ): { qTable: Int8Array; scales: Float32Array } {
   const N = vectors.length;
   const qTable = new Int8Array(N * dims);

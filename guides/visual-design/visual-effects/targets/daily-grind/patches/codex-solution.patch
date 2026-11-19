@@ -18,7 +18,7 @@ index 66c9173..66a84a6 100644
 +        --in-oklab: in oklab;
 +      }
      }
- 
+
      * {
 @@ -24,7 +35,7 @@
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -27,10 +27,10 @@ index 66c9173..66a84a6 100644
 -      background-color: var(--light);
 +      background-color: #fbf7f0;
      }
- 
+
      /* Navigation */
 @@ -74,9 +85,13 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -70,17 +70,17 @@ index 66c9173..66a84a6 100644
 +    .hero p {
 +      text-shadow: 0 2px 8px #20130f;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: clamp(2.25rem, 6vw, 3.75rem);
        margin-bottom: 1rem;
      }
- 
+
 @@ -100,19 +133,37 @@
        padding: 0 20px;
      }
- 
+
 +    .container h2 {
 +      text-align: center;
 +      font-size: 2rem;
@@ -102,7 +102,7 @@ index 66c9173..66a84a6 100644
 +      gap: 28px;
        margin-top: 20px;
      }
- 
+
      .card {
        background: white;
 -      padding: 20px;
@@ -117,12 +117,12 @@ index 66c9173..66a84a6 100644
 +      flex-direction: column;
 +      align-items: center;
      }
- 
+
      .card h3 {
 @@ -135,6 +186,90 @@
        background: #3e2723;
      }
- 
+
 +    .hero .btn {
 +      background: linear-gradient(135deg var(--in-oklab), #ffd397, #f0a342);
 +      color: #352019;
@@ -211,7 +211,7 @@ index 66c9173..66a84a6 100644
        background: var(--secondary);
        text-align: center;
 @@ -176,24 +311,52 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -263,7 +263,7 @@ index 66c9173..66a84a6 100644
 +      <p class="profile-note">Flavor percentages illustrate the balance of tasting notes.</p>
      </section>
    </main>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..43e7284 100644
 --- a/package.json

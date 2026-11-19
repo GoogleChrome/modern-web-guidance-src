@@ -166,30 +166,18 @@
             "errorLocation": "guides/security/security/targets/daily-grind/grader.ts:184"
           }
         ],
-        "guidesUsed": [
-          "security"
-        ],
-        "retrievedGuides": [
-          "security"
-        ],
+        "guidesUsed": ["security"],
+        "retrievedGuides": ["security"],
         "fileReadGuides": [],
-        "guidanceToolsUsed": [
-          "modern-web-guidance"
-        ],
+        "guidanceToolsUsed": ["modern-web-guidance"],
         "discipline": "security",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "security",
         "baseApp": "daily-grind",
         "taskName": "daily-grind",
         "prompt": "Audit the Daily Grind web app and implement preventative security measures to safely deploy security policies.",
         "targetFile": "agent.patch",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 221513,
           "graderRuntime": 33337,
@@ -246,32 +234,18 @@
             "pageSnapshot": "- navigation:\n  - text: THE DAILY GRIND\n  - list:\n    - listitem:\n      - link \"Menu\":\n        - /url: /menu\n    - listitem:\n      - link \"Locations\":\n        - /url: /locations\n    - listitem:\n      - link \"Rewards\":\n        - /url: /rewards\n    - listitem:\n      - link \"My Account\":\n        - /url: /account\n    - listitem:\n      - link \"Logout\":\n        - /url: /logout\n- banner:\n  - heading \"Wake Up Your Senses\" [level=1]\n  - paragraph: Ethically sourced, locally roasted, delivered to your cup.\n  - link \"Order Now\":\n    - /url: /order-online\n- main:\n  - heading \"Seasonal Favorites\" [level=2]\n..."
           }
         ],
-        "guidesUsed": [
-          "passkey-authentication",
-          "passkeys"
-        ],
-        "retrievedGuides": [
-          "passkey-authentication",
-          "passkeys"
-        ],
+        "guidesUsed": ["passkey-authentication", "passkeys"],
+        "retrievedGuides": ["passkey-authentication", "passkeys"],
         "fileReadGuides": [],
-        "guidanceToolsUsed": [
-          "modern-web-guidance"
-        ],
+        "guidanceToolsUsed": ["modern-web-guidance"],
         "discipline": "security",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "passkey-authentication",
         "baseApp": "daily-grind",
         "taskName": "task",
         "prompt": "implement passkey authentication in `index.html`. ensure the sign-in username input field is annotated with `data-testid=\"username-field\"`. when a user focuses on this field, the browser should seamlessly offer their registered passkeys as autofill suggestions. if they click the explicit \"sign in with passkey\" button annotated with `data-testid=\"auth-button\"`, prompt them for biometrics directly instead. send the authenticated credential to `/api/login/verify` and update the status element annotated with `data-testid=\"auth-status\"` upon success.",
         "targetFile": "index.html",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 99670,
           "graderRuntime": 24406,
@@ -304,34 +278,22 @@
             "message": "Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text"
           }
         ],
-        "guidesUsed": [
-          "accessible-generated-content",
-          "accessibility",
-          "css"
-        ],
+        "guidesUsed": ["accessible-generated-content", "accessibility", "css"],
         "retrievedGuides": [
           "accessible-generated-content",
           "accessibility",
           "css"
         ],
         "fileReadGuides": [],
-        "guidanceToolsUsed": [
-          "modern-web-guidance"
-        ],
+        "guidanceToolsUsed": ["modern-web-guidance"],
         "discipline": "accessibility",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "accessible-generated-content",
         "baseApp": "daily-grind",
         "taskName": "daily-grind",
         "prompt": "Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.",
         "targetFile": "agent.patch",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 32462,
           "graderRuntime": 4286,
@@ -494,19 +456,13 @@
         "fileReadGuides": [],
         "guidanceToolsUsed": [],
         "discipline": "security",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "security",
         "baseApp": "daily-grind",
         "taskName": "daily-grind",
         "prompt": "Audit the Daily Grind web app and implement preventative security measures to safely deploy security policies.",
         "targetFile": "agent.patch",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 112134,
           "graderRuntime": 53484,
@@ -577,19 +533,13 @@
         "fileReadGuides": [],
         "guidanceToolsUsed": [],
         "discipline": "security",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "passkey-authentication",
         "baseApp": "daily-grind",
         "taskName": "task",
         "prompt": "implement passkey authentication in `index.html`. ensure the sign-in username input field is annotated with `data-testid=\"username-field\"`. when a user focuses on this field, the browser should seamlessly offer their registered passkeys as autofill suggestions. if they click the explicit \"sign in with passkey\" button annotated with `data-testid=\"auth-button\"`, prompt them for biometrics directly instead. send the authenticated credential to `/api/login/verify` and update the status element annotated with `data-testid=\"auth-status\"` upon success.",
         "targetFile": "index.html",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 72740,
           "graderRuntime": 26101,
@@ -629,19 +579,13 @@
         "fileReadGuides": [],
         "guidanceToolsUsed": [],
         "discipline": "accessibility",
-        "expectedToolPrefixes": [
-          "modern-web"
-        ],
+        "expectedToolPrefixes": ["modern-web"],
         "guideName": "accessible-generated-content",
         "baseApp": "daily-grind",
         "taskName": "daily-grind",
         "prompt": "Update the site to use CSS generated content in ways that stay accessible, including alternative text for decorative content.",
         "targetFile": "agent.patch",
-        "files": [
-          "agent.patch",
-          "modern-web.log",
-          "session-example.jsonl"
-        ],
+        "files": ["agent.patch", "modern-web.log", "session-example.jsonl"],
         "runtime": {
           "agentRuntime": 115451,
           "graderRuntime": 6690,
@@ -658,9 +602,7 @@
   "stats": {
     "daily-grind - accessible-generated-content - unguided": {
       "medianPassRate": 67,
-      "runPassRates": [
-        67
-      ],
+      "runPassRates": [67],
       "runCount": 1,
       "passedChecks": 2,
       "totalChecks": 3,
@@ -672,9 +614,7 @@
     },
     "daily-grind - accessible-generated-content - guided": {
       "medianPassRate": 100,
-      "runPassRates": [
-        100
-      ],
+      "runPassRates": [100],
       "runsUsingGuide": 1,
       "runsWithToolActivation": 1,
       "runCount": 1,
@@ -688,9 +628,7 @@
     },
     "daily-grind - security - unguided": {
       "medianPassRate": 30,
-      "runPassRates": [
-        30
-      ],
+      "runPassRates": [30],
       "runCount": 1,
       "passedChecks": 6,
       "totalChecks": 20,
@@ -702,9 +640,7 @@
     },
     "daily-grind - security - guided": {
       "medianPassRate": 65,
-      "runPassRates": [
-        65
-      ],
+      "runPassRates": [65],
       "runsUsingGuide": 1,
       "runsWithToolActivation": 1,
       "runCount": 1,
@@ -718,9 +654,7 @@
     },
     "task - passkey-authentication - unguided": {
       "medianPassRate": 0,
-      "runPassRates": [
-        0
-      ],
+      "runPassRates": [0],
       "runCount": 1,
       "passedChecks": 0,
       "totalChecks": 6,
@@ -732,9 +666,7 @@
     },
     "task - passkey-authentication - guided": {
       "medianPassRate": 50,
-      "runPassRates": [
-        50
-      ],
+      "runPassRates": [50],
       "runsUsingGuide": 1,
       "runsWithToolActivation": 1,
       "runCount": 1,

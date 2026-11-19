@@ -40,7 +40,7 @@ index 22f7b64..f0d7c3d 100644
      adNetwork: any; // Replace 'any' with a more specific type if you know it
    }
  }
- 
+
 -export {};
 \ No newline at end of file
 +declare module 'react' {
@@ -58,14 +58,14 @@ index f089dc0..1154b59 100644
 @@ -7,9 +7,32 @@ interface Props {
    initialIsBookmarked: boolean;
  }
- 
+
 +type ReadingListChangedEvent = CustomEvent<{
 +  waitUntil?: (promise: Promise<unknown>) => void;
 +}>;
 +
  export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
    const [isBookmarked, setIsBookmarked] = useState(initialIsBookmarked);
- 
+
 +  const refreshBookmarkState = async () => {
 +    const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
 +    const data = await response.json();
@@ -94,7 +94,7 @@ index f089dc0..1154b59 100644
      setIsBookmarked(data.readingList.includes(slug));
 +    window.dispatchEvent(new CustomEvent('reading-list:changed'));
    };
- 
+
    return (
 diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
 index 10bfbad..60a3daf 100644
@@ -103,18 +103,18 @@ index 10bfbad..60a3daf 100644
 @@ -13,6 +13,10 @@ interface Props {
    onClose: () => void;
  }
- 
+
 +type ReadingListChangedEvent = CustomEvent<{
 +  waitUntil?: (promise: Promise<unknown>) => void;
 +}>;
 +
  export default function ReadingListFlyout({ articles, onClose }: Props) {
    const [readingList, setReadingList] = useState<string[]>([]);
- 
+
 @@ -25,14 +29,22 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    useEffect(() => {
      fetchReadingList();
- 
+
 +    const handleReadingListChanged = (event: Event) => {
 +      const refresh = fetchReadingList();
 +      (event as ReadingListChangedEvent).detail?.waitUntil?.(refresh);
@@ -128,7 +128,7 @@ index 10bfbad..60a3daf 100644
      };
 +    window.addEventListener('reading-list:changed', handleReadingListChanged);
      window.addEventListener('keydown', handleKeyDown);
- 
+
      return () => {
 +      window.removeEventListener('reading-list:changed', handleReadingListChanged);
        window.removeEventListener('keydown', handleKeyDown);
@@ -140,7 +140,7 @@ index 10bfbad..60a3daf 100644
      fetchReadingList();
 +    window.dispatchEvent(new CustomEvent('reading-list:changed'));
    };
- 
+
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
 diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
 index a7c52b6..5720007 100644
@@ -149,7 +149,7 @@ index a7c52b6..5720007 100644
 @@ -55,7 +55,12 @@ export default function SignInForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form
 +        onSubmit={handleSubmit}
@@ -167,7 +167,7 @@ index 589fe62..0d8ecb3 100644
 @@ -56,7 +56,12 @@ export default function SignUpForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form
 +        onSubmit={handleSubmit}
@@ -184,7 +184,7 @@ index dcf9696..a8e8f36 100644
 +++ b/src/layouts/Layout.astro
 @@ -35,6 +35,9 @@ const baseUrl = import.meta.env.BASE_URL;
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
      <ClientRouter />
 +    <script>
 +      import "../scripts/webmcp";

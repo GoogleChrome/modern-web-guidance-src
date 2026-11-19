@@ -8,7 +8,7 @@ index 980b279..14decd4 100644
          <ReadingListButton client:load />
 +        <a href={`${baseUrl}local-resources`} class="text-xs font-semibold hover:underline">Local resources</a>
        </div>
- 
+
        <!-- Right: Buttons -->
 diff --git a/src/components/LocalResourceConnector.tsx b/src/components/LocalResourceConnector.tsx
 new file mode 100644

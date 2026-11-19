@@ -32,6 +32,7 @@ async function signIn() {
 ```
 
 Or with the promise-based API (Chrome 116+):
+
 ```js
 const { token } = await chrome.identity.getAuthToken({ interactive: true });
 ```
@@ -40,10 +41,13 @@ const { token } = await chrome.identity.getAuthToken({ interactive: true });
 
 ```js
 async function getUserProfile(token) {
-  const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!response.ok) throw new Error('Failed to fetch profile');
+  const response = await fetch(
+    "https://www.googleapis.com/oauth2/v3/userinfo",
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+  );
+  if (!response.ok) throw new Error("Failed to fetch profile");
   return response.json();
   // Returns: { sub, name, given_name, family_name, picture, email, email_verified }
 }
@@ -69,12 +73,12 @@ try {
   const profile = await getUserProfile(token);
   displayProfile(profile);
 } catch (err) {
-  if (err.message.includes('canceled')) {
-    showMessage('Sign-in was cancelled');
-  } else if (err.message.includes('not granted')) {
-    showMessage('Permission was denied');
+  if (err.message.includes("canceled")) {
+    showMessage("Sign-in was cancelled");
+  } else if (err.message.includes("not granted")) {
+    showMessage("Permission was denied");
   } else {
-    showMessage('Sign-in failed: ' + err.message);
+    showMessage("Sign-in failed: " + err.message);
   }
 }
 ```
@@ -93,11 +97,11 @@ try {
 **This is critical and often missed.** The OAuth `client_id` is tied to a specific extension ID.
 The extension ID changes depending on how you load the extension:
 
-| Context | How ID is determined |
-|---------|---------------------|
+| Context                | How ID is determined                                                         |
+| ---------------------- | ---------------------------------------------------------------------------- |
 | Unpacked (development) | Derived from the extension's directory path — changes if you move the folder |
-| Packed (.crx) | Derived from the private key used to pack |
-| Chrome Web Store | Assigned by the store, permanent |
+| Packed (.crx)          | Derived from the private key used to pack                                    |
+| Chrome Web Store       | Assigned by the store, permanent                                             |
 
 **To get a stable ID during development**, add a `"key"` field to your manifest.json.
 This ensures the same extension ID regardless of directory path:
@@ -132,10 +136,10 @@ const authUrl = `https://github.com/login/oauth/authorize?client_id=XXX&redirect
 
 const responseUrl = await chrome.identity.launchWebAuthFlow({
   url: authUrl,
-  interactive: true
+  interactive: true,
 });
 
 // Parse the token from responseUrl
 const url = new URL(responseUrl);
-const code = url.searchParams.get('code');
+const code = url.searchParams.get("code");
 ```

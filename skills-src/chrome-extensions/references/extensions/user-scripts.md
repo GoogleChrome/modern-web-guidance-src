@@ -6,8 +6,8 @@ different from content scripts (which are bundled with the extension) and `chrom
 (which executes extension-owned code programmatically).
 
 **Use userScripts when:** you are building a script manager, custom automation tool, or any
-feature where the user supplies JavaScript that should run on web pages.  
-**Use content scripts when:** the injected code is written by you and ships with the extension.  
+feature where the user supplies JavaScript that should run on web pages.
+**Use content scripts when:** the injected code is written by you and ships with the extension.
 **Use `chrome.scripting.executeScript` when:** you need one-off execution of known, extension-owned code.
 
 ## Manifest
@@ -29,10 +29,10 @@ feature where the user supplies JavaScript that should run on web pages.
 **The `chrome.userScripts` API requires explicit user opt-in. Without it, the API throws on
 property access.** Behavior differs by Chrome version:
 
-| Chrome version | Requirement |
-|----------------|-------------|
-| < 138 | User must enable **Developer mode** at `chrome://extensions` |
-| ≥ 138 | User must toggle **"Allow User Scripts"** on the extension's details page |
+| Chrome version | Requirement                                                               |
+| -------------- | ------------------------------------------------------------------------- |
+| < 138          | User must enable **Developer mode** at `chrome://extensions`              |
+| ≥ 138          | User must toggle **"Allow User Scripts"** on the extension's details page |
 
 ```js
 // ❌ BROKEN — crashes if user hasn't enabled the API
@@ -58,10 +58,10 @@ if (!isUserScriptsAvailable()) {
 
 ## Execution Worlds
 
-| World | Constant | Behavior |
-|-------|----------|----------|
-| **USER_SCRIPT** (default) | `ExecutionWorld.USER_SCRIPT` | Isolated from host page JS; exempt from page CSP |
-| **MAIN** | `ExecutionWorld.MAIN` | Shares JS context with the host page; can access page variables |
+| World                     | Constant                     | Behavior                                                        |
+| ------------------------- | ---------------------------- | --------------------------------------------------------------- |
+| **USER_SCRIPT** (default) | `ExecutionWorld.USER_SCRIPT` | Isolated from host page JS; exempt from page CSP                |
+| **MAIN**                  | `ExecutionWorld.MAIN`        | Shares JS context with the host page; can access page variables |
 
 Use `USER_SCRIPT` (the default) for safety. Use `MAIN` only when the user's script explicitly
 needs to interact with the host page's JavaScript environment.
@@ -106,19 +106,25 @@ Always check before calling `register()` vs `update()` — registering an alread
 throws an error:
 
 ```js
-const existing = await chrome.userScripts.getScripts({ ids: ['my-user-script'] });
+const existing = await chrome.userScripts.getScripts({
+  ids: ["my-user-script"],
+});
 if (existing.length > 0) {
-  await chrome.userScripts.update([{ id: 'my-user-script', js: [{ code: updatedCode }] }]);
+  await chrome.userScripts.update([
+    { id: "my-user-script", js: [{ code: updatedCode }] },
+  ]);
 } else {
-  await chrome.userScripts.register([{
-    id: 'my-user-script',
-    matches: ['https://example.com/*'],
-    js: [{ code: userProvidedCode }]
-  }]);
+  await chrome.userScripts.register([
+    {
+      id: "my-user-script",
+      matches: ["https://example.com/*"],
+      js: [{ code: userProvidedCode }],
+    },
+  ]);
 }
 
 // Remove a specific script
-await chrome.userScripts.unregister({ ids: ['my-user-script'] });
+await chrome.userScripts.unregister({ ids: ["my-user-script"] });
 
 // Remove all registered user scripts
 await chrome.userScripts.unregister();
@@ -161,14 +167,14 @@ does not persist across page loads.
 const results = await chrome.userScripts.execute({
   target: { tabId: tabId },
   js: [{ code: userProvidedCode }],
-  world: 'USER_SCRIPT'  // optional, default
+  world: "USER_SCRIPT", // optional, default
 });
 
 for (const result of results) {
   if (result.error) {
-    console.error('Injection failed in frame', result.frameId, result.error);
+    console.error("Injection failed in frame", result.frameId, result.error);
   } else {
-    console.log('Result from frame', result.frameId, result.result);
+    console.log("Result from frame", result.frameId, result.result);
   }
 }
 ```
@@ -216,25 +222,28 @@ For long-lived connections use `chrome.runtime.onUserScriptConnect` (analogous t
 Chrome 133+ supports per-world messaging with `worldId`:
 
 ```js
-await chrome.userScripts.configureWorld({ worldId: 'my-world', messaging: true });
+await chrome.userScripts.configureWorld({
+  worldId: "my-world",
+  messaging: true,
+});
 ```
 
 ## `configureWorld()` — CSP and Messaging
 
 ```js
 await chrome.userScripts.configureWorld({
-  csp: "script-src 'self'",  // custom CSP for the world
-  messaging: true             // enable chrome.runtime messaging
+  csp: "script-src 'self'", // custom CSP for the world
+  messaging: true, // enable chrome.runtime messaging
 });
 
 // Chrome 133+: configure a named world
 await chrome.userScripts.configureWorld({
-  worldId: 'my-world',
-  messaging: true
+  worldId: "my-world",
+  messaging: true,
 });
 
 // Chrome 133+: reset a world's configuration
-await chrome.userScripts.resetWorldConfiguration('my-world');
+await chrome.userScripts.resetWorldConfiguration("my-world");
 
 // Chrome 133+: list all world configurations
 const configs = await chrome.userScripts.getWorldConfigurations();
@@ -246,7 +255,7 @@ const configs = await chrome.userScripts.getWorldConfigurations();
 // options.js — save user's script and (re)register it
 async function saveScript(id, matches, code) {
   // Persist the config so we can restore it after extension updates
-  const { scripts = {} } = await chrome.storage.local.get('scripts');
+  const { scripts = {} } = await chrome.storage.local.get("scripts");
   scripts[id] = { id, matches, js: [{ code }] };
   await chrome.storage.local.set({ scripts });
 
@@ -262,12 +271,12 @@ async function saveScript(id, matches, code) {
 
 ## Key Differences from Content Scripts
 
-| | Content Scripts | userScripts |
-|--|-----------------|-------------|
-| Code source | Bundled with extension | Provided by user at runtime |
-| Persistence | Automatic (manifest) | Manual (register + restore on update) |
-| Arbitrary code | No | Yes |
-| User opt-in | No | Yes (Developer Mode / Allow User Scripts) |
-| Messaging | `runtime.sendMessage` | `runtime.onUserScriptMessage` (after `configureWorld`) |
-| CSP exemption | Yes | Yes (USER_SCRIPT world) |
-| Multiple worlds | No | Yes (Chrome 133+ with `worldId`) |
+|                 | Content Scripts        | userScripts                                            |
+| --------------- | ---------------------- | ------------------------------------------------------ |
+| Code source     | Bundled with extension | Provided by user at runtime                            |
+| Persistence     | Automatic (manifest)   | Manual (register + restore on update)                  |
+| Arbitrary code  | No                     | Yes                                                    |
+| User opt-in     | No                     | Yes (Developer Mode / Allow User Scripts)              |
+| Messaging       | `runtime.sendMessage`  | `runtime.onUserScriptMessage` (after `configureWorld`) |
+| CSP exemption   | Yes                    | Yes (USER_SCRIPT world)                                |
+| Multiple worlds | No                     | Yes (Chrome 133+ with `worldId`)                       |

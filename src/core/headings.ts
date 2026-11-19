@@ -97,7 +97,8 @@ export function buildHeadingMap(markdown: string): HeadingMapResult {
     const baseMoonriseId = moonriseHeadingId(rawHeadingText);
     const count = seenMoonrise.get(baseMoonriseId) ?? 0;
     seenMoonrise.set(baseMoonriseId, count + 1);
-    const moonriseId = count > 0 ? `${baseMoonriseId}_${count + 1}` : baseMoonriseId;
+    const moonriseId =
+      count > 0 ? `${baseMoonriseId}_${count + 1}` : baseMoonriseId;
     headingIds.add(moonriseId);
 
     const baseGithubSlug = githubSlug(rawHeadingText);

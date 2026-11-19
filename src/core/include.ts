@@ -37,9 +37,15 @@ export function slugify(text: string): string {
  * Path resolution: `./` / `../` paths resolve relative to `callerPath`'s
  * directory; bare paths resolve relative to repo root.
  */
-export function resolveInclude(rawArg: string, callerPath: string): IncludeResolution {
+export function resolveInclude(
+  rawArg: string,
+  callerPath: string,
+): IncludeResolution {
   if (rawArg.startsWith("/")) {
-    return { isValid: false, errorMessage: `Absolute paths are not allowed (got "${rawArg}")` };
+    return {
+      isValid: false,
+      errorMessage: `Absolute paths are not allowed (got "${rawArg}")`,
+    };
   }
 
   const [rawPath, ...rest] = rawArg.split("#");
@@ -47,19 +53,26 @@ export function resolveInclude(rawArg: string, callerPath: string): IncludeResol
   const callerDir = path.isAbsolute(callerPath)
     ? path.dirname(callerPath)
     : path.resolve(rootDir, path.dirname(callerPath));
-  const absolutePath = rawPath.startsWith("./") || rawPath.startsWith("../")
-    ? path.resolve(callerDir, rawPath)
-    : path.resolve(rootDir, rawPath);
+  const absolutePath =
+    rawPath.startsWith("./") || rawPath.startsWith("../")
+      ? path.resolve(callerDir, rawPath)
+      : path.resolve(rootDir, rawPath);
 
   if (!fs.existsSync(absolutePath)) {
-    return { isValid: false, errorMessage: `File not found: "${rawPath}" (resolved to "${absolutePath}")` };
+    return {
+      isValid: false,
+      errorMessage: `File not found: "${rawPath}" (resolved to "${absolutePath}")`,
+    };
   }
 
   const file = loadFile(absolutePath);
   if (sectionId) {
     const section = extractSection(file, sectionId);
     if (section === undefined) {
-      return { isValid: false, errorMessage: `Section "#${sectionId}" not found in "${rawPath}"` };
+      return {
+        isValid: false,
+        errorMessage: `Section "#${sectionId}" not found in "${rawPath}"`,
+      };
     }
     return { isValid: true, content: section, absolutePath };
   }
@@ -86,7 +99,10 @@ function loadFile(absolutePath: string): ParsedFile {
   }
   const raw = fs.readFileSync(absolutePath, "utf-8");
   // Strip frontmatter and a leading "# Title" line — redundant when transcluded.
-  const body = matter(raw).content.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+  const body = matter(raw)
+    .content.trim()
+    .replace(/^#\s+[^\n]*\n?/, "")
+    .trim();
   file = { body, tokens: marked.lexer(body), sections: new Map() };
   fileCache.set(absolutePath, file);
   return file;
@@ -103,12 +119,16 @@ const isHeading = (t: Token): t is Tokens.Heading => t.type === "heading";
  * HTML is also dropped — its content isn't exposed as child tokens.
  */
 function textContent(tokens: Token[] | undefined): string {
-  return tokens?.map(t => {
-    if ("tokens" in t && t.tokens) return textContent(t.tokens);
-    if (t.type === "br") return "\n";
-    if (t.type === "html") return "";
-    return "text" in t ? t.text : "";
-  }).join("") ?? "";
+  return (
+    tokens
+      ?.map((t) => {
+        if ("tokens" in t && t.tokens) return textContent(t.tokens);
+        if (t.type === "br") return "\n";
+        if (t.type === "html") return "";
+        return "text" in t ? t.text : "";
+      })
+      .join("") ?? ""
+  );
 }
 
 // `{#id}` heading-suffix syntax. Not standard CommonMark, and no installed
@@ -131,19 +151,30 @@ function matchesHeading(heading: Tokens.Heading, sectionId: string): boolean {
  * when its `{#id}` suffix equals `sectionId` or its text slugifies to it.
  * Section ends at the next heading of equal or shallower depth.
  */
-function extractSection(file: ParsedFile, sectionId: string): string | undefined {
+function extractSection(
+  file: ParsedFile,
+  sectionId: string,
+): string | undefined {
   let result = file.sections.get(sectionId);
   if (result !== undefined) return result;
 
   const { tokens } = file;
-  const heading = tokens.find((t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId));
+  const heading = tokens.find(
+    (t): t is Tokens.Heading => isHeading(t) && matchesHeading(t, sectionId),
+  );
   if (!heading) {
     return undefined;
   }
   const start = tokens.indexOf(heading);
-  const end = tokens.findIndex((t, i) => i > start && isHeading(t) && t.depth <= heading.depth);
+  const end = tokens.findIndex(
+    (t, i) => i > start && isHeading(t) && t.depth <= heading.depth,
+  );
   const stop = end === -1 ? tokens.length : end;
-  result = tokens.slice(start + 1, stop).map(t => t.raw).join("").trim();
+  result = tokens
+    .slice(start + 1, stop)
+    .map((t) => t.raw)
+    .join("")
+    .trim();
   file.sections.set(sectionId, result);
   return result;
 }

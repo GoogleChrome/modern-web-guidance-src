@@ -3,7 +3,7 @@ index 66c9173..0bb4112 100644
 --- a/index.html
 +++ b/index.html
 @@ -22,9 +22,24 @@
- 
+
      body {
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 -      line-height: 1.6;
@@ -26,11 +26,11 @@ index 66c9173..0bb4112 100644
 +      text-wrap: pretty;
 +      overflow-wrap: break-word;
      }
- 
+
      /* Navigation */
 @@ -41,9 +56,9 @@
      }
- 
+
      .logo {
 -      font-size: 1.5rem;
 +      font-size: clamp(1.25rem, 1rem + 1vw, 1.5rem);
@@ -38,16 +38,16 @@ index 66c9173..0bb4112 100644
 -      letter-spacing: 1px;
 +      letter-spacing: 0.0625em;
      }
- 
+
      nav ul {
 @@ -52,13 +67,13 @@
      }
- 
+
      nav ul li {
 -      margin-left: 20px;
 +      margin-left: 1.25rem;
      }
- 
+
      nav a {
        color: white;
        text-decoration: none;
@@ -55,16 +55,16 @@ index 66c9173..0bb4112 100644
 +      font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
        transition: color 0.3s;
      }
- 
+
 @@ -68,13 +83,13 @@
- 
+
      .logout-link {
        border: 1px solid var(--accent);
 -      padding: 5px 12px;
 +      padding: 0.3125rem 0.75rem;
        border-radius: 4px;
      }
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -79,13 +79,13 @@ index 66c9173..0bb4112 100644
 -      padding: 0 20px;
 +      padding: 2rem 1.25rem;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 +      font-size: clamp(2rem, 1.25rem + 4vw, 3.5rem);
        margin-bottom: 1rem;
      }
- 
+
 +    .hero p {
 +      font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
 +      margin-inline: auto;
@@ -104,7 +104,7 @@ index 66c9173..0bb4112 100644
 +      font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem);
 +      margin-bottom: 1rem;
      }
- 
+
      .grid {
        display: grid;
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -113,7 +113,7 @@ index 66c9173..0bb4112 100644
 +      gap: 1.25rem;
 +      margin-top: 1.25rem;
      }
- 
+
      .card {
        background: white;
 -      padding: 20px;
@@ -122,14 +122,14 @@ index 66c9173..0bb4112 100644
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
      }
- 
+
      .card h3 {
 -      margin-bottom: 10px;
 +      font-size: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
 +      margin-bottom: 0.625rem;
        color: var(--primary);
      }
- 
+
 +    .card p {
 +      font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);
 +      margin-inline: auto;
@@ -148,7 +148,7 @@ index 66c9173..0bb4112 100644
 +      margin-top: 0.9375rem;
        transition: background 0.3s;
      }
- 
+
 @@ -138,19 +170,24 @@
      footer {
        background: var(--secondary);
@@ -158,12 +158,12 @@ index 66c9173..0bb4112 100644
 +      padding: 2.5rem 1.25rem;
 +      margin-top: 2.5rem;
      }
- 
+
      .footer-links {
 -      margin-bottom: 20px;
 +      margin-bottom: 1.25rem;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
 +      margin: 0 0.625rem;

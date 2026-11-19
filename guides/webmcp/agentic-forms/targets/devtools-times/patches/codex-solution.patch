@@ -5,13 +5,13 @@ index a7c52b6..1ba0c55 100644
 @@ -1,4 +1,5 @@
  import React, { useState } from 'react';
 +import type { AgentSubmitEvent } from '../utils/webmcp';
- 
+
  export default function SignInForm() {
    const [username, setUsername] = useState('');
 @@ -7,8 +8,19 @@ export default function SignInForm() {
    const [success, setSuccess] = useState<string | null>(null);
    const [loading, setLoading] = useState(false);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 +  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
      e.preventDefault();
@@ -48,7 +48,7 @@ index a7c52b6..1ba0c55 100644
 @@ -55,7 +69,7 @@ export default function SignInForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form toolname="sign-in" tooldescription="Sign in to an existing DevTools Times account." onSubmit={handleSubmit} className="space-y-4">
          <div>
@@ -77,13 +77,13 @@ index 589fe62..ecab95d 100644
 @@ -1,4 +1,5 @@
  import React, { useState } from 'react';
 +import type { AgentSubmitEvent } from '../utils/webmcp';
- 
+
  export default function SignUpForm() {
    const [username, setUsername] = useState('');
 @@ -7,8 +8,19 @@ export default function SignUpForm() {
    const [success, setSuccess] = useState<string | null>(null);
    const [loading, setLoading] = useState(false);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 +  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
      e.preventDefault();
@@ -121,7 +121,7 @@ index 589fe62..ecab95d 100644
 @@ -56,7 +71,7 @@ export default function SignUpForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form toolname="sign-up" tooldescription="Create a new DevTools Times account." onSubmit={handleSubmit} className="space-y-4">
          <div>
@@ -149,7 +149,7 @@ index e9a9abb..7d559df 100644
 +++ b/src/styles/global.css
 @@ -1,7 +1,18 @@
  @import "tailwindcss";
- 
+
 +form:tool-form-active {
 +  outline: 2px dashed #2563eb;
 +  outline-offset: 4px;

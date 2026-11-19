@@ -16,7 +16,7 @@ index 66c9173..9ab8d4b 100644
 +      background-color: var(--accent);
 +      color: var(--text);
      }
- 
+
      * {
 @@ -44,6 +53,7 @@
        font-size: 1.5rem;
@@ -24,7 +24,7 @@ index 66c9173..9ab8d4b 100644
        letter-spacing: 1px;
 +      user-select: none;
      }
- 
+
      nav ul {
 @@ -129,12 +139,315 @@
        border-radius: 5px;
@@ -35,11 +35,11 @@ index 66c9173..9ab8d4b 100644
 +      font-size: 1rem;
 +      cursor: pointer;
      }
- 
+
      .btn:hover {
        background: #3e2723;
      }
- 
+
 +    .btn-reset {
 +      background: var(--secondary);
 +      color: var(--text);
@@ -441,5 +441,5 @@ index 66c9173..9ab8d4b 100644
 +      </form>
 +    </section>
    </main>
- 
+
    <footer>

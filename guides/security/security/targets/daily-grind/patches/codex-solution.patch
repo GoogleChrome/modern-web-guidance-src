@@ -14,7 +14,7 @@ index 66c9173..9654b09 100644
 @@ -107,6 +107,10 @@
        margin-top: 20px;
      }
- 
+
 +    .section-title {
 +      text-align: center;
 +    }
@@ -23,7 +23,7 @@ index 66c9173..9654b09 100644
        background: white;
        padding: 20px;
 @@ -176,7 +180,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

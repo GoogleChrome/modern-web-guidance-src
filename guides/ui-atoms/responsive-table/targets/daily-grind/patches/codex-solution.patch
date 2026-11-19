@@ -23,7 +23,7 @@ index 66c9173..105d84c 100644
 @@ -120,6 +120,142 @@
        color: var(--primary);
      }
- 
+
 +    .table-wrapper {
 +      margin-block-start: 2rem;
 +      max-inline-size: 100%;
@@ -214,7 +214,7 @@ index 66c9173..105d84c 100644
 +        Actual values and prices may vary with preparation, customizations, and location.</p>
      </section>
    </main>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644
 --- a/package.json

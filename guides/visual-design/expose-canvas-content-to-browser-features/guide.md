@@ -14,7 +14,7 @@ Regular `<canvas>` content is not exposed to browser features such as screen rea
 1. Check if HTML-in-Canvas is supported in the browser:
 
 ```js
-if ('content' in HTMLCanvasElement.prototype) {
+if ("content" in HTMLCanvasElement.prototype) {
   // Use HTML in Canvas API
 } else {
   // Use fallback strategy
@@ -97,14 +97,14 @@ function allocateElementTexture(gl, texture, state, width, height) {
 
   gl.texImage2D(
     gl.TEXTURE_2D,
-    0,                // Mipmap level
-    gl.RGBA8,         // Internal format: 8 bits per RGBA channel
-    width,            // Size in canvas grid pixels
+    0, // Mipmap level
+    gl.RGBA8, // Internal format: 8 bits per RGBA channel
+    width, // Size in canvas grid pixels
     height,
-    0,                // Border: must be 0
-    gl.RGBA,          // Format and type that match RGBA8
+    0, // Border: must be 0
+    gl.RGBA, // Format and type that match RGBA8
     gl.UNSIGNED_BYTE,
-    null              // null reserves GPU memory without uploading pixels
+    null, // null reserves GPU memory without uploading pixels
   );
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   state.width = width;
@@ -137,7 +137,7 @@ canvas.onpaint = () => {
   try {
     uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
   } catch (err) {
-    console.error('texElementSubImage2D copy failed:', err);
+    console.error("texElementSubImage2D copy failed:", err);
   }
 };
 ```
@@ -172,14 +172,22 @@ canvas.onpaint = () => {
   const size = getElementImageSize(canvas, uiElement);
   if (!size) return;
   const previousTexture = textureState.texture;
-  const texture = ensureElementTexture(device, textureState, size.width, size.height);
+  const texture = ensureElementTexture(
+    device,
+    textureState,
+    size.width,
+    size.height,
+  );
   if (texture !== previousTexture) {
     // New texture: create, or rebuild, the bind groups that reference it.
   }
   try {
-    device.queue.drawElementImageToTexture({ source: uiElement }, { texture, size });
+    device.queue.drawElementImageToTexture(
+      { source: uiElement },
+      { texture, size },
+    );
   } catch (err) {
-    console.error('drawElementImageToTexture copy failed:', err);
+    console.error("drawElementImageToTexture copy failed:", err);
   }
 };
 ```
@@ -236,7 +244,11 @@ The browser needs to know where the HTML element is drawn, so that its DOM posit
       // Move center (0,0) to center of canvas
       .translate(canvas.clientWidth / 2, canvas.clientHeight / 2)
       // Scale normalized clip (-1..1) to viewport size, and flip Y back
-      .scale(canvas.clientWidth / 2, -canvas.clientHeight / 2, canvas.clientHeight / 2);
+      .scale(
+        canvas.clientWidth / 2,
+        -canvas.clientHeight / 2,
+        canvas.clientHeight / 2,
+      );
 
     // 4. Multiply: (Clip -> Pixels) * (MVP) * (pixels -> unit square)
     return clipToCanvasViewport.multiply(mvpDOM).multiply(toGLModel);
@@ -245,15 +257,20 @@ The browser needs to know where the HTML element is drawn, so that its DOM posit
 
 Then pass the transform to `canvas.updateElementGeometry()` as `canvasTransform`. This moves the HTML element to sit directly on top of its rendered pixels. This ensures that when a user clicks a button or selects text, they are actually hitting the real HTML element. The browser also uses the transform for the element's accessibility bounds, for example, for screen reader focus rings:
 
-  ```js
-  canvas.updateElementGeometry(targetHTMLElement, {
-    canvasTransform: computeCanvasTransform(canvas, targetHTMLElement, htmlElementMVP),
-  });
-  ```
+```js
+canvas.updateElementGeometry(targetHTMLElement, {
+  canvasTransform: computeCanvasTransform(
+    canvas,
+    targetHTMLElement,
+    htmlElementMVP,
+  ),
+});
+```
 
 Use these options to control hit testing:
-  - Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
-  - Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
+
+- Each `updateElementGeometry()` call moves the element to the top of the hit-testing order. Pass `{ preserveHitTestOrder: true }` to keep its position.
+- Call `canvas.clearElementGeometry(element)` to remove an element from hit testing, for example, when you hide it.
 
 ## Example code
 
@@ -333,14 +350,18 @@ Use these options to control hit testing:
     try {
       uploadElementWebGL(gl, canvas, texture, uiElement, textureState);
     } catch (err) {
-      console.error('texElementSubImage2D copy failed:', err);
+      console.error("texElementSubImage2D copy failed:", err);
     }
 
     // ... Render your 3D scene here, calculating htmlElementMVP matrix ...
 
     // 2. Sync DOM position, hit testing, and accessibility bounds with 3D scene
     canvas.updateElementGeometry(uiElement, {
-      canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
+      canvasTransform: computeCanvasTransform(
+        canvas,
+        uiElement,
+        htmlElementMVP,
+      ),
     });
   };
 </script>
@@ -372,14 +393,22 @@ Use these options to control hit testing:
     const size = getElementImageSize(canvas, uiElement);
     if (size) {
       const previousTexture = textureState.texture;
-      const texture = ensureElementTexture(device, textureState, size.width, size.height);
+      const texture = ensureElementTexture(
+        device,
+        textureState,
+        size.width,
+        size.height,
+      );
       if (texture !== previousTexture) {
         // New texture: create, or rebuild, the bind groups that reference it.
       }
       try {
-        device.queue.drawElementImageToTexture({ source: uiElement }, { texture, size });
+        device.queue.drawElementImageToTexture(
+          { source: uiElement },
+          { texture, size },
+        );
       } catch (err) {
-        console.error('drawElementImageToTexture copy failed:', err);
+        console.error("drawElementImageToTexture copy failed:", err);
       }
     }
 
@@ -387,7 +416,11 @@ Use these options to control hit testing:
 
     // 2. Sync DOM position, hit testing, and accessibility bounds (same matrix math as WebGL)
     canvas.updateElementGeometry(uiElement, {
-      canvasTransform: computeCanvasTransform(canvas, uiElement, htmlElementMVP),
+      canvasTransform: computeCanvasTransform(
+        canvas,
+        uiElement,
+        htmlElementMVP,
+      ),
     });
   };
 </script>

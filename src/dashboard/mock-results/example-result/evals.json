@@ -109,10 +109,7 @@
             "message": "No console warnings for forced layout"
           }
         ],
-        "guidesUsed": [
-          "content-vis",
-          "performance-tips"
-        ],
+        "guidesUsed": ["content-vis", "performance-tips"],
         "guideResults": {
           "checks": [
             {
@@ -191,29 +188,21 @@
   "stats": {
     "content-vis-task - content-vis - unguided": {
       "median": 100,
-      "rates": [
-        100
-      ]
+      "rates": [100]
     },
     "content-vis-task - content-vis - guided": {
       "median": 100,
-      "rates": [
-        100
-      ],
+      "rates": [100],
       "runsUsingGuide": 1,
       "runCount": 1
     },
     "task - preload-prerender - unguided": {
       "median": 33,
-      "rates": [
-        33
-      ]
+      "rates": [33]
     },
     "task - preload-prerender - guided": {
       "median": 33,
-      "rates": [
-        33
-      ],
+      "rates": [33],
       "runsUsingGuide": 0,
       "runCount": 1
     }

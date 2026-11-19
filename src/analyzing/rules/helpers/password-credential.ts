@@ -1,4 +1,4 @@
-import type { DomElementView, DomMatcherContext } from '../../schema.ts';
+import type { DomElementView, DomMatcherContext } from "../../schema.ts";
 
 const FORM_TAG_REGEX =
   /<\/?(form|Form)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)>/g;
@@ -12,57 +12,136 @@ const NON_CREDENTIAL_SECRET_REGEX =
 const EXISTING_PASSWORD_CJK_REGEX = /原始密码|当前密码|旧密码|原密码/;
 
 const DYNAMIC_AUTOCOMPLETE_ATTRS: readonly string[] = [
-  ':autocomplete',
-  'v-bind:autocomplete',
-  '[autocomplete]',
-  '[attr.autocomplete]',
-  'bind:autocomplete',
-  ':autoComplete',
-  '[autoComplete]',
+  ":autocomplete",
+  "v-bind:autocomplete",
+  "[autocomplete]",
+  "[attr.autocomplete]",
+  "bind:autocomplete",
+  ":autoComplete",
+  "[autoComplete]",
 ];
 
 const EXISTING_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'old', 'oldpass', 'oldpassword', 'oldpsw', 'oldpwd',
-  'current', 'currentpass', 'currentpassword', 'currentpsw', 'currentpwd',
-  'cur', 'curpass', 'curpassword', 'curpsw', 'curpwd',
-  'existing', 'existingpass', 'existingpassword',
-  'previous', 'previouspass', 'previouspassword',
-  'prev', 'prevpass', 'prevpassword',
-  'orig', 'origpass', 'original', 'originalpass',
+  "old",
+  "oldpass",
+  "oldpassword",
+  "oldpsw",
+  "oldpwd",
+  "current",
+  "currentpass",
+  "currentpassword",
+  "currentpsw",
+  "currentpwd",
+  "cur",
+  "curpass",
+  "curpassword",
+  "curpsw",
+  "curpwd",
+  "existing",
+  "existingpass",
+  "existingpassword",
+  "previous",
+  "previouspass",
+  "previouspassword",
+  "prev",
+  "prevpass",
+  "prevpassword",
+  "orig",
+  "origpass",
+  "original",
+  "originalpass",
 ]);
 
 const CONFIRM_OR_REPEAT_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'confirm', 'confirmation', 'confirmpass', 'confirmpassword', 'confirmpsw', 'confirmpwd', 'crmpwd',
-  'repeat', 'repeatpass', 'repeatpassword', 'repeatpwd',
-  'repass', 'repassword', 'repsw', 'repwd', 'rpass', 'rpwd',
-  'retype', 'retypepass', 'retypepassword',
-  'renew', 'renewpass', 'renewpassword', 'renewpsw', 'renewpwd',
-  'cnew', 'cnewpass', 'cnewpsw', 'cnewpwd',
+  "confirm",
+  "confirmation",
+  "confirmpass",
+  "confirmpassword",
+  "confirmpsw",
+  "confirmpwd",
+  "crmpwd",
+  "repeat",
+  "repeatpass",
+  "repeatpassword",
+  "repeatpwd",
+  "repass",
+  "repassword",
+  "repsw",
+  "repwd",
+  "rpass",
+  "rpwd",
+  "retype",
+  "retypepass",
+  "retypepassword",
+  "renew",
+  "renewpass",
+  "renewpassword",
+  "renewpsw",
+  "renewpwd",
+  "cnew",
+  "cnewpass",
+  "cnewpsw",
+  "cnewpwd",
 ]);
 
 const NEW_PASSWORD_WORDS: ReadonlySet<string> = new Set([
   ...CONFIRM_OR_REPEAT_PASSWORD_WORDS,
-  'new', 'new2', 'newpass', 'newpass1', 'newpass2',
-  'newpassword', 'newpassword1', 'newpassword2', 'newpsw', 'newpwd',
-  'signup', 'register', 'registration', 'create',
+  "new",
+  "new2",
+  "newpass",
+  "newpass1",
+  "newpass2",
+  "newpassword",
+  "newpassword1",
+  "newpassword2",
+  "newpsw",
+  "newpwd",
+  "signup",
+  "register",
+  "registration",
+  "create",
 ]);
 
 const NUMBERED_SECOND_PASSWORD_WORDS: ReadonlySet<string> = new Set([
-  'password2', 'pwd2', 'pass2', 'psw2',
+  "password2",
+  "pwd2",
+  "pass2",
+  "psw2",
 ]);
 
 const SIGN_UP_OR_RESET_FORM_SINGLE_WORDS: ReadonlySet<string> = new Set([
-  'signup', 'register', 'registration',
-  'forgot', 'forgotpassword', 'forgotpass', 'forgotpwd',
-  'resetpassword', 'resetpass', 'resetpwd', 'passwordreset', 'passreset',
+  "signup",
+  "register",
+  "registration",
+  "forgot",
+  "forgotpassword",
+  "forgotpass",
+  "forgotpwd",
+  "resetpassword",
+  "resetpass",
+  "resetpwd",
+  "passwordreset",
+  "passreset",
 ]);
 
 const RESET_COMPANION_WORDS: ReadonlySet<string> = new Set([
-  'password', 'pass', 'pwd', 'psw', 'form', 'confirm', 'credentials', 'account', 'auth', 'user',
+  "password",
+  "pass",
+  "pwd",
+  "psw",
+  "form",
+  "confirm",
+  "credentials",
+  "account",
+  "auth",
+  "user",
 ]);
 
 const CREATE_ACCOUNT_COMPANION_WORDS: ReadonlySet<string> = new Set([
-  'account', 'user', 'profile', 'member',
+  "account",
+  "user",
+  "profile",
+  "member",
 ]);
 
 const NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX =
@@ -78,8 +157,8 @@ const NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX =
  */
 export function tokenizeIdentifierWords(text: string): string[] {
   return text
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
@@ -87,19 +166,25 @@ export function tokenizeIdentifierWords(text: string): string[] {
 
 function tokenizeInputAttrWords(attrs: string): string[] {
   const matches = [
-    ...attrs.matchAll(/\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi),
+    ...attrs.matchAll(
+      /\b(?:name|id|placeholder|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi,
+    ),
   ];
-  return tokenizeIdentifierWords(matches.map((m) => m[1] ?? m[2] ?? '').join(' '));
+  return tokenizeIdentifierWords(
+    matches.map((m) => m[1] ?? m[2] ?? "").join(" "),
+  );
 }
 
 function maskCommentsAndScriptsPreservingLines(documentText: string): string {
   return documentText
-    .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '))
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (m) => m.replace(/[^\n]/g, ' '));
+    .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (m) =>
+      m.replace(/[^\n]/g, " "),
+    );
 }
 
 function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export interface EnclosingFormContext {
@@ -118,13 +203,13 @@ export function findEnclosingFormContext(
   targetColumn?: number,
 ): EnclosingFormContext | null {
   const masked = maskCommentsAndScriptsPreservingLines(documentText);
-  const lines = masked.split('\n');
+  const lines = masked.split("\n");
   let charOffsetAtTargetLineStart = 0;
   const lineLimit = Math.min(lines.length, Math.max(0, targetLine - 1));
   for (let i = 0; i < lineLimit; i++) {
     charOffsetAtTargetLineStart += lines[i]!.length + 1;
   }
-  const currentLine = lines[targetLine - 1] ?? '';
+  const currentLine = lines[targetLine - 1] ?? "";
   const inLineOffset =
     targetColumn !== undefined && targetColumn > 1
       ? Math.min(currentLine.length, targetColumn - 1)
@@ -132,7 +217,8 @@ export function findEnclosingFormContext(
   const targetOffset = charOffsetAtTargetLineStart + inLineOffset;
 
   const stack: Array<{ attrs: string; bodyStart: number }> = [];
-  let chosen: { attrs: string; bodyStart: number; bodyEnd: number } | null = null;
+  let chosen: { attrs: string; bodyStart: number; bodyEnd: number } | null =
+    null;
   let passedTarget = false;
   let chosenDepth = 0;
 
@@ -140,14 +226,18 @@ export function findEnclosingFormContext(
   FORM_TAG_REGEX.lastIndex = 0;
   while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
     const tagStart = match.index;
-    const isClosing = match[0].startsWith('</');
-    const attrs = match[2] ?? '';
+    const isClosing = match[0].startsWith("</");
+    const attrs = match[2] ?? "";
 
     if (!passedTarget && tagStart >= targetOffset) {
       passedTarget = true;
       if (stack.length === 0) break;
       const top = stack[stack.length - 1]!;
-      chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: masked.length };
+      chosen = {
+        attrs: top.attrs,
+        bodyStart: top.bodyStart,
+        bodyEnd: masked.length,
+      };
       chosenDepth = stack.length;
     }
 
@@ -157,14 +247,18 @@ export function findEnclosingFormContext(
         break;
       }
       stack.pop();
-    } else if (!attrs.trim().endsWith('/')) {
+    } else if (!attrs.trim().endsWith("/")) {
       stack.push({ attrs, bodyStart: tagStart + match[0].length });
     }
   }
 
   if (!passedTarget && stack.length > 0) {
     const top = stack[stack.length - 1]!;
-    chosen = { attrs: top.attrs, bodyStart: top.bodyStart, bodyEnd: masked.length };
+    chosen = {
+      attrs: top.attrs,
+      bodyStart: top.bodyStart,
+      bodyEnd: masked.length,
+    };
   }
 
   if (chosen !== null) {
@@ -176,18 +270,20 @@ export function findEnclosingFormContext(
 
   if (explicitFormId !== undefined) {
     const trimmedId = explicitFormId.trim();
-    if (!trimmedId) return { attrs: '', body: '' };
-    const idAttrRegex = new RegExp(`\\bid\\s*=\\s*["']${escapeRegExp(trimmedId)}["']`);
+    if (!trimmedId) return { attrs: "", body: "" };
+    const idAttrRegex = new RegExp(
+      `\\bid\\s*=\\s*["']${escapeRegExp(trimmedId)}["']`,
+    );
     FORM_TAG_REGEX.lastIndex = 0;
     while ((match = FORM_TAG_REGEX.exec(masked)) !== null) {
-      if (!match[0].startsWith('</')) {
-        const attrs = match[2] ?? '';
+      if (!match[0].startsWith("</")) {
+        const attrs = match[2] ?? "";
         if (idAttrRegex.test(attrs)) {
-          return { attrs: `${trimmedId} ${attrs}`, body: '' };
+          return { attrs: `${trimmedId} ${attrs}`, body: "" };
         }
       }
     }
-    return { attrs: trimmedId, body: '' };
+    return { attrs: trimmedId, body: "" };
   }
 
   return null;
@@ -204,7 +300,12 @@ export function findEnclosingFormAttrs(
   targetColumn?: number,
 ): string | null {
   return (
-    findEnclosingFormContext(documentText, targetLine, explicitFormId, targetColumn)?.attrs ?? null
+    findEnclosingFormContext(
+      documentText,
+      targetLine,
+      explicitFormId,
+      targetColumn,
+    )?.attrs ?? null
   );
 }
 
@@ -212,8 +313,8 @@ function resolveElementFormContext(
   element: DomElementView,
   ctx: DomMatcherContext,
 ): EnclosingFormContext | null {
-  const explicitFormId = element.hasAttribute('form')
-    ? (element.getAttribute('form') ?? '')
+  const explicitFormId = element.hasAttribute("form")
+    ? (element.getAttribute("form") ?? "")
     : undefined;
   return findEnclosingFormContext(
     ctx.documentText,
@@ -226,19 +327,19 @@ function resolveElementFormContext(
 export function isTestOrFixtureFilePath(filePath: string): boolean {
   const lowerPath = filePath.toLowerCase();
   return (
-    lowerPath.includes('/test/') ||
-    lowerPath.includes('/tests/') ||
-    lowerPath.includes('/test/data/') ||
-    lowerPath.includes('/fixtures/') ||
-    lowerPath.includes('/fixture/') ||
-    lowerPath.includes('__tests__')
+    lowerPath.includes("/test/") ||
+    lowerPath.includes("/tests/") ||
+    lowerPath.includes("/test/data/") ||
+    lowerPath.includes("/fixtures/") ||
+    lowerPath.includes("/fixture/") ||
+    lowerPath.includes("__tests__")
   );
 }
 
 function hasDynamicAutocompleteBinding(element: DomElementView): boolean {
   if (
-    element.hasDynamicAttribute?.('autocomplete') ||
-    element.hasDynamicAttribute?.('autoComplete') ||
+    element.hasDynamicAttribute?.("autocomplete") ||
+    element.hasDynamicAttribute?.("autoComplete") ||
     element.hasSpreadAttribute ||
     DYNAMIC_AUTOCOMPLETE_ATTRS.some((attr) => element.hasAttribute(attr))
   ) {
@@ -247,24 +348,26 @@ function hasDynamicAutocompleteBinding(element: DomElementView): boolean {
 
   for (const [attrName, attrVal] of Object.entries(element.attributes)) {
     const isDynamicAttrSyntax =
-      attrName.startsWith(':') ||
-      attrName.startsWith('v-bind') ||
-      attrName.startsWith('[') ||
-      attrName.includes('$attrs') ||
-      attrName.includes('restProps') ||
-      attrName.includes('attributes');
+      attrName.startsWith(":") ||
+      attrName.startsWith("v-bind") ||
+      attrName.startsWith("[") ||
+      attrName.includes("$attrs") ||
+      attrName.includes("restProps") ||
+      attrName.includes("attributes");
     if (
       isDynamicAttrSyntax &&
-      (attrName.includes('autocomplete') ||
-        attrName.includes('bind') ||
-        attrName.includes('attrs') ||
-        attrName.includes('props'))
+      (attrName.includes("autocomplete") ||
+        attrName.includes("bind") ||
+        attrName.includes("attrs") ||
+        attrName.includes("props"))
     ) {
       return true;
     }
     if (
-      (attrName === 'autocomplete' || attrName === 'autoComplete') &&
-      (attrVal.includes('{') || attrVal.includes('<?') || attrVal.includes('<%'))
+      (attrName === "autocomplete" || attrName === "autoComplete") &&
+      (attrVal.includes("{") ||
+        attrVal.includes("<?") ||
+        attrVal.includes("<%"))
     ) {
       return true;
     }
@@ -280,24 +383,26 @@ function isSignUpOrPasswordResetForm(enclosingFormAttrs: string): boolean {
     const next = words[i + 1];
     if (
       SIGN_UP_OR_RESET_FORM_SINGLE_WORDS.has(word) ||
-      word.endsWith('signup') ||
-      word.endsWith('register') ||
-      (word === 'sign' && next === 'up') ||
-      (word === 'create' && next !== undefined && CREATE_ACCOUNT_COMPANION_WORDS.has(next))
+      word.endsWith("signup") ||
+      word.endsWith("register") ||
+      (word === "sign" && next === "up") ||
+      (word === "create" &&
+        next !== undefined &&
+        CREATE_ACCOUNT_COMPANION_WORDS.has(next))
     ) {
       return true;
     }
   }
 
-  if (words.includes('reset')) {
+  if (words.includes("reset")) {
     const strippedEventAttrs = enclosingFormAttrs.replace(
       /(?:^|\s)(?:onreset|@reset|\(reset\))\s*=\s*(?:"[^"]*"|'[^']*')/gi,
-      ' ',
+      " ",
     );
     const nonEventWords = tokenizeIdentifierWords(strippedEventAttrs);
     if (
-      nonEventWords.includes('reset') &&
-      nonEventWords.some((w) => w !== 'reset' && RESET_COMPANION_WORDS.has(w))
+      nonEventWords.includes("reset") &&
+      nonEventWords.some((w) => w !== "reset" && RESET_COMPANION_WORDS.has(w))
     ) {
       return true;
     }
@@ -306,8 +411,10 @@ function isSignUpOrPasswordResetForm(enclosingFormAttrs: string): boolean {
   return false;
 }
 
-function hasSecondNumberedPasswordToken(primaryWords: readonly string[]): boolean {
-  if (primaryWords.includes('example') || primaryWords.includes('input')) {
+function hasSecondNumberedPasswordToken(
+  primaryWords: readonly string[],
+): boolean {
+  if (primaryWords.includes("example") || primaryWords.includes("input")) {
     return false;
   }
   return primaryWords.some((w) => NUMBERED_SECOND_PASSWORD_WORDS.has(w));
@@ -319,7 +426,7 @@ function getPasswordInputAttrList(formBody: string): string[] {
   let match: RegExpExecArray | null;
   PASSWORD_INPUT_TAG_REGEX.lastIndex = 0;
   while ((match = PASSWORD_INPUT_TAG_REGEX.exec(formBody)) !== null) {
-    const attrs = match[1] ?? '';
+    const attrs = match[1] ?? "";
     if (/\btype\s*=\s*["']password["']/i.test(attrs)) {
       passwordInputAttrList.push(attrs);
     }
@@ -348,17 +455,19 @@ function formPairsGenericPasswordWithConfirm(formBody: string): boolean {
 
   // Either a 2-field (password + confirm) registration/reset form without an existing-password field,
   // or a 3-field (old + password + confirm) change-password form where the old field is already carved out by Step 1.
-  return hasConfirmField && (!hasExistingField || passwordInputAttrList.length >= 3);
+  return (
+    hasConfirmField && (!hasExistingField || passwordInputAttrList.length >= 3)
+  );
 }
 
 function hasExplicitSignInWordSequence(words: readonly string[]): boolean {
   for (let i = 0; i < words.length; i++) {
-    const w = words[i] ?? '';
+    const w = words[i] ?? "";
     if (
-      w === 'signin' ||
-      w === 'login' ||
-      w === 'logon' ||
-      ((w === 'sign' || w === 'log') && words[i + 1] === 'in')
+      w === "signin" ||
+      w === "login" ||
+      w === "logon" ||
+      ((w === "sign" || w === "log") && words[i + 1] === "in")
     ) {
       return true;
     }
@@ -368,21 +477,25 @@ function hasExplicitSignInWordSequence(words: readonly string[]): boolean {
 
 function hasSignUpWords(words: readonly string[]): boolean {
   for (let i = 0; i < words.length; i++) {
-    const w = words[i] ?? '';
+    const w = words[i] ?? "";
     const next = words[i + 1];
     if (
-      w === 'signup' ||
-      w === 'register' ||
-      w === 'registration' ||
-      w === 'createaccount' ||
-      (w === 'sign' && (next === 'up' || (next === 'me' && words[i + 2] === 'up')))
+      w === "signup" ||
+      w === "register" ||
+      w === "registration" ||
+      w === "createaccount" ||
+      (w === "sign" &&
+        (next === "up" || (next === "me" && words[i + 2] === "up")))
     ) {
       return true;
     }
-    if (w === 'create') {
+    if (w === "create") {
       for (let j = i + 1; j <= Math.min(words.length - 1, i + 3); j++) {
         const companion = words[j];
-        if (companion !== undefined && CREATE_ACCOUNT_COMPANION_WORDS.has(companion)) {
+        if (
+          companion !== undefined &&
+          CREATE_ACCOUNT_COMPANION_WORDS.has(companion)
+        ) {
           return true;
         }
       }
@@ -397,9 +510,10 @@ function isSignUpByPathOrVisibleFormText(
 ): boolean {
   let hasVisibleSignUp = false;
 
-  const headingRegex = /<(?:h[1-6]|H[1-6])\b[^>]*>([\s\S]*?)<\/(?:h[1-6]|H[1-6])>/gi;
+  const headingRegex =
+    /<(?:h[1-6]|H[1-6])\b[^>]*>([\s\S]*?)<\/(?:h[1-6]|H[1-6])>/gi;
   for (const m of enclosingForm.body.matchAll(headingRegex)) {
-    const text = (m[1] ?? '').replace(/<[^>]+>/g, ' ').trim();
+    const text = (m[1] ?? "").replace(/<[^>]+>/g, " ").trim();
     if (text) {
       const words = tokenizeIdentifierWords(text);
       if (hasExplicitSignInWordSequence(words)) return false;
@@ -410,11 +524,13 @@ function isSignUpByPathOrVisibleFormText(
   const buttonRegex =
     /<(?:button|Button)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)>([\s\S]*?)<\/(?:button|Button)>/gi;
   for (const m of enclosingForm.body.matchAll(buttonRegex)) {
-    const attrs = m[1] ?? '';
+    const attrs = m[1] ?? "";
     const isNonSubmit =
-      /\btype\s*=\s*(?:["'](?:button|reset)["']|\{\s*["'](?:button|reset)["']\s*\})/i.test(attrs);
+      /\btype\s*=\s*(?:["'](?:button|reset)["']|\{\s*["'](?:button|reset)["']\s*\})/i.test(
+        attrs,
+      );
     if (!isNonSubmit) {
-      const text = (m[2] ?? '').replace(/<[^>]+>/g, ' ').trim();
+      const text = (m[2] ?? "").replace(/<[^>]+>/g, " ").trim();
       if (text) {
         const words = tokenizeIdentifierWords(text);
         if (hasExplicitSignInWordSequence(words)) return false;
@@ -426,12 +542,16 @@ function isSignUpByPathOrVisibleFormText(
   const inputRegex =
     /<(?:input|Input)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)\/?>/gi;
   for (const m of enclosingForm.body.matchAll(inputRegex)) {
-    const attrs = m[1] ?? '';
-    if (/\btype\s*=\s*(?:["']submit["']|\{\s*["']submit["']\s*\})/i.test(attrs)) {
+    const attrs = m[1] ?? "";
+    if (
+      /\btype\s*=\s*(?:["']submit["']|\{\s*["']submit["']\s*\})/i.test(attrs)
+    ) {
       const valMatch = attrs.match(
         /\b(?:value|aria-label)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*["']([^"']*)["']\s*\})/i,
       );
-      const text = (valMatch ? (valMatch[1] ?? valMatch[2] ?? valMatch[3] ?? '') : '').trim();
+      const text = (
+        valMatch ? (valMatch[1] ?? valMatch[2] ?? valMatch[3] ?? "") : ""
+      ).trim();
       if (text) {
         const words = tokenizeIdentifierWords(text);
         if (hasExplicitSignInWordSequence(words)) return false;
@@ -447,11 +567,13 @@ function isSignUpByPathOrVisibleFormText(
     !NON_SIGNUP_CHANGE_OR_PROFILE_PATH_REGEX.test(filePath) &&
     !NON_SIGNUP_ADMIN_OR_SHOWCASE_PATH_REGEX.test(filePath)
   ) {
-    const filename = filePath.split(/[\\/]/).pop() ?? '';
+    const filename = filePath.split(/[\\/]/).pop() ?? "";
     const baseWords = tokenizeIdentifierWords(filename);
     if (
       !hasExplicitSignInWordSequence(baseWords) &&
-      !baseWords.some((w) => w === 'auth' || w === 'authenticate' || w === 'authentication')
+      !baseWords.some(
+        (w) => w === "auth" || w === "authenticate" || w === "authentication",
+      )
     ) {
       return hasSignUpWords(baseWords);
     }
@@ -470,10 +592,10 @@ export function isNewCredentialPasswordField(
   enclosingForm: EnclosingFormContext,
   filePath?: string,
 ): boolean {
-  const name = element.getAttribute('name') ?? '';
-  const id = element.getAttribute('id') ?? '';
-  const placeholder = element.getAttribute('placeholder') ?? '';
-  const ariaLabel = element.getAttribute('aria-label') ?? '';
+  const name = element.getAttribute("name") ?? "";
+  const id = element.getAttribute("id") ?? "";
+  const placeholder = element.getAttribute("placeholder") ?? "";
+  const ariaLabel = element.getAttribute("aria-label") ?? "";
 
   const primaryWords = tokenizeIdentifierWords(`${name} ${id}`);
   if (
@@ -514,7 +636,9 @@ export function isNewCredentialPasswordField(
   return isSignUpByPathOrVisibleFormText(enclosingForm, filePath);
 }
 
-function countExistingPasswordInputs(passwordInputs: readonly string[]): number {
+function countExistingPasswordInputs(
+  passwordInputs: readonly string[],
+): number {
   let count = 0;
   for (const attrs of passwordInputs) {
     if (
@@ -558,28 +682,34 @@ export function isExcludedFromSignUpForm(
     return true;
   }
 
-  if (/登录密码/.test(element.getAttribute('placeholder') ?? '')) {
+  if (/登录密码/.test(element.getAttribute("placeholder") ?? "")) {
     return true;
   }
 
   // Dual-mode login/signup toggle forms, explicit login forms, or OAuth bind-existing-account login forms
   const formAttrsWithoutClass = enclosingForm.attrs.replace(
     /\bclass(?:Name)?\s*=\s*(?:"[^"]*"|'[^']*')/gi,
-    ' ',
+    " ",
   );
   const formWords = tokenizeIdentifierWords(formAttrsWithoutClass);
   const formHasLoginOrBind =
-    hasExplicitSignInWordSequence(formWords) || formWords.includes('dobind');
+    hasExplicitSignInWordSequence(formWords) || formWords.includes("dobind");
   if (!formHasLoginOrBind) return false;
 
   const formHasSignUp = formWords.some(
-    (w) => w === 'signup' || w === 'register' || w === 'registration' || w === 'doregister',
+    (w) =>
+      w === "signup" ||
+      w === "register" ||
+      w === "registration" ||
+      w === "doregister",
   );
   if (!formHasSignUp) return true;
 
-  const name = element.getAttribute('name') ?? '';
-  const id = element.getAttribute('id') ?? '';
-  return !tokenizeIdentifierWords(`${name} ${id}`).some((w) => NEW_PASSWORD_WORDS.has(w));
+  const name = element.getAttribute("name") ?? "";
+  const id = element.getAttribute("id") ?? "";
+  return !tokenizeIdentifierWords(`${name} ${id}`).some((w) =>
+    NEW_PASSWORD_WORDS.has(w),
+  );
 }
 
 export interface PasswordCredentialClassification {
@@ -598,24 +728,24 @@ export function classifyPasswordCredentialElement(
 ): PasswordCredentialClassification | null {
   if (
     isTestOrFixtureFilePath(ctx.filePath) ||
-    element.hasAttribute('disabled') ||
-    element.hasAttribute('readonly') ||
-    element.hasAttribute('hidden')
+    element.hasAttribute("disabled") ||
+    element.hasAttribute("readonly") ||
+    element.hasAttribute("hidden")
   ) {
     return null;
   }
 
-  const name = element.getAttribute('name') ?? '';
-  const id = element.getAttribute('id') ?? '';
-  const placeholder = element.getAttribute('placeholder') ?? '';
-  const ariaLabel = element.getAttribute('aria-label') ?? '';
+  const name = element.getAttribute("name") ?? "";
+  const id = element.getAttribute("id") ?? "";
+  const placeholder = element.getAttribute("placeholder") ?? "";
+  const ariaLabel = element.getAttribute("aria-label") ?? "";
   const modelBinding =
-    element.getAttribute('ng-model') ??
-    element.getAttribute('data-ng-model') ??
-    element.getAttribute('v-model') ??
-    element.getAttribute('formControlName') ??
-    element.getAttribute('data-bind') ??
-    '';
+    element.getAttribute("ng-model") ??
+    element.getAttribute("data-ng-model") ??
+    element.getAttribute("v-model") ??
+    element.getAttribute("formControlName") ??
+    element.getAttribute("data-bind") ??
+    "";
   if (
     NON_CREDENTIAL_SECRET_REGEX.test(
       `${name} ${id} ${placeholder} ${ariaLabel} ${modelBinding}`.toLowerCase(),
@@ -630,18 +760,27 @@ export function classifyPasswordCredentialElement(
 
   // Multi-section system/device configuration forms with >= 4 non-existing password fields
   const formPasswordInputs = getPasswordInputAttrList(enclosingForm.body);
-  if (formPasswordInputs.length >= 4 && countExistingPasswordInputs(formPasswordInputs) === 0) {
+  if (
+    formPasswordInputs.length >= 4 &&
+    countExistingPasswordInputs(formPasswordInputs) === 0
+  ) {
     return null;
   }
 
   const autocompleteRaw = (
-    element.getAttribute('autocomplete') ??
-    element.getAttribute('autoComplete') ??
-    ''
+    element.getAttribute("autocomplete") ??
+    element.getAttribute("autoComplete") ??
+    ""
   ).trim();
 
   return {
-    isNewCredential: isNewCredentialPasswordField(element, enclosingForm, ctx.filePath),
-    autocompleteTokens: autocompleteRaw ? autocompleteRaw.toLowerCase().split(/\s+/) : [],
+    isNewCredential: isNewCredentialPasswordField(
+      element,
+      enclosingForm,
+      ctx.filePath,
+    ),
+    autocompleteTokens: autocompleteRaw
+      ? autocompleteRaw.toLowerCase().split(/\s+/)
+      : [],
   };
 }

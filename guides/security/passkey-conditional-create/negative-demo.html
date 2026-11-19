@@ -21,7 +21,7 @@
 
   <script type="module">
     const statusEl = document.getElementById('status');
-    
+
     const loginAbortController = new AbortController();
 
     async function executeConditionalCreate() {
@@ -44,7 +44,7 @@
 
         if (credential) {
           const encodedResponse = credential.toJSON();
-          
+
           try {
             const verifyResponse = await fetch('/api/register/verify', {
               method: 'POST',

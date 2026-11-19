@@ -1,11 +1,11 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
 
-import config, { Agents } from '../config.ts';
-import { parseBooleanEnv } from '../../core/env.ts';
-import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
+import config, { Agents } from "../config.ts";
+import { parseBooleanEnv } from "../../core/env.ts";
+import { sanitizeTextSecrets } from "../lib/secret-guard.ts";
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
@@ -13,8 +13,8 @@ import {
   runCliAgentCommand,
   parseJsonlFile,
   setupIsolatedWorkDir,
-  type GuideUsage
-} from '../lib/agent-shared.ts';
+  type GuideUsage,
+} from "../lib/agent-shared.ts";
 import {
   type StandardizedStep,
   type SubagentMetadata,
@@ -28,75 +28,95 @@ import {
   generateNormalizedTrajectory,
   readTrajectorySummary,
   getSessionFiles,
-  standardizeAction
-} from '../lib/trajectory-normalizer.ts';
-import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
+  standardizeAction,
+} from "../lib/trajectory-normalizer.ts";
+import { resolveEffortCliArgs } from "../lib/reasoning-effort.ts";
 
 const MAX_RESPONSE_PREVIEW_LENGTH = 150;
 
 export function setupPiCredentials(tempHome: string): void {
-  const piSource = path.join(os.homedir(), '.pi');
-  const piDest = path.join(tempHome, '.pi');
-  const piDestAgent = path.join(piDest, 'agent');
+  const piSource = path.join(os.homedir(), ".pi");
+  const piDest = path.join(tempHome, ".pi");
+  const piDestAgent = path.join(piDest, "agent");
 
   fs.mkdirSync(piDestAgent, { recursive: true });
 
   // Copy necessary auth and configuration files
   const filesToCopy = [
-    'settings.json',
-    'trust.json',
-    'auth.json',  // Copy auth.json to provide API credentials in isolated env
-    'models-store.json'  // Copy models store so Pi knows about available models
+    "settings.json",
+    "trust.json",
+    "auth.json", // Copy auth.json to provide API credentials in isolated env
+    "models-store.json", // Copy models store so Pi knows about available models
   ];
 
   for (const file of filesToCopy) {
-    const src = path.join(piSource, 'agent', file);
+    const src = path.join(piSource, "agent", file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
 }
 
 export function getPiEnvOverrides(homeDir?: string): NodeJS.ProcessEnv {
   return {
-    PI_CODING_AGENT: 'true',
-    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
+    PI_CODING_AGENT: "true",
+    ...(homeDir
+      ? { PI_CODING_AGENT_DIR: path.join(homeDir, ".pi", "agent") }
+      : {}),
   };
 }
 
-export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
-  const command = config.environment.piBin || 'pi';
+export function getPiCommandAndArgs(
+  prompt: string,
+  extraArgs: string[] = [],
+): { command: string; commandArgs: string[] } {
+  const command = config.environment.piBin || "pi";
   const piModel = process.env.PI_MODEL || process.env.PROMPT_MODEL;
-  const modelArg = piModel ? ['--model', piModel] : [];
+  const modelArg = piModel ? ["--model", piModel] : [];
 
   // By default, sessions should be preserved so trajectories can be captured and graded.
   // Allow running in ephemeral mode only if explicitly enabled via PI_NO_SESSION=true/1/yes.
   const noSession = parseBooleanEnv(process.env.PI_NO_SESSION, false);
-  const sessionArgs = noSession ? ['--no-session'] : [];
+  const sessionArgs = noSession ? ["--no-session"] : [];
 
   const commandArgs = [
-    '-p', // print mode: non-interactive, process and exit
+    "-p", // print mode: non-interactive, process and exit
     ...sessionArgs, // ephemeral mode: only if explicitly requested
-    '--offline', // disable network operations for update checks
+    "--offline", // disable network operations for update checks
     ...modelArg,
     ...resolveEffortCliArgs(Agents.PI, piModel),
     ...extraArgs,
-    prompt
+    prompt,
   ];
   return { command, commandArgs };
 }
 
 export function exportPiTrajectories(workDir: string, targetDir: string): void {
-  const sessionsDir = path.join(path.dirname(workDir), '.pi', 'agent', 'sessions');
+  const sessionsDir = path.join(
+    path.dirname(workDir),
+    ".pi",
+    "agent",
+    "sessions",
+  );
   if (!fs.existsSync(sessionsDir)) return;
 
-  const files = fs.globSync('**/*.jsonl', { cwd: sessionsDir });
+  const files = fs.globSync("**/*.jsonl", { cwd: sessionsDir });
   for (const relativePath of files) {
     const src = path.join(sessionsDir, relativePath);
-    const baseName = relativePath.replace(/[\\/]/g, '-').replace(/\.jsonl$/, '');
-    const isSubagent = relativePath.includes('subagent');
+    const baseName = relativePath
+      .replace(/[\\/]/g, "-")
+      .replace(/\.jsonl$/, "");
+    const isSubagent = relativePath.includes("subagent");
     const destName = isSubagent
-      ? (baseName.startsWith('subagent-') ? `${baseName}.jsonl` : `subagent-${baseName}.jsonl`)
-      : (baseName.startsWith('session-') ? `${baseName}.jsonl` : `session-${baseName}.jsonl`);
-    fs.writeFileSync(path.join(targetDir, destName), sanitizeTextSecrets(fs.readFileSync(src, 'utf8')), 'utf8');
+      ? baseName.startsWith("subagent-")
+        ? `${baseName}.jsonl`
+        : `subagent-${baseName}.jsonl`
+      : baseName.startsWith("session-")
+        ? `${baseName}.jsonl`
+        : `session-${baseName}.jsonl`;
+    fs.writeFileSync(
+      path.join(targetDir, destName),
+      sanitizeTextSecrets(fs.readFileSync(src, "utf8")),
+      "utf8",
+    );
   }
 }
 
@@ -104,7 +124,8 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
  * Executes the Pi CLI command and captures output.
  */
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
+  const { userPrompt, runType, targetDir, templateDir } =
+    parseAgentArgs("pi-agent.ts");
   const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
 
   if (!workDir) {
@@ -116,7 +137,7 @@ async function run() {
 
     const { command, commandArgs } = getPiCommandAndArgs(userPrompt);
 
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+    console.log(`Executing: ${command} ${commandArgs.join(" ")}`);
 
     try {
       await runCliAgentCommand(
@@ -124,7 +145,7 @@ async function run() {
         commandArgs,
         workDir,
         targetDir,
-        'Pi',
+        "Pi",
         runType,
         getPiEnvOverrides(path.dirname(workDir)),
       );
@@ -133,16 +154,19 @@ async function run() {
       await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
     }
 
-    console.log('Pi agent finished successfully.');
+    console.log("Pi agent finished successfully.");
   } catch (err) {
-    console.error('Error during Pi execution:', err);
+    console.error("Error during Pi execution:", err);
     process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
-export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, any[]> = {}): TrajectorySummary {
+export function parsePiTrajectory(
+  logData: any[],
+  subagentsMap: Record<string, any[]> = {},
+): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   const toolUseToStepMap = new Map<string, number>();
 
@@ -160,16 +184,16 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     for (const entry of entries) {
       if (
         !subagentId &&
-        (entry.type === 'thinking_level_change' || entry.type === 'session') &&
-        typeof entry.thinkingLevel === 'string' &&
+        (entry.type === "thinking_level_change" || entry.type === "session") &&
+        typeof entry.thinkingLevel === "string" &&
         entry.thinkingLevel.trim()
       ) {
         observedEffort = entry.thinkingLevel.trim().toLowerCase();
       }
       let model: string | undefined;
-      if (entry.type === 'message' && entry.message?.model) {
+      if (entry.type === "message" && entry.message?.model) {
         model = entry.message.model;
-      } else if (entry.type === 'model_change' && entry.modelId) {
+      } else if (entry.type === "model_change" && entry.modelId) {
         model = entry.modelId;
       } else if (entry.metadata?.model) {
         model = entry.metadata.model;
@@ -179,7 +203,8 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
         modelCounts[model] = (modelCounts[model] || 0) + 1;
       }
 
-      const usage = entry.message?.usage || entry.metadata?.usage || entry.usage;
+      const usage =
+        entry.message?.usage || entry.metadata?.usage || entry.usage;
       if (usage) {
         totalTokens += usage.totalTokens || 0;
         if (usage.cacheRead !== undefined) {
@@ -189,13 +214,20 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
       }
 
       const timestamp = extractTimestamp(entry);
-      const assistantMsg = entry.type === 'message' ? entry.message : entry;
+      const assistantMsg = entry.type === "message" ? entry.message : entry;
 
-      if (assistantMsg?.role === 'assistant' && Array.isArray(assistantMsg.content)) {
-        const textBlock = assistantMsg.content.find((b: any) => b.type === 'text');
-        const thought = textBlock?.text || '';
+      if (
+        assistantMsg?.role === "assistant" &&
+        Array.isArray(assistantMsg.content)
+      ) {
+        const textBlock = assistantMsg.content.find(
+          (b: any) => b.type === "text",
+        );
+        const thought = textBlock?.text || "";
 
-        const toolCalls = assistantMsg.content.filter((c: any) => c.type === 'toolCall' || c.type === 'tool_use');
+        const toolCalls = assistantMsg.content.filter(
+          (c: any) => c.type === "toolCall" || c.type === "tool_use",
+        );
         if (assistantMsg.tool_calls) {
           toolCalls.push(...assistantMsg.tool_calls);
         }
@@ -208,64 +240,96 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
               subagentId,
               thought,
               action: {
-                type: 'other',
-                name: 'respond_to_user',
-                params: { response: truncateMessage(textBlock.text, MAX_RESPONSE_PREVIEW_LENGTH) }
+                type: "other",
+                name: "respond_to_user",
+                params: {
+                  response: truncateMessage(
+                    textBlock.text,
+                    MAX_RESPONSE_PREVIEW_LENGTH,
+                  ),
+                },
               },
-              outcome: { status: 'success' }
+              outcome: { status: "success" },
             });
             if (subagentId) {
-              subagentStepCounts[subagentId] = (subagentStepCounts[subagentId] || 0) + 1;
+              subagentStepCounts[subagentId] =
+                (subagentStepCounts[subagentId] || 0) + 1;
             }
           }
         } else {
           for (const tc of toolCalls) {
-            const toolName = tc.function?.name || tc.name || 'unknown';
-            let params = tc.arguments || tc.function?.arguments || tc.input || {};
-            if (typeof params === 'string') {
+            const toolName = tc.function?.name || tc.name || "unknown";
+            let params =
+              tc.arguments || tc.function?.arguments || tc.input || {};
+            if (typeof params === "string") {
               try {
                 params = JSON.parse(params);
               } catch {}
             }
 
-            if (toolName === 'modern-web-guidance' || toolName.includes('get_best_practices')) {
-              toolsUsed.add('modern-web-guidance');
-            } else if (toolName !== 'unknown' && toolName !== 'read' && toolName !== 'write' && toolName !== 'edit' && toolName !== 'bash') {
+            if (
+              toolName === "modern-web-guidance" ||
+              toolName.includes("get_best_practices")
+            ) {
+              toolsUsed.add("modern-web-guidance");
+            } else if (
+              toolName !== "unknown" &&
+              toolName !== "read" &&
+              toolName !== "write" &&
+              toolName !== "edit" &&
+              toolName !== "bash"
+            ) {
               toolsUsed.add(toolName);
             }
 
-            if (toolName === 'read' && (params.path || params.file_path)) {
+            if (toolName === "read" && (params.path || params.file_path)) {
               const filePath = (params.path || params.file_path) as string;
-              if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
-                const skillMatch = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+              if (
+                filePath.includes("/skills/") ||
+                filePath.includes(".agents/skills/")
+              ) {
+                const skillMatch = filePath.match(
+                  /\/skills\/([^/]+)\/SKILL\.md$/,
+                );
                 if (skillMatch) {
                   toolsUsed.add(skillMatch[1]);
                 } else {
-                  const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                                filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
-                                filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
-                  if (match && match[1] !== 'guide') {
+                  const match =
+                    filePath.match(
+                      /\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/,
+                    ) ||
+                    filePath.match(
+                      /\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/,
+                    ) ||
+                    filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match && match[1] !== "guide") {
                     fileReadGuides.add(match[1]);
                   }
                 }
               }
-            } else if (toolName === 'bash' && params.command) {
+            } else if (toolName === "bash" && params.command) {
               const command = params.command as string;
               for (const g of extractRetrievedGuidesFromCommand(command)) {
                 retrievedGuides.add(g);
               }
             }
 
-            const stepIdx = steps.push({
-              stepNumber: 0,
-              timestamp,
-              subagentId,
-              thought,
-              action: standardizeAction(mapToolType(toolName), toolName, params)
-            }) - 1;
+            const stepIdx =
+              steps.push({
+                stepNumber: 0,
+                timestamp,
+                subagentId,
+                thought,
+                action: standardizeAction(
+                  mapToolType(toolName),
+                  toolName,
+                  params,
+                ),
+              }) - 1;
 
             if (subagentId) {
-              subagentStepCounts[subagentId] = (subagentStepCounts[subagentId] || 0) + 1;
+              subagentStepCounts[subagentId] =
+                (subagentStepCounts[subagentId] || 0) + 1;
             }
 
             if (tc.id) {
@@ -274,23 +338,28 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
           }
         }
       } else if (
-        entry.role === 'user' ||
-        entry.type === 'tool_result' ||
-        (entry.type === 'message' && entry.message?.role === 'toolResult')
+        entry.role === "user" ||
+        entry.type === "tool_result" ||
+        (entry.type === "message" && entry.message?.role === "toolResult")
       ) {
         const msg = entry.message || entry;
         const toolUseId = msg.toolCallId || entry.tool_use_id || entry.call_id;
-        let content = msg.content || entry.output || '';
+        let content = msg.content || entry.output || "";
         if (Array.isArray(content)) {
-          content = content.map((c: any) => (typeof c === 'string' ? c : c?.text || JSON.stringify(c))).join('\n');
+          content = content
+            .map((c: any) =>
+              typeof c === "string" ? c : c?.text || JSON.stringify(c),
+            )
+            .join("\n");
         }
-        const isError = msg.isError !== undefined ? msg.isError : Boolean(entry.is_error);
+        const isError =
+          msg.isError !== undefined ? msg.isError : Boolean(entry.is_error);
         if (toolUseId) {
           const stepIdx = toolUseToStepMap.get(toolUseId);
           if (stepIdx !== undefined && steps[stepIdx]) {
             steps[stepIdx].outcome = {
-              status: isError ? 'error' : 'success',
-              message: truncateMessage(content)
+              status: isError ? "error" : "success",
+              message: truncateMessage(content),
             };
           }
         }
@@ -310,7 +379,7 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     subagentsMeta[subId] = {
       id: subId,
       agent: Agents.PI,
-      totalSteps: subStepsCount
+      totalSteps: subStepsCount,
     };
   }
 
@@ -319,17 +388,25 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
   return finalizeTrajectorySummary({
     agent: Agents.PI,
     steps,
-    subagents: Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
-    model: topModel ? topModel[0] : 'unknown',
-    ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
-    tokenUsage: hasTokenData ? { total: totalTokens, cached: cachedTokens } : undefined,
+    subagents:
+      Object.keys(subagentsMeta).length > 0 ? subagentsMeta : undefined,
+    model: topModel ? topModel[0] : "unknown",
+    ...(observedEffort
+      ? { reasoningEffort: { level: observedEffort, source: "observed" } }
+      : {}),
+    tokenUsage: hasTokenData
+      ? { total: totalTokens, cached: cachedTokens }
+      : undefined,
     toolsUsed: Array.from(toolsUsed),
     retrievedGuides: Array.from(retrievedGuides),
-    fileReadGuides: Array.from(fileReadGuides)
+    fileReadGuides: Array.from(fileReadGuides),
   });
 }
 
-export function extractPiMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
+export function extractPiMetadata(
+  logData: any[],
+  subagentsMap: Record<string, any[]> = {},
+): {
   model: string;
   tokenUsage?: { total: number; cached: number };
   toolsUsed: string[];
@@ -338,21 +415,24 @@ export function extractPiMetadata(logData: any[], subagentsMap: Record<string, a
 } {
   const summary = parsePiTrajectory(logData, subagentsMap);
   return {
-    model: summary.model || 'unknown',
+    model: summary.model || "unknown",
     tokenUsage: summary.tokenUsage,
     toolsUsed: summary.toolsUsed || [],
     retrievedGuides: summary.retrievedGuides || [],
-    fileReadGuides: summary.fileReadGuides || []
+    fileReadGuides: summary.fileReadGuides || [],
   };
 }
 
-export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+export function loadPiLogs(dir: string): {
+  logData: any[];
+  subagentsMap: Record<string, any[]>;
+} {
   const logData: any[] = [];
   const subagentsMap: Record<string, any[]> = {};
   const files = getSessionFiles(dir);
 
-  const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
-  const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
+  const mainFiles = files.filter((f) => !f.startsWith("subagent-")).sort();
+  const subFiles = files.filter((f) => f.startsWith("subagent-")).sort();
 
   for (const file of mainFiles) {
     try {
@@ -370,26 +450,30 @@ export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<
   return { logData, subagentsMap };
 }
 
-function getPiMetadataForDir(dir: string): ReturnType<typeof extractPiMetadata> {
+function getPiMetadataForDir(
+  dir: string,
+): ReturnType<typeof extractPiMetadata> {
   const summary = readTrajectorySummary(dir);
   if (summary) {
     return {
-      model: summary.model || 'unknown',
+      model: summary.model || "unknown",
       tokenUsage: summary.tokenUsage,
       toolsUsed: summary.toolsUsed || [],
       retrievedGuides: summary.retrievedGuides || [],
-      fileReadGuides: summary.fileReadGuides || []
+      fileReadGuides: summary.fileReadGuides || [],
     };
   }
   const { logData, subagentsMap } = loadPiLogs(dir);
   return extractPiMetadata(logData, subagentsMap);
 }
 
-export async function collectPiGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
+export async function collectPiGuidesFromTrajectory(
+  dirPath: string,
+): Promise<GuideUsage> {
   const meta = getPiMetadataForDir(dirPath);
   return {
     retrievedGuides: meta.retrievedGuides,
-    fileReadGuides: meta.fileReadGuides
+    fileReadGuides: meta.fileReadGuides,
   };
 }
 
@@ -397,7 +481,9 @@ export function extractPiModel(resultsDir: string): string {
   return getPiMetadataForDir(resultsDir).model;
 }
 
-export function extractPiTokenUsage(dir: string): { total: number; cached: number } | undefined {
+export function extractPiTokenUsage(
+  dir: string,
+): { total: number; cached: number } | undefined {
   return getPiMetadataForDir(dir).tokenUsage;
 }
 
@@ -409,4 +495,3 @@ const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   run();
 }
-

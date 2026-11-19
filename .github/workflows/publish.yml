@@ -3,21 +3,21 @@ name: Publish Skills
 on:
   schedule:
     # Weekly on Monday at 14:50 UTC (6:50 AM PST / 7:50 AM PDT) - publishes @latest
-    - cron: '50 14 * * 1'
+    - cron: "50 14 * * 1"
   workflow_dispatch:
     inputs:
       dist_tag:
-        description: 'npm dist-tag and GitHub branch target (next or latest)'
+        description: "npm dist-tag and GitHub branch target (next or latest)"
         required: false
-        default: 'next'
+        default: "next"
         type: choice
         options:
           - next
           - latest
       version:
-        description: 'Optional explicit version override (e.g. 1.0.0; leave blank to auto-increment)'
+        description: "Optional explicit version override (e.g. 1.0.0; leave blank to auto-increment)"
         required: false
-        default: ''
+        default: ""
         type: string
 
 permissions: {}
@@ -121,8 +121,8 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'pnpm'
-          registry-url: 'https://registry.npmjs.org/'
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org/"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

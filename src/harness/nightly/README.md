@@ -1,8 +1,9 @@
 # Nightly Run Setup
 
-This directory contains scripts to automate nightly evaluation runs. 
+This directory contains scripts to automate nightly evaluation runs.
 
 ## 1. Setup a Dedicated Nightly Repository
+
 To avoid interference with active work, clone a dedicated repository on your local gLinux cloudtop.
 Please make sure to follow `<repo_root>/docs/EVALS.md` on setting up credentials for Antigravity CLI, Claude and Codex.
 Related environment variables can be set at `<repo_root>/.env`.
@@ -16,6 +17,7 @@ Evaluation results are uploaded automatically to the dashboard and can be viewed
 **GitHub CLI requirement for public publishing:** When running on `main`, the post-run publishing step runs `pnpm public:publish` and dispatches the GitHub Pages deployment workflow. This requires `gh` CLI to be installed and authenticated (`gh auth login` with `workflow` scope). The script checks `gh auth status` at startup and will fail fast before running agents if authentication is missing.
 
 ## 2. Generating the Cron Job Entry
+
 Please run all the following commands from within the `src/harness/nightly/` directory.
 
 You can set up a cron job to automatically trigger the master run every night. Run the helper script to automatically add the cron entry to your crontab. It will automatically resolve the absolute path to your repository.
@@ -27,10 +29,11 @@ You can set up a cron job to automatically trigger the master run every night. R
 By default, it sets the schedule to 2:00 AM (`0 2 * * *`) and runs all 3 agents (`antigravity_cli`, `claude_code`, `codex_cli`).
 
 You can customize the schedule and the agents to run using flags:
-*   `--schedule SCHEDULE`: Specify a custom cron schedule (must be quoted).
-*   `--prefix PREFIX`: Specify a custom prefix for this periodic run (default: "nightly") (optional).
-*   `--agents AGENTS`: Specify a space-separated list of agents to run (must be quoted).
-*   `--workers WORKERS`: The number of concurrent workers to use (optional).
+
+- `--schedule SCHEDULE`: Specify a custom cron schedule (must be quoted).
+- `--prefix PREFIX`: Specify a custom prefix for this periodic run (default: "nightly") (optional).
+- `--agents AGENTS`: Specify a space-separated list of agents to run (must be quoted).
+- `--workers WORKERS`: The number of concurrent workers to use (optional).
 
 For example, to run only `antigravity_cli` and `claude_code` at 3:30 AM with 20 workers:
 
@@ -48,11 +51,13 @@ To modify or remove the cron job later, run `crontab -e`.
 Nightly run outputs are logged to the `$HOME/.guidance_logs/` directory by default. You can check these log files if the cron job or manual run fails silently. The master run triggered by the cron job will automatically send an email notification (via `sendgmr`) with a summary of the results upon completion or failure.
 
 ## 3. Manual Runs
+
 To kick-start a dedicated run manually for a specific agent, you can use:
 
 ```bash
 ./run-agent.sh --agent <agent>
 ```
+
 Valid agents are: `antigravity_cli`, `claude_code`, `codex_cli`.
 
 To manually trigger the master sequence:

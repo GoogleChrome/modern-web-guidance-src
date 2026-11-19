@@ -1,8 +1,8 @@
-import { spawn, spawnSync } from 'node:child_process';
-import * as fs from 'node:fs';
-import * as net from 'node:net';
-import * as path from 'node:path';
-import { ensureDiskNodeCompileCache } from '../core/paths.ts';
+import { spawn, spawnSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as net from "node:net";
+import * as path from "node:path";
+import { ensureDiskNodeCompileCache } from "../core/paths.ts";
 
 export interface TargetServer {
   url: string;
@@ -12,13 +12,14 @@ export interface TargetServer {
 
 export type StartedTargetServer = TargetServer;
 
-const STATIKK_PLAIN_RE = /^\s*pnpm\s+dlx\s+statikk\s+--port\s+\$\{PORT:-\d+\}(?:\s+\.)?\s*$/;
+const STATIKK_PLAIN_RE =
+  /^\s*pnpm\s+dlx\s+statikk\s+--port\s+\$\{PORT:-\d+\}(?:\s+\.)?\s*$/;
 
 async function getFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
     const srv = net.createServer();
     srv.unref();
-    srv.on('error', reject);
+    srv.on("error", reject);
     srv.listen(0, () => {
       const addr = srv.address() as net.AddressInfo;
       srv.close(() => resolve(addr.port));
@@ -38,7 +39,7 @@ function registerExitServerCleanup(): void {
     }
     activeServerPids.clear();
   };
-  process.once('exit', cleanupAll);
+  process.once("exit", cleanupAll);
 }
 
 /**
@@ -47,25 +48,27 @@ function registerExitServerCleanup(): void {
  */
 export function isProcessRunning(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 1) return false;
-  if (process.platform === 'linux' && fs.existsSync('/proc')) {
+  if (process.platform === "linux" && fs.existsSync("/proc")) {
     try {
-      const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
-      const closeParen = stat.lastIndexOf(')');
+      const stat = fs.readFileSync(`/proc/${pid}/stat`, "utf8");
+      const closeParen = stat.lastIndexOf(")");
       if (closeParen === -1) return false;
-      const fields = stat.slice(closeParen + 2).split(' ');
+      const fields = stat.slice(closeParen + 2).split(" ");
       const state = fields[0];
-      return state !== 'Z';
+      return state !== "Z";
     } catch {
       return false; // ENOENT / ESRCH means exited
     }
   }
   try {
     process.kill(pid, 0);
-    if (process.platform !== 'win32') {
-      const ps = spawnSync('ps', ['-p', String(pid), '-o', 'state='], { encoding: 'utf8' });
+    if (process.platform !== "win32") {
+      const ps = spawnSync("ps", ["-p", String(pid), "-o", "state="], {
+        encoding: "utf8",
+      });
       if (ps.status === 0 && ps.stdout) {
         const state = ps.stdout.trim();
-        if (state.startsWith('Z')) return false;
+        if (state.startsWith("Z")) return false;
       }
     }
     return true;
@@ -90,17 +93,17 @@ export function getSessionAndTreePids(rootPid: number): number[] {
   }
   const childrenByPpid = new Map<number, number[]>();
 
-  if (process.platform === 'linux' && fs.existsSync('/proc')) {
+  if (process.platform === "linux" && fs.existsSync("/proc")) {
     try {
-      for (const entry of fs.readdirSync('/proc')) {
+      for (const entry of fs.readdirSync("/proc")) {
         if (!/^\d+$/.test(entry)) continue;
         try {
-          const stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8');
-          const closeParen = stat.lastIndexOf(')');
+          const stat = fs.readFileSync(`/proc/${entry}/stat`, "utf8");
+          const closeParen = stat.lastIndexOf(")");
           if (closeParen === -1) continue;
-          const fields = stat.slice(closeParen + 2).split(' ');
+          const fields = stat.slice(closeParen + 2).split(" ");
           const state = fields[0];
-          if (state === 'Z') continue; // Ignore zombie processes already being reaped
+          if (state === "Z") continue; // Ignore zombie processes already being reaped
           const pid = Number(entry);
           const ppid = Number(fields[1]);
           const pgid = Number(fields[2]);
@@ -118,15 +121,17 @@ export function getSessionAndTreePids(rootPid: number): number[] {
     } catch {
       // Fallback below if /proc cannot be read
     }
-  } else if (process.platform !== 'win32') {
+  } else if (process.platform !== "win32") {
     try {
-      const ps = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid=,sid=,state='], { encoding: 'utf8' });
+      const ps = spawnSync("ps", ["-eo", "pid=,ppid=,pgid=,sid=,state="], {
+        encoding: "utf8",
+      });
       if (ps.status === 0 && ps.stdout) {
-        for (const line of ps.stdout.split('\n')) {
+        for (const line of ps.stdout.split("\n")) {
           const parts = line.trim().split(/\s+/);
           if (parts.length < 5) continue;
           const [pidStr, ppidStr, pgidStr, sidStr, state] = parts;
-          if (state.startsWith('Z')) continue;
+          if (state.startsWith("Z")) continue;
           const pid = Number(pidStr);
           const ppid = Number(ppidStr);
           const pgid = Number(pgidStr);
@@ -165,32 +170,31 @@ export function killServerProcessTree(rootPid: number): void {
   if (!Number.isInteger(rootPid) || rootPid <= 1) return;
   const pids = getSessionAndTreePids(rootPid);
   try {
-    process.kill(-rootPid, 'SIGTERM');
+    process.kill(-rootPid, "SIGTERM");
   } catch {
     // Process group already exited
   }
   for (const pid of pids) {
     try {
-      process.kill(pid, 'SIGTERM');
+      process.kill(pid, "SIGTERM");
     } catch {
       // Process already exited
     }
   }
   const survivors = getSessionAndTreePids(rootPid);
   try {
-    process.kill(-rootPid, 'SIGKILL');
+    process.kill(-rootPid, "SIGKILL");
   } catch {
     // Process group already exited
   }
   for (const pid of survivors) {
     try {
-      process.kill(pid, 'SIGKILL');
+      process.kill(pid, "SIGKILL");
     } catch {
       // Process already exited
     }
   }
 }
-
 
 function runPnpm(
   args: string[],
@@ -198,17 +202,19 @@ function runPnpm(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ status: number | null; output: string }> {
   return new Promise((resolve) => {
-    const child = spawn('pnpm', args, {
+    const child = spawn("pnpm", args, {
       cwd,
       env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
     });
     const chunks: string[] = [];
-    child.stdout?.on('data', (d) => chunks.push(d.toString()));
-    child.stderr?.on('data', (d) => chunks.push(d.toString()));
-    child.on('error', (err) => resolve({ status: 1, output: err.message }));
-    child.on('close', (status) => resolve({ status, output: chunks.join('').trim() }));
+    child.stdout?.on("data", (d) => chunks.push(d.toString()));
+    child.stderr?.on("data", (d) => chunks.push(d.toString()));
+    child.on("error", (err) => resolve({ status: 1, output: err.message }));
+    child.on("close", (status) =>
+      resolve({ status, output: chunks.join("").trim() }),
+    );
   });
 }
 
@@ -217,13 +223,17 @@ export async function spawnPlainTargetServer(
   options?: { exportTargetUrlEnv?: boolean },
 ): Promise<TargetServer> {
   const port = await getFreePort();
-  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
-  const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
+  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, "harness");
+  const serverProcess = spawn("pnpm", ["--ignore-workspace", "run", "start"], {
     cwd: targetDir,
-    env: { ...process.env, PORT: port.toString(), NODE_COMPILE_CACHE: nodeCompileCache },
+    env: {
+      ...process.env,
+      PORT: port.toString(),
+      NODE_COMPILE_CACHE: nodeCompileCache,
+    },
     detached: true,
-    stdio: ['ignore', 'ignore', 'pipe'],
-    shell: process.platform === 'win32',
+    stdio: ["ignore", "ignore", "pipe"],
+    shell: process.platform === "win32",
   });
 
   const serverPid = serverProcess.pid;
@@ -232,17 +242,21 @@ export async function spawnPlainTargetServer(
     activeServerPids.add(serverPid);
     if (process.env.SERVER_PIDS_FILE) {
       try {
-        fs.appendFileSync(process.env.SERVER_PIDS_FILE, `${serverPid}\n`, 'utf8');
+        fs.appendFileSync(
+          process.env.SERVER_PIDS_FILE,
+          `${serverPid}\n`,
+          "utf8",
+        );
       } catch {
         // ignore if cannot write pid file
       }
     }
   }
 
-  let serverStderr = '';
-  serverProcess.stderr?.on('data', (chunk: Buffer) => {
+  let serverStderr = "";
+  serverProcess.stderr?.on("data", (chunk: Buffer) => {
     if (serverStderr.length < 4096) {
-      serverStderr += chunk.toString('utf8');
+      serverStderr += chunk.toString("utf8");
     }
   });
   serverProcess.unref();
@@ -271,24 +285,24 @@ export async function spawnPlainTargetServer(
       const stillRunning = pidsToWait.filter((pid) => isProcessRunning(pid));
       if (stillRunning.length > 0) {
         throw new Error(
-          `Failed to terminate server process tree within 5s. PIDs still running: ${stillRunning.join(', ')}`,
+          `Failed to terminate server process tree within 5s. PIDs still running: ${stillRunning.join(", ")}`,
         );
       }
     }
   };
 
   let exited = false;
-  serverProcess.once('exit', () => {
+  serverProcess.once("exit", () => {
     exited = true;
   });
 
-  let baseUrlPath = '/';
-  const configPath = path.join(targetDir, 'astro.config.mjs');
+  let baseUrlPath = "/";
+  const configPath = path.join(targetDir, "astro.config.mjs");
   if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf8');
+    const configContent = fs.readFileSync(configPath, "utf8");
     const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
     if (baseMatch) {
-      baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
+      baseUrlPath = "/" + baseMatch[1].replace(/^\/|\/$/g, "") + "/";
     }
   }
 
@@ -313,7 +327,9 @@ export async function spawnPlainTargetServer(
   if (!isReady) {
     await stop();
     const detail = serverStderr.trim();
-    throw new Error(`Server in ${targetDir} failed to start on port ${port}${detail ? `:\n${detail}` : ''}`);
+    throw new Error(
+      `Server in ${targetDir} failed to start on port ${port}${detail ? `:\n${detail}` : ""}`,
+    );
   }
 
   if (options?.exportTargetUrlEnv) {
@@ -325,9 +341,13 @@ export async function spawnPlainTargetServer(
 
 export async function startTargetServer(
   targetDir: string,
-  options?: { targetFile?: string; quiet?: boolean; exportTargetUrlEnv?: boolean }
+  options?: {
+    targetFile?: string;
+    quiet?: boolean;
+    exportTargetUrlEnv?: boolean;
+  },
 ): Promise<TargetServer> {
-  const pkgJsonPath = path.join(targetDir, 'package.json');
+  const pkgJsonPath = path.join(targetDir, "package.json");
   if (!fs.existsSync(pkgJsonPath)) {
     if (options?.targetFile) {
       const url = `http://localhost/${path.basename(options.targetFile)}`;
@@ -342,13 +362,18 @@ export async function startTargetServer(
     throw new Error(`package.json not found in target directory: ${targetDir}`);
   }
 
-  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+  const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
 
   const hasDependencies =
-    Boolean(pkgJson.dependencies && Object.keys(pkgJson.dependencies).length > 0) ||
-    Boolean(pkgJson.devDependencies && Object.keys(pkgJson.devDependencies).length > 0);
+    Boolean(
+      pkgJson.dependencies && Object.keys(pkgJson.dependencies).length > 0,
+    ) ||
+    Boolean(
+      pkgJson.devDependencies &&
+      Object.keys(pkgJson.devDependencies).length > 0,
+    );
 
-  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
+  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, "harness");
   const childEnv = { ...process.env, NODE_COMPILE_CACHE: nodeCompileCache };
 
   if (pkgJson.scripts?.build || hasDependencies) {
@@ -358,32 +383,43 @@ export async function startTargetServer(
     // --no-frozen-lockfile: pnpm defaults to frozen installs when CI=true, which would fail
     // if a solution patch adds a dependency to package.json without updating pnpm-lock.yaml.
     const installResult = await runPnpm(
-      ['--ignore-workspace', 'install', '--prefer-offline', '--no-frozen-lockfile'],
+      [
+        "--ignore-workspace",
+        "install",
+        "--prefer-offline",
+        "--no-frozen-lockfile",
+      ],
       targetDir,
       childEnv,
     );
     if (installResult.status !== 0 && !options?.quiet) {
       console.warn(
-        `[TEST-FIXTURE] pnpm install failed in ${targetDir}${installResult.output ? `:\n${installResult.output}` : ''}`
+        `[TEST-FIXTURE] pnpm install failed in ${targetDir}${installResult.output ? `:\n${installResult.output}` : ""}`,
       );
     }
   }
 
   if (pkgJson.scripts?.build) {
-    const buildResult = await runPnpm(['--ignore-workspace', 'run', 'build'], targetDir, childEnv);
+    const buildResult = await runPnpm(
+      ["--ignore-workspace", "run", "build"],
+      targetDir,
+      childEnv,
+    );
     if (buildResult.status !== 0) {
       throw new Error(
-        `Failed to build target app in ${targetDir}${buildResult.output ? `:\n${buildResult.output}` : ''}`
+        `Failed to build target app in ${targetDir}${buildResult.output ? `:\n${buildResult.output}` : ""}`,
       );
     }
   }
 
   if (!pkgJson.scripts?.start) {
-    throw new Error(`package.json in ${targetDir} is missing a "start" script.`);
+    throw new Error(
+      `package.json in ${targetDir} is missing a "start" script.`,
+    );
   }
 
   if (!pkgJson.scripts.build && STATIKK_PLAIN_RE.test(pkgJson.scripts.start)) {
-    const { default: statikk } = await import('statikk');
+    const { default: statikk } = await import("statikk");
     const { url, server } = await statikk({ root: targetDir, port: 0 });
     const fullUrl = `${url}/`;
     if (options?.exportTargetUrlEnv !== false) {

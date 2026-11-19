@@ -130,7 +130,7 @@
 
     function scheduleBatch() {
       log('Enqueuing batch of tasks with mixed priorities...', 'system');
-      
+
       // Schedule in mixed order to see reordering
       scheduleTask('background');
       scheduleTask('user-visible');

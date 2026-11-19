@@ -14,11 +14,11 @@ index 66c9173..46c95d5 100644
 +      font-family: inherit;
        transition: background 0.3s;
      }
- 
+
 @@ -135,6 +139,86 @@
        background: #3e2723;
      }
- 
+
 +    .price-tag {
 +      font-weight: bold;
 +      color: var(--primary);
@@ -104,7 +104,7 @@ index 66c9173..46c95d5 100644
        text-align: center;
 @@ -175,25 +259,176 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section id="seasonal-favorites">
@@ -285,11 +285,11 @@ index 66c9173..46c95d5 100644
 +      ></div>
      </section>
    </main>
- 
+
 @@ -207,6 +442,356 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (function () {
 +      const MENU_CATALOG = {
@@ -641,5 +641,5 @@ index 66c9173..46c95d5 100644
 +    })();
 +  </script>
  </body>
- 
+
  </html>

@@ -168,7 +168,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="card">
       <div class="section-title">⏰ Daily Alarm</div>
       <div class="controls">
@@ -207,10 +207,10 @@
     const birthdateInput = document.getElementById('birthdateInput');
     const timezoneSelect = document.getElementById('timezoneSelect');
     const birthdateValue = document.getElementById('birthdateValue');
-    
+
     const alarmTimeInput = document.getElementById('alarmTimeInput');
     const alarmValue = document.getElementById('alarmValue');
-    
+
     const logValue = document.getElementById('logValue');
 
     function initializeDemo() {
@@ -225,7 +225,7 @@
       const selectedDate = birthdateInput.value;
       const selectedTz = timezoneSelect.value;
       const dateObj = new Date(`${selectedDate}T00:00:00Z`);
-      
+
       const formatter = new Intl.DateTimeFormat('en-GB', {
         year: 'numeric',
         month: '2-digit',

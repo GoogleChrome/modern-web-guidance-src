@@ -5,7 +5,7 @@ index c2b8e14..eb7e4a3 100644
 @@ -23,4 +23,6 @@ pnpm-debug.log*
  # jetbrains setting folder
  .idea/
- 
+
 -db.file
 \ No newline at end of file
 +db.file
@@ -29,7 +29,7 @@ index 22f7b64..d389505 100644
 +    }
 +  }
  }
- 
+
  export {};
 \ No newline at end of file
 diff --git a/package.json b/package.json
@@ -65,11 +65,11 @@ index 980b279..5e035c6 100644
 +import { getSignedInUser } from "../lib/passkeys/http.server";
 +
 +const signedInUser = await getSignedInUser(Astro);
- 
+
  const articles = await getCollection("articles");
  const reports = await getCollection("reports");
 @@ -25,20 +28,43 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
- 
+
        <!-- Right: Buttons -->
        <div class="flex items-center space-x-3">
 -        <a
@@ -638,7 +638,7 @@ index a7c52b6..e2a526e 100644
 +++ b/src/components/SignInForm.tsx
 @@ -14,11 +14,14 @@ export default function SignInForm() {
      setLoading(true);
- 
+
      try {
 -      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
 +      // Credentials are verified by the upstream account service via the local
@@ -651,7 +651,7 @@ index a7c52b6..e2a526e 100644
 +        credentials: 'same-origin',
          body: JSON.stringify({ username, password }),
        });
- 
+
 @@ -29,8 +32,8 @@ export default function SignInForm() {
          // For now, we display a generic error message including the code.
          setError(`Login failed: ${data.error || 'Unknown error'}`);

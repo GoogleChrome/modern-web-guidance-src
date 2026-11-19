@@ -32,7 +32,7 @@ index 66c9173..386b1a1 100644
 +    }
    </style>
  </head>
- 
+
 diff --git a/package.json b/package.json
 index 2bd4d77..6ea870f 100644
 --- a/package.json

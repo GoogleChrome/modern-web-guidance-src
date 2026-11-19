@@ -5,7 +5,7 @@ index 66c9173..453390c 100644
 @@ -135,6 +135,130 @@
        background: #3e2723;
      }
- 
+
 +    /* Nutritional and Pricing Breakdown Table */
 +    .table-wrapper {
 +      overflow: auto;
@@ -181,4 +181,4 @@ index 66c9173..453390c 100644
 +      </div>
      </section>
    </main>
- 
+

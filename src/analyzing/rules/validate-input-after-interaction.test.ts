@@ -1,11 +1,13 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
-import { validateInputAfterInteractionCssMatcher } from './validate-input-after-interaction.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanCss } from "../scanners/css-scanner.ts";
+import { validateInputAfterInteractionCssMatcher } from "./validate-input-after-interaction.ts";
 
-void test('validate-input-after-interaction CSS matcher', async (t) => {
-  await t.test('flags input:invalid and textarea:invalid error styling without :user-invalid', () => {
-    const css = `
+void test("validate-input-after-interaction CSS matcher", async (t) => {
+  await t.test(
+    "flags input:invalid and textarea:invalid error styling without :user-invalid",
+    () => {
+      const css = `
       input:invalid, textarea:invalid {
         border-color: #d93025;
         background-color: #fff0f0;
@@ -17,22 +19,29 @@ void test('validate-input-after-interaction CSS matcher', async (t) => {
         display: block;
       }
     `;
-    const matches = scanCss('bootstrap-overrides.css', css, [validateInputAfterInteractionCssMatcher]);
-    assert.equal(matches.length, 3);
-  });
+      const matches = scanCss("bootstrap-overrides.css", css, [
+        validateInputAfterInteractionCssMatcher,
+      ]);
+      assert.equal(matches.length, 3);
+    },
+  );
 
-  await t.test('exempts stylesheets already using :user-invalid', () => {
+  await t.test("exempts stylesheets already using :user-invalid", () => {
     const css = `
       input:user-invalid, textarea:user-invalid {
         border-color: #d93025;
       }
     `;
-    const matches = scanCss('modern.css', css, [validateInputAfterInteractionCssMatcher]);
+    const matches = scanCss("modern.css", css, [
+      validateInputAfterInteractionCssMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts required:invalid, touched/dirty classes, select:invalid, and browser resets', () => {
-    const css = `
+  await t.test(
+    "exempts required:invalid, touched/dirty classes, select:invalid, and browser resets",
+    () => {
+      const css = `
       input:required:invalid {
         border-color: red;
       }
@@ -53,7 +62,10 @@ void test('validate-input-after-interaction CSS matcher', async (t) => {
         background-color: #f0dddd;
       }
     `;
-    const matches = scanCss('other.css', css, [validateInputAfterInteractionCssMatcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("other.css", css, [
+        validateInputAfterInteractionCssMatcher,
+      ]);
+      assert.equal(matches.length, 0);
+    },
+  );
 });

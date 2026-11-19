@@ -18,7 +18,10 @@ For browsers that support `color-scheme` but not yet `light-dark()`, light and d
 
   /* OPTIONAL: use light-dark() for more control of built-in UI colors */
   @supports (color: light-dark(white, black)) {
-    --accent-color: light-dark(var(--brand-accent-light), var(--brand-accent-dark));
+    --accent-color: light-dark(
+      var(--brand-accent-light),
+      var(--brand-accent-dark)
+    );
   }
 
   /* MANDATORY: Automatically adapt native UI to user system preferences */
@@ -28,7 +31,8 @@ For browsers that support `color-scheme` but not yet `light-dark()`, light and d
   accent-color: var(--accent-color);
 }
 
-pre, code {
+pre,
+code {
   color-scheme: dark;
 
   /* **Mandatory**: any inherited color properties must be set again, even if to the same design tokens */

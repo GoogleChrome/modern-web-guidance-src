@@ -23,16 +23,37 @@ For page-level responsive techniques (dynamic viewport units, aspect ratios, and
 Make every control at least 24×24 CSS pixels (WCAG 2.5.8), and at least 44×44 on touch screens (WCAG 2.5.5). Links inside sentences are exempt. For checkboxes and radios, wrap the input in its `<label>` and size the label. To keep small icons visually compact, extend their hit area with a pseudo-element. Leave enough space around controls so extended hit areas do not overlap each other or reach past the edge of the screen.
 
 ```css
-:root { --target-size: 24px; }
-@media (pointer: coarse) {
-  :root { --target-size: 44px; }
+:root {
+  --target-size: 24px;
 }
-:where(button, select, textarea, input:not([type="checkbox"], [type="radio"]), [role="button"], nav a, label:has(input[type="checkbox"], input[type="radio"])) {
+@media (pointer: coarse) {
+  :root {
+    --target-size: 44px;
+  }
+}
+:where(
+  button,
+  select,
+  textarea,
+  input:not([type="checkbox"], [type="radio"]),
+  [role="button"],
+  nav a,
+  label:has(input[type="checkbox"], input[type="radio"])
+) {
   min-block-size: var(--target-size);
   min-inline-size: var(--target-size);
 }
-:where([role="button"], nav a, label:has(input[type="checkbox"], input[type="radio"])) { display: inline-flex; align-items: center; }
-.icon-button { position: relative; }
+:where(
+  [role="button"],
+  nav a,
+  label:has(input[type="checkbox"], input[type="radio"])
+) {
+  display: inline-flex;
+  align-items: center;
+}
+.icon-button {
+  position: relative;
+}
 .icon-button::after {
   content: "";
   position: absolute;
@@ -51,7 +72,10 @@ Use container queries instead of viewport-width media queries for component layo
 }
 /* A container query styles the container's descendants, never the container itself. */
 @container products (inline-size > 40rem) {
-  .product-card { display: grid; grid-template-columns: 10rem 1fr; }
+  .product-card {
+    display: grid;
+    grid-template-columns: 10rem 1fr;
+  }
 }
 ```
 
@@ -92,14 +116,28 @@ Ensure text and controls are never clipped, squished to zero dimensions, or over
 
 ```css
 /* Media never overflows its column. */
-img, video { max-inline-size: 100%; block-size: auto; }
+img,
+video {
+  max-inline-size: 100%;
+  block-size: auto;
+}
 /* Long words and URLs wrap instead of widening the page. */
-body { overflow-wrap: anywhere; }
+body {
+  overflow-wrap: anywhere;
+}
 /* Flex and grid items don't shrink below their content by default. Let non-control items shrink so controls keep their minimum size. */
-:where(.toolbar > :not(button, input, select, textarea, a, [role="button"], label)) { min-inline-size: 0; }
-.toolbar { display: flex; }
+:where(
+  .toolbar > :not(button, input, select, textarea, a, [role="button"], label)
+) {
+  min-inline-size: 0;
+}
+.toolbar {
+  display: flex;
+}
 /* The target-size minimum lets controls in a crowded row shrink below their text, so let nav bars and toolbars that are already rows wrap. */
-:where(nav, nav ul, .toolbar) { flex-wrap: wrap; }
+:where(nav, nav ul, .toolbar) {
+  flex-wrap: wrap;
+}
 ```
 
 - Use `min-block-size` instead of a fixed `height` on anything that contains text.

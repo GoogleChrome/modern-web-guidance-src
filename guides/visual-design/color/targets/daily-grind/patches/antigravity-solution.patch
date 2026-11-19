@@ -121,7 +121,7 @@ index 66c9173..e3f31e6 100644
 +        --badge-sold-out-border: GrayText;
 +      }
      }
- 
+
      * {
 @@ -24,13 +127,14 @@
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -130,7 +130,7 @@ index 66c9173..e3f31e6 100644
 -      background-color: var(--light);
 +      background-color: var(--bg);
      }
- 
+
      /* Navigation */
      nav {
 -      background: var(--primary);
@@ -142,16 +142,16 @@ index 66c9173..e3f31e6 100644
        display: flex;
        justify-content: space-between;
 @@ -48,6 +152,7 @@
- 
+
      nav ul {
        display: flex;
 +      align-items: center;
        list-style: none;
      }
- 
+
 @@ -56,18 +161,20 @@
      }
- 
+
      nav a {
 -      color: white;
 +      color: var(--nav-text);
@@ -159,14 +159,14 @@ index 66c9173..e3f31e6 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
        color: var(--accent);
 +      text-decoration: underline;
      }
- 
+
      .logout-link {
 -      border: 1px solid var(--accent);
 +      border: 1.5px solid var(--accent);
@@ -196,7 +196,7 @@ index 66c9173..e3f31e6 100644
 @@ -100,6 +209,11 @@
        padding: 0 20px;
      }
- 
+
 +    .section-title {
 +      text-align: center;
 +      color: var(--heading);
@@ -207,7 +207,7 @@ index 66c9173..e3f31e6 100644
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 @@ -108,35 +222,109 @@
      }
- 
+
      .card {
 -      background: white;
 +      background-color: var(--surface);
@@ -222,7 +222,7 @@ index 66c9173..e3f31e6 100644
 +      align-items: center;
 +      justify-content: space-between;
      }
- 
+
 -    .card h3 {
 +    .card-header {
 +      display: flex;
@@ -269,7 +269,7 @@ index 66c9173..e3f31e6 100644
 +      border: 1.5px dashed var(--badge-sold-out-border);
 +      border-radius: 4px;
      }
- 
+
      .btn {
        display: inline-block;
 -      background: var(--primary);
@@ -297,7 +297,7 @@ index 66c9173..e3f31e6 100644
 +      color: var(--hero-btn-text);
 +      border-color: var(--hero-btn-border);
      }
- 
+
 -    .btn:hover {
 -      background: #3e2723;
 +    .hero .btn:hover,
@@ -315,7 +315,7 @@ index 66c9173..e3f31e6 100644
 +        border-color: HighlightText;
 +      }
      }
- 
+
      footer {
 -      background: var(--secondary);
 +      background-color: var(--surface-subtle);
@@ -340,9 +340,9 @@ index 66c9173..e3f31e6 100644
 +    }
    </style>
  </head>
- 
+
 @@ -176,20 +370,38 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

@@ -34,13 +34,13 @@ index 92f6399..5f23651 100644
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
  import type { RenderResult } from 'astro:content';
 @@ -56,6 +57,7 @@ politicsArticles[2] = {
- 
+
      <!-- Main Content Area -->
      <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +        <SmallptPathTracer client:load />
          <ArticleTeaser article={topArticle} large={true} />
      </main>
- 
+
 diff --git a/src/wasm/SmallptPathTracer.tsx b/src/wasm/SmallptPathTracer.tsx
 new file mode 100644
 index 0000000..94f9194

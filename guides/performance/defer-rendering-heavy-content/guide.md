@@ -13,17 +13,18 @@ To optimize rendering, you can utilize the CSS `content-visibility` property and
 
 ## When to use which
 
-| Scenario / Example | Feature Applied | Performance Benefit |
-| :--- | :--- | :--- |
-| **1. Below the fold** (Delay initial load) | **`content-visibility: auto`** | Browser automatically offloads layout/paint workload until the container scrolls close to view, keeping standard page load speed frictionless. |
-| **2. Toggle State** (Fast view switching) | **`content-visibility: hidden`** | Skips layout calculations for hidden divs but preserves style containment state, allowing for instantaneous toggling without structural shifts (superior to `display: none`). |
-| **3. Searchable & Deferred** (Collapsible disclosures) | **`hidden="until-found"`** | For detailed instructions on combining rendering performance with find-in-page search accessibility, see {{ GUIDE_REF("search-hidden-content") }}. |
+| Scenario / Example                                     | Feature Applied                  | Performance Benefit                                                                                                                                                           |
+| :----------------------------------------------------- | :------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1. Below the fold** (Delay initial load)             | **`content-visibility: auto`**   | Browser automatically offloads layout/paint workload until the container scrolls close to view, keeping standard page load speed frictionless.                                |
+| **2. Toggle State** (Fast view switching)              | **`content-visibility: hidden`** | Skips layout calculations for hidden divs but preserves style containment state, allowing for instantaneous toggling without structural shifts (superior to `display: none`). |
+| **3. Searchable & Deferred** (Collapsible disclosures) | **`hidden="until-found"`**       | For detailed instructions on combining rendering performance with find-in-page search accessibility, see {{ GUIDE_REF("search-hidden-content") }}.                            |
 
 ## How to implement `content-visibility: auto`
 
 ### Choosing off-screen content
 
 **MANDATORY**: You MUST carefully identify which elements receive `content-visibility: auto`.
+
 - **DO** target large, self-contained layout blocks that are strictly **below the initial fold** (e.g., card items in an infinite feed, trailing comments, or bottom-heavy layout sections).
 - **DO NOT** apply this property to elements within the initial, above-the-fold viewport. Doing so forces the browser to evaluate visibility boundaries before rendering, which paradoxically delays critical page load performance.
 - **DO** target elements with deep or complex internal DOM structures to maximize rendering cost savings.
@@ -47,7 +48,7 @@ The `contain-intrinsic-size` CSS shorthand property acts as a placeholder dimens
 .heavy-section-deferred {
   /* MANDATORY: Skips rendering calculations when off-screen */
   content-visibility: auto;
-  
+
   /* Mandatory: Provide an estimated size to prevent layouts shifts.
     - 'auto' is optional and enables the browser to remember the actual size
       once rendered. It must be paired with a <length> value to be used for
@@ -57,7 +58,7 @@ The `contain-intrinsic-size` CSS shorthand property acts as a placeholder dimens
     - '150px' is the estimated height of this element. This can be any valid
       CSS <length> value.
    */
-  contain-intrinsic-size: auto none auto 150px; 
+  contain-intrinsic-size: auto none auto 150px;
 }
 ```
 
@@ -104,7 +105,7 @@ When `content-visibility` is not supported it will be ignored by the browser. In
 
 /* Modern Browsers only */
 @supports (content-visibility: hidden) {
- .inactive {
+  .inactive {
     display: block; /* Turn the layout box back on */
     content-visibility: hidden;
   }

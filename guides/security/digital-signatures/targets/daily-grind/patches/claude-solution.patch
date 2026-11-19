@@ -19,7 +19,7 @@ index 66c9173..a35157f 100644
 +      <p>Verification status: <strong id="sig-status">Not verified</strong></p>
 +    </section>
    </main>
- 
+
 +  <script>
 +    const ML_DSA_PUBLIC_KEY_ALGORITHMS = { 1312: 'ML-DSA-44', 1952: 'ML-DSA-65', 2592: 'ML-DSA-87' };
 +

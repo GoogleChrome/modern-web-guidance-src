@@ -41,7 +41,7 @@ export interface SerializedMessage {
 }
 
 export type TranscriptMessage = SerializedMessage & {
-  type?: 'user' | 'assistant' | 'error' | string;
+  type?: "user" | "assistant" | "error" | string;
   uuid: string;
   parentUuid: string | null;
   logicalParentUuid?: string | null;
@@ -85,7 +85,7 @@ export type TranscriptMessage = SerializedMessage & {
 };
 
 export interface ClaudeMessage {
-  role: 'user' | 'assistant' | string;
+  role: "user" | "assistant" | string;
   content: string | ContentBlock[];
   type?: string;
   model?: string;
@@ -99,105 +99,113 @@ export interface ClaudeMessage {
   input_transformations?: unknown;
 }
 
-export type ContentBlock = ThinkingBlock | RedactedThinkingBlock | TextBlock | ToolUseBlock | ToolResultBlock;
+export type ContentBlock =
+  | ThinkingBlock
+  | RedactedThinkingBlock
+  | TextBlock
+  | ToolUseBlock
+  | ToolResultBlock;
 
 export interface ThinkingBlock {
-  type: 'thinking';
+  type: "thinking";
   thinking: string;
   signature?: string;
 }
 
 export interface RedactedThinkingBlock {
-  type: 'redacted_thinking';
+  type: "redacted_thinking";
   data?: string;
 }
 
 export interface TextBlock {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface ToolUseBlock {
-  type: 'tool_use';
+  type: "tool_use";
   id: string;
   name: string;
   input: Record<string, any>;
 }
 
 export interface ToolResultBlock {
-  type: 'tool_result';
+  type: "tool_result";
   tool_use_id: string;
   content?: string | Array<{ type: string; text?: string; tool_name?: string }>;
   is_error?: boolean;
 }
 
-export type ToolUseResult = {
-  success?: boolean;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
-  content?: string | Array<{ type: string; text: string }>;
-  [key: string]: any;
-} | string | Array<{ type: string; text: string }>;
+export type ToolUseResult =
+  | {
+      success?: boolean;
+      stdout?: string;
+      stderr?: string;
+      error?: string;
+      content?: string | Array<{ type: string; text: string }>;
+      [key: string]: any;
+    }
+  | string
+  | Array<{ type: string; text: string }>;
 
 export interface SummaryMessage {
-  type: 'summary';
+  type: "summary";
   leafUuid: string;
   summary: string;
 }
 
 export interface CustomTitleMessage {
-  type: 'custom-title';
+  type: "custom-title";
   sessionId: string;
   customTitle: string;
 }
 
 export interface AiTitleMessage {
-  type: 'ai-title';
+  type: "ai-title";
   sessionId: string;
   aiTitle: string;
 }
 
 export interface LastPromptMessage {
-  type: 'last-prompt';
+  type: "last-prompt";
   sessionId: string;
   lastPrompt?: string;
   leafUuid?: string;
 }
 
 export interface TaskSummaryMessage {
-  type: 'task-summary';
+  type: "task-summary";
   sessionId: string;
   summary: string;
   timestamp: string;
 }
 
 export interface TagMessage {
-  type: 'tag';
+  type: "tag";
   sessionId: string;
   tag: string;
 }
 
 export interface AgentNameMessage {
-  type: 'agent-name';
+  type: "agent-name";
   sessionId: string;
   agentName: string;
 }
 
 export interface AgentColorMessage {
-  type: 'agent-color';
+  type: "agent-color";
   sessionId: string;
   agentColor: string;
 }
 
 export interface AgentSettingMessage {
-  type: 'agent-setting';
+  type: "agent-setting";
   sessionId: string;
   agentSetting: string;
 }
 
 export interface PRLinkMessage {
-  type: 'pr-link';
+  type: "pr-link";
   sessionId: string;
   prNumber: number;
   prUrl: string;
@@ -206,14 +214,14 @@ export interface PRLinkMessage {
 }
 
 export interface FileHistorySnapshotMessage {
-  type: 'file-history-snapshot';
+  type: "file-history-snapshot";
   messageId: string;
   snapshot: any;
   isSnapshotUpdate: boolean;
 }
 
 export interface AttributionSnapshotMessage {
-  type: 'attribution-snapshot';
+  type: "attribution-snapshot";
   messageId: string;
   surface: string;
   fileStates: Record<string, any>;
@@ -223,13 +231,13 @@ export interface AttributionSnapshotMessage {
 }
 
 export interface AtisLatchEntry {
-  type: 'atis-latch';
+  type: "atis-latch";
   sessionId: string;
   atis: string | boolean;
 }
 
 export type AttachmentEntry = SerializedMessage & {
-  type: 'attachment';
+  type: "attachment";
   uuid: string;
   parentUuid: string | null;
   isSidechain: boolean;
@@ -254,7 +262,7 @@ export interface ClaudeModelUsage {
 }
 
 export interface CostStateEntry {
-  type: 'cost-state';
+  type: "cost-state";
   sessionId: string;
   startTime: number;
   totalCostUSD: number;
@@ -269,32 +277,32 @@ export interface CostStateEntry {
 }
 
 export interface ModeEntry {
-  type: 'mode';
+  type: "mode";
   sessionId: string;
-  mode: 'coordinator' | 'normal';
+  mode: "coordinator" | "normal";
 }
 
 export interface PermissionModeEntry {
-  type: 'permission-mode';
+  type: "permission-mode";
   permissionMode: string;
   sessionId: string;
 }
 
 export interface WorktreeStateEntry {
-  type: 'worktree-state';
+  type: "worktree-state";
   sessionId: string;
   worktreeSession: any;
 }
 
 export interface ContentReplacementEntry {
-  type: 'content-replacement';
+  type: "content-replacement";
   sessionId: string;
   agentId?: string;
   replacements: any[];
 }
 
 export interface ContextCollapseCommitEntry {
-  type: 'marble-origami-commit';
+  type: "marble-origami-commit";
   sessionId: string;
   collapseId: string;
   summaryUuid: string;
@@ -305,7 +313,7 @@ export interface ContextCollapseCommitEntry {
 }
 
 export interface ContextCollapseSnapshotEntry {
-  type: 'marble-origami-snapshot';
+  type: "marble-origami-snapshot";
   sessionId: string;
   staged: any[];
   armed: boolean;
@@ -349,15 +357,15 @@ export interface FileBackup {
 }
 
 export interface QueueOperationEntry {
-  type: 'queue-operation';
-  operation: 'enqueue' | 'dequeue';
+  type: "queue-operation";
+  operation: "enqueue" | "dequeue";
   timestamp: string;
   sessionId: string;
   content?: string;
 }
 
 export type ProgressEntry = SerializedMessage & {
-  type: 'progress';
+  type: "progress";
   data: any;
   parentToolUseID?: string;
   toolUseID?: string;
@@ -368,7 +376,7 @@ export type ProgressEntry = SerializedMessage & {
 };
 
 export type SystemEntry = SerializedMessage & {
-  type: 'system';
+  type: "system";
   subtype?: string;
   content: string;
   level?: string;

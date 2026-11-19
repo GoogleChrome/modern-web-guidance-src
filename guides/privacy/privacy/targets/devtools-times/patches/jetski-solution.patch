@@ -13,7 +13,7 @@ index cc5869a..229b9bd 100644
 +      secure: true,
 +    },
 +  },
- 
+
    image: {
      service: {
 diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
@@ -23,12 +23,12 @@ index 10bfbad..c913d3d 100644
 @@ -1,4 +1,3 @@
 -
  import React, { useState, useEffect } from 'react';
- 
+
  interface Article {
 @@ -48,18 +47,59 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
      fetchReadingList();
    };
- 
+
 +  const handleClearAll = async () => {
 +    await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
 +      method: 'DELETE',
@@ -53,7 +53,7 @@ index 10bfbad..c913d3d 100644
 +  };
 +
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
- 
+
    return (
      <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
        <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -103,7 +103,7 @@ index a7c52b6..208aa81 100644
 +++ b/src/components/SignInForm.tsx
 @@ -25,12 +25,10 @@ export default function SignInForm() {
        const data = await response.json();
- 
+
        if (!response.ok) {
 -        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
 -        // For now, we display a generic error message including the code.
@@ -127,7 +127,7 @@ index a7c52b6..208aa81 100644
 +            Your registered username to authenticate and access your account.
 +          </p>
          </div>
-         
+
          <div>
 @@ -79,20 +81,34 @@ export default function SignInForm() {
              id="password"
@@ -141,7 +141,7 @@ index a7c52b6..208aa81 100644
 +            Your confidential password used exclusively to verify your identity.
 +          </p>
          </div>
- 
+
          <button
            type="submit"
            disabled={loading}
@@ -170,7 +170,7 @@ index 589fe62..b090a3e 100644
 +++ b/src/components/SignUpForm.tsx
 @@ -25,8 +25,6 @@ export default function SignUpForm() {
        const data = await response.json();
- 
+
        if (!response.ok) {
 -        // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
 -        // For now, we display a generic error message including the code.
@@ -189,7 +189,7 @@ index 589fe62..b090a3e 100644
 +            We collect your username to create and identify your account profile.
 +          </p>
          </div>
-         
+
          <div>
 @@ -80,11 +82,12 @@ export default function SignUpForm() {
              id="password"
@@ -205,7 +205,7 @@ index 589fe62..b090a3e 100644
 +            Used to secure your account. Must be at least 8 characters and contain a number.
            </p>
          </div>
- 
+
 @@ -98,6 +101,15 @@ export default function SignUpForm() {
          >
            {loading ? 'Signing up...' : 'Sign Up'}
@@ -232,17 +232,17 @@ index dcf9696..c2a5c3c 100644
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 +    <meta name="referrer" content="strict-origin-when-cross-origin" />
      <title>{title}</title>
- 
+
      <link rel="preconnect" href="https://fonts.googleapis.com" />
 @@ -30,7 +31,7 @@ const baseUrl = import.meta.env.BASE_URL;
      />
- 
+
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
 -    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
 +    <!-- Third-party tracking SDK removed in accordance with privacy guidelines -->
- 
+
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
 diff --git a/src/middleware.ts b/src/middleware.ts
 index 1684cf6..410962e 100644
 --- a/src/middleware.ts
@@ -250,7 +250,7 @@ index 1684cf6..410962e 100644
 @@ -1,4 +1,3 @@
 -
  import { defineMiddleware } from 'astro:middleware';
- 
+
  export const onRequest = defineMiddleware(async (context, next) => {
 @@ -9,5 +8,50 @@ export const onRequest = defineMiddleware(async (context, next) => {
        await context.session.set('readingList', []);
@@ -336,7 +336,7 @@ index 24fea39..754eeb3 100644
 +const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`${shareTitle} ${shareUrl}`)}`;
 +const mailShareUrl = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`;
  ---
- 
+
  <Layout title={article.data.title}>
 @@ -67,7 +74,7 @@ const isBookmarked = readingList.includes(article.slug);
                      width="1200"
@@ -346,9 +346,9 @@ index 24fea39..754eeb3 100644
 +                    crossorigin="anonymous"
                  />
              ) : (
-                 <Image 
+                 <Image
 @@ -88,15 +95,15 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
          <!-- Share Buttons & Comments -->
          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
 -            <!-- Social Share Icons (Placeholders) -->
@@ -373,7 +373,7 @@ index 4477e28..651be00 100644
 --- a/src/pages/legal/privacy.astro
 +++ b/src/pages/legal/privacy.astro
 @@ -13,5 +13,8 @@ import LegalLayout from '../../layouts/LegalLayout.astro';
-     
+
      <h2>3. Recording of data on our website</h2>
      <p><strong>Cookies</strong></p>
 -    <p>In some instances, our website and its pages use so-called cookies. Cookies do not cause any damage to your computer and do not contain viruses. The purpose of cookies is to make our website more user friendly, effective and more secure. Cookies are small text files that are placed on your computer and stored by your browser.</p>

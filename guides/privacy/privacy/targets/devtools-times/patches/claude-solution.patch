@@ -5,7 +5,7 @@ index cc5869a..03343ac 100644
 @@ -18,6 +18,16 @@ export default defineConfig({
    }),
    output: "server",
- 
+
 +  session: {
 +    driver: 'fs',
 +    cookie: {
@@ -35,7 +35,7 @@ index 10bfbad..32dc390 100644
 @@ -48,6 +48,28 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
      fetchReadingList();
    };
- 
+
 +  const handleClearAll = async () => {
 +    for (const slug of readingList) {
 +      await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
@@ -59,7 +59,7 @@ index 10bfbad..32dc390 100644
 +  };
 +
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
- 
+
    return (
 @@ -58,8 +80,14 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -84,7 +84,7 @@ index a7c52b6..be56661 100644
 +++ b/src/components/SignInForm.tsx
 @@ -25,12 +25,9 @@ export default function SignInForm() {
        const data = await response.json();
- 
+
        if (!response.ok) {
 -        // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
 -        // For now, we display a generic error message including the code.
@@ -96,7 +96,7 @@ index a7c52b6..be56661 100644
      } catch (err) {
        setError('An unexpected error occurred. Please try again later.');
 @@ -57,36 +54,45 @@ export default function SignInForm() {
- 
+
        <form onSubmit={handleSubmit} className="space-y-4">
          <div>
 -          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -117,7 +117,7 @@ index a7c52b6..be56661 100644
 +            Your credentials are sent securely and are not stored in the browser.
 +          </p>
          </div>
--        
+-
 +
          <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -138,7 +138,7 @@ index a7c52b6..be56661 100644
 +            Your password is transmitted over an encrypted connection and never logged.
 +          </p>
          </div>
- 
+
          <button
            type="submit"
            disabled={loading}
@@ -151,7 +151,7 @@ index 589fe62..affc101 100644
 --- a/src/components/SignUpForm.tsx
 +++ b/src/components/SignUpForm.tsx
 @@ -58,33 +58,38 @@ export default function SignUpForm() {
- 
+
        <form onSubmit={handleSubmit} className="space-y-4">
          <div>
 -          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,7 +172,7 @@ index 589fe62..affc101 100644
 +            Your username is used only for authentication and is never shared publicly.
 +          </p>
          </div>
--        
+-
 +
          <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
@@ -195,25 +195,25 @@ index 589fe62..affc101 100644
 +             Must be at least 8 characters and contain a number. Your password is securely hashed and never stored in plain text.
            </p>
          </div>
- 
+
 diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
 index dcf9696..5be942a 100644
 --- a/src/layouts/Layout.astro
 +++ b/src/layouts/Layout.astro
 @@ -30,7 +30,6 @@ const baseUrl = import.meta.env.BASE_URL;
      />
- 
+
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
 -    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
- 
+
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
 diff --git a/src/middleware.ts b/src/middleware.ts
 index 1684cf6..d82a14b 100644
 --- a/src/middleware.ts
 +++ b/src/middleware.ts
 @@ -3,11 +3,13 @@ import { defineMiddleware } from 'astro:middleware';
- 
+
  export const onRequest = defineMiddleware(async (context, next) => {
    if (context.session) {
 -    // Initialize the reading list if it doesn't exist
@@ -235,7 +235,7 @@ index 24fea39..098ec8d 100644
 @@ -86,22 +86,20 @@ const isBookmarked = readingList.includes(article.slug);
              )}
          </figure>
- 
+
 -        <!-- Share Buttons & Comments -->
 +        <!-- Share Buttons — static links, no third-party SDKs -->
          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
@@ -258,7 +258,7 @@ index 24fea39..098ec8d 100644
              </div>
 -
          </div>
- 
+
          <!-- Article Body Content -->
 diff --git a/src/pages/signup.astro b/src/pages/signup.astro
 index dc93e5d..625e926 100644
@@ -270,7 +270,7 @@ index dc93e5d..625e926 100644
  import SignUpForm from '../components/SignUpForm';
 +const baseUrl = import.meta.env.BASE_URL;
  ---
- 
+
  <Layout title="Sign Up | The DevTools Times">
    <div class="py-12 px-4 sm:px-6 lg:px-8">
      <SignUpForm client:load />

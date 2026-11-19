@@ -1,5 +1,5 @@
-import { stripVTControlCharacters } from 'node:util';
-import { PUBLIC_SECRET_PATTERNS } from '../lib/secret-guard.ts';
+import { stripVTControlCharacters } from "node:util";
+import { PUBLIC_SECRET_PATTERNS } from "../lib/secret-guard.ts";
 
 /**
  * Scrubs machine-specific paths and identity markers from strings before they
@@ -50,7 +50,10 @@ const HOME_ROOT = String.raw`(?:~|${HOME_DIR})`;
  * than renaming a checkout: a checkout named anything else is not stripped,
  * and its home-relative remainder then fails the leak check (fail closed).
  */
-export const REPO_CHECKOUT_NAMES: readonly string[] = ['modern-web-guidance-src', 'guidance'];
+export const REPO_CHECKOUT_NAMES: readonly string[] = [
+  "modern-web-guidance-src",
+  "guidance",
+];
 
 /**
  * A home root, any intermediate folders, then one of the repo checkout folder
@@ -59,12 +62,12 @@ export const REPO_CHECKOUT_NAMES: readonly string[] = ['modern-web-guidance-src'
  * including the trailing slash is removed so only the repo-relative path remains.
  */
 const REPO_PREFIX_RE = new RegExp(
-  `${NOT_INSIDE_URL}${HOME_ROOT}(?:/${SEGMENT}+)*?/(?:${REPO_CHECKOUT_NAMES.map(escapeRegExp).join('|')})(?:-[\\w.-]+)?/?`,
-  'g',
+  `${NOT_INSIDE_URL}${HOME_ROOT}(?:/${SEGMENT}+)*?/(?:${REPO_CHECKOUT_NAMES.map(escapeRegExp).join("|")})(?:-[\\w.-]+)?/?`,
+  "g",
 );
 
 /** A home directory outside the repo, e.g. `/usr/local/google/home/<ldap>/.npm`. Rewritten to `~` unless it is `VIRTUAL_FS_HOME`. */
-const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}${HOME_DIR}`, 'g');
+const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}${HOME_DIR}`, "g");
 
 /**
  * Detection is wider than the rewrite: a bare home directory with nothing
@@ -77,16 +80,32 @@ const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}${HOME_DIR}`, 'g');
  * so `harvestUserSegments` can turn it into a forbidden token, and so a
  * `GENERIC_USERS` account can be told apart from a person.
  */
-const CLOUDTOP_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/?usr/local/google/home/(${SEGMENT}+)`, 'g');
-const POSIX_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/(?:home|Users)/(${SEGMENT}+)`, 'g');
+const CLOUDTOP_HOME_RE = new RegExp(
+  String.raw`${NOT_IN_WORD}/?usr/local/google/home/(${SEGMENT}+)`,
+  "g",
+);
+const POSIX_HOME_RE = new RegExp(
+  String.raw`${NOT_IN_WORD}/(?:home|Users)/(${SEGMENT}+)`,
+  "g",
+);
 /** Drive letter or WSL mount, then `\`, `/`, or JSON-escaped `\\`; also inside `file:///C:/Users/...`. */
-const WINDOWS_HOME_RE = /(?:[A-Za-z]:|\/mnt\/[a-z])(?:\\+|\/)users(?:\\+|\/)([^\\/\s"']+)/gi;
+const WINDOWS_HOME_RE =
+  /(?:[A-Za-z]:|\/mnt\/[a-z])(?:\\+|\/)users(?:\\+|\/)([^\\/\s"']+)/gi;
 /** `\\home\\<x>` and `\\Users\\<x>` without a drive, as UNC paths and escaped JSON write them. */
 const BACKSLASH_HOME_RE = /(?<![\w.])\\+(?:home|users)\\+([^\\/\s"']+)/gi;
-const CITC_PATH_RE = new RegExp(String.raw`/google/(?:src/cloud|cog/cloud)/(${SEGMENT}+)`, 'g');
+const CITC_PATH_RE = new RegExp(
+  String.raw`/google/(?:src/cloud|cog/cloud)/(${SEGMENT}+)`,
+  "g",
+);
 
 /** Patterns whose first capture group is a username. */
-const USER_SEGMENT_PATTERNS: readonly RegExp[] = [CLOUDTOP_HOME_RE, POSIX_HOME_RE, WINDOWS_HOME_RE, BACKSLASH_HOME_RE, CITC_PATH_RE];
+const USER_SEGMENT_PATTERNS: readonly RegExp[] = [
+  CLOUDTOP_HOME_RE,
+  POSIX_HOME_RE,
+  WINDOWS_HOME_RE,
+  BACKSLASH_HOME_RE,
+  CITC_PATH_RE,
+];
 
 /**
  * Container, CI, toolchain, and system account names that also appear in
@@ -98,15 +117,44 @@ const USER_SEGMENT_PATTERNS: readonly RegExp[] = [CLOUDTOP_HOME_RE, POSIX_HOME_R
  * paths are never exempt; those are always a person's.
  */
 export const GENERIC_USERS: ReadonlySet<string> = new Set([
-  'admin', 'agent', 'app', 'builder', 'chrome', 'chromium', 'codespace',
-  'containeradministrator', 'debian', 'default', 'dev', 'devcontainer',
-  'docker', 'guest', 'local', 'node', 'playwright', 'public', 'root',
-  'runner', 'runneradmin', 'sandbox', 'shared', 'test', 'tester', 'ubuntu',
-  'user', 'users', 'web_user', 'worker',
+  "admin",
+  "agent",
+  "app",
+  "builder",
+  "chrome",
+  "chromium",
+  "codespace",
+  "containeradministrator",
+  "debian",
+  "default",
+  "dev",
+  "devcontainer",
+  "docker",
+  "guest",
+  "local",
+  "node",
+  "playwright",
+  "public",
+  "root",
+  "runner",
+  "runneradmin",
+  "sandbox",
+  "shared",
+  "test",
+  "tester",
+  "ubuntu",
+  "user",
+  "users",
+  "web_user",
+  "worker",
 ]);
 
 /** Home-path detectors whose match is not a leak when the captured user is in `GENERIC_USERS`. */
-const GENERIC_EXEMPT_PATTERNS: ReadonlySet<RegExp> = new Set([POSIX_HOME_RE, WINDOWS_HOME_RE, BACKSLASH_HOME_RE]);
+const GENERIC_EXEMPT_PATTERNS: ReadonlySet<RegExp> = new Set([
+  POSIX_HOME_RE,
+  WINDOWS_HOME_RE,
+  BACKSLASH_HOME_RE,
+]);
 
 /**
  * Emscripten's fixed virtual-filesystem home, which every compiled-to-WASM app
@@ -114,11 +162,11 @@ const GENERIC_EXEMPT_PATTERNS: ReadonlySet<RegExp> = new Set([POSIX_HOME_RE, WIN
  * accounts it is kept as written: rewriting it to `~` would corrupt the patch
  * and then trip the home-relative check.
  */
-const VIRTUAL_FS_HOME = '/home/web_user';
+const VIRTUAL_FS_HOME = "/home/web_user";
 
 /** True when a captured user segment names a generic account; prose punctuation after it (`(cwd /home/web_user)`) is ignored. */
 function isGenericUser(segment: string): boolean {
-  return GENERIC_USERS.has(segment.replace(/[^\w-]+$/, '').toLowerCase());
+  return GENERIC_USERS.has(segment.replace(/[^\w-]+$/, "").toLowerCase());
 }
 
 /**
@@ -140,17 +188,20 @@ function isGenericUser(segment: string): boolean {
  * (`[\w.-]*googlers\.com`) costs ~6x more on large page snapshots.
  */
 export const LEAK_PATTERNS: readonly { name: string; re: RegExp }[] = [
-  { name: 'home path', re: CLOUDTOP_HOME_RE },
-  { name: 'home path', re: POSIX_HOME_RE },
-  { name: 'windows home path', re: WINDOWS_HOME_RE },
-  { name: 'windows home path', re: BACKSLASH_HOME_RE },
-  { name: 'escaped home path', re: /(?:\\\/|%2F)(?:home|Users)(?:\\\/|%2F)/gi },
+  { name: "home path", re: CLOUDTOP_HOME_RE },
+  { name: "home path", re: POSIX_HOME_RE },
+  { name: "windows home path", re: WINDOWS_HOME_RE },
+  { name: "windows home path", re: BACKSLASH_HOME_RE },
+  { name: "escaped home path", re: /(?:\\\/|%2F)(?:home|Users)(?:\\\/|%2F)/gi },
   // `[^~/]` and `/~/g` are regex syntax (JSON Pointer escaping in agent code), not paths.
-  { name: 'home-relative non-dotfile', re: new RegExp(String.raw`(?<![\w:^/])~/(?!\.)${SEGMENT}+`, 'g') },
-  { name: 'citc path', re: CITC_PATH_RE },
-  { name: 'googlers hostname', re: /\bgooglers\.com\b/gi },
-  { name: 'corp hostname', re: /\bcorp\.google\.com\b/gi },
-  { name: 'google email', re: /(?<=[\w.+-])@google\.com\b/gi },
+  {
+    name: "home-relative non-dotfile",
+    re: new RegExp(String.raw`(?<![\w:^/])~/(?!\.)${SEGMENT}+`, "g"),
+  },
+  { name: "citc path", re: CITC_PATH_RE },
+  { name: "googlers hostname", re: /\bgooglers\.com\b/gi },
+  { name: "corp hostname", re: /\bcorp\.google\.com\b/gi },
+  { name: "google email", re: /(?<=[\w.+-])@google\.com\b/gi },
   ...PUBLIC_SECRET_PATTERNS,
 ];
 
@@ -185,11 +236,12 @@ export class LeakError extends Error {
   constructor(leaks: Leak[], context: string) {
     const shown = leaks
       .slice(0, 10)
-      .map(leak => `  ${leak.path}: ${leak.name} "${leak.match}"`)
-      .join('\n');
-    const more = leaks.length > 10 ? `\n  ...and ${leaks.length - 10} more` : '';
+      .map((leak) => `  ${leak.path}: ${leak.name} "${leak.match}"`)
+      .join("\n");
+    const more =
+      leaks.length > 10 ? `\n  ...and ${leaks.length - 10} more` : "";
     super(`${context}: ${leaks.length} leak(s) found\n${shown}${more}`);
-    this.name = 'LeakError';
+    this.name = "LeakError";
     this.leaks = leaks;
   }
 }
@@ -197,8 +249,8 @@ export class LeakError extends Error {
 /** Rewrites paths so nothing machine-specific remains, and strips ANSI escapes. Idempotent. */
 export function scrubString(input: string): string {
   return stripVTControlCharacters(input)
-    .replace(REPO_PREFIX_RE, '')
-    .replace(HOME_DIR_RE, home => (home === VIRTUAL_FS_HOME ? home : '~'));
+    .replace(REPO_PREFIX_RE, "")
+    .replace(HOME_DIR_RE, (home) => (home === VIRTUAL_FS_HOME ? home : "~"));
 }
 
 /**
@@ -236,12 +288,19 @@ export function scrubValue<T>(value: T): T {
 
 /** Returns every leak in a JSON-compatible value, including object keys. Empty when safe to publish. */
 export function findLeaks(value: unknown, options: LeakOptions = {}): Leak[] {
-  const patterns = [...LEAK_PATTERNS, ...forbiddenTokenPatterns(options.forbiddenTokens ?? [])];
-  return findLeaksIn(value, '$', patterns);
+  const patterns = [
+    ...LEAK_PATTERNS,
+    ...forbiddenTokenPatterns(options.forbiddenTokens ?? []),
+  ];
+  return findLeaksIn(value, "$", patterns);
 }
 
 /** Throws `LeakError` listing every hit if `value` still contains identifying strings. */
-export function assertClean(value: unknown, context: string, options: LeakOptions = {}): void {
+export function assertClean(
+  value: unknown,
+  context: string,
+  options: LeakOptions = {},
+): void {
   const leaks = findLeaks(value, options);
   if (leaks.length > 0) {
     throw new LeakError(leaks, context);
@@ -252,7 +311,10 @@ function harvestInto(text: string, users: Set<string>): void {
   for (const re of USER_SEGMENT_PATTERNS) {
     for (const match of text.matchAll(re)) {
       const candidate = match[1];
-      if (isTokenShaped(candidate) && !GENERIC_USERS.has(candidate.toLowerCase())) {
+      if (
+        isTokenShaped(candidate) &&
+        !GENERIC_USERS.has(candidate.toLowerCase())
+      ) {
         users.add(candidate);
       }
     }
@@ -260,7 +322,7 @@ function harvestInto(text: string, users: Set<string>): void {
 }
 
 function harvestValueInto(value: unknown, users: Set<string>): void {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     harvestInto(value, users);
     return;
   }
@@ -270,7 +332,7 @@ function harvestValueInto(value: unknown, users: Set<string>): void {
     }
     return;
   }
-  if (value !== null && typeof value === 'object') {
+  if (value !== null && typeof value === "object") {
     for (const [key, child] of Object.entries(value)) {
       harvestInto(key, users);
       harvestValueInto(child, users);
@@ -279,13 +341,13 @@ function harvestValueInto(value: unknown, users: Set<string>): void {
 }
 
 function scrubUnknown(value: unknown): unknown {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return scrubString(value);
   }
   if (Array.isArray(value)) {
     return value.map(scrubUnknown);
   }
-  if (value !== null && typeof value === 'object') {
+  if (value !== null && typeof value === "object") {
     const scrubbed: Record<string, unknown> = {};
     for (const [key, child] of Object.entries(value)) {
       scrubbed[scrubString(key)] = scrubUnknown(child);
@@ -295,14 +357,20 @@ function scrubUnknown(value: unknown): unknown {
   return value;
 }
 
-function findLeaksIn(value: unknown, path: string, patterns: readonly { name: string; re: RegExp }[]): Leak[] {
-  if (typeof value === 'string') {
+function findLeaksIn(
+  value: unknown,
+  path: string,
+  patterns: readonly { name: string; re: RegExp }[],
+): Leak[] {
+  if (typeof value === "string") {
     return findLeaksInString(value, path, patterns);
   }
   if (Array.isArray(value)) {
-    return value.flatMap((child, i) => findLeaksIn(child, `${path}[${i}]`, patterns));
+    return value.flatMap((child, i) =>
+      findLeaksIn(child, `${path}[${i}]`, patterns),
+    );
   }
-  if (value !== null && typeof value === 'object') {
+  if (value !== null && typeof value === "object") {
     return Object.entries(value).flatMap(([key, child]) => [
       ...findLeaksInString(key, `${path}.${key}`, patterns),
       ...findLeaksIn(child, `${path}.${key}`, patterns),
@@ -311,14 +379,26 @@ function findLeaksIn(value: unknown, path: string, patterns: readonly { name: st
   return [];
 }
 
-function findLeaksInString(text: string, path: string, patterns: readonly { name: string; re: RegExp }[]): Leak[] {
+function findLeaksInString(
+  text: string,
+  path: string,
+  patterns: readonly { name: string; re: RegExp }[],
+): Leak[] {
   const leaks: Leak[] = [];
   for (const { name, re } of patterns) {
     for (const match of text.matchAll(re)) {
-      if (GENERIC_EXEMPT_PATTERNS.has(re) && isGenericUser(match[1]) && (match[0] === VIRTUAL_FS_HOME || isBareHome(text, match))) {
+      if (
+        GENERIC_EXEMPT_PATTERNS.has(re) &&
+        isGenericUser(match[1]) &&
+        (match[0] === VIRTUAL_FS_HOME || isBareHome(text, match))
+      ) {
         continue;
       }
-      leaks.push({ name, match: widenToToken(text, match.index, match[0]), path });
+      leaks.push({
+        name,
+        match: widenToToken(text, match.index, match[0]),
+        path,
+      });
     }
   }
   return leaks;
@@ -327,7 +407,7 @@ function findLeaksInString(text: string, path: string, patterns: readonly { name
 /** True when nothing path-like follows the home directory, so no later segment can name a person. */
 function isBareHome(text: string, match: RegExpExecArray): boolean {
   const next = text[match.index + match[0].length];
-  return next !== '/' && next !== '\\';
+  return next !== "/" && next !== "\\";
 }
 
 /** Extends a domain match backwards over the local part (`user@`, `host.`) so reports show the whole identifier. */
@@ -339,13 +419,15 @@ function widenToToken(text: string, start: number, matched: string): string {
   return text.slice(from, start) + matched;
 }
 
-function forbiddenTokenPatterns(tokens: readonly string[]): { name: string; re: RegExp }[] {
-  return tokens.map(token => ({
-    name: 'forbidden token',
-    re: new RegExp(String.raw`\b${escapeRegExp(token)}\b`, 'gi'),
+function forbiddenTokenPatterns(
+  tokens: readonly string[],
+): { name: string; re: RegExp }[] {
+  return tokens.map((token) => ({
+    name: "forbidden token",
+    re: new RegExp(String.raw`\b${escapeRegExp(token)}\b`, "gi"),
   }));
 }
 
 function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

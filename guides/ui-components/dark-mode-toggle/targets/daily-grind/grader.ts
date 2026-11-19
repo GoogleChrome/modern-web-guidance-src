@@ -5,15 +5,15 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { SyntaxKind, type Project } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import { SyntaxKind, type Project } from "ts-morph";
 import {
   CSSStyleRule,
   CSSGroupingRule,
   type CSSRule,
   type CSSStyleSheet,
-} from 'cssomnom';
-import type { Page } from '@playwright/test';
+} from "cssomnom";
+import type { Page } from "@playwright/test";
 
 // @ts-ignore - import.meta.url is supported in ESM runtime
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -38,12 +38,15 @@ function getEffectiveStyleRuleSelector(rule: CSSStyleRule): string {
     }
     current = current.parentRule;
   }
-  return parts.join(' ');
+  return parts.join(" ");
 }
 
-async function applyOppositeSchemeInPage(page: Page, targetScheme: 'light' | 'dark'): Promise<void> {
+async function applyOppositeSchemeInPage(
+  page: Page,
+  targetScheme: "light" | "dark",
+): Promise<void> {
   // Check for explicit select dropdown (3-state select)
-  const selectEl = page.locator('select').filter({
+  const selectEl = page.locator("select").filter({
     has: page.locator('option[value="light"], option[value="dark"]'),
   });
   if ((await selectEl.count()) > 0) {
@@ -59,10 +62,12 @@ async function applyOppositeSchemeInPage(page: Page, targetScheme: 'light' | 'da
   }
 
   // Check if there are multiple distinct theme buttons (3-state button group)
-  const targetWord = targetScheme === 'dark' ? /\bdark\b/i : /\blight\b/i;
-  const allThemeButtons = page.locator('button, [role="button"], [role="radio"], [role="menuitemradio"]').filter({
-    hasText: /\b(dark|light|theme|scheme|mode)\b/i,
-  });
+  const targetWord = targetScheme === "dark" ? /\bdark\b/i : /\blight\b/i;
+  const allThemeButtons = page
+    .locator('button, [role="button"], [role="radio"], [role="menuitemradio"]')
+    .filter({
+      hasText: /\b(dark|light|theme|scheme|mode)\b/i,
+    });
   const count = await allThemeButtons.count();
   if (count >= 2) {
     const specificBtn = allThemeButtons.filter({ hasText: targetWord });
@@ -74,36 +79,46 @@ async function applyOppositeSchemeInPage(page: Page, targetScheme: 'light' | 'da
 
   // Otherwise, locate the single two-state toggle button
   const toggleBtn = page.locator(
-    'button[id*="theme" i], button[class*="theme" i], button[id*="scheme" i], button[class*="scheme" i], button[id*="dark" i], button[class*="dark" i], button[aria-label*="theme" i], button[aria-label*="scheme" i], button[aria-label*="dark" i], button[aria-label*="light" i], nav button'
+    'button[id*="theme" i], button[class*="theme" i], button[id*="scheme" i], button[class*="scheme" i], button[id*="dark" i], button[class*="dark" i], button[aria-label*="theme" i], button[aria-label*="scheme" i], button[aria-label*="dark" i], button[aria-label*="light" i], nav button',
   );
   await toggleBtn.first().click();
 }
 
-async function applySystemDefaultInPage(page: Page, currentSystemScheme: 'light' | 'dark'): Promise<void> {
+async function applySystemDefaultInPage(
+  page: Page,
+  currentSystemScheme: "light" | "dark",
+): Promise<void> {
   // Check for explicit select dropdown (3-state select)
-  const selectEl = page.locator('select').filter({
+  const selectEl = page.locator("select").filter({
     has: page.locator('option[value="light"], option[value="dark"]'),
   });
   if ((await selectEl.count()) > 0) {
-    const sysOption = selectEl.first().locator('option').filter({ hasText: /\b(system|auto|default|os)\b/i });
+    const sysOption = selectEl
+      .first()
+      .locator("option")
+      .filter({ hasText: /\b(system|auto|default|os)\b/i });
     if ((await sysOption.count()) > 0) {
-      const val = await sysOption.first().getAttribute('value');
-      await selectEl.first().selectOption(val ?? '');
+      const val = await sysOption.first().getAttribute("value");
+      await selectEl.first().selectOption(val ?? "");
       return;
     }
   }
 
   // Check for explicit system radio input
-  const radioSys = page.locator('input[type="radio"][value="system"], input[type="radio"][value="auto"], input[type="radio"][value="light dark"], input[type="radio"][value=""]');
+  const radioSys = page.locator(
+    'input[type="radio"][value="system"], input[type="radio"][value="auto"], input[type="radio"][value="light dark"], input[type="radio"][value=""]',
+  );
   if ((await radioSys.count()) > 0) {
     await radioSys.first().check({ force: true });
     return;
   }
 
   // Check if there is an explicit system button in a 3-state button group
-  const sysBtn = page.locator('button, [role="button"], [role="radio"], [role="menuitemradio"]').filter({
-    hasText: /\b(system|auto)\b/i,
-  });
+  const sysBtn = page
+    .locator('button, [role="button"], [role="radio"], [role="menuitemradio"]')
+    .filter({
+      hasText: /\b(system|auto)\b/i,
+    });
   if ((await sysBtn.count()) > 0) {
     await sysBtn.first().click();
     return;
@@ -113,7 +128,7 @@ async function applySystemDefaultInPage(page: Page, currentSystemScheme: 'light'
   await applyOppositeSchemeInPage(page, currentSystemScheme);
 }
 
-test.describe('dark-mode-toggle Target Grader', () => {
+test.describe("dark-mode-toggle Target Grader", () => {
   // --- STATIC ASSERTIONS (FAST) ---
 
   test('Document <head> includes <meta name="color-scheme" content="light dark">', () => {
@@ -121,21 +136,25 @@ test.describe('dark-mode-toggle Target Grader', () => {
     const hasMetaInHead = docs.some(({ document }) => {
       const meta = document.querySelector('head meta[name="color-scheme"]');
       if (!meta) return false;
-      const content = (meta.getAttribute('content') || '').trim().split(/\s+/);
-      return content.length === 2 && content.includes('light') && content.includes('dark');
+      const content = (meta.getAttribute("content") || "").trim().split(/\s+/);
+      return (
+        content.length === 2 &&
+        content.includes("light") &&
+        content.includes("dark")
+      );
     });
     expect(hasMetaInHead).toBe(true);
   });
 
-  test('Root element (:root or html) declares color-scheme: light dark as its base value', () => {
+  test("Root element (:root or html) declares color-scheme: light dark as its base value", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = flattenCssRules(stylesheet.cssRules);
     const hasBaseColorScheme = allRules.some((r) => {
       if (!(r instanceof CSSStyleRule)) return false;
       const sel = getEffectiveStyleRuleSelector(r).trim();
-      if (sel !== ':root' && sel !== 'html') return false;
-      const val = r.style.getPropertyValue('color-scheme').trim().split(/\s+/);
-      return val.length === 2 && val.includes('light') && val.includes('dark');
+      if (sel !== ":root" && sel !== "html") return false;
+      const val = r.style.getPropertyValue("color-scheme").trim().split(/\s+/);
+      return val.length === 2 && val.includes("light") && val.includes("dark");
     });
     expect(hasBaseColorScheme).toBe(true);
   });
@@ -144,76 +163,94 @@ test.describe('dark-mode-toggle Target Grader', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = flattenCssRules(stylesheet.cssRules);
 
-    const hasMetaSchemeRule = (scheme: 'dark' | 'light') =>
+    const hasMetaSchemeRule = (scheme: "dark" | "light") =>
       allRules.some((r) => {
         if (!(r instanceof CSSStyleRule)) return false;
-        if (r.style.getPropertyValue('color-scheme').trim() !== scheme) return false;
-        const sel = getEffectiveStyleRuleSelector(r).replace(/\s*&/g, '').trim();
-        const withoutAttrs = sel.replace(/\[[^\]]*\]/g, '');
+        if (r.style.getPropertyValue("color-scheme").trim() !== scheme)
+          return false;
+        const sel = getEffectiveStyleRuleSelector(r)
+          .replace(/\s*&/g, "")
+          .trim();
+        const withoutAttrs = sel.replace(/\[[^\]]*\]/g, "");
         if (/\.[a-zA-Z_-]/.test(withoutAttrs)) return false;
         return (
           /^(?::root|html)\s*:has\(/i.test(sel) &&
           /meta/i.test(sel) &&
           /\[\s*name\s*=\s*['"]?color-scheme['"]?\s*\]/i.test(sel) &&
-          new RegExp(`\\[\\s*content\\s*[~|^$*]?=\\s*['"]?${scheme}['"]?\\s*\\]`, 'i').test(sel)
+          new RegExp(
+            `\\[\\s*content\\s*[~|^$*]?=\\s*['"]?${scheme}['"]?\\s*\\]`,
+            "i",
+          ).test(sel)
         );
       });
 
-    expect(hasMetaSchemeRule('dark') && hasMetaSchemeRule('light')).toBe(true);
+    expect(hasMetaSchemeRule("dark") && hasMetaSchemeRule("light")).toBe(true);
   });
 
   test('Synchronous inline <script> in <head> placed after <meta name="color-scheme"> reads localStorage and applies stored scheme override to the meta content', () => {
     const docs = getHtmlDocuments(targetFiles);
     const hasValidFoucScript = docs.some(({ document }) => {
-      const head = document.querySelector('head');
+      const head = document.querySelector("head");
       if (!head) return false;
       const children = Array.from(head.children) as any[];
       const metaIdx = children.findIndex(
         (el) =>
-          el.tagName?.toLowerCase() === 'meta' &&
-          el.getAttribute('name') === 'color-scheme'
+          el.tagName?.toLowerCase() === "meta" &&
+          el.getAttribute("name") === "color-scheme",
       );
       if (metaIdx === -1) return false;
 
       const scriptsAfterMeta = children.slice(metaIdx + 1).filter((el) => {
-        if (el.tagName?.toLowerCase() !== 'script') return false;
-        if (el.hasAttribute('src')) return false;
-        if (el.hasAttribute('defer') || el.hasAttribute('async')) return false;
-        const typeAttr = (el.getAttribute('type') || '').trim().toLowerCase();
-        if (typeAttr === 'module') return false;
+        if (el.tagName?.toLowerCase() !== "script") return false;
+        if (el.hasAttribute("src")) return false;
+        if (el.hasAttribute("defer") || el.hasAttribute("async")) return false;
+        const typeAttr = (el.getAttribute("type") || "").trim().toLowerCase();
+        if (typeAttr === "module") return false;
         return true;
       });
 
       const project: Project = getJsProject(targetFiles);
       return scriptsAfterMeta.some((scriptEl) => {
-        const text = scriptEl.textContent || '';
-        const sf = project.createSourceFile('__fouc_check__.ts', text, { overwrite: true });
+        const text = scriptEl.textContent || "";
+        const sf = project.createSourceFile("__fouc_check__.ts", text, {
+          overwrite: true,
+        });
         const callExprs = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-        const propAccesses = sf.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression);
+        const propAccesses = sf.getDescendantsOfKind(
+          SyntaxKind.PropertyAccessExpression,
+        );
 
         const readsLocalStorage =
           callExprs.some((ce) => {
             const exprText = ce.getExpression().getText();
-            return exprText.includes('localStorage') && exprText.includes('getItem');
-          }) ||
-          propAccesses.some((pa) => pa.getExpression().getText().includes('localStorage'));
-
-        const accessesMeta =
-          callExprs.some((ce) => {
-            const exprText = ce.getExpression().getText();
-            const argsText = ce.getArguments().map((a) => a.getText()).join(' ');
             return (
-              (exprText.includes('querySelector') && argsText.includes('color-scheme')) ||
-              (exprText.includes('getElementsByName') && argsText.includes('color-scheme'))
+              exprText.includes("localStorage") && exprText.includes("getItem")
             );
-          });
+          }) ||
+          propAccesses.some((pa) =>
+            pa.getExpression().getText().includes("localStorage"),
+          );
+
+        const accessesMeta = callExprs.some((ce) => {
+          const exprText = ce.getExpression().getText();
+          const argsText = ce
+            .getArguments()
+            .map((a) => a.getText())
+            .join(" ");
+          return (
+            (exprText.includes("querySelector") &&
+              argsText.includes("color-scheme")) ||
+            (exprText.includes("getElementsByName") &&
+              argsText.includes("color-scheme"))
+          );
+        });
 
         const updatesContent =
-          propAccesses.some((pa) => pa.getName() === 'content') ||
+          propAccesses.some((pa) => pa.getName() === "content") ||
           callExprs.some(
             (ce) =>
-              ce.getExpression().getText().endsWith('setAttribute') &&
-              ce.getArguments()[0]?.getText().includes('content')
+              ce.getExpression().getText().endsWith("setAttribute") &&
+              ce.getArguments()[0]?.getText().includes("content"),
           );
 
         return readsLocalStorage && accessesMeta && updatesContent;
@@ -225,13 +262,13 @@ test.describe('dark-mode-toggle Target Grader', () => {
 
   // --- BROWSER ASSERTIONS (E2E) ---
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     async function discoverStorageKey(page: Page): Promise<string | null> {
-      await applyOppositeSchemeInPage(page, 'dark');
+      await applyOppositeSchemeInPage(page, "dark");
       return await page.evaluate(() => {
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
-          if (k && localStorage.getItem(k) === 'dark') {
+          if (k && localStorage.getItem(k) === "dark") {
             return k;
           }
         }
@@ -243,7 +280,7 @@ test.describe('dark-mode-toggle Target Grader', () => {
       page,
       TARGET_URL,
     }) => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto(TARGET_URL);
 
       const storageKey = await discoverStorageKey(page);
@@ -252,29 +289,37 @@ test.describe('dark-mode-toggle Target Grader', () => {
       await page.reload();
 
       const state = await page.evaluate(() => {
-        const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
-        const rootScheme = window.getComputedStyle(document.documentElement).colorScheme;
+        const meta = document.querySelector(
+          'head meta[name="color-scheme"]',
+        ) as HTMLMetaElement | null;
+        const rootScheme = window.getComputedStyle(
+          document.documentElement,
+        ).colorScheme;
         return {
           metaContent: meta?.content ?? null,
           rootScheme,
         };
       });
 
-      expect(state).toEqual({ metaContent: 'dark', rootScheme: 'dark' });
+      expect(state).toEqual({ metaContent: "dark", rootScheme: "dark" });
     });
 
-    test('Activating the color scheme control overrides the scheme, sets meta content, updates root computed color-scheme, and persists in localStorage', async ({
+    test("Activating the color scheme control overrides the scheme, sets meta content, updates root computed color-scheme, and persists in localStorage", async ({
       page,
       TARGET_URL,
     }) => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto(TARGET_URL);
 
-      await applyOppositeSchemeInPage(page, 'dark');
+      await applyOppositeSchemeInPage(page, "dark");
 
       const state = await page.evaluate(() => {
-        const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
-        const rootScheme = window.getComputedStyle(document.documentElement).colorScheme;
+        const meta = document.querySelector(
+          'head meta[name="color-scheme"]',
+        ) as HTMLMetaElement | null;
+        const rootScheme = window.getComputedStyle(
+          document.documentElement,
+        ).colorScheme;
         const storedValues: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -286,13 +331,13 @@ test.describe('dark-mode-toggle Target Grader', () => {
         return {
           metaContent: meta?.content ?? null,
           rootScheme,
-          hasStoredDark: storedValues.includes('dark'),
+          hasStoredDark: storedValues.includes("dark"),
         };
       });
 
       expect(state).toEqual({
-        metaContent: 'dark',
-        rootScheme: 'dark',
+        metaContent: "dark",
+        rootScheme: "dark",
         hasStoredDark: true,
       });
     });
@@ -301,16 +346,18 @@ test.describe('dark-mode-toggle Target Grader', () => {
       page,
       TARGET_URL,
     }) => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto(TARGET_URL);
 
       // First override to dark
-      await applyOppositeSchemeInPage(page, 'dark');
+      await applyOppositeSchemeInPage(page, "dark");
       // Now return to system default (light)
-      await applySystemDefaultInPage(page, 'light');
+      await applySystemDefaultInPage(page, "light");
 
       const state = await page.evaluate(() => {
-        const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
+        const meta = document.querySelector(
+          'head meta[name="color-scheme"]',
+        ) as HTMLMetaElement | null;
         const storedValues: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -319,11 +366,17 @@ test.describe('dark-mode-toggle Target Grader', () => {
             if (v !== null) storedValues.push(v);
           }
         }
-        const metaParts = (meta?.content ?? '').trim().split(/\s+/);
+        const metaParts = (meta?.content ?? "").trim().split(/\s+/);
         const isMetaLightDark =
-          metaParts.length === 2 && metaParts.includes('light') && metaParts.includes('dark');
+          metaParts.length === 2 &&
+          metaParts.includes("light") &&
+          metaParts.includes("dark");
         const hasAnySchemeStored = storedValues.some(
-          (v) => v === 'light' || v === 'dark' || v === 'light dark' || v === 'dark light'
+          (v) =>
+            v === "light" ||
+            v === "dark" ||
+            v === "light dark" ||
+            v === "dark light",
         );
         return {
           isMetaLightDark,
@@ -337,24 +390,28 @@ test.describe('dark-mode-toggle Target Grader', () => {
       });
     });
 
-    test('When a scheme override is stored in localStorage and OS prefers-color-scheme changes to match and then changes back, the override remains in localStorage and root stays pinned', async ({
+    test("When a scheme override is stored in localStorage and OS prefers-color-scheme changes to match and then changes back, the override remains in localStorage and root stays pinned", async ({
       page,
       TARGET_URL,
     }) => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto(TARGET_URL);
 
       // Override to dark while OS is light
-      await applyOppositeSchemeInPage(page, 'dark');
+      await applyOppositeSchemeInPage(page, "dark");
 
       // OS changes to dark (matching the stored 'dark' override)
-      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.emulateMedia({ colorScheme: "dark" });
       // OS changes back to light
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
 
       const state = await page.evaluate(() => {
-        const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
-        const rootScheme = window.getComputedStyle(document.documentElement).colorScheme;
+        const meta = document.querySelector(
+          'head meta[name="color-scheme"]',
+        ) as HTMLMetaElement | null;
+        const rootScheme = window.getComputedStyle(
+          document.documentElement,
+        ).colorScheme;
         const storedValues: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i);
@@ -366,13 +423,13 @@ test.describe('dark-mode-toggle Target Grader', () => {
         return {
           metaContent: meta?.content ?? null,
           rootScheme,
-          hasStoredDark: storedValues.includes('dark'),
+          hasStoredDark: storedValues.includes("dark"),
         };
       });
 
       expect(state).toEqual({
-        metaContent: 'dark',
-        rootScheme: 'dark',
+        metaContent: "dark",
+        rootScheme: "dark",
         hasStoredDark: true,
       });
     });
@@ -381,7 +438,7 @@ test.describe('dark-mode-toggle Target Grader', () => {
       page,
       TARGET_URL,
     }) => {
-      await page.emulateMedia({ colorScheme: 'light' });
+      await page.emulateMedia({ colorScheme: "light" });
       await page.goto(TARGET_URL);
 
       const storageKey = await discoverStorageKey(page);
@@ -393,46 +450,50 @@ test.describe('dark-mode-toggle Target Grader', () => {
       await page.reload();
 
       const syncResults = await page.evaluate((key) => {
-        const meta = document.querySelector('head meta[name="color-scheme"]') as HTMLMetaElement | null;
+        const meta = document.querySelector(
+          'head meta[name="color-scheme"]',
+        ) as HTMLMetaElement | null;
         if (!meta) return null;
 
         // Simulate another tab setting 'dark'
-        localStorage.setItem(key, 'dark');
+        localStorage.setItem(key, "dark");
         window.dispatchEvent(
-          new StorageEvent('storage', {
+          new StorageEvent("storage", {
             key,
             oldValue: null,
-            newValue: 'dark',
+            newValue: "dark",
             storageArea: localStorage,
-          })
+          }),
         );
         const afterDark = meta.content;
 
         // Simulate another tab setting 'light'
-        localStorage.setItem(key, 'light');
+        localStorage.setItem(key, "light");
         window.dispatchEvent(
-          new StorageEvent('storage', {
+          new StorageEvent("storage", {
             key,
-            oldValue: 'dark',
-            newValue: 'light',
+            oldValue: "dark",
+            newValue: "light",
             storageArea: localStorage,
-          })
+          }),
         );
         const afterLight = meta.content;
 
         // Simulate another tab removing the key
         localStorage.removeItem(key);
         window.dispatchEvent(
-          new StorageEvent('storage', {
+          new StorageEvent("storage", {
             key,
-            oldValue: 'light',
+            oldValue: "light",
             newValue: null,
             storageArea: localStorage,
-          })
+          }),
         );
         const removedParts = meta.content.trim().split(/\s+/);
         const afterRemoveIsLightDark =
-          removedParts.length === 2 && removedParts.includes('light') && removedParts.includes('dark');
+          removedParts.length === 2 &&
+          removedParts.includes("light") &&
+          removedParts.includes("dark");
 
         return {
           afterDark,
@@ -442,8 +503,8 @@ test.describe('dark-mode-toggle Target Grader', () => {
       }, storageKey!);
 
       expect(syncResults).toEqual({
-        afterDark: 'dark',
-        afterLight: 'light',
+        afterDark: "dark",
+        afterLight: "light",
         afterRemoveIsLightDark: true,
       });
     });

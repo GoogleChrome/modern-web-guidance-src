@@ -108,7 +108,7 @@ index 66c9173..1b8f5e7 100644
 +    }
    </style>
  </head>
- 
+
 @@ -177,21 +277,16 @@
    <main class="container">
      <section>
@@ -143,7 +143,7 @@ index 66c9173..1b8f5e7 100644
 @@ -207,6 +302,84 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const drinks = [
 +      {
@@ -223,7 +223,7 @@ index 66c9173..1b8f5e7 100644
 +  </script>
 +
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..bb70d39 100644

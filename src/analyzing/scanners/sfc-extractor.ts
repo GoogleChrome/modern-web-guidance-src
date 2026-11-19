@@ -4,20 +4,21 @@ export interface ScriptBlock {
 }
 
 const NON_JS_SCRIPT_TYPES: ReadonlySet<string> = new Set([
-  'text/template',
-  'text/html',
-  'text/x-template',
-  'text/x-handlebars-template',
-  'application/json',
-  'application/ld+json',
-  'importmap',
-  'speculationrules',
+  "text/template",
+  "text/html",
+  "text/x-template",
+  "text/x-handlebars-template",
+  "application/json",
+  "application/ld+json",
+  "importmap",
+  "speculationrules",
 ]);
 
 const SCRIPT_TAG_REGEX = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 const STYLE_TAG_REGEX = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
 const ASTRO_FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---/;
-const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+const TAG_ATTR_REGEX =
+  /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
 
 /**
  * Replaces characters in specified index ranges with spaces, preserving all newlines.
@@ -31,7 +32,7 @@ export function blankRanges(
   }
 
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
-  let result = '';
+  let result = "";
   let lastIndex = 0;
 
   for (const { start, end } of sorted) {
@@ -40,7 +41,7 @@ export function blankRanges(
     }
     const clampedStart = Math.max(lastIndex, start);
     if (end > clampedStart) {
-      result += content.slice(clampedStart, end).replace(/[^\r\n]/g, ' ');
+      result += content.slice(clampedStart, end).replace(/[^\r\n]/g, " ");
     }
     lastIndex = Math.max(lastIndex, end);
   }
@@ -79,7 +80,7 @@ function parseTagAttributes(attrString: string): Record<string, string> {
   for (const match of attrString.matchAll(TAG_ATTR_REGEX)) {
     const name = match[1]?.toLowerCase();
     if (name) {
-      attrs[name] = match[2] ?? match[3] ?? match[4] ?? '';
+      attrs[name] = match[2] ?? match[3] ?? match[4] ?? "";
     }
   }
   return attrs;
@@ -94,26 +95,32 @@ function determineScriptVirtualPath(
   blockIndex = 0,
 ): string {
   const lang = attrs.lang?.toLowerCase();
-  let ext = '.js';
-  if (lang === 'ts' || lang === 'typescript') {
-    ext = '.ts';
-  } else if (lang === 'tsx') {
-    ext = '.tsx';
-  } else if (lang === 'jsx') {
-    ext = '.jsx';
-  } else if (relPath.endsWith('.ts') || relPath.endsWith('.mts')) {
+  let ext = ".js";
+  if (lang === "ts" || lang === "typescript") {
+    ext = ".ts";
+  } else if (lang === "tsx") {
+    ext = ".tsx";
+  } else if (lang === "jsx") {
+    ext = ".jsx";
+  } else if (relPath.endsWith(".ts") || relPath.endsWith(".mts")) {
     return blockIndex > 0 ? `${relPath}.block${blockIndex}.ts` : relPath;
   }
-  return blockIndex > 0 ? `${relPath}.block${blockIndex}${ext}` : `${relPath}${ext}`;
+  return blockIndex > 0
+    ? `${relPath}.block${blockIndex}${ext}`
+    : `${relPath}${ext}`;
 }
 
 /**
  * Determines whether a script tag should be skipped (e.g. template or empty external script).
  */
-function shouldSkipScript(attrs: Record<string, string>, body: string): boolean {
+function shouldSkipScript(
+  attrs: Record<string, string>,
+  body: string,
+): boolean {
   const type = attrs.type?.toLowerCase();
   return Boolean(
-    (type && NON_JS_SCRIPT_TYPES.has(type)) || (attrs.src && body.trim().length === 0),
+    (type && NON_JS_SCRIPT_TYPES.has(type)) ||
+    (attrs.src && body.trim().length === 0),
   );
 }
 
@@ -128,10 +135,10 @@ export function extractScriptBlocks(
   const lowerPath = relPath.toLowerCase();
 
   // Astro frontmatter fence (--- ... ---)
-  if (lowerPath.endsWith('.astro')) {
+  if (lowerPath.endsWith(".astro")) {
     const fmMatch = ASTRO_FRONTMATTER_REGEX.exec(content);
     if (fmMatch && fmMatch[1]) {
-      const firstNewline = content.indexOf('\n');
+      const firstNewline = content.indexOf("\n");
       const startOffset = firstNewline !== -1 ? firstNewline + 1 : 4;
       const endOffset = startOffset + fmMatch[1].length;
       if (endOffset > startOffset) {
@@ -144,15 +151,23 @@ export function extractScriptBlocks(
   }
 
   for (const match of content.matchAll(SCRIPT_TAG_REGEX)) {
-    const attrStr = match[1] ?? '';
-    const body = match[2] ?? '';
+    const attrStr = match[1] ?? "";
+    const body = match[2] ?? "";
     const attrs = parseTagAttributes(attrStr);
 
-    if (!shouldSkipScript(attrs, body) && body.trim().length > 0 && match.index !== undefined) {
-      const openTagLen = match[0].indexOf('>') + 1;
+    if (
+      !shouldSkipScript(attrs, body) &&
+      body.trim().length > 0 &&
+      match.index !== undefined
+    ) {
+      const openTagLen = match[0].indexOf(">") + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
-      const virtualPath = determineScriptVirtualPath(relPath, attrs, blocks.length);
+      const virtualPath = determineScriptVirtualPath(
+        relPath,
+        attrs,
+        blocks.length,
+      );
 
       blocks.push({
         virtualPath,
@@ -169,23 +184,23 @@ export function extractScriptBlocks(
  * by replacing non-newline characters with '_' to ensure CSS parseability.
  */
 function sanitizeLitExpressions(rawSlice: string): string {
-  let result = '';
+  let result = "";
   let i = 0;
   const len = rawSlice.length;
 
   while (i < len) {
-    if (rawSlice[i] === '$' && rawSlice[i + 1] === '{') {
-      result += '__';
+    if (rawSlice[i] === "$" && rawSlice[i + 1] === "{") {
+      result += "__";
       i += 2;
       let depth = 1;
       while (i < len && depth > 0) {
         const ch = rawSlice[i];
-        if (ch === '{') {
+        if (ch === "{") {
           depth++;
-        } else if (ch === '}') {
+        } else if (ch === "}") {
           depth--;
         }
-        result += ch === '\n' || ch === '\r' ? ch : '_';
+        result += ch === "\n" || ch === "\r" ? ch : "_";
         i++;
       }
       continue;
@@ -207,28 +222,28 @@ function extractLitCssBlocks(content: string): readonly string[] {
     if (match.index === undefined) {
       continue;
     }
-    const openQuote = match.index + match[0].indexOf('`');
+    const openQuote = match.index + match[0].indexOf("`");
     let i = openQuote + 1;
     let depth = 0;
     let closeQuote = -1;
 
     while (i < content.length) {
       const ch = content[i];
-      if (ch === '\\') {
+      if (ch === "\\") {
         i += 2;
         continue;
       }
-      if (ch === '$' && content[i + 1] === '{') {
+      if (ch === "$" && content[i + 1] === "{") {
         depth++;
         i += 2;
         continue;
       }
-      if (ch === '}' && depth > 0) {
+      if (ch === "}" && depth > 0) {
         depth--;
         i++;
         continue;
       }
-      if (ch === '`' && depth === 0) {
+      if (ch === "`" && depth === 0) {
         closeQuote = i;
         break;
       }
@@ -243,7 +258,9 @@ function extractLitCssBlocks(content: string): readonly string[] {
           content.slice(0, openQuote + 1) +
           sanitizedSlice +
           content.slice(closeQuote);
-        blocks.push(blankOutsideRange(reconstructed, openQuote + 1, closeQuote));
+        blocks.push(
+          blankOutsideRange(reconstructed, openQuote + 1, closeQuote),
+        );
       }
     }
   }
@@ -254,12 +271,12 @@ function extractLitCssBlocks(content: string): readonly string[] {
 export function isMarkupPath(relPath: string): boolean {
   const lowerPath = relPath.toLowerCase();
   return (
-    lowerPath.endsWith('.html') ||
-    lowerPath.endsWith('.htm') ||
-    lowerPath.endsWith('.php') ||
-    lowerPath.endsWith('.vue') ||
-    lowerPath.endsWith('.svelte') ||
-    lowerPath.endsWith('.astro')
+    lowerPath.endsWith(".html") ||
+    lowerPath.endsWith(".htm") ||
+    lowerPath.endsWith(".php") ||
+    lowerPath.endsWith(".vue") ||
+    lowerPath.endsWith(".svelte") ||
+    lowerPath.endsWith(".astro")
   );
 }
 
@@ -267,16 +284,19 @@ export function isMarkupPath(relPath: string): boolean {
  * Extracts style blocks from HTML, Vue, Svelte, and Astro files,
  * or Lit css`...` tagged template literals from JS/TS files.
  */
-export function extractStyleBlocks(relPath: string, content: string): readonly string[] {
+export function extractStyleBlocks(
+  relPath: string,
+  content: string,
+): readonly string[] {
   if (!isMarkupPath(relPath)) {
-    return content.includes('css`') ? extractLitCssBlocks(content) : [];
+    return content.includes("css`") ? extractLitCssBlocks(content) : [];
   }
 
   const blocks: string[] = [];
   for (const match of content.matchAll(STYLE_TAG_REGEX)) {
-    const body = match[2] ?? '';
+    const body = match[2] ?? "";
     if (body.trim().length > 0 && match.index !== undefined) {
-      const openTagLen = match[0].indexOf('>') + 1;
+      const openTagLen = match[0].indexOf(">") + 1;
       const startOffset = match.index + openTagLen;
       const endOffset = startOffset + body.length;
       blocks.push(blankOutsideRange(content, startOffset, endOffset));
@@ -286,7 +306,10 @@ export function extractStyleBlocks(relPath: string, content: string): readonly s
   return blocks;
 }
 
-function findTagRanges(content: string, regex: RegExp): { start: number; end: number }[] {
+function findTagRanges(
+  content: string,
+  regex: RegExp,
+): { start: number; end: number }[] {
   const ranges: { start: number; end: number }[] = [];
   for (const match of content.matchAll(regex)) {
     if (match.index !== undefined) {
@@ -302,12 +325,15 @@ const VUE_TEMPLATE_TAG_REGEX = /<\/?template\b(?:"[^"]*"|'[^']*'|[^'">])*>/gi;
  * Prepares HTML content for DOM scanning by blanking out non-DOM blocks (scripts, styles)
  * and blanking all <template> tags in Vue SFCs so inner DOM elements remain attached in linkedom.
  */
-export function prepareHtmlForDomScan(relPath: string, content: string): string {
+export function prepareHtmlForDomScan(
+  relPath: string,
+  content: string,
+): string {
   const lowerPath = relPath.toLowerCase();
   if (
-    !lowerPath.endsWith('.vue') &&
-    !lowerPath.endsWith('.svelte') &&
-    !lowerPath.endsWith('.astro')
+    !lowerPath.endsWith(".vue") &&
+    !lowerPath.endsWith(".svelte") &&
+    !lowerPath.endsWith(".astro")
   ) {
     return content;
   }
@@ -317,9 +343,9 @@ export function prepareHtmlForDomScan(relPath: string, content: string): string 
     ...findTagRanges(content, STYLE_TAG_REGEX),
   ];
 
-  if (lowerPath.endsWith('.vue')) {
+  if (lowerPath.endsWith(".vue")) {
     rangesToBlank.push(...findTagRanges(content, VUE_TEMPLATE_TAG_REGEX));
-  } else if (lowerPath.endsWith('.astro')) {
+  } else if (lowerPath.endsWith(".astro")) {
     const fmMatch = ASTRO_FRONTMATTER_REGEX.exec(content);
     if (fmMatch) {
       rangesToBlank.push({ start: 0, end: fmMatch[0].length });

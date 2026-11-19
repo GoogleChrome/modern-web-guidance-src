@@ -6,12 +6,19 @@
  * type-safe parameter interpolation.
  */
 
-import { type SolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, REPORT_FILE, TASK_FILE } from '../core/guide-validation.ts';
-import { Agents } from '../harness/config.ts';
-import type { TargetEvalSummary } from './dev-report.ts';
+import {
+  type SolutionAgent,
+  GUIDE_FILE,
+  EXPECTATIONS_FILE,
+  REPORT_FILE,
+  TASK_FILE,
+} from "../core/guide-validation.ts";
+import { Agents } from "../harness/config.ts";
+import type { TargetEvalSummary } from "./dev-report.ts";
 
 /** Shared discipline-guide preamble for the solution, zero-passrate, and grader prompts. */
-const DISCIPLINE_RELEVANCE_RULE = '\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation will be relevant to this application. An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.';
+const DISCIPLINE_RELEVANCE_RULE =
+  "\n\n> [!IMPORTANT]\n> This is a **discipline guide**: broad, cross-cutting guidance covering many patterns. Not every expectation will be relevant to this application. An expectation is relevant only if it applies to any web application (such as document metadata or response headers) or the application already contains the kind of element or feature it governs (such as forms, credential inputs, images, overlays or flyouts, cookies or sessions, iframes, external scripts, or a logout flow). Judge relevance by whether that element or feature exists, not by whether the technique the expectation recommends is already used: an existing element that lacks the recommended technique is exactly what should be implemented and tested.";
 
 export interface SolutionPromptOptions {
   guideFile: string;
@@ -31,7 +38,7 @@ export function buildSolutionPrompt(opts: SolutionPromptOptions): string {
   const taskFile = opts.taskFile ?? TASK_FILE;
   const disciplineInstruction = opts.isDisciplineGuide
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to implement every pattern in \`${opts.guideFile}\`. Implement only the patterns that are relevant to the task in \`${taskFile}\` and the elements already present in the application. Do NOT add new features, pages, routes, servers, forms, scripts, or content that are not requested by the task.`
-    : '';
+    : "";
 
   return `# GOAL
 Modify the web application codebase in the directory \`${opts.workDir}\` to complete the developer task in \`${taskFile}\` by faithfully following the guidance in \`${opts.guideFile}\`.${disciplineInstruction}
@@ -53,7 +60,7 @@ When writing files, you MUST use your built-in structured file editing tools (e.
 export function buildZeroPassratePrompt(opts: PatchPromptOptions): string {
   const disciplineInstruction = opts.isDisciplineGuide
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to fail every expectation. Only remove existing implementations of relevant expectations. Do NOT add features or anti-patterns the application does not already have. Do NOT remove or degrade anything the application already does correctly; the grader will skip expectations the application already satisfies.`
-    : '';
+    : "";
 
   return `# GOAL
 Inspect the clean codebase in the directory \`${opts.workDir}\`. Your goal is to ensure the codebase does NOT implement any part of the feature described in \`${opts.guideFile}\` and does NOT satisfy any criteria in \`${opts.expectationsFile}\`.
@@ -108,16 +115,23 @@ const MAX_FAILURE_CONTEXT_CHARS = 16_000;
 
 export function buildTargetGraderPrompt(opts: GraderPromptOptions): string {
   const taskFile = opts.taskFile ?? TASK_FILE;
-  let prReviewContextBlock = '';
+  let prReviewContextBlock = "";
   if (opts.prContext?.comments) {
-    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS'];
-    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
-    parts.push(`If any reviewer comments above pertain to \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes), incorporate them while still adhering to \`${opts.expectationsFile}\` and all rules below.`);
-    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+    const parts: string[] = [
+      "### ⚠️ REVIEWER FEEDBACK ON PREVIOUS GRADER & EVALUATIONS",
+    ];
+    parts.push(
+      `Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`,
+    );
+    parts.push(
+      `If any reviewer comments above pertain to \`${opts.graderFile}\` (e.g. relaxing overly strict checks, fixing false negatives, or adjusting selector scopes), incorporate them while still adhering to \`${opts.expectationsFile}\` and all rules below.`,
+    );
+    prReviewContextBlock = "\n" + parts.join("\n\n") + "\n\n---\n";
   }
 
   const truncatedFailure =
-    opts.failureContext && opts.failureContext.length > MAX_FAILURE_CONTEXT_CHARS
+    opts.failureContext &&
+    opts.failureContext.length > MAX_FAILURE_CONTEXT_CHARS
       ? `${opts.failureContext.slice(0, MAX_FAILURE_CONTEXT_CHARS)}\n...[truncated ${opts.failureContext.length - MAX_FAILURE_CONTEXT_CHARS} chars]`
       : opts.failureContext;
 
@@ -131,30 +145,33 @@ Analyze this failure and modify the existing grader file to fix these assertions
 
 ---
 `
-    : '';
+    : "";
 
   const agentLabels: Record<SolutionAgent, string> = {
-    [Agents.ANTIGRAVITY_CLI]: 'Antigravity CLI',
-    [Agents.JETSKI_CLI]: 'Jetski CLI',
-    [Agents.CLAUDE_CODE]: 'Claude Code',
-    [Agents.CODEX_CLI]: 'Codex CLI',
+    [Agents.ANTIGRAVITY_CLI]: "Antigravity CLI",
+    [Agents.JETSKI_CLI]: "Jetski CLI",
+    [Agents.CLAUDE_CODE]: "Claude Code",
+    [Agents.CODEX_CLI]: "Codex CLI",
   };
 
   const solutionList = Object.entries(opts.solutionPatchFiles)
     .filter(([_, file]) => Boolean(file))
-    .map(([agent, file]) => `   - ${agentLabels[agent as SolutionAgent] || agent} Solution: \`${file}\` (must pass 100% of tests)`)
-    .join('\n');
+    .map(
+      ([agent, file]) =>
+        `   - ${agentLabels[agent as SolutionAgent] || agent} Solution: \`${file}\` (must pass 100% of tests)`,
+    )
+    .join("\n");
 
   const patchInstruction = opts.failureContext
     ? `\n\n> [!NOTE]\n> Golden solution patches (\`patches/*-solution.patch\`) are **LOCKED** and any edits to them will be discarded. If calibration is failing because a golden solution used a different valid selector, helper, or structure than your test assumed, update \`${opts.graderFile}\` to accept all valid implementations. You may only edit \`${opts.zeroPassratePatchFile}\` if the baseline app already satisfies an expectation and needs to be adjusted.`
-    : '';
+    : "";
 
   const disciplineInstruction = opts.isDisciplineGuide
     ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
-    : '';
+    : "";
 
   const coverageInstruction = opts.isDisciplineGuide
-    ? ''
+    ? ""
     : `Every top-level expectation in \`${opts.expectationsFile}\` must have at least one dedicated \`test('...', ...)\` block whose name clearly describes that expectation. Do not omit, merge, or skip any expectation, including when revising the grader after a calibration failure.\n\n`;
 
   return `${prReviewContextBlock}${contextBlock}# GOAL
@@ -221,15 +238,21 @@ export interface TaskPromptOptions {
 }
 
 export function buildTargetTaskPrompt(opts: TaskPromptOptions): string {
-  const target = opts.isDisciplineGuide ? 'discipline guidance' : 'use case';
+  const target = opts.isDisciplineGuide ? "discipline guidance" : "use case";
   const taskFile = opts.taskFile ?? TASK_FILE;
 
-  let prReviewContextBlock = '';
+  let prReviewContextBlock = "";
   if (opts.prContext?.comments) {
-    const parts: string[] = ['### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION'];
-    parts.push(`Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`);
-    parts.push(`Carefully address any reviewer suggestions regarding the developer prompt in \`${taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`);
-    prReviewContextBlock = '\n' + parts.join('\n\n') + '\n\n---\n';
+    const parts: string[] = [
+      "### ⚠️ REVIEWER FEEDBACK ON PREVIOUS TASK PROMPT / IMPLEMENTATION",
+    ];
+    parts.push(
+      `Reviewer & ATL comments on this PR:\n${opts.prContext.comments.trim()}`,
+    );
+    parts.push(
+      `Carefully address any reviewer suggestions regarding the developer prompt in \`${taskFile}\`. If a reviewer requested specific phrasing, wording adjustments, or additions to the test prompt, incorporate their feedback directly while adhering to all rules below.`,
+    );
+    prReviewContextBlock = "\n" + parts.join("\n\n") + "\n\n---\n";
   }
 
   return `${prReviewContextBlock}# GOAL
@@ -267,20 +290,28 @@ export interface ReviewFeedbackPromptOptions {
   rerunMode?: string;
 }
 
-export function buildApplyReviewFeedbackPrompt(opts: ReviewFeedbackPromptOptions): string {
-  const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+export function buildApplyReviewFeedbackPrompt(
+  opts: ReviewFeedbackPromptOptions,
+): string {
+  const parts: string[] = ["# EXISTING PULL REQUEST & REVIEW CONTEXT"];
   if (opts.branchCommits) {
-    parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.branchCommits.trim()}\n\`\`\``);
+    parts.push(
+      `## Branch Commits against main:\n\`\`\`\n${opts.branchCommits.trim()}\n\`\`\``,
+    );
   }
   if (opts.branchDiff) {
-    parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.branchDiff.trim()}\n\`\`\``);
+    parts.push(
+      `## Branch Diff against main:\n\`\`\`diff\n${opts.branchDiff.trim()}\n\`\`\``,
+    );
   }
-  parts.push(`## Reviewer Comments & Feedback to Address:\n${opts.comments.trim()}`);
+  parts.push(
+    `## Reviewer Comments & Feedback to Address:\n${opts.comments.trim()}`,
+  );
 
-  const contextBlock = parts.join('\n\n');
+  const contextBlock = parts.join("\n\n");
 
-  let rerunNote = '';
-  if (opts.rerunMode === 'needs-dev-rerun') {
+  let rerunNote = "";
+  if (opts.rerunMode === "needs-dev-rerun") {
     rerunNote = `\n> [!NOTE]\n> This rerun is in \`needs-dev-rerun\` mode: after this step, files are regenerated based on what changed. If the \`description\` in \`${GUIDE_FILE}\` changes, every file under \`targets/\` is regenerated, so do not also edit target files in that case. For any other \`${GUIDE_FILE}\` or \`${EXPECTATIONS_FILE}\` change, \`targets/<target>/${TASK_FILE}\` is kept and the patches and \`grader.ts\` are regenerated, so do not also edit \`grader.ts\` in that case. If only \`targets/<target>/${TASK_FILE}\` changes, the solution patches and \`grader.ts\` are regenerated from the new task.\n`;
   }
 
@@ -312,26 +343,41 @@ export interface DevReportPromptOptions {
 }
 
 export function buildDevReportPrompt(opts: DevReportPromptOptions): string {
-  const targetSections = opts.targets.map(t => {
-    return `### Target: \`${t.baseApp}\`
+  const targetSections = opts.targets
+    .map((t) => {
+      return `### Target: \`${t.baseApp}\`
 - **Issue Flagged**: \`${t.flag}\`
 - **Flag Details**: ${t.flagDetails}`;
-  }).join('\n\n');
+    })
+    .join("\n\n");
 
-  let prContextBlock = '';
-  if (opts.prContext && (opts.prContext.comments || opts.prContext.branchDiff || opts.prContext.branchCommits)) {
-    const parts: string[] = ['# EXISTING PULL REQUEST & REVIEW CONTEXT'];
+  let prContextBlock = "";
+  if (
+    opts.prContext &&
+    (opts.prContext.comments ||
+      opts.prContext.branchDiff ||
+      opts.prContext.branchCommits)
+  ) {
+    const parts: string[] = ["# EXISTING PULL REQUEST & REVIEW CONTEXT"];
     if (opts.prContext.branchCommits) {
-      parts.push(`## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``);
+      parts.push(
+        `## Branch Commits against main:\n\`\`\`\n${opts.prContext.branchCommits.trim()}\n\`\`\``,
+      );
     }
     if (opts.prContext.branchDiff) {
-      parts.push(`## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``);
+      parts.push(
+        `## Branch Diff against main:\n\`\`\`diff\n${opts.prContext.branchDiff.trim()}\n\`\`\``,
+      );
     }
     if (opts.prContext.comments) {
-      parts.push(`## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`);
+      parts.push(
+        `## PR Comments & Reviewer Feedback:\n${opts.prContext.comments.trim()}`,
+      );
     }
-    parts.push(`\n> [!IMPORTANT]\n> This is a subsequent pass on an open pull request. You MUST carefully review the PR comments, ATL/reviewer feedback, and existing branch commits/diff above.\n> - Honor reviewer feedback and requested changes directly in your recommendations and file updates.\n> - Address reviewer concerns without blindly overwriting human-authored changes.\n> - If reviewer feedback conflicts with prior automated suggestions, defer to the human reviewer's guidance.\n`);
-    prContextBlock = '\n' + parts.join('\n\n') + '\n';
+    parts.push(
+      `\n> [!IMPORTANT]\n> This is a subsequent pass on an open pull request. You MUST carefully review the PR comments, ATL/reviewer feedback, and existing branch commits/diff above.\n> - Honor reviewer feedback and requested changes directly in your recommendations and file updates.\n> - Address reviewer concerns without blindly overwriting human-authored changes.\n> - If reviewer feedback conflicts with prior automated suggestions, defer to the human reviewer's guidance.\n`,
+    );
+    prContextBlock = "\n" + parts.join("\n\n") + "\n";
   }
 
   return `${prContextBlock}# GOAL

@@ -1,12 +1,10 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
-import {
-  selectMenuInteractionCssMatcher,
-} from './select-menu-interaction.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanCss } from "../scanners/css-scanner.ts";
+import { selectMenuInteractionCssMatcher } from "./select-menu-interaction.ts";
 
-void test('select-menu-interaction CSS matcher', async (t) => {
-  await t.test('flags select:invalid without :user-invalid', () => {
+void test("select-menu-interaction CSS matcher", async (t) => {
+  await t.test("flags select:invalid without :user-invalid", () => {
     const css = `
       select:invalid {
         border-color: #d93025;
@@ -15,22 +13,28 @@ void test('select-menu-interaction CSS matcher', async (t) => {
         display: block;
       }
     `;
-    const matches = scanCss('select.css', css, [selectMenuInteractionCssMatcher]);
+    const matches = scanCss("select.css", css, [
+      selectMenuInteractionCssMatcher,
+    ]);
     assert.equal(matches.length, 2);
   });
 
-  await t.test('exempts stylesheets already using select:user-invalid', () => {
+  await t.test("exempts stylesheets already using select:user-invalid", () => {
     const css = `
       select:user-invalid {
         border-color: #d93025;
       }
     `;
-    const matches = scanCss('modern.css', css, [selectMenuInteractionCssMatcher]);
+    const matches = scanCss("modern.css", css, [
+      selectMenuInteractionCssMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts input:invalid not targeting <select> and :not(:invalid)', () => {
-    const css = `
+  await t.test(
+    "exempts input:invalid not targeting <select> and :not(:invalid)",
+    () => {
+      const css = `
       input:invalid {
         border-color: red;
       }
@@ -44,12 +48,17 @@ void test('select-menu-interaction CSS matcher', async (t) => {
         color: inherit;
       }
     `;
-    const matches = scanCss('input.css', css, [selectMenuInteractionCssMatcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("input.css", css, [
+        selectMenuInteractionCssMatcher,
+      ]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts browser default :invalid resets, placeholder dimming, touched/validated gates, custom select widgets, and required-field-feedback overlap', () => {
-    const css = `
+  await t.test(
+    "exempts browser default :invalid resets, placeholder dimming, touched/validated gates, custom select widgets, and required-field-feedback overlap",
+    () => {
+      const css = `
       input:invalid, select:invalid, textarea:invalid {
         box-shadow: none;
         outline: none;
@@ -75,7 +84,10 @@ void test('select-menu-interaction CSS matcher', async (t) => {
         border-color: #ee5f5b;
       }
     `;
-    const matches = scanCss('resets.css', css, [selectMenuInteractionCssMatcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("resets.css", css, [
+        selectMenuInteractionCssMatcher,
+      ]);
+      assert.equal(matches.length, 0);
+    },
+  );
 });

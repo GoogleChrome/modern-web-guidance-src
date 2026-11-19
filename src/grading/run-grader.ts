@@ -1,20 +1,40 @@
-import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
-import { once } from 'node:events';
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import {
+  spawn,
+  type ChildProcess,
+  type StdioOptions,
+} from "node:child_process";
+import { once } from "node:events";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { rootDir, outDir, guidesDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
-import { cRed, cYellow, cCyan } from '../core/colors.ts';
-import { TARGETS_DIR, getActiveSolutionAgents, SOLUTION_PATCH_FILES, type SolutionAgent, ZERO_PASSRATE_PATCH_FILE, GRADER_FILE, getSupportedBaseApps } from '../core/guide-validation.ts';
-import { copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
-import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
-import { applyPatchSync } from '../core/patch-utils.ts';
-import { startTargetServer, killServerProcessTree } from './target-server.ts';
-import { checkTargetPageLoad, type PageLoadResult } from './test-fixture.ts';
+import {
+  rootDir,
+  outDir,
+  guidesDir,
+  ensureDiskNodeCompileCache,
+} from "../core/paths.ts";
+import { cRed, cYellow, cCyan } from "../core/colors.ts";
+import {
+  TARGETS_DIR,
+  getActiveSolutionAgents,
+  SOLUTION_PATCH_FILES,
+  type SolutionAgent,
+  ZERO_PASSRATE_PATCH_FILE,
+  GRADER_FILE,
+  getSupportedBaseApps,
+} from "../core/guide-validation.ts";
+import { copyBaseAppToWorkspace } from "../harness/lib/utils.ts";
+import {
+  createIsolatedHome,
+  cleanupIsolatedHome,
+} from "../harness/lib/agent-shared.ts";
+import { applyPatchSync } from "../core/patch-utils.ts";
+import { startTargetServer, killServerProcessTree } from "./target-server.ts";
+import { checkTargetPageLoad, type PageLoadResult } from "./test-fixture.ts";
 
-export type { PageLoadResult } from './test-fixture.ts';
+export type { PageLoadResult } from "./test-fixture.ts";
 
 export interface PlaywrightOptions {
   targetPathAbs: string;
@@ -34,8 +54,10 @@ export interface PlaywrightOptions {
 export class PatchApplyError extends Error {
   patchPath: string;
   constructor(patchPath: string, details?: string) {
-    super(`Failed to apply ${path.basename(patchPath)}: ${details || 'unknown patch error'}`);
-    this.name = 'PatchApplyError';
+    super(
+      `Failed to apply ${path.basename(patchPath)}: ${details || "unknown patch error"}`,
+    );
+    this.name = "PatchApplyError";
     this.patchPath = patchPath;
   }
 }
@@ -43,17 +65,21 @@ export class PatchApplyError extends Error {
 export async function stageGradingWorkspace(
   baseApp: string,
   patchFile: string,
-  zeroPassrateFile?: string
+  zeroPassrateFile?: string,
 ): Promise<{ workDir: string; cleanup: () => void }> {
-  const tempHome = createIsolatedHome('grade-run');
+  const tempHome = createIsolatedHome("grade-run");
   const workDir = path.join(tempHome, baseApp);
-  const cleanup = () => { try { cleanupIsolatedHome(tempHome); } catch {} };
+  const cleanup = () => {
+    try {
+      cleanupIsolatedHome(tempHome);
+    } catch {}
+  };
 
   try {
     await copyBaseAppToWorkspace(baseApp, workDir);
 
     for (const file of [zeroPassrateFile, patchFile]) {
-      if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim()) {
+      if (file && fs.existsSync(file) && fs.readFileSync(file, "utf8").trim()) {
         const res = applyPatchSync(workDir, file);
         if (!res.success) {
           throw new PatchApplyError(file, res.error);
@@ -69,18 +95,25 @@ export async function stageGradingWorkspace(
 }
 
 export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
-  const playwrightConfig = path.join(import.meta.dirname, 'playwright.config.ts');
-  const reporterArgs = opts.reporters.length > 0 ? ['--reporter=' + opts.reporters.join(',')] : [];
+  const playwrightConfig = path.join(
+    import.meta.dirname,
+    "playwright.config.ts",
+  );
+  const reporterArgs =
+    opts.reporters.length > 0 ? ["--reporter=" + opts.reporters.join(",")] : [];
 
-  const isDir = fs.existsSync(opts.targetPathAbs) && fs.statSync(opts.targetPathAbs).isDirectory();
+  const isDir =
+    fs.existsSync(opts.targetPathAbs) &&
+    fs.statSync(opts.targetPathAbs).isDirectory();
   const appDir = isDir ? opts.targetPathAbs : path.dirname(opts.targetPathAbs);
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     TARGET_FILE: opts.targetPathAbs,
-    BASELINE_TARGET: opts.baselineTarget || process.env.BASELINE_TARGET || 'widely',
+    BASELINE_TARGET:
+      opts.baselineTarget || process.env.BASELINE_TARGET || "widely",
   };
-  ensureDiskNodeCompileCache(env, 'harness');
+  ensureDiskNodeCompileCache(env, "harness");
   delete env.TARGET_URL;
 
   if (opts.prebuiltTargetUrl) {
@@ -127,13 +160,22 @@ export function executePlaywright(opts: PlaywrightOptions): ChildProcess {
     env.PLAYWRIGHT_TEST_DIR = path.dirname(resolvedGraderPath);
   }
 
-  const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
+  const playwrightBin = path.join(
+    rootDir,
+    "node_modules",
+    ".bin",
+    "playwright",
+  );
 
-  return spawn(playwrightBin, ['test', '-c', playwrightConfig, opts.graderPath, ...reporterArgs], {
-    cwd: appDir,
-    stdio: opts.stdio || 'inherit',
-    env
-  });
+  return spawn(
+    playwrightBin,
+    ["test", "-c", playwrightConfig, opts.graderPath, ...reporterArgs],
+    {
+      cwd: appDir,
+      stdio: opts.stdio || "inherit",
+      env,
+    },
+  );
 }
 
 export interface RunPlaywrightOptions {
@@ -146,19 +188,23 @@ export interface RunPlaywrightOptions {
 
 function graderUsesTargetServer(graderPath: string): boolean {
   if (!fs.existsSync(graderPath)) return false;
-  const content = fs.readFileSync(graderPath, 'utf8').replace(/\bprocess\.env\.TARGET_URL\b/g, '');
+  const content = fs
+    .readFileSync(graderPath, "utf8")
+    .replace(/\bprocess\.env\.TARGET_URL\b/g, "");
   return /\bTARGET_URL\b/.test(content);
 }
 
 export async function runPlaywright(
   targetPathAbs: string,
   graderPath: string,
-  optionsOrStdio: RunPlaywrightOptions | StdioOptions = 'inherit',
+  optionsOrStdio: RunPlaywrightOptions | StdioOptions = "inherit",
   maybePatchFile?: string,
   maybeTestResultsDir?: string,
 ): Promise<any> {
   const options: RunPlaywrightOptions =
-    typeof optionsOrStdio === 'object' && optionsOrStdio !== null && !Array.isArray(optionsOrStdio)
+    typeof optionsOrStdio === "object" &&
+    optionsOrStdio !== null &&
+    !Array.isArray(optionsOrStdio)
       ? optionsOrStdio
       : {
           stdio: optionsOrStdio,
@@ -166,31 +212,44 @@ export async function runPlaywright(
           testResultsDir: maybeTestResultsDir,
         };
 
-  const stdio = options.stdio ?? 'inherit';
+  const stdio = options.stdio ?? "inherit";
   const patchFile = options.patchFile;
   const zeroPassrateFile = options.zeroPassrateFile;
   const testResultsDir = options.testResultsDir;
   const baselineTarget = options.baselineTarget;
 
-  const tmpJson = path.join(os.tmpdir(), `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+  const tmpJson = path.join(
+    os.tmpdir(),
+    `pw-results-${Date.now()}-${Math.random().toString(36).substring(7)}.json`,
+  );
   const tmpPageLoadJson = `${tmpJson}-pageload.json`;
   const tmpServerPidsFile = `${tmpJson}-servers.pids`;
 
-  const isDir = fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
+  const isDir =
+    fs.existsSync(targetPathAbs) && fs.statSync(targetPathAbs).isDirectory();
   let effectiveTargetPath = targetPathAbs;
   let cleanupGradingDir: (() => void) | null = null;
 
   if (patchFile) {
     const baseApp = path.basename(path.dirname(graderPath));
-    const { workDir: tempGradingDir, cleanup } = await stageGradingWorkspace(baseApp, patchFile, zeroPassrateFile);
+    const { workDir: tempGradingDir, cleanup } = await stageGradingWorkspace(
+      baseApp,
+      patchFile,
+      zeroPassrateFile,
+    );
     cleanupGradingDir = cleanup;
-    effectiveTargetPath = isDir ? tempGradingDir : path.join(tempGradingDir, path.basename(targetPathAbs));
+    effectiveTargetPath = isDir
+      ? tempGradingDir
+      : path.join(tempGradingDir, path.basename(targetPathAbs));
   }
 
   // Give each grading run its own output dir. The config's fallback (out/test-results) is shared
   // across parallel runs, and Playwright wipes it at startup, so parallel runs clobber each other.
-  const effectiveAppDir = isDir ? effectiveTargetPath : path.dirname(effectiveTargetPath);
-  const resolvedTestResultsDir = testResultsDir || path.join(effectiveAppDir, 'test-results');
+  const effectiveAppDir = isDir
+    ? effectiveTargetPath
+    : path.dirname(effectiveTargetPath);
+  const resolvedTestResultsDir =
+    testResultsDir || path.join(effectiveAppDir, "test-results");
   let stopTargetServer: (() => Promise<void>) | null = null;
 
   try {
@@ -198,33 +257,39 @@ export async function runPlaywright(
     let prebuiltTargetError: string | undefined;
     let prebuiltBuildWarning: string | undefined;
 
-    if (graderUsesTargetServer(graderPath) && fs.existsSync(path.join(effectiveAppDir, 'package.json'))) {
+    if (
+      graderUsesTargetServer(graderPath) &&
+      fs.existsSync(path.join(effectiveAppDir, "package.json"))
+    ) {
       try {
         const server = await startTargetServer(effectiveAppDir, {
           targetFile: effectiveTargetPath,
-          quiet: stdio === 'ignore',
+          quiet: stdio === "ignore",
         });
         prebuiltTargetUrl = server.url;
         stopTargetServer = server.stop;
       } catch (err: any) {
         prebuiltTargetError = err.message || String(err);
-        if (prebuiltTargetError?.includes('Failed to build target app')) {
+        if (prebuiltTargetError?.includes("Failed to build target app")) {
           prebuiltBuildWarning = prebuiltTargetError;
         }
       }
     }
 
-    let stderrData = '';
+    let stderrData = "";
     const child = executePlaywright({
       targetPathAbs: effectiveTargetPath,
       graderPath,
-      reporters: ['json'],
+      reporters: ["json"],
       testResultsDir: resolvedTestResultsDir,
       jsonOutputName: tmpJson,
       pageLoadOutputName: tmpPageLoadJson,
       serverPidsOutputName: tmpServerPidsFile,
       patchFile: patchFile,
-      stdio: stdio === 'ignore' || stdio === 'pipe' ? ['ignore', 'ignore', 'pipe'] : stdio,
+      stdio:
+        stdio === "ignore" || stdio === "pipe"
+          ? ["ignore", "ignore", "pipe"]
+          : stdio,
       baselineTarget,
       prebuiltTargetUrl,
       prebuiltTargetError,
@@ -233,18 +298,24 @@ export async function runPlaywright(
     child.stdout?.resume();
 
     if (child.stderr) {
-      child.stderr.on('data', (data) => {
+      child.stderr.on("data", (data) => {
         stderrData += data.toString();
       });
     }
 
-    await once(child, 'close');
+    await once(child, "close");
 
-    await fs.promises.rm(resolvedTestResultsDir, { recursive: true, force: true }).catch(() => {});
+    await fs.promises
+      .rm(resolvedTestResultsDir, { recursive: true, force: true })
+      .catch(() => {});
 
-    const content = await fs.promises.readFile(tmpJson, 'utf-8').catch(() => null);
+    const content = await fs.promises
+      .readFile(tmpJson, "utf-8")
+      .catch(() => null);
     if (!content) {
-      throw new Error(`Playwright did not produce a JSON report at ${tmpJson}.\nStderr: ${stderrData}`);
+      throw new Error(
+        `Playwright did not produce a JSON report at ${tmpJson}.\nStderr: ${stderrData}`,
+      );
     }
 
     await fs.promises.unlink(tmpJson).catch(() => {});
@@ -253,21 +324,38 @@ export async function runPlaywright(
     let pageLoad: PageLoadResult | undefined;
     try {
       if (stopTargetServer && prebuiltTargetUrl) {
-        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { serverUrl: prebuiltTargetUrl });
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, {
+          serverUrl: prebuiltTargetUrl,
+        });
       } else {
-        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { buildWarning: prebuiltBuildWarning });
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, {
+          buildWarning: prebuiltBuildWarning,
+        });
       }
     } catch (err) {
       pageLoad = {
         ok: false,
-        errors: [`[browser] ${err instanceof Error ? err.message : String(err)}`],
+        errors: [
+          `[browser] ${err instanceof Error ? err.message : String(err)}`,
+        ],
       };
     }
 
-    const pageLoadOutputPayload: PageLoadResult = pageLoad ?? { ok: true, errors: [], noPage: true };
-    await fs.promises.writeFile(tmpPageLoadJson, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+    const pageLoadOutputPayload: PageLoadResult = pageLoad ?? {
+      ok: true,
+      errors: [],
+      noPage: true,
+    };
+    await fs.promises
+      .writeFile(tmpPageLoadJson, JSON.stringify(pageLoadOutputPayload))
+      .catch(() => {});
     if (process.env.PAGE_LOAD_OUTPUT) {
-      await fs.promises.writeFile(process.env.PAGE_LOAD_OUTPUT, JSON.stringify(pageLoadOutputPayload)).catch(() => {});
+      await fs.promises
+        .writeFile(
+          process.env.PAGE_LOAD_OUTPUT,
+          JSON.stringify(pageLoadOutputPayload),
+        )
+        .catch(() => {});
     }
 
     if (pageLoad && !pageLoad.noPage) {
@@ -280,7 +368,7 @@ export async function runPlaywright(
     }
     try {
       if (fs.existsSync(tmpServerPidsFile)) {
-        const pidLines = fs.readFileSync(tmpServerPidsFile, 'utf8').split('\n');
+        const pidLines = fs.readFileSync(tmpServerPidsFile, "utf8").split("\n");
         for (const line of pidLines) {
           const pid = Number(line.trim());
           if (Number.isInteger(pid) && pid > 1) {
@@ -293,7 +381,9 @@ export async function runPlaywright(
     }
     await fs.promises.unlink(tmpServerPidsFile).catch(() => {});
     await fs.promises.unlink(tmpPageLoadJson).catch(() => {});
-    await fs.promises.rm(`${tmpJson}-cache`, { recursive: true, force: true }).catch(() => {});
+    await fs.promises
+      .rm(`${tmpJson}-cache`, { recursive: true, force: true })
+      .catch(() => {});
     if (cleanupGradingDir) {
       cleanupGradingDir();
     }
@@ -306,27 +396,27 @@ async function runPlaywrightCalibration(
   patchFile: string,
   result: CalibrationResult,
   zeroPassrateFile?: string,
-  testResultsDir?: string
+  testResultsDir?: string,
 ): Promise<any> {
   const results = await runPlaywright(targetPathAbs, graderPath, {
-    stdio: 'ignore',
+    stdio: "ignore",
     patchFile,
     zeroPassrateFile,
     testResultsDir,
-    baselineTarget: 'widely',
-  })
-    .catch(err => {
-      result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
-      return null;
-    });
+    baselineTarget: "widely",
+  }).catch((err) => {
+    result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
+    return null;
+  });
 
   if (!results) {
     return null;
   }
 
   if (results.errors && results.errors.length > 0) {
-    result.errorDetails = `Playwright global/compilation errors:\n` +
-      results.errors.map((e: any) => e.message).join('\n');
+    result.errorDetails =
+      `Playwright global/compilation errors:\n` +
+      results.errors.map((e: any) => e.message).join("\n");
     return null;
   }
 
@@ -348,11 +438,19 @@ export function isSpecSkipped(spec: {
 }): boolean {
   if (!spec.tests || spec.tests.length === 0) return false;
   return spec.tests.every(
-    t => t.status === 'skipped' || (t.results && t.results.length > 0 && t.results.every(r => r.status === 'skipped'))
+    (t) =>
+      t.status === "skipped" ||
+      (t.results &&
+        t.results.length > 0 &&
+        t.results.every((r) => r.status === "skipped")),
   );
 }
 
-export function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): string[] {
+export function collectSpecs(
+  suite: PlaywrightSuite,
+  ok: boolean,
+  prefix = "",
+): string[] {
   const results: string[] = [];
   for (const spec of suite.specs || []) {
     if (isSpecSkipped(spec)) continue;
@@ -364,7 +462,7 @@ export function collectSpecs(suite: PlaywrightSuite, ok: boolean, prefix = ''): 
   return results;
 }
 
-export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
+export function printFailingSpecs(suite: PlaywrightSuite, prefix = ""): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
     if (isSpecSkipped(spec)) continue;
@@ -379,12 +477,14 @@ export function printFailingSpecs(suite: PlaywrightSuite, prefix = ''): void {
   }
 }
 
-export function printPassingSpecs(suite: PlaywrightSuite, prefix = ''): void {
+export function printPassingSpecs(suite: PlaywrightSuite, prefix = ""): void {
   const specs = suite.specs || [];
   for (const spec of specs) {
     if (isSpecSkipped(spec)) continue;
     if (spec.ok) {
-      console.log(cRed(`  - Passed (should have failed): ${prefix}${spec.title}`));
+      console.log(
+        cRed(`  - Passed (should have failed): ${prefix}${spec.title}`),
+      );
     }
   }
 
@@ -398,19 +498,23 @@ export function collectPlaywrightErrors(resultsJson: any): string {
   const errors: string[] = [];
   const seen = new Set<string>();
 
-  function traverseSuite(suite: any, prefix = '') {
-    const title = prefix ? `${prefix} > ${suite.title}` : suite?.title || '';
+  function traverseSuite(suite: any, prefix = "") {
+    const title = prefix ? `${prefix} > ${suite.title}` : suite?.title || "";
 
     for (const spec of suite?.specs || []) {
       if (spec.ok) continue;
 
       for (const test of spec?.tests || []) {
         for (const res of test?.results || []) {
-          const errorList = res?.errors?.length ? res.errors : (res?.error ? [res.error] : []);
+          const errorList = res?.errors?.length
+            ? res.errors
+            : res?.error
+              ? [res.error]
+              : [];
           for (const err of errorList) {
             if (!err?.message) continue;
             const fullTitle = title ? `${title} > ${spec.title}` : spec.title;
-            const errorStr = `Test: ${fullTitle}\nError: ${err.message}\nStack: ${err.stack || ''}`;
+            const errorStr = `Test: ${fullTitle}\nError: ${err.message}\nStack: ${err.stack || ""}`;
             if (!seen.has(errorStr)) {
               seen.add(errorStr);
               errors.push(errorStr);
@@ -429,7 +533,7 @@ export function collectPlaywrightErrors(resultsJson: any): string {
     traverseSuite(suite);
   }
 
-  return errors.join('\n\n');
+  return errors.join("\n\n");
 }
 
 export interface SolutionTestResult {
@@ -448,16 +552,19 @@ export interface CalibrationResult {
 
 export function findSharedFailingTests(
   solutions: Partial<Record<SolutionAgent, SolutionTestResult>>,
-  activeAgents: SolutionAgent[]
+  activeAgents: SolutionAgent[],
 ): string[] {
   if (activeAgents.length === 0) return [];
-  const lists = activeAgents.map(a => solutions[a]?.failingTests ?? []);
-  if (lists.some(l => l.length === 0)) return [];
+  const lists = activeAgents.map((a) => solutions[a]?.failingTests ?? []);
+  if (lists.some((l) => l.length === 0)) return [];
   const [first, ...rest] = lists;
-  return first.filter(testTitle => rest.every(l => l.includes(testTitle)));
+  return first.filter((testTitle) => rest.every((l) => l.includes(testTitle)));
 }
 
-export async function testTargetGrader(guideDirAbs: string, baseApp: string): Promise<CalibrationResult> {
+export async function testTargetGrader(
+  guideDirAbs: string,
+  baseApp: string,
+): Promise<CalibrationResult> {
   const targetDir = path.join(guideDirAbs, TARGETS_DIR, baseApp);
   const zeroPassratePatch = path.join(targetDir, ZERO_PASSRATE_PATCH_FILE);
   const graderPath = path.join(targetDir, GRADER_FILE);
@@ -471,11 +578,18 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const result: CalibrationResult = {
     success: false,
     solutions,
-    zeroPassrate: { passed: 0, failed: 0, passingTests: [] }
+    zeroPassrate: { passed: 0, failed: 0, passingTests: [] },
   };
 
-  const missingSolutions = activeAgents.filter(agent => !fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[agent])));
-  if (missingSolutions.length > 0 || !fs.existsSync(zeroPassratePatch) || !fs.existsSync(graderPath)) {
+  const missingSolutions = activeAgents.filter(
+    (agent) =>
+      !fs.existsSync(path.join(targetDir, SOLUTION_PATCH_FILES[agent])),
+  );
+  if (
+    missingSolutions.length > 0 ||
+    !fs.existsSync(zeroPassratePatch) ||
+    !fs.existsSync(graderPath)
+  ) {
     result.errorDetails = `Missing patch or grader files in ${targetDir}`;
     return result;
   }
@@ -483,8 +597,15 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const resolvedGuideDir = path.resolve(guideDirAbs);
   const slug = path.basename(resolvedGuideDir);
   const parentDir = path.basename(path.dirname(resolvedGuideDir));
-  const category = parentDir === 'guides' ? slug : parentDir;
-  const testResultsBaseDir = path.join(outDir, 'guides', category, slug, baseApp, 'test-results');
+  const category = parentDir === "guides" ? slug : parentDir;
+  const testResultsBaseDir = path.join(
+    outDir,
+    "guides",
+    category,
+    slug,
+    baseApp,
+    "test-results",
+  );
 
   // Golden calibration across active AI solution diffs + zero-passrate calibration in parallel
   const solutionStatus: Record<string, string> = {};
@@ -494,15 +615,31 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   const solutionCalibrationTasks = activeAgents.map(async (agent) => {
     const solPatchFile = SOLUTION_PATCH_FILES[agent];
     const solutionPatch = path.join(targetDir, solPatchFile);
-    const solutionTestResultsDir = path.join(testResultsBaseDir, `solution-${agent}`);
+    const solutionTestResultsDir = path.join(
+      testResultsBaseDir,
+      `solution-${agent}`,
+    );
     let unexpected = 0;
-    console.log(cYellow(`\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`));
-    const solutionResults = await runPlaywrightCalibration(targetDir, graderPath, solutionPatch, result, undefined, solutionTestResultsDir);
+    console.log(
+      cYellow(
+        `\nRunning against ${baseApp} with ${solPatchFile} (${agent})... (Expecting 100% pass)`,
+      ),
+    );
+    const solutionResults = await runPlaywrightCalibration(
+      targetDir,
+      graderPath,
+      solutionPatch,
+      result,
+      undefined,
+      solutionTestResultsDir,
+    );
 
     if (!solutionResults) {
       allSolutionsPassed = false;
       solutionStatus[agent] = `❌ FAILED (Dev server crashed or compile error)`;
-      solutionErrors.push(`[${solPatchFile}] Dev server crashed or compile error: ${result.errorDetails || 'Unknown error'}`);
+      solutionErrors.push(
+        `[${solPatchFile}] Dev server crashed or compile error: ${result.errorDetails || "Unknown error"}`,
+      );
       return;
     }
 
@@ -520,23 +657,45 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
       solutionErrors.push(`[${solPatchFile}] No tests were run.`);
     } else if (unexpected > 0) {
       allSolutionsPassed = false;
-      solutionStatus[agent] = `❌ FAILED (${expected} passed, ${unexpected} failed)`;
-      result.solutions[agent]!.failingTests = solutionResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, false)) || [];
+      solutionStatus[agent] =
+        `❌ FAILED (${expected} passed, ${unexpected} failed)`;
+      result.solutions[agent]!.failingTests =
+        solutionResults.suites?.flatMap((s: PlaywrightSuite) =>
+          collectSpecs(s, false),
+        ) || [];
       const pwErrors = collectPlaywrightErrors(solutionResults);
-      solutionErrors.push(`[${solPatchFile}] failed ${unexpected} tests:\n\n${pwErrors}`);
-      solutionResults.suites?.forEach((suite: PlaywrightSuite) => printFailingSpecs(suite));
+      solutionErrors.push(
+        `[${solPatchFile}] failed ${unexpected} tests:\n\n${pwErrors}`,
+      );
+      solutionResults.suites?.forEach((suite: PlaywrightSuite) =>
+        printFailingSpecs(suite),
+      );
     } else {
       solutionStatus[agent] = `✅ PASSED (${expected}/${expected} passed)`;
     }
   });
 
-  let zeroPassrateStatus = '';
+  let zeroPassrateStatus = "";
   let zeroPassrateFailed = false;
   const zeroPassrateTask = (async () => {
     let passed = 0;
-    const zeroPassrateTestResultsDir = path.join(testResultsBaseDir, 'zero-passrate');
-    console.log(cYellow(`Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`));
-    const zeroPassrateResults = await runPlaywrightCalibration(targetDir, graderPath, zeroPassratePatch, result, undefined, zeroPassrateTestResultsDir);
+    const zeroPassrateTestResultsDir = path.join(
+      testResultsBaseDir,
+      "zero-passrate",
+    );
+    console.log(
+      cYellow(
+        `Running against ${baseApp} with ${ZERO_PASSRATE_PATCH_FILE}... (Expecting 100% fail)`,
+      ),
+    );
+    const zeroPassrateResults = await runPlaywrightCalibration(
+      targetDir,
+      graderPath,
+      zeroPassratePatch,
+      result,
+      undefined,
+      zeroPassrateTestResultsDir,
+    );
 
     if (!zeroPassrateResults) {
       zeroPassrateFailed = true;
@@ -554,9 +713,14 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
       zeroPassrateStatus = `❌ FAILED (No tests were run for ${ZERO_PASSRATE_PATCH_FILE})`;
     } else if (passed > 0) {
       zeroPassrateFailed = true;
-      result.zeroPassrate.passingTests = zeroPassrateResults.suites?.flatMap((s: PlaywrightSuite) => collectSpecs(s, true)) || [];
+      result.zeroPassrate.passingTests =
+        zeroPassrateResults.suites?.flatMap((s: PlaywrightSuite) =>
+          collectSpecs(s, true),
+        ) || [];
       zeroPassrateStatus = `❌ FAILED ([${ZERO_PASSRATE_PATCH_FILE}] incorrectly passed ${passed} tests:\n\n${collectPlaywrightErrors(zeroPassrateResults)})`;
-      zeroPassrateResults.suites?.forEach((suite: PlaywrightSuite) => printPassingSpecs(suite));
+      zeroPassrateResults.suites?.forEach((suite: PlaywrightSuite) =>
+        printPassingSpecs(suite),
+      );
     } else {
       zeroPassrateStatus = `✅ PASSED (0 tests passed, as expected for anti-pattern)`;
     }
@@ -565,20 +729,32 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   await Promise.all([...solutionCalibrationTasks, zeroPassrateTask]);
 
   if (!allSolutionsPassed || zeroPassrateFailed) {
-    const sharedFailingTests = findSharedFailingTests(result.solutions, activeAgents);
+    const sharedFailingTests = findSharedFailingTests(
+      result.solutions,
+      activeAgents,
+    );
     if (sharedFailingTests.length > 0) {
       result.sharedFailingTests = sharedFailingTests;
     }
-    const sharedBanner = sharedFailingTests.length > 0
-      ? `\n\n⚠️  SHARED FAILING TESTS ACROSS ALL ${activeAgents.length} GOLDEN SOLUTIONS (fail-fast calibration abort):\n` +
-        sharedFailingTests.map(t => `   - ${t}`).join('\n')
-      : '';
-    const statusSummary = activeAgents.map(a => `   - ${a}: ${solutionStatus[a] || 'Unknown'}`).join('\n') +
-      `\n   - zero-passrate: ${zeroPassrateStatus}`;
-    result.errorDetails = `Calibration results summary:\n${statusSummary}\n\n` +
+    const sharedBanner =
+      sharedFailingTests.length > 0
+        ? `\n\n⚠️  SHARED FAILING TESTS ACROSS ALL ${activeAgents.length} GOLDEN SOLUTIONS (fail-fast calibration abort):\n` +
+          sharedFailingTests.map((t) => `   - ${t}`).join("\n")
+        : "";
+    const statusSummary =
+      activeAgents
+        .map((a) => `   - ${a}: ${solutionStatus[a] || "Unknown"}`)
+        .join("\n") + `\n   - zero-passrate: ${zeroPassrateStatus}`;
+    result.errorDetails =
+      `Calibration results summary:\n${statusSummary}\n\n` +
       sharedBanner +
-      (solutionErrors.length > 0 ? `\n\nSolution failure details:\n\n` + solutionErrors.join('\n\n---\n\n') : '') +
-      (zeroPassrateFailed && result.zeroPassrate.passed > 0 ? `\n\nZero-passrate details:\n${zeroPassrateStatus}` : '');
+      (solutionErrors.length > 0
+        ? `\n\nSolution failure details:\n\n` +
+          solutionErrors.join("\n\n---\n\n")
+        : "") +
+      (zeroPassrateFailed && result.zeroPassrate.passed > 0
+        ? `\n\nZero-passrate details:\n${zeroPassrateStatus}`
+        : "");
     return result;
   }
 
@@ -586,7 +762,9 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
   return result;
 }
 
-export async function testGrader(targetDirRaw: string): Promise<CalibrationResult> {
+export async function testGrader(
+  targetDirRaw: string,
+): Promise<CalibrationResult> {
   const targetDirAbs = path.resolve(process.cwd(), targetDirRaw);
 
   // Direct target base app path (e.g. guides/css/size-aware-styling/targets/daily-grind)
@@ -598,25 +776,32 @@ export async function testGrader(targetDirRaw: string): Promise<CalibrationResul
 
   const targetsDir = path.join(targetDirAbs, TARGETS_DIR);
   if (fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory()) {
-    const apps = fs.readdirSync(targetsDir).filter(name => !name.startsWith('.') && getSupportedBaseApps().includes(name));
+    const apps = fs
+      .readdirSync(targetsDir)
+      .filter(
+        (name) =>
+          !name.startsWith(".") && getSupportedBaseApps().includes(name),
+      );
     if (apps.length > 0) {
       const results = await Promise.all(
         apps.map((app) => {
           console.log(cCyan(`\n--- Calibrating target base app: ${app} ---`));
           return testTargetGrader(targetDirAbs, app);
-        })
+        }),
       );
       return results.find((res) => !res.success) || results[results.length - 1];
     }
   }
 
-  throw new Error(`No target base apps found in ${targetsDir}. Calibration requires target base apps in targets/.`);
+  throw new Error(
+    `No target base apps found in ${targetsDir}. Calibration requires target base apps in targets/.`,
+  );
 }
 
 async function run(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.length === 0) {
-    console.error('Usage: pnpm grade <path-to-target-directory>');
+    console.error("Usage: pnpm grade <path-to-target-directory>");
     process.exit(1);
   }
 
@@ -635,8 +820,11 @@ async function run(): Promise<void> {
   process.exit(res.success ? 0 : 1);
 }
 
-if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(import.meta.url)) {
-  run().catch(err => {
+if (
+  import.meta.url.startsWith("file:") &&
+  process.argv[1] === fileURLToPath(import.meta.url)
+) {
+  run().catch((err) => {
     console.error(err);
     process.exit(1);
   });

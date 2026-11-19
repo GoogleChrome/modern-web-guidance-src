@@ -1,10 +1,10 @@
-import { test, expect } from '@playwright/test';
-import * as path from 'path';
-import * as fs from 'fs';
+import { test, expect } from "@playwright/test";
+import * as path from "path";
+import * as fs from "fs";
 
-const targetFile = process.env.TARGET_FILE 
-  ? path.resolve(process.env.TARGET_FILE) 
-  : path.join(import.meta.dirname, 'demo.html');
+const targetFile = process.env.TARGET_FILE
+  ? path.resolve(process.env.TARGET_FILE)
+  : path.join(import.meta.dirname, "demo.html");
 const targetDir = path.dirname(targetFile);
 const targetFileName = path.basename(targetFile);
 const fileUrl = `http://localhost/${targetFileName}`;
@@ -12,26 +12,32 @@ const fileUrl = `http://localhost/${targetFileName}`;
 function getScriptContent(): string {
   const parts: string[] = [];
   if (fs.existsSync(targetFile)) {
-    parts.push(fs.readFileSync(targetFile, 'utf8'));
+    parts.push(fs.readFileSync(targetFile, "utf8"));
   }
   try {
     for (const f of fs.readdirSync(targetDir)) {
-      if ((f.endsWith('.js') || f.endsWith('.mjs')) && !f.includes('.test.')) {
-        parts.push(fs.readFileSync(path.join(targetDir, f), 'utf8'));
+      if ((f.endsWith(".js") || f.endsWith(".mjs")) && !f.includes(".test.")) {
+        parts.push(fs.readFileSync(path.join(targetDir, f), "utf8"));
       }
     }
   } catch {}
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
-test.describe('Interactive 3D Content Grader', () => {
-
+test.describe("Interactive 3D Content Grader", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/**', async (route) => {
-      const requestPath = decodeURIComponent(new URL(route.request().url()).pathname);
-      const relPath = requestPath === '/' ? targetFileName : requestPath.replace(/^\/+/, '');
+    await page.route("http://localhost/**", async (route) => {
+      const requestPath = decodeURIComponent(
+        new URL(route.request().url()).pathname,
+      );
+      const relPath =
+        requestPath === "/" ? targetFileName : requestPath.replace(/^\/+/, "");
       const localFilePath = path.resolve(targetDir, relPath);
-      if (localFilePath.startsWith(targetDir + path.sep) && fs.existsSync(localFilePath) && fs.statSync(localFilePath).isFile()) {
+      if (
+        localFilePath.startsWith(targetDir + path.sep) &&
+        fs.existsSync(localFilePath) &&
+        fs.statSync(localFilePath).isFile()
+      ) {
         await route.fulfill({ path: localFilePath });
       } else {
         await route.continue();
@@ -42,66 +48,89 @@ test.describe('Interactive 3D Content Grader', () => {
       (window as any).__drawElementImageToTexture_called = false;
       (window as any).__resizeObserverObserved = false;
 
-      if (typeof HTMLCanvasElement !== 'undefined') {
-        if (!('content' in HTMLCanvasElement.prototype)) {
-          Object.defineProperty(HTMLCanvasElement.prototype, 'content', {
+      if (typeof HTMLCanvasElement !== "undefined") {
+        if (!("content" in HTMLCanvasElement.prototype)) {
+          Object.defineProperty(HTMLCanvasElement.prototype, "content", {
             configurable: true,
             enumerable: true,
             get() {
-              return this.getAttribute('content')?.toLowerCase() === 'drawable' ? 'drawable' : 'fallback';
+              return this.getAttribute("content")?.toLowerCase() === "drawable"
+                ? "drawable"
+                : "fallback";
             },
             set(value) {
-              this.setAttribute('content', String(value));
+              this.setAttribute("content", String(value));
             },
           });
         }
 
-        const origUpdateElementGeometry = (HTMLCanvasElement.prototype as any).updateElementGeometry;
-        Object.defineProperty(HTMLCanvasElement.prototype, 'updateElementGeometry', {
-          configurable: true,
-          get() {
-            return origUpdateElementGeometry || function() {};
-          }
-        });
+        const origUpdateElementGeometry = (HTMLCanvasElement.prototype as any)
+          .updateElementGeometry;
+        Object.defineProperty(
+          HTMLCanvasElement.prototype,
+          "updateElementGeometry",
+          {
+            configurable: true,
+            get() {
+              return origUpdateElementGeometry || function () {};
+            },
+          },
+        );
 
         // The upload path sizes the texture with captureElementImage().
-        (HTMLCanvasElement.prototype as any).captureElementImage = function(element: HTMLElement) {
-          return { width: element.offsetWidth || 300, height: element.offsetHeight || 150, close() {} };
+        (HTMLCanvasElement.prototype as any).captureElementImage = function (
+          element: HTMLElement,
+        ) {
+          return {
+            width: element.offsetWidth || 300,
+            height: element.offsetHeight || 150,
+            close() {},
+          };
         };
 
-        HTMLCanvasElement.prototype.requestPaint = function() {
-          if (typeof this.onpaint === 'function') {
-            try { this.onpaint({ changedElements: [] }); } catch (e) {}
+        HTMLCanvasElement.prototype.requestPaint = function () {
+          if (typeof this.onpaint === "function") {
+            try {
+              this.onpaint({ changedElements: [] });
+            } catch (e) {}
           }
         };
       }
 
-      if (typeof WebGLRenderingContext !== 'undefined') {
-        const origTex = (WebGLRenderingContext.prototype as any).texElementSubImage2D;
-        (WebGLRenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
-          (window as any).__texElementSubImage2D_called = true;
-          if (origTex) return origTex.apply(this, args);
-        };
+      if (typeof WebGLRenderingContext !== "undefined") {
+        const origTex = (WebGLRenderingContext.prototype as any)
+          .texElementSubImage2D;
+        (WebGLRenderingContext.prototype as any).texElementSubImage2D =
+          function (...args: any[]) {
+            (window as any).__texElementSubImage2D_called = true;
+            if (origTex) return origTex.apply(this, args);
+          };
       }
 
-      if (typeof (window as any).GPUQueue !== 'undefined') {
-        const origCopy = (window as any).GPUQueue.prototype.drawElementImageToTexture;
-        (window as any).GPUQueue.prototype.drawElementImageToTexture = function(...args: any[]) {
-          (window as any).__drawElementImageToTexture_called = true;
-          if (origCopy) return origCopy.apply(this, args);
-        };
+      if (typeof (window as any).GPUQueue !== "undefined") {
+        const origCopy = (window as any).GPUQueue.prototype
+          .drawElementImageToTexture;
+        (window as any).GPUQueue.prototype.drawElementImageToTexture =
+          function (...args: any[]) {
+            (window as any).__drawElementImageToTexture_called = true;
+            if (origCopy) return origCopy.apply(this, args);
+          };
       }
 
-      if (typeof WebGL2RenderingContext !== 'undefined') {
-        const origTex2 = (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
-        (WebGL2RenderingContext.prototype as any).texElementSubImage2D = function(...args: any[]) {
-          (window as any).__texElementSubImage2D_called = true;
-          if (origTex2) return origTex2.apply(this, args);
-        };
+      if (typeof WebGL2RenderingContext !== "undefined") {
+        const origTex2 = (WebGL2RenderingContext.prototype as any)
+          .texElementSubImage2D;
+        (WebGL2RenderingContext.prototype as any).texElementSubImage2D =
+          function (...args: any[]) {
+            (window as any).__texElementSubImage2D_called = true;
+            if (origTex2) return origTex2.apply(this, args);
+          };
       }
 
       const OriginalResizeObserver = window.ResizeObserver;
-      window.ResizeObserver = class MockResizeObserver extends OriginalResizeObserver {
+      window.ResizeObserver = class MockResizeObserver extends (
+        OriginalResizeObserver
+      ) {
         observe(target: Element, options?: ResizeObserverOptions) {
           if (target) {
             (window as any).__resizeObserverObserved = true;
@@ -112,113 +141,188 @@ test.describe('Interactive 3D Content Grader', () => {
     });
   });
 
-  test('Feature detection for HTML-in-Canvas is conducted before using the API', async ({ page }) => {
+  test("Feature detection for HTML-in-Canvas is conducted before using the API", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
     const code = getScriptContent();
     expect(/['"]content['"]\s+in\b/.test(code)).toBe(true);
   });
 
-  test('The canvas element includes the content="drawable" attribute', async ({ page }) => {
+  test('The canvas element includes the content="drawable" attribute', async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
-    const hasDrawableContent = await page.evaluate(() => {
-      const canvas = document.querySelector('canvas');
-      return canvas?.getAttribute('content') === 'drawable';
-    }).catch(() => false);
+    const hasDrawableContent = await page
+      .evaluate(() => {
+        const canvas = document.querySelector("canvas");
+        return canvas?.getAttribute("content") === "drawable";
+      })
+      .catch(() => false);
     if (hasDrawableContent) {
       expect(hasDrawableContent).toBe(true);
       return;
     }
     const code = getScriptContent();
-    expect(/content\s*=\s*["']?drawable\b|setAttribute\(\s*["']content["']\s*,\s*["']drawable["']/.test(code)).toBe(true);
+    expect(
+      /content\s*=\s*["']?drawable\b|setAttribute\(\s*["']content["']\s*,\s*["']drawable["']/.test(
+        code,
+      ),
+    ).toBe(true);
   });
 
-  test('Descendant HTML elements drawn into the canvas include the drawable attribute', async ({ page }) => {
+  test("Descendant HTML elements drawn into the canvas include the drawable attribute", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
-    const hasDrawableChildren = await page.evaluate((html) => {
-      const markup = new DOMParser().parseFromString(html, 'text/html');
-      const canvas = Array.from(markup.querySelectorAll('canvas')).find(c => c.children.length > 0) || document.querySelector('canvas');
-      return !!canvas && canvas.children.length > 0 && Array.from(canvas.children).every(child => child.hasAttribute('drawable'));
-    }, getScriptContent()).catch(() => false);
+    const hasDrawableChildren = await page
+      .evaluate((html) => {
+        const markup = new DOMParser().parseFromString(html, "text/html");
+        const canvas =
+          Array.from(markup.querySelectorAll("canvas")).find(
+            (c) => c.children.length > 0,
+          ) || document.querySelector("canvas");
+        return (
+          !!canvas &&
+          canvas.children.length > 0 &&
+          Array.from(canvas.children).every((child) =>
+            child.hasAttribute("drawable"),
+          )
+        );
+      }, getScriptContent())
+      .catch(() => false);
     expect(hasDrawableChildren).toBe(true);
   });
 
-  test('Canvas rendering executes inside a paint event handler', async ({ page }) => {
+  test("Canvas rendering executes inside a paint event handler", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
-    const hasOnPaint = await page.evaluate(() => {
-      const canvas = document.querySelector('canvas');
-      const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent || '').join('\n');
-      return !!canvas && (typeof (canvas as any).onpaint === 'function' || (canvas as any)._onpaint || scripts.includes('onpaint') || scripts.includes('requestPaint'));
-    }).catch(() => false);
+    const hasOnPaint = await page
+      .evaluate(() => {
+        const canvas = document.querySelector("canvas");
+        const scripts = Array.from(document.querySelectorAll("script"))
+          .map((s) => s.textContent || "")
+          .join("\n");
+        return (
+          !!canvas &&
+          (typeof (canvas as any).onpaint === "function" ||
+            (canvas as any)._onpaint ||
+            scripts.includes("onpaint") ||
+            scripts.includes("requestPaint"))
+        );
+      })
+      .catch(() => false);
     if (hasOnPaint) {
       expect(hasOnPaint).toBe(true);
       return;
     }
     const code = getScriptContent();
-    expect(code.includes('onpaint') || code.includes('requestPaint')).toBe(true);
+    expect(code.includes("onpaint") || code.includes("requestPaint")).toBe(
+      true,
+    );
   });
 
-  test('The texture rendering logic uses texElementSubImage2D or drawElementImageToTexture', async ({ page }) => {
+  test("The texture rendering logic uses texElementSubImage2D or drawElementImageToTexture", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
-    const called = await page.evaluate(() => (window as any).__texElementSubImage2D_called || (window as any).__drawElementImageToTexture_called).catch(() => false);
+    const called = await page
+      .evaluate(
+        () =>
+          (window as any).__texElementSubImage2D_called ||
+          (window as any).__drawElementImageToTexture_called,
+      )
+      .catch(() => false);
     if (called) {
       expect(called).toBe(true);
       return;
     }
     const code = getScriptContent();
-    const has3DCode = code.includes('texElementSubImage2D') || code.includes('drawElementImageToTexture');
+    const has3DCode =
+      code.includes("texElementSubImage2D") ||
+      code.includes("drawElementImageToTexture");
     expect(has3DCode).toBe(true);
   });
 
-  test('Texture storage is allocated at the element size from captureElementImage, rounded up', async ({ page }) => {
+  test("Texture storage is allocated at the element size from captureElementImage, rounded up", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
     const code = getScriptContent();
-    const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
-    expect(code.includes('captureElementImage') && code.includes('Math.ceil') && allocatesTexture).toBe(true);
+    const allocatesTexture =
+      code.includes("texImage2D") || /createTexture\(\s*\{/.test(code);
+    expect(
+      code.includes("captureElementImage") &&
+        code.includes("Math.ceil") &&
+        allocatesTexture,
+    ).toBe(true);
   });
 
-  test('Texture storage is reallocated only when the element size changes', async ({ page }) => {
+  test("Texture storage is reallocated only when the element size changes", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
     const code = getScriptContent();
-    const allocatesTexture = code.includes('texImage2D') || /createTexture\(\s*\{/.test(code);
-    const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(code);
+    const allocatesTexture =
+      code.includes("texImage2D") || /createTexture\(\s*\{/.test(code);
+    const comparesSize = /(width|height)\s*[!=]==?[^;\n]*(width|height)/i.test(
+      code,
+    );
     expect(allocatesTexture && comparesSize).toBe(true);
   });
 
-  test('Each drawn HTML element is registered with updateElementGeometry and a canvasTransform', async ({ page }) => {
+  test("Each drawn HTML element is registered with updateElementGeometry and a canvasTransform", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
     const code = getScriptContent();
-    expect(code.includes('updateElementGeometry') && code.includes('canvasTransform')).toBe(true);
+    expect(
+      code.includes("updateElementGeometry") &&
+        code.includes("canvasTransform"),
+    ).toBe(true);
   });
 
-  test('Screen size changes are observed using ResizeObserver', async ({ page }) => {
+  test("Screen size changes are observed using ResizeObserver", async ({
+    page,
+  }) => {
     await page.goto(fileUrl).catch(() => {});
-    const observed = await page.evaluate(() => (window as any).__resizeObserverObserved).catch(() => false);
+    const observed = await page
+      .evaluate(() => (window as any).__resizeObserverObserved)
+      .catch(() => false);
     if (observed) {
       expect(observed).toBe(true);
       return;
     }
     const code = getScriptContent();
-    expect(code.includes('ResizeObserver')).toBe(true);
+    expect(code.includes("ResizeObserver")).toBe(true);
   });
 
-  test('A fallback UI strategy is implemented when HTML-in-Canvas is not supported', async ({ page }) => {
+  test("A fallback UI strategy is implemented when HTML-in-Canvas is not supported", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
-      for (const member of ['content', 'requestPaint', 'captureElementImage', 'updateElementGeometry']) {
+      for (const member of [
+        "content",
+        "requestPaint",
+        "captureElementImage",
+        "updateElementGeometry",
+      ]) {
         delete (HTMLCanvasElement.prototype as any)[member];
       }
-      if (typeof WebGLRenderingContext !== 'undefined') {
+      if (typeof WebGLRenderingContext !== "undefined") {
         delete (WebGLRenderingContext.prototype as any).texElementSubImage2D;
       }
-      if (typeof WebGL2RenderingContext !== 'undefined') {
+      if (typeof WebGL2RenderingContext !== "undefined") {
         delete (WebGL2RenderingContext.prototype as any).texElementSubImage2D;
       }
-      if (typeof (window as any).GPUQueue !== 'undefined') {
+      if (typeof (window as any).GPUQueue !== "undefined") {
         delete (window as any).GPUQueue.prototype.drawElementImageToTexture;
       }
     });
 
     const pageErrors: string[] = [];
-    page.on('pageerror', (err) => {
+    page.on("pageerror", (err) => {
       if (!/Tainted canvases may not be loaded/i.test(err.message)) {
         pageErrors.push(err.message);
       }
@@ -226,30 +330,35 @@ test.describe('Interactive 3D Content Grader', () => {
 
     await page.goto(fileUrl).catch(() => {});
     // Let ResizeObserver, requestAnimationFrame, and paint callbacks run before reading errors.
-    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await page.evaluate(
+      () =>
+        new Promise((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(r)),
+        ),
+    );
 
     expect(pageErrors).toEqual([]);
 
     const html = getScriptContent();
     const parts = [html];
     const baseDir = path.dirname(targetFile);
-    const scriptSrcRegex = /<script\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
+    const scriptSrcRegex =
+      /<script\b[^>]*?\bsrc\s*=\s*["']([^"']+)["'][^>]*>/gi;
     let match;
     while ((match = scriptSrcRegex.exec(html)) !== null) {
       const src = match[1];
-      if (!/^https?:\/\//i.test(src) && !src.startsWith('//')) {
+      if (!/^https?:\/\//i.test(src) && !src.startsWith("//")) {
         const jsPath = path.resolve(baseDir, src);
         if (fs.existsSync(jsPath)) {
-          parts.push(fs.readFileSync(jsPath, 'utf8'));
+          parts.push(fs.readFileSync(jsPath, "utf8"));
         }
       }
     }
-    const code = parts.join('\n');
+    const code = parts.join("\n");
     const hasFallbackStrategy =
       /['"]content['"]\s+in\b|three-html-render|installHtmlInCanvasPolyfill/i.test(
-        code
+        code,
       );
     expect(hasFallbackStrategy).toBe(true);
   });
-
 });

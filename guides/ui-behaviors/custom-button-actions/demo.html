@@ -129,23 +129,23 @@
 
   <div class="container">
     <div class="actions">
-      <!-- 
-        Buttons are declaratively connected to the target element 
-        using the 'commandfor' attribute. They dispatch custom 
-        commands (e.g. '--spin') to that element when clicked. 
+      <!--
+        Buttons are declaratively connected to the target element
+        using the 'commandfor' attribute. They dispatch custom
+        commands (e.g. '--spin') to that element when clicked.
       -->
       <button commandfor="action-target" command="--spin" aria-pressed="false">Spin</button>
       <button commandfor="action-target" command="--grow" aria-pressed="false">Grow</button>
       <button commandfor="action-target" command="--round" aria-pressed="false">Make Round</button>
       <button commandfor="action-target" command="--reset">Reset All</button>
     </div>
-    
+
     <div id="action-target" class="target">
       Action Target
     </div>
 
-    <!-- 
-      DEMO CONTROLS: 
+    <!--
+      DEMO CONTROLS:
       These help visualize and test both the native and fallback implementation.
     -->
     <div class="status-controls">
@@ -185,13 +185,13 @@
         });
       },
     };
-    
+
     // 2. Feature Detection: Always check the prototype for maximum reliability
     const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
 
     /**
-     * DYNAMIC FALLBACK STRATEGY: 
-     * We use an async IIFE to ensure the polyfill is loaded BEFORE the rest 
+     * DYNAMIC FALLBACK STRATEGY:
+     * We use an async IIFE to ensure the polyfill is loaded BEFORE the rest
      * of the logic runs, while avoiding top-level await for older browser compatibility.
      */
     (async () => {
@@ -221,7 +221,7 @@
       // Reload the page to reset the environment for the forced fallback test
       window.location.reload();
     });
-    
+
     // 3. Unified listener for the command event on the target element.
     // This works identically whether triggered natively or via the polyfill.
     targetEl.addEventListener('command', (event) => {

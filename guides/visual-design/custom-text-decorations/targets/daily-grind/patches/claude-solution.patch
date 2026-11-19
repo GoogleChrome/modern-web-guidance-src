@@ -3,14 +3,14 @@ index 66c9173..d7f1886 100644
 --- a/index.html
 +++ b/index.html
 @@ -57,9 +57,7 @@
- 
+
      nav a {
        color: white;
 -      text-decoration: none;
        font-size: 0.9rem;
 -      transition: color 0.3s;
      }
- 
+
      nav a:hover {
 @@ -149,9 +147,107 @@
      .footer-links a {
@@ -120,9 +120,9 @@ index 66c9173..d7f1886 100644
 +    }
    </style>
  </head>
- 
+
 @@ -176,7 +272,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

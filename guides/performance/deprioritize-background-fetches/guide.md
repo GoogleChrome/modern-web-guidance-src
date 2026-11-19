@@ -2,8 +2,8 @@
 name: deprioritize-background-fetches
 description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
 web-feature-ids:
-    - fetch-priority
-    - fetch
+  - fetch-priority
+  - fetch
 ---
 
 # Deprioritize background fetches
@@ -19,21 +19,21 @@ When a page performs multiple simultaneous network requests, they often compete 
 
 ```javascript
 // Use high priority (default) for critical UI updates
-const criticalData = await fetch('/api/data');
+const criticalData = await fetch("/api/data");
 
 // Explicitly deprioritize background analytics
-fetch('/api/analytics', {
-  method: 'POST',
+fetch("/api/analytics", {
+  method: "POST",
   body: JSON.stringify(eventData),
   // Lower the priority to prevent network contention
-  priority: 'low'
+  priority: "low",
 });
 ```
 
 ## Best practices
 
 - **DO** use `priority: 'low'` for analytics, beacons, or telemetry data that isn't required for the current view.
-- **DO** use `priority: 'low'` for "prefetching" data that the user *might* need later, ensuring it doesn't slow down what they need *now*.
+- **DO** use `priority: 'low'` for "prefetching" data that the user _might_ need later, ensuring it doesn't slow down what they need _now_.
 - **DO NOT** use `priority: 'low'` for fetches that are critical to the user experience.
 - **DO NOT** use the deprecated `importance` key in the fetch options object. The correct key is `priority`.
 

@@ -1,1 +1,1 @@
-export const MODERN_WEB_LOG_FILE = 'modern-web.log';
+export const MODERN_WEB_LOG_FILE = "modern-web.log";

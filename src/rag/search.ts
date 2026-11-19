@@ -3,7 +3,12 @@ import path from "path";
 import zlib from "zlib";
 import { StaticEmbedder } from "./static-embedder.ts";
 import { logToolResult } from "./logger.ts";
-import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
+import {
+  buildBm25Index,
+  rankBm25,
+  reciprocalRankFusion,
+  type Bm25Index,
+} from "./bm25.ts";
 import { resolveSkillsCliDataDir } from "./data-dir.ts";
 import {
   STATIC_DIMS,
@@ -52,7 +57,9 @@ let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
 
 export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
   if (a.length !== b.length) {
-    throw new Error(`Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`);
+    throw new Error(
+      `Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`,
+    );
   }
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
@@ -61,7 +68,9 @@ export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return sum;
 }
 
-export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[] {
+export function loadVectors(
+  dataDir = resolveSkillsCliDataDir(),
+): UseCaseVector[] {
   const genDir = fs.existsSync(path.join(dataDir, "guide-chunks.json.gz"))
     ? dataDir
     : path.join(dataDir, "gen");
@@ -69,8 +78,14 @@ export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[
   const I8_FILE = path.join(genDir, "guide-chunks.i8");
   const SCALE_FILE = path.join(genDir, "guide-chunks.scale.f32");
 
-  if (!fs.existsSync(VECTORS_FILE) || !fs.existsSync(I8_FILE) || !fs.existsSync(SCALE_FILE)) {
-    throw new Error(`Vectors files not found in ${dataDir}. Run 'pnpm build' first.`);
+  if (
+    !fs.existsSync(VECTORS_FILE) ||
+    !fs.existsSync(I8_FILE) ||
+    !fs.existsSync(SCALE_FILE)
+  ) {
+    throw new Error(
+      `Vectors files not found in ${dataDir}. Run 'pnpm build' first.`,
+    );
   }
   const compressed = fs.readFileSync(VECTORS_FILE);
   const jsonContent = zlib.gunzipSync(compressed).toString("utf-8");
@@ -80,11 +95,15 @@ export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[
 
   const N = items.length;
   if (scaleBuf.byteLength !== N * 4) {
-    throw new Error(`Corrupt vector scale file ${SCALE_FILE}: byteLength ${scaleBuf.byteLength} !== ${N} * 4`);
+    throw new Error(
+      `Corrupt vector scale file ${SCALE_FILE}: byteLength ${scaleBuf.byteLength} !== ${N} * 4`,
+    );
   }
   const dims = N > 0 ? i8Buf.byteLength / N : STATIC_DIMS;
   if (!Number.isInteger(dims) || dims <= 0) {
-    throw new Error(`Corrupt vector i8 file ${I8_FILE}: byteLength ${i8Buf.byteLength} not divisible by ${N}`);
+    throw new Error(
+      `Corrupt vector i8 file ${I8_FILE}: byteLength ${i8Buf.byteLength} not divisible by ${N}`,
+    );
   }
 
   const qTable = toInt8Array(i8Buf);
@@ -94,7 +113,9 @@ export function loadVectors(dataDir = resolveSkillsCliDataDir()): UseCaseVector[
   for (let i = 0; i < N; i++) {
     const item = items[i];
     if (!item.id || typeof item.chunkContent !== "string") {
-      throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id or chunkContent`);
+      throw new Error(
+        `Corrupt vector entry in ${VECTORS_FILE}: missing id or chunkContent`,
+      );
     }
     const vector = dequantizeVectorRow(qTable, scales, i, dims);
     out.push({ ...item, vector });
@@ -112,14 +133,22 @@ export async function searchUseCases(
   query: string,
   limit = 10,
   minSimilarity = DEFAULT_MIN_SIMILARITY,
-  embedder?: EmbedderLike
+  embedder?: EmbedderLike,
 ): Promise<UseCaseResult[]> {
   const actualEmbedder = embedder ?? StaticEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
 
   if (!cachedCorpus) {
     const vectors = loadVectors();
-    cachedCorpus = { vectors, bm25: buildBm25Index(vectors.map((v) => ({ id: v.id, text: `${v.description}\n\n${v.chunkContent}` }))) };
+    cachedCorpus = {
+      vectors,
+      bm25: buildBm25Index(
+        vectors.map((v) => ({
+          id: v.id,
+          text: `${v.description}\n\n${v.chunkContent}`,
+        })),
+      ),
+    };
   }
 
   // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
@@ -154,13 +183,17 @@ export async function searchUseCases(
       id: item.id,
       description: item.description,
       category: item.category,
-      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
+      featuresUsed:
+        item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
       tokenCount: item.tokenCount,
       similarity: parseFloat(similarity.toFixed(4)),
     };
   });
 
-  logToolResult("search_use_cases", limitedResults.map(r => ({ id: r.id, similarity: r.similarity })));
+  logToolResult(
+    "search_use_cases",
+    limitedResults.map((r) => ({ id: r.id, similarity: r.similarity })),
+  );
 
   return limitedResults;
 }

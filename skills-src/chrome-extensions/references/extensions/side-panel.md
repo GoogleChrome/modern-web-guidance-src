@@ -3,6 +3,7 @@
 ## Setup
 
 Add to manifest.json:
+
 ```json
 {
   "permissions": ["sidePanel"],
@@ -38,21 +39,25 @@ trigger.
 ```js
 // Open from a context menu item
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === 'open-panel') {
+  if (info.menuItemId === "open-panel") {
     await chrome.sidePanel.open({ windowId: tab.windowId });
   }
 });
 
 // Open from a keyboard shortcut (defined in manifest commands)
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === 'open-side-panel') {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (command === "open-side-panel") {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
     await chrome.sidePanel.open({ windowId: tab.windowId });
   }
 });
 ```
 
 You can also open it for a specific tab:
+
 ```js
 await chrome.sidePanel.open({ tabId: tab.id });
 ```
@@ -77,11 +82,11 @@ When using `setPanelBehavior`, do NOT also define `default_popup` — the popup 
 ```js
 // Different side panel content for different tabs
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (tab.url?.includes('github.com')) {
+  if (tab.url?.includes("github.com")) {
     await chrome.sidePanel.setOptions({
       tabId,
-      path: 'sidepanel/github-panel.html',
-      enabled: true
+      path: "sidepanel/github-panel.html",
+      enabled: true,
     });
   }
 });
@@ -98,7 +103,9 @@ To get data from the active tab's content script:
 // In side panel JS
 async function getPageContent() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const response = await chrome.tabs.sendMessage(tab.id, { type: 'GET_CONTENT' });
+  const response = await chrome.tabs.sendMessage(tab.id, {
+    type: "GET_CONTENT",
+  });
   return response;
 }
 ```
@@ -108,18 +115,18 @@ Or use `chrome.scripting.executeScript` from the side panel (requires `scripting
 ```js
 const [{ result }] = await chrome.scripting.executeScript({
   target: { tabId: tab.id },
-  func: () => document.body.innerText
+  func: () => document.body.innerText,
 });
 ```
 
 ## Side Panel vs Popup
 
-| Feature | Side Panel | Popup |
-|---------|-----------|-------|
-| Stays open | Yes | Closes when clicking away |
-| Resizable | Yes (by user) | Fixed size |
-| Coexists with page | Yes (side by side) | Overlays page |
-| Use when | Extended interaction, reading | Quick actions, settings |
+| Feature            | Side Panel                    | Popup                     |
+| ------------------ | ----------------------------- | ------------------------- |
+| Stays open         | Yes                           | Closes when clicking away |
+| Resizable          | Yes (by user)                 | Fixed size                |
+| Coexists with page | Yes (side by side)            | Overlays page             |
+| Use when           | Extended interaction, reading | Quick actions, settings   |
 
 ## Important Notes
 

@@ -73,31 +73,35 @@ When the whole card is one destination and has no independent actions, use one n
 If clicking the card triggers an action rather than navigating, use a `<button>` instead of a link.
 
 When a content card links to a primary destination, also contains other interactive elements, and needs to be clickable as a whole:
+
 - Use a single opt-in, on the primary link itself: put `.card-link` on exactly one link per card (the heading link). Footer and other links never get it, or each would stretch its own overlay and the last one would capture the whole card.
 - Link its title and stretch the pointer hit area across the card with `::after`
 
 ```css
 .card:has(a.card-link) {
-	position: relative;
+  position: relative;
 }
 
 .card a.card-link::after {
-	content: "";
-	position: absolute;
-	inset: 0;
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 ```
 
-- Elevate interactive elements with `position: relative; z-index: 1` so they remain operable. Target types of elements (e.g. `a, button`) rather than requiring opt-in via classes. 
+- Elevate interactive elements with `position: relative; z-index: 1` so they remain operable. Target types of elements (e.g. `a, button`) rather than requiring opt-in via classes.
 - Do NOT apply `z-index` to entire containers as that would make them capture pointer events that don't produce any action.
 
 ```css
 .card:has(a.card-link) {
-	/* Keep other interactive elements above the overlay */
-	a:not(.card-link), button, input, x-button {
-	    position: relative;
-	    z-index: 1;
-	}
+  /* Keep other interactive elements above the overlay */
+  a:not(.card-link),
+  button,
+  input,
+  x-button {
+    position: relative;
+    z-index: 1;
+  }
 }
 ```
 
@@ -105,21 +109,20 @@ When a content card links to a primary destination, also contains other interact
 
 ```css
 .card {
-	a.card-link {
-		&:focus-visible {
-			outline: none; /* Draw it on the card instead */
-		}
-	}
-	
-	&:has(a.card-link:focus-visible) {
-		/* Focus ring */
-	}
+  a.card-link {
+    &:focus-visible {
+      outline: none; /* Draw it on the card instead */
+    }
+  }
 
-	&:has(a.card-link:hover) {
-		/* Hover styles */
-	}
+  &:has(a.card-link:focus-visible) {
+    /* Focus ring */
+  }
+
+  &:has(a.card-link:hover) {
+    /* Hover styles */
+  }
 }
-
 ```
 
 ### Choice cards

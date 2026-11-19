@@ -1,4 +1,4 @@
-import { parseMarkdownBullets } from './release-notes-markdown.ts';
+import { parseMarkdownBullets } from "./release-notes-markdown.ts";
 
 export interface GeminiResponse {
   candidates?: Array<{
@@ -20,15 +20,23 @@ async function callGeminiForBullets(opts: {
   expectedItems?: string[];
   maxRetries?: number;
 }): Promise<string[] | null> {
-  const { prompt, apiKey, model, validate, validationErrorMsg, expectedItems, maxRetries = 2 } = opts;
+  const {
+    prompt,
+    apiKey,
+    model,
+    validate,
+    validationErrorMsg,
+    expectedItems,
+    maxRetries = 2,
+  } = opts;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
@@ -41,10 +49,10 @@ async function callGeminiForBullets(opts: {
       if (!response.ok) {
         const errorText = await response.text();
         console.warn(
-          `Gemini API error (${response.status}) on attempt ${attempt}/${maxRetries + 1}: ${errorText}`
+          `Gemini API error (${response.status}) on attempt ${attempt}/${maxRetries + 1}: ${errorText}`,
         );
         if (attempt <= maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
           continue;
         }
         return null;
@@ -54,17 +62,19 @@ async function callGeminiForBullets(opts: {
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
       if (!text) {
-        console.warn(`Empty response from Gemini API on attempt ${attempt}/${maxRetries + 1}.`);
+        console.warn(
+          `Empty response from Gemini API on attempt ${attempt}/${maxRetries + 1}.`,
+        );
         if (attempt <= maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
           continue;
         }
         return null;
       }
 
       const cleanedText = text
-        .replace(/^```(?:markdown|md)?\r?\n/, '')
-        .replace(/\r?\n```$/, '')
+        .replace(/^```(?:markdown|md)?\r?\n/, "")
+        .replace(/\r?\n```$/, "")
         .trim();
 
       const bullets = parseMarkdownBullets(cleanedText);
@@ -75,15 +85,19 @@ async function callGeminiForBullets(opts: {
           : `Gemini bullet validation failed with ${bullets.length} bullets.`;
         console.warn(`⚠️ ${msg} (Attempt ${attempt}/${maxRetries + 1})`);
         if (expectedItems && expectedItems.length > 0) {
-          console.warn(`Expected items (${expectedItems.length}):\n${expectedItems.map(item => `  - ${item}`).join('\n')}`);
+          console.warn(
+            `Expected items (${expectedItems.length}):\n${expectedItems.map((item) => `  - ${item}`).join("\n")}`,
+          );
         }
         if (bullets.length > 0) {
-          console.warn(`Received bullets (${bullets.length}):\n${bullets.map(b => `  ${b}`).join('\n')}`);
+          console.warn(
+            `Received bullets (${bullets.length}):\n${bullets.map((b) => `  ${b}`).join("\n")}`,
+          );
         } else if (cleanedText) {
           console.warn(`Raw response:\n${cleanedText}`);
         }
         if (attempt <= maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
           continue;
         }
         return null;
@@ -93,10 +107,10 @@ async function callGeminiForBullets(opts: {
     } catch (err) {
       console.warn(
         `Error generating summaries with Gemini on attempt ${attempt}/${maxRetries + 1}:`,
-        err
+        err,
       );
       if (attempt <= maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         continue;
       }
       return null;
@@ -107,28 +121,38 @@ async function callGeminiForBullets(opts: {
 }
 
 interface BuildGuideSummaryPromptOptions {
-  type: 'new' | 'updated';
+  type: "new" | "updated";
   guideNames: string[];
   guideDiff: string;
 }
 
-function buildGuideSummaryPrompt({ type, guideNames, guideDiff }: BuildGuideSummaryPromptOptions): string {
-  const isNew = type === 'new';
-  const label = isNew ? 'newly introduced guides' : 'updated guidance';
-  const sectionHeader = isNew ? 'New Guides to Summarize' : 'Updated Guides to Summarize';
-  const targetDesc = isNew ? 'new guide listed above' : 'updated guide listed above';
+function buildGuideSummaryPrompt({
+  type,
+  guideNames,
+  guideDiff,
+}: BuildGuideSummaryPromptOptions): string {
+  const isNew = type === "new";
+  const label = isNew ? "newly introduced guides" : "updated guidance";
+  const sectionHeader = isNew
+    ? "New Guides to Summarize"
+    : "Updated Guides to Summarize";
+  const targetDesc = isNew
+    ? "new guide listed above"
+    : "updated guide listed above";
   const contentDesc = isNew
-    ? 'what the new guide introduces and what use case or problem it solves'
-    : 'key improvements, best practices, or platform evolutions added to the guide';
+    ? "what the new guide introduces and what use case or problem it solves"
+    : "key improvements, best practices, or platform evolutions added to the guide";
   const boldExample = isNew
     ? `* Introduced a new guide for **state-aware-sticky-headers** detailing how to build UI headers that react to scroll changes.`
     : `* Updated the **translator** guide to require accessing the API exclusively via the global \`Translator\` interface.`;
-  const focusDesc = isNew ? 'developer guidance and use cases' : 'developer guidance and API patterns';
+  const focusDesc = isNew
+    ? "developer guidance and use cases"
+    : "developer guidance and API patterns";
 
   return `You are writing concise release note bullet points for ${label} in GoogleChrome/modern-web-guidance.
 
 ### ${sectionHeader} (${guideNames.length} total):
-${guideNames.map(g => `- ${g.endsWith('-skill') ? `${g.slice(0, -'-skill'.length)} skill` : g}`).join('\n')}
+${guideNames.map((g) => `- ${g.endsWith("-skill") ? `${g.slice(0, -"-skill".length)} skill` : g}`).join("\n")}
 
 ### Content Diff:
 ${guideDiff}
@@ -158,7 +182,7 @@ export async function generateNewGuideSummariesWithGemini(opts: {
   }
 
   const prompt = buildGuideSummaryPrompt({
-    type: 'new',
+    type: "new",
     guideNames,
     guideDiff,
   });
@@ -189,7 +213,7 @@ export async function generateUpdatedGuideSummariesWithGemini(opts: {
   }
 
   const prompt = buildGuideSummaryPrompt({
-    type: 'updated',
+    type: "updated",
     guideNames,
     guideDiff,
   });
@@ -222,7 +246,7 @@ export async function generateEcosystemSummariesWithGemini(opts: {
   const prompt = `You are writing concise release note bullet points for agent ecosystem and plugin marketplace changes in GoogleChrome/modern-web-guidance.
 
 ### Changed Plugin Files:
-${pluginFiles.map(p => `- ${p}`).join('\n')}
+${pluginFiles.map((p) => `- ${p}`).join("\n")}
 
 ### Agent Plugin Diff / Changes:
 ${pluginDiff}
@@ -240,7 +264,8 @@ ${pluginDiff}
     apiKey,
     model,
     expectedItems: pluginFiles,
-    validate: (bullets) => bullets.length > 0 && bullets.length <= pluginFiles.length,
+    validate: (bullets) =>
+      bullets.length > 0 && bullets.length <= pluginFiles.length,
     validationErrorMsg: (count) =>
       `Gemini ecosystem summary validation failed: received ${count} bullets for ${pluginFiles.length} plugin files.`,
   });

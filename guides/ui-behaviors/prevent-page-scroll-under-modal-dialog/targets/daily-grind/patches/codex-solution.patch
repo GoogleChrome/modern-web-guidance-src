@@ -18,7 +18,7 @@ index 66c9173..ca1ebe7 100644
 @@ -135,6 +135,45 @@
        background: #3e2723;
      }
- 
+
 +    dialog:modal {
 +      overscroll-behavior: contain;
 +    }
@@ -62,9 +62,9 @@ index 66c9173..ca1ebe7 100644
        background: var(--secondary);
        text-align: center;
 @@ -157,6 +196,14 @@
- 
+
  <body>
- 
+
 +  <dialog class="patio-notice" aria-labelledby="patio-notice-title" aria-describedby="patio-notice-description">
 +    <h2 id="patio-notice-title">Seasonal Patio Notice</h2>
 +    <p id="patio-notice-description">Enjoy your Daily Grind favorites outdoors this season. Patio seating is available weather permitting. Ask our team about today's availability.</p>
@@ -79,7 +79,7 @@ index 66c9173..ca1ebe7 100644
 @@ -207,6 +254,12 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const patioNotice = document.querySelector('.patio-notice');
 +    if (patioNotice instanceof HTMLDialogElement) {
@@ -87,7 +87,7 @@ index 66c9173..ca1ebe7 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/index.html b/index.html
 index 66c9173..ca1ebe7 100644
@@ -96,7 +96,7 @@ index 66c9173..ca1ebe7 100644
 @@ -135,6 +135,45 @@
        background: #3e2723;
      }
- 
+
 +    dialog:modal {
 +      overscroll-behavior: contain;
 +    }
@@ -140,9 +140,9 @@ index 66c9173..ca1ebe7 100644
        background: var(--secondary);
        text-align: center;
 @@ -157,6 +196,14 @@
- 
+
  <body>
- 
+
 +  <dialog class="patio-notice" aria-labelledby="patio-notice-title" aria-describedby="patio-notice-description">
 +    <h2 id="patio-notice-title">Seasonal Patio Notice</h2>
 +    <p id="patio-notice-description">Enjoy your Daily Grind favorites outdoors this season. Patio seating is available weather permitting. Ask our team about today's availability.</p>
@@ -157,7 +157,7 @@ index 66c9173..ca1ebe7 100644
 @@ -207,6 +254,12 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const patioNotice = document.querySelector('.patio-notice');
 +    if (patioNotice instanceof HTMLDialogElement) {
@@ -165,7 +165,7 @@ index 66c9173..ca1ebe7 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

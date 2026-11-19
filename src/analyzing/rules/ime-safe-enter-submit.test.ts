@@ -1,11 +1,9 @@
-import assert from 'node:assert/strict';
-import test, { describe } from 'node:test';
-import { scanJsSource } from '../scanners/index.ts';
-import {
-  imeSafeEnterSubmitMatcher
-} from './ime-safe-enter-submit.ts';
+import assert from "node:assert/strict";
+import test, { describe } from "node:test";
+import { scanJsSource } from "../scanners/index.ts";
+import { imeSafeEnterSubmitMatcher } from "./ime-safe-enter-submit.ts";
 
-describe('ime-safe-enter-submit rule', () => {
+describe("ime-safe-enter-submit rule", () => {
   test('flags addEventListener keydown checking event.key === "Enter"', () => {
     const code = `
       textarea.addEventListener('keydown', (event) => {
@@ -15,16 +13,14 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/input.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/input.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('ignores keyCode/which === 13 handlers (the IME-confirming Enter reports keyCode 229)', () => {
+  test("ignores keyCode/which === 13 handlers (the IME-confirming Enter reports keyCode 229)", () => {
     const code = `
       const SUBMIT_KEY_LABEL = 'Enter';
       $('#barcode-form input').keydown(function(event) {
@@ -53,11 +49,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'forms/barcode.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("forms/barcode.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
@@ -70,11 +64,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'forms/mixed.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("forms/mixed.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
@@ -94,11 +86,9 @@ describe('ime-safe-enter-submit rule', () => {
         );
       }
     `;
-    const { matches } = scanJsSource(
-      'components/ChatBox.tsx',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("components/ChatBox.tsx", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
@@ -113,16 +103,14 @@ describe('ime-safe-enter-submit rule', () => {
         }
       };
     `;
-    const { matches } = scanJsSource(
-      'search/search.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("search/search.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('flags switch statement on event.key with an Enter case inside keydown listener', () => {
+  test("flags switch statement on event.key with an Enter case inside keydown listener", () => {
     const code = `
       input.addEventListener('keydown', (event) => {
         switch (event.key) {
@@ -133,16 +121,14 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'input/switch.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("input/switch.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('ignores handler that checks event.isComposing', () => {
+  test("ignores handler that checks event.isComposing", () => {
     const code = `
       textarea.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -154,15 +140,13 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/safe-input.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/safe-input.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  test('ignores handler that checks event.keyCode === 229', () => {
+  test("ignores handler that checks event.keyCode === 229", () => {
     const code = `
       textarea.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -173,15 +157,13 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/safe-safari.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/safe-safari.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  test('ignores keyup and keypress event listeners', () => {
+  test("ignores keyup and keypress event listeners", () => {
     const code = `
       input.addEventListener('keyup', (event) => {
         if (event.key === 'Enter') {
@@ -194,15 +176,13 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'forms/keyup.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("forms/keyup.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  test('ignores Ctrl+Enter or Cmd+Enter shortcut submissions', () => {
+  test("ignores Ctrl+Enter or Cmd+Enter shortcut submissions", () => {
     const code = `
       textarea.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -211,11 +191,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/shortcut.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/shortcut.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
@@ -228,16 +206,14 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/negated-modifiers.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/negated-modifiers.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
     assert.match(matches[0].message, /isComposing|IME/);
   });
 
-  test('ignores Enter handlers that only call preventDefault, stopPropagation, or return false without submission', () => {
+  test("ignores Enter handlers that only call preventDefault, stopPropagation, or return false without submission", () => {
     const code = `
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -259,11 +235,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'chat/suppress-only.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("chat/suppress-only.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
@@ -294,11 +268,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'ui/aria-button.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("ui/aria-button.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
@@ -321,15 +293,13 @@ describe('ime-safe-enter-submit rule', () => {
         );
       }
     `;
-    const { matches } = scanJsSource(
-      'components/CustomButton.tsx',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("components/CustomButton.tsx", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 
-  test('exempts keydown Enter handlers inside test and spec files', () => {
+  test("exempts keydown Enter handlers inside test and spec files", () => {
     const code = `
       textarea.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
@@ -338,21 +308,23 @@ describe('ime-safe-enter-submit rule', () => {
       });
     `;
     const testPaths = [
-      'src/__tests__/chat.test.ts',
-      'tests/input.spec.js',
-      'components/ChatBox.test.tsx',
+      "src/__tests__/chat.test.ts",
+      "tests/input.spec.js",
+      "components/ChatBox.test.tsx",
     ];
     for (const testPath of testPaths) {
-      const { matches } = scanJsSource(
-        testPath,
-        code,
-        [imeSafeEnterSubmitMatcher]
+      const { matches } = scanJsSource(testPath, code, [
+        imeSafeEnterSubmitMatcher,
+      ]);
+      assert.equal(
+        matches.length,
+        0,
+        `Expected no matches for test file ${testPath}`,
       );
-      assert.equal(matches.length, 0, `Expected no matches for test file ${testPath}`);
     }
   });
 
-  test('flags custom action methods like this.login() or props.onCommit() on Enter keydown', () => {
+  test("flags custom action methods like this.login() or props.onCommit() on Enter keydown", () => {
     const code = `
       input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -360,15 +332,13 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'auth/login.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("auth/login.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 1);
   });
 
-  test('ignores global document hotkeys, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation', () => {
+  test("ignores global document hotkeys, Alt+Enter shortcuts, Space+Enter button activation, and arrow-key widget navigation", () => {
     const code = `
       document.addEventListener('keydown', (event) => {
         switch (event.key) {
@@ -402,11 +372,9 @@ describe('ime-safe-enter-submit rule', () => {
         }
       });
     `;
-    const { matches } = scanJsSource(
-      'ui/keyboard-shortcuts.js',
-      code,
-      [imeSafeEnterSubmitMatcher]
-    );
+    const { matches } = scanJsSource("ui/keyboard-shortcuts.js", code, [
+      imeSafeEnterSubmitMatcher,
+    ]);
     assert.equal(matches.length, 0);
   });
 });

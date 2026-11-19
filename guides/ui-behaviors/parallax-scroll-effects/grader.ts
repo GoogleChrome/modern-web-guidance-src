@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -14,11 +14,13 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () => {
-
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -30,7 +32,9 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     await page.goto(demoUrl);
   });
 
-  test('Defines an @keyframes block animating transform or translation properties to create the parallax effect', async ({ page }) => {
+  test("Defines an @keyframes block animating transform or translation properties to create the parallax effect", async ({
+    page,
+  }) => {
     const hasTransformKeyframes = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
@@ -52,7 +56,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
             checkRule(rule);
           }
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') continue;
+          if (e instanceof DOMException && e.name === "SecurityError") continue;
           throw e;
         }
       }
@@ -61,23 +65,39 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasTransformKeyframes).toBe(true);
   });
 
-  test('Defines a view-timeline on the wrapper element or uses an anonymous view timeline', async ({ page }) => {
+  test("Defines a view-timeline on the wrapper element or uses an anonymous view timeline", async ({
+    page,
+  }) => {
     const hasViewTimeline = await page.evaluate(() => {
       let found = false;
-      const elements = document.querySelectorAll('*');
+      const elements = document.querySelectorAll("*");
       for (let i = 0; i < elements.length; i++) {
         const style = window.getComputedStyle(elements[i]);
-        if (style.getPropertyValue('view-timeline-name') && style.getPropertyValue('view-timeline-name') !== 'none') found = true;
-        if (style.getPropertyValue('animation-timeline') && (style.getPropertyValue('animation-timeline').includes('view(') || style.getPropertyValue('animation-timeline').includes('scroll('))) found = true;
+        if (
+          style.getPropertyValue("view-timeline-name") &&
+          style.getPropertyValue("view-timeline-name") !== "none"
+        )
+          found = true;
+        if (
+          style.getPropertyValue("animation-timeline") &&
+          (style.getPropertyValue("animation-timeline").includes("view(") ||
+            style.getPropertyValue("animation-timeline").includes("scroll("))
+        )
+          found = true;
       }
       return found;
     });
-    
+
     const hasViewTimelineInCSS = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
         if (rule.type === CSSRule.STYLE_RULE) {
-          if (rule.style.viewTimeline || rule.style.viewTimelineName || rule.style.animationTimeline?.includes('view(') || rule.style.animationTimeline?.includes('scroll(')) {
+          if (
+            rule.style.viewTimeline ||
+            rule.style.viewTimelineName ||
+            rule.style.animationTimeline?.includes("view(") ||
+            rule.style.animationTimeline?.includes("scroll(")
+          ) {
             found = true;
           }
         } else if (rule.cssRules) {
@@ -92,7 +112,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
             checkRule(rule);
           }
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') continue;
+          if (e instanceof DOMException && e.name === "SecurityError") continue;
           throw e;
         }
       }
@@ -101,14 +121,16 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasViewTimeline || hasViewTimelineInCSS).toBe(true);
   });
 
-  test('Applies the animation-timeline property to layers to link them to the timeline', async ({ page }) => {
+  test("Applies the animation-timeline property to layers to link them to the timeline", async ({
+    page,
+  }) => {
     const hasAnimationTimeline = await page.evaluate(() => {
       let found = false;
-      const elements = document.querySelectorAll('body *');
+      const elements = document.querySelectorAll("body *");
       for (let i = 0; i < elements.length; i++) {
         const style = window.getComputedStyle(elements[i]);
-        const timeline = style.getPropertyValue('animation-timeline');
-        if (timeline && timeline !== 'auto' && timeline !== 'none') {
+        const timeline = style.getPropertyValue("animation-timeline");
+        if (timeline && timeline !== "auto" && timeline !== "none") {
           found = true;
         }
       }
@@ -119,7 +141,11 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
       let found = false;
       const checkRule = (rule: any) => {
         if (rule.type === CSSRule.STYLE_RULE) {
-          if (rule.style.animationTimeline && rule.style.animationTimeline !== 'auto' && rule.style.animationTimeline !== 'none') {
+          if (
+            rule.style.animationTimeline &&
+            rule.style.animationTimeline !== "auto" &&
+            rule.style.animationTimeline !== "none"
+          ) {
             found = true;
           }
         } else if (rule.cssRules) {
@@ -134,7 +160,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
             checkRule(rule);
           }
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') continue;
+          if (e instanceof DOMException && e.name === "SecurityError") continue;
           throw e;
         }
       }
@@ -144,14 +170,16 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasAnimationTimeline || hasAnimationTimelineInCSS).toBe(true);
   });
 
-  test('Staggers animations across different layers so they move at different rates', async ({ page }) => {
+  test("Staggers animations across different layers so they move at different rates", async ({
+    page,
+  }) => {
     const getPositions = async () => {
       return await page.evaluate(() => {
-        const elements = document.querySelectorAll('body *');
+        const elements = document.querySelectorAll("body *");
         const pos: Record<string, number> = {};
         for (let i = 0; i < elements.length; i++) {
           const el = elements[i];
-          if (el.children.length === 0 || el.textContent?.trim()) { 
+          if (el.children.length === 0 || el.textContent?.trim()) {
             const rect = el.getBoundingClientRect();
             pos[`${i}`] = rect.top;
           }
@@ -164,7 +192,9 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
 
     await page.evaluate(() => {
       window.scrollBy(0, 500);
-      return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
     });
 
     const scrolledPositions = await getPositions();
@@ -172,7 +202,9 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     const deltas = new Set<number>();
     for (const key in initialPositions) {
       if (scrolledPositions[key] !== undefined) {
-        const delta = Math.round(Math.abs(scrolledPositions[key] - initialPositions[key]));
+        const delta = Math.round(
+          Math.abs(scrolledPositions[key] - initialPositions[key]),
+        );
         deltas.add(delta);
       }
     }
@@ -183,18 +215,27 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
         uniqueParallaxDeltas++;
       }
     }
-    
+
     expect(uniqueParallaxDeltas).toBeGreaterThanOrEqual(2);
   });
 
-  test('Wrapper element has overflow: clip or overflow: hidden', async ({ page }) => {
+  test("Wrapper element has overflow: clip or overflow: hidden", async ({
+    page,
+  }) => {
     const hasWrapper = await page.evaluate(() => {
-      const elements = document.querySelectorAll('body *');
+      const elements = document.querySelectorAll("body *");
       for (let i = 0; i < elements.length; i++) {
         const style = window.getComputedStyle(elements[i]);
-        if (style.overflow === 'clip' || style.overflow === 'hidden' || style.overflowX === 'clip' || style.overflowY === 'clip' || style.overflowX === 'hidden' || style.overflowY === 'hidden') {
+        if (
+          style.overflow === "clip" ||
+          style.overflow === "hidden" ||
+          style.overflowX === "clip" ||
+          style.overflowY === "clip" ||
+          style.overflowX === "hidden" ||
+          style.overflowY === "hidden"
+        ) {
           if (elements[i].children.length > 1) {
-             return true;
+            return true;
           }
         }
       }
@@ -203,12 +244,17 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasWrapper).toBe(true);
   });
 
-  test('Includes feature detection using @supports for scroll-driven animations', async ({ page }) => {
+  test("Includes feature detection using @supports for scroll-driven animations", async ({
+    page,
+  }) => {
     const hasSupports = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
         if (rule.type === CSSRule.SUPPORTS_RULE) {
-          if (rule.conditionText && rule.conditionText.includes('animation-timeline')) {
+          if (
+            rule.conditionText &&
+            rule.conditionText.includes("animation-timeline")
+          ) {
             found = true;
           }
         } else if (rule.cssRules) {
@@ -223,7 +269,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
             checkRule(rule);
           }
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') continue;
+          if (e instanceof DOMException && e.name === "SecurityError") continue;
           throw e;
         }
       }
@@ -232,12 +278,17 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     expect(hasSupports).toBe(true);
   });
 
-  test('Respects user preferences for reduced motion using @media (prefers-reduced-motion)', async ({ page }) => {
+  test("Respects user preferences for reduced motion using @media (prefers-reduced-motion)", async ({
+    page,
+  }) => {
     const hasMedia = await page.evaluate(() => {
       let found = false;
       const checkRule = (rule: any) => {
         if (rule.type === CSSRule.MEDIA_RULE) {
-          if (rule.conditionText && rule.conditionText.includes('prefers-reduced-motion')) {
+          if (
+            rule.conditionText &&
+            rule.conditionText.includes("prefers-reduced-motion")
+          ) {
             found = true;
           }
         } else if (rule.cssRules) {
@@ -252,7 +303,7 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
             checkRule(rule);
           }
         } catch (e) {
-          if (e instanceof DOMException && e.name === 'SecurityError') continue;
+          if (e instanceof DOMException && e.name === "SecurityError") continue;
           throw e;
         }
       }
@@ -260,5 +311,4 @@ test.describe(`Scroll-driven Animations Parallax Expectations: ${demoName}`, () 
     });
     expect(hasMedia).toBe(true);
   });
-
 });

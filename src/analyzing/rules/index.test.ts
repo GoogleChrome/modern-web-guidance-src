@@ -1,47 +1,49 @@
-import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
-import { extname, join, resolve } from 'node:path';
-import { describe, it } from 'node:test';
-import { pathToFileURL } from 'node:url';
-import { scanAllGuides } from '../../core/guide-validation.ts';
-import { scanFiles } from '../scanners/index.ts';
+import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { extname, join, resolve } from "node:path";
+import { describe, it } from "node:test";
+import { pathToFileURL } from "node:url";
+import { scanAllGuides } from "../../core/guide-validation.ts";
+import { scanFiles } from "../scanners/index.ts";
 import {
   CSS_RULE_EXTENSIONS,
   DOM_RULE_EXTENSIONS,
   JS_RULE_EXTENSIONS,
-} from '../scanners/file-filter.ts';
-import { matchesFastTokens, normalizeFastTokenGroups } from '../scanners/js-scanner.ts';
-import type { AnalyzerRule } from '../schema.ts';
+} from "../scanners/file-filter.ts";
 import {
-  QUALIFIED_GUIDE_IDS,
-  QUALIFIED_RULES,
-  RULE_MODULES,
-} from './index.ts';
+  matchesFastTokens,
+  normalizeFastTokenGroups,
+} from "../scanners/js-scanner.ts";
+import type { AnalyzerRule } from "../schema.ts";
+import { QUALIFIED_GUIDE_IDS, QUALIFIED_RULES, RULE_MODULES } from "./index.ts";
 
 export function isAnalyzerRuleExport(value: unknown): value is AnalyzerRule {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
-    'id' in value &&
-    'guideId' in value &&
-    'guideHash' in value &&
-    'matcher' in value &&
-    'verifierRubric' in value
+    "id" in value &&
+    "guideId" in value &&
+    "guideHash" in value &&
+    "matcher" in value &&
+    "verifierRubric" in value
   );
 }
 
-export function assertValidFastTokenSpecs(rules: readonly AnalyzerRule[]): void {
+export function assertValidFastTokenSpecs(
+  rules: readonly AnalyzerRule[],
+): void {
   for (const rule of rules) {
-    if (rule.matcher.kind === 'dependency') {
+    if (rule.matcher.kind === "dependency") {
       assert.ok(
-        Array.isArray(rule.matcher.packages) && rule.matcher.packages.length > 0,
+        Array.isArray(rule.matcher.packages) &&
+          rule.matcher.packages.length > 0,
         `Dependency rule "${rule.id}" must declare a non-empty matcher.packages array`,
       );
       for (const pkg of rule.matcher.packages) {
         assert.ok(
-          typeof pkg === 'string' && pkg.trim().length > 0,
+          typeof pkg === "string" && pkg.trim().length > 0,
           `Dependency rule "${rule.id}" contains an empty package name`,
         );
       }
@@ -61,11 +63,11 @@ export function assertValidFastTokenSpecs(rules: readonly AnalyzerRule[]): void 
       );
       for (const token of group) {
         assert.ok(
-          typeof token === 'string' && token.trim().length >= 2,
+          typeof token === "string" && token.trim().length >= 2,
           `Rule "${rule.id}" fastTokens group[${gIdx}] contains a token shorter than 2 chars: ${JSON.stringify(token)}`,
         );
         assert.ok(
-          !token.includes('\0') && !token.includes('\x08'),
+          !token.includes("\0") && !token.includes("\x08"),
           `Rule "${rule.id}" fastTokens group[${gIdx}] contains NUL or backspace control character: ${JSON.stringify(token)}`,
         );
       }
@@ -73,39 +75,44 @@ export function assertValidFastTokenSpecs(rules: readonly AnalyzerRule[]): void 
   }
 }
 
-export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): void {
+export function assertAntiSpongeSelectivity(
+  rules: readonly AnalyzerRule[],
+): void {
   const bannedUltraGenericSingleGroupTokens = new Set([
-    'scroll',
-    'click',
-    'keydown',
-    'blur',
-    'change',
-    'mousedown',
-    'setAttribute',
-    'addEventListener',
-    'querySelector',
-    'classList',
-    'localStorage',
-    'IntersectionObserver',
-    'ResizeObserver',
-    'getBoundingClientRect',
-    'setTimeout',
-    'Promise',
-    'Math.round',
-    'Math.floor',
-    'transform',
-    'overflow',
-    ':invalid',
-    '@media',
-    'div',
-    'span',
-    'input',
-    'button',
+    "scroll",
+    "click",
+    "keydown",
+    "blur",
+    "change",
+    "mousedown",
+    "setAttribute",
+    "addEventListener",
+    "querySelector",
+    "classList",
+    "localStorage",
+    "IntersectionObserver",
+    "ResizeObserver",
+    "getBoundingClientRect",
+    "setTimeout",
+    "Promise",
+    "Math.round",
+    "Math.floor",
+    "transform",
+    "overflow",
+    ":invalid",
+    "@media",
+    "div",
+    "span",
+    "input",
+    "button",
   ]);
 
-  const syntheticFixtureCorpus: readonly { readonly name: string; readonly content: string }[] = [
+  const syntheticFixtureCorpus: readonly {
+    readonly name: string;
+    readonly content: string;
+  }[] = [
     {
-      name: 'api-client.ts',
+      name: "api-client.ts",
       content: `
         export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
           const response = await fetch(url, { ...init, headers: { Accept: 'application/json' } });
@@ -115,7 +122,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'state-store.ts',
+      name: "state-store.ts",
       content: `
         export class Store<S> {
           private state: S;
@@ -130,7 +137,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'dom-events.js',
+      name: "dom-events.js",
       content: `
         const button = document.querySelector('.submit-btn');
         button?.addEventListener('click', (event) => {
@@ -141,7 +148,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'scroll-logger.js',
+      name: "scroll-logger.js",
       content: `
         window.addEventListener('scroll', () => {
           console.debug('User scrolled page');
@@ -149,7 +156,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'resize-tracker.ts',
+      name: "resize-tracker.ts",
       content: `
         const ro = new ResizeObserver((entries) => {
           for (const entry of entries) {
@@ -161,7 +168,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'intersection-logger.ts',
+      name: "intersection-logger.ts",
       content: `
         const io = new IntersectionObserver((entries) => {
           entries.forEach((e) => console.log(e.time));
@@ -170,7 +177,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'storage-prefs.ts',
+      name: "storage-prefs.ts",
       content: `
         export function saveDraft(key: string, text: string): void {
           localStorage.setItem(key, JSON.stringify({ text, updatedAt: Date.now() }));
@@ -181,7 +188,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'math-utils.ts',
+      name: "math-utils.ts",
       content: `
         export function clampRatio(val: number, min: number, max: number): number {
           return Math.min(max, Math.max(min, Math.round(val * 100) / 100));
@@ -192,7 +199,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'keyboard-shortcut.js',
+      name: "keyboard-shortcut.js",
       content: `
         document.addEventListener('keydown', (e) => {
           if (e.ctrlKey && e.key === 'k') {
@@ -203,7 +210,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'form-blur.js',
+      name: "form-blur.js",
       content: `
         const field = document.querySelector('#username');
         field?.addEventListener('blur', () => {
@@ -215,7 +222,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'ProfileBio.tsx',
+      name: "ProfileBio.tsx",
       content: `
         import React from 'react';
         const ProfileBio = ({ name, bio }: { name: string; bio: string }) => (
@@ -229,7 +236,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'TodoList.vue',
+      name: "TodoList.vue",
       content: `
         <template>
           <div class="todo-container">
@@ -244,7 +251,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'Counter.svelte',
+      name: "Counter.svelte",
       content: `
         <script>
           let count = 0;
@@ -254,7 +261,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'layout.css',
+      name: "layout.css",
       content: `
         .container {
           display: grid;
@@ -268,7 +275,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'buttons.css',
+      name: "buttons.css",
       content: `
         .btn {
           display: inline-flex;
@@ -283,7 +290,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'typography.css',
+      name: "typography.css",
       content: `
         body {
           font-family: system-ui, sans-serif;
@@ -297,7 +304,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'index.html',
+      name: "index.html",
       content: `
         <!doctype html>
         <html lang="en">
@@ -310,7 +317,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'contact-form.html',
+      name: "contact-form.html",
       content: `
         <form action="/contact" method="post">
           <label for="fullname">Name</label>
@@ -322,7 +329,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'article.html',
+      name: "article.html",
       content: `
         <article class="post-entry">
           <header><h2>Release Notes</h2></header>
@@ -332,7 +339,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
       `,
     },
     {
-      name: 'async-timer.ts',
+      name: "async-timer.ts",
       content: `
         export function delay(ms: number): Promise<void> {
           return new Promise((resolve) => {
@@ -344,7 +351,7 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
   ];
 
   for (const rule of rules) {
-    if (rule.matcher.kind === 'dependency') {
+    if (rule.matcher.kind === "dependency") {
       continue;
     }
 
@@ -363,9 +370,9 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
     }
 
     const allowedExts: ReadonlySet<string> = new Set(
-      rule.matcher.kind === 'js'
+      rule.matcher.kind === "js"
         ? JS_RULE_EXTENSIONS
-        : rule.matcher.kind === 'css'
+        : rule.matcher.kind === "css"
           ? CSS_RULE_EXTENSIONS
           : DOM_RULE_EXTENSIONS,
     );
@@ -378,65 +385,81 @@ export function assertAntiSpongeSelectivity(rules: readonly AnalyzerRule[]): voi
     const matchRatio = matchedFixtures.length / applicableFixtures.length;
     assert.ok(
       matchRatio <= 0.25,
-      `Rule "${rule.id}" fastTokens ${JSON.stringify(fastTokens)} matched ${matchedFixtures.length}/${applicableFixtures.length} (${(matchRatio * 100).toFixed(0)}%) applicable synthetic fixtures (${matchedFixtures.map((f) => f.name).join(', ')}); max allowed is 25%`,
+      `Rule "${rule.id}" fastTokens ${JSON.stringify(fastTokens)} matched ${matchedFixtures.length}/${applicableFixtures.length} (${(matchRatio * 100).toFixed(0)}%) applicable synthetic fixtures (${matchedFixtures.map((f) => f.name).join(", ")}); max allowed is 25%`,
     );
   }
 }
 
-describe('qualified rules architectural invariants', () => {
-  it('enforces that every rule module file on disk in src/analyzing/rules is registered in RULE_MODULES', () => {
+describe("qualified rules architectural invariants", () => {
+  it("enforces that every rule module file on disk in src/analyzing/rules is registered in RULE_MODULES", () => {
     const rulesDir = resolve(import.meta.dirname);
     const untrackedFiles = new Set<string>();
-    const gitStatus = execSync('git status --porcelain src/analyzing/rules', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const gitStatus = execSync("git status --porcelain src/analyzing/rules", {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
     });
-    for (const line of gitStatus.split('\n')) {
-      if (line.startsWith('?? ')) {
-        const match = line.slice(3).trim().match(/([^/\\]+)\.ts$/);
-        if (match && !line.includes('.test.ts')) {
+    for (const line of gitStatus.split("\n")) {
+      if (line.startsWith("?? ")) {
+        const match = line
+          .slice(3)
+          .trim()
+          .match(/([^/\\]+)\.ts$/);
+        if (match && !line.includes(".test.ts")) {
           untrackedFiles.add(match[1]!);
         }
       }
     }
 
     const filesOnDisk = readdirSync(rulesDir)
-      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && f !== 'index.ts')
-      .map((f) => f.replace(/\.ts$/, ''))
+      .filter(
+        (f) => f.endsWith(".ts") && !f.endsWith(".test.ts") && f !== "index.ts",
+      )
+      .map((f) => f.replace(/\.ts$/, ""))
       .filter((f) => !untrackedFiles.has(f))
       .sort();
 
-    const registeredGuideIds = RULE_MODULES.map((rules) => rules[0]!.guideId).sort();
+    const registeredGuideIds = RULE_MODULES.map(
+      (rules) => rules[0]!.guideId,
+    ).sort();
     assert.deepStrictEqual(
       filesOnDisk,
       registeredGuideIds,
-      'Rule modules on disk in src/analyzing/rules must exactly match RULE_MODULES',
+      "Rule modules on disk in src/analyzing/rules must exactly match RULE_MODULES",
     );
     assert.deepStrictEqual(
       QUALIFIED_GUIDE_IDS,
       registeredGuideIds,
-      'QUALIFIED_GUIDE_IDS must equal the sorted unique guideIds of QUALIFIED_RULES',
+      "QUALIFIED_GUIDE_IDS must equal the sorted unique guideIds of QUALIFIED_RULES",
     );
   });
 
-  it('enforces that every qualified guide exists in the catalog with a non-stub guide.md', () => {
+  it("enforces that every qualified guide exists in the catalog with a non-stub guide.md", () => {
     const allGuides = scanAllGuides();
     const guideMap = new Map(allGuides.map((g) => [g.name, g]));
 
     for (const guideId of QUALIFIED_GUIDE_IDS) {
       const guide = guideMap.get(guideId);
-      assert.ok(guide, `Qualified guide "${guideId}" does not exist in catalog!`);
-      assert.ok(guide.isPublished, `Qualified guide "${guideId}" must be a published catalog guide`);
+      assert.ok(
+        guide,
+        `Qualified guide "${guideId}" does not exist in catalog!`,
+      );
+      assert.ok(
+        guide.isPublished,
+        `Qualified guide "${guideId}" must be a published catalog guide`,
+      );
       assert.ok(!guide.isStub, `Guide "${guideId}" must not be a stub`);
     }
   });
 
-  it('validates rule properties and default-export completeness for all qualified rule modules', async (t) => {
+  it("validates rule properties and default-export completeness for all qualified rule modules", async (t) => {
     const rulesDir = resolve(import.meta.dirname);
     const seenRegisteredRuleIds = new Set<string>();
 
     for (const moduleRules of RULE_MODULES) {
-      assert.ok(moduleRules.length > 0, 'Every module in RULE_MODULES must export at least 1 rule');
+      assert.ok(
+        moduleRules.length > 0,
+        "Every module in RULE_MODULES must export at least 1 rule",
+      );
       const guideId = moduleRules[0]!.guideId;
       const filePath = join(rulesDir, `${guideId}.ts`);
       const modUrl = pathToFileURL(filePath).href;
@@ -456,7 +479,7 @@ describe('qualified rules architectural invariants', () => {
           ...(mod.default as unknown[]).filter(isAnalyzerRuleExport),
           ...Object.values(mod).filter(isAnalyzerRuleExport),
           ...Object.entries(mod)
-            .filter(([k, v]) => k !== 'default' && Array.isArray(v))
+            .filter(([k, v]) => k !== "default" && Array.isArray(v))
             .flatMap(([, v]) => (v as unknown[]).filter(isAnalyzerRuleExport)),
         ]),
       ];
@@ -471,8 +494,9 @@ describe('qualified rules architectural invariants', () => {
         );
       }
 
-      const sourceText = readFileSync(filePath, 'utf8');
-      const definedRuleCount = (sourceText.match(/\bverifierRubric\s*:/g) ?? []).length;
+      const sourceText = readFileSync(filePath, "utf8");
+      const definedRuleCount = (sourceText.match(/\bverifierRubric\s*:/g) ?? [])
+        .length;
       assert.strictEqual(
         moduleRules.length,
         definedRuleCount,
@@ -480,31 +504,45 @@ describe('qualified rules architectural invariants', () => {
       );
 
       for (const rule of moduleRules) {
-        assert.ok(!seenRegisteredRuleIds.has(rule.id), `duplicate rule id: ${rule.id}`);
+        assert.ok(
+          !seenRegisteredRuleIds.has(rule.id),
+          `duplicate rule id: ${rule.id}`,
+        );
         seenRegisteredRuleIds.add(rule.id);
 
-        await t.test(`rule ${rule.id} (${rule.guideId}) has valid structure`, () => {
-          assert.ok(rule.id, 'rule has id');
-          assert.strictEqual(rule.guideId, guideId, 'rule.guideId matches module guideId');
-          assert.match(rule.guideHash, /^[0-9a-f]{12}$/, 'guideHash is 12 lowercase hex chars');
-          assert.ok(rule.summary, 'rule has summary');
-          assert.ok(rule.matcher, 'rule has matcher');
-          assert.ok(rule.verifierRubric.keepWhen.length > 0, 'has keepWhen');
-          assert.ok(rule.verifierRubric.dropWhen.length > 0, 'has dropWhen');
-        });
+        await t.test(
+          `rule ${rule.id} (${rule.guideId}) has valid structure`,
+          () => {
+            assert.ok(rule.id, "rule has id");
+            assert.strictEqual(
+              rule.guideId,
+              guideId,
+              "rule.guideId matches module guideId",
+            );
+            assert.match(
+              rule.guideHash,
+              /^[0-9a-f]{12}$/,
+              "guideHash is 12 lowercase hex chars",
+            );
+            assert.ok(rule.summary, "rule has summary");
+            assert.ok(rule.matcher, "rule has matcher");
+            assert.ok(rule.verifierRubric.keepWhen.length > 0, "has keepWhen");
+            assert.ok(rule.verifierRubric.dropWhen.length > 0, "has dropWhen");
+          },
+        );
       }
     }
   });
 
-  it('enforces structural FastTokenSpec / packages invariant on every rule in QUALIFIED_RULES', () => {
+  it("enforces structural FastTokenSpec / packages invariant on every rule in QUALIFIED_RULES", () => {
     assertValidFastTokenSpecs(QUALIFIED_RULES);
   });
 
-  it('enforces anti-sponge selectivity gate on fastTokens across QUALIFIED_RULES', () => {
+  it("enforces anti-sponge selectivity gate on fastTokens across QUALIFIED_RULES", () => {
     assertAntiSpongeSelectivity(QUALIFIED_RULES);
   });
 
-  it('enforces zero self-hits when running each qualified rule against its own guide demo.html', () => {
+  it("enforces zero self-hits when running each qualified rule against its own guide demo.html", () => {
     const allGuides = scanAllGuides();
     const guideMap = new Map(allGuides.map((g) => [g.name, g]));
 
@@ -513,8 +551,8 @@ describe('qualified rules architectural invariants', () => {
       if (!guide || !guide.hasDemo) {
         continue;
       }
-      const demoPath = join(guide.dir, 'demo.html');
-      const demoContent = readFileSync(demoPath, 'utf8');
+      const demoPath = join(guide.dir, "demo.html");
+      const demoContent = readFileSync(demoPath, "utf8");
       const findings = scanFiles(new Map([[demoPath, demoContent]]), [rule], {
         includeDocsAndTests: true,
       });
@@ -522,7 +560,7 @@ describe('qualified rules architectural invariants', () => {
         findings.length,
         0,
         `Rule "${rule.id}" must produce 0 self-hits on its own guide demo.html (${demoPath}), but found ${findings.length}:\n` +
-          findings.map((f) => `  line ${f.line}: ${f.message}`).join('\n'),
+          findings.map((f) => `  line ${f.line}: ${f.message}`).join("\n"),
       );
     }
   });

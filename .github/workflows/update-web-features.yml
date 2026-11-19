@@ -3,7 +3,7 @@ name: Update web-features
 on:
   schedule:
     # 05:00 UTC on Monday and Thursday
-    - cron: '0 5 * * 1,4'
+    - cron: "0 5 * * 1,4"
   workflow_dispatch:
 
 permissions:
@@ -69,7 +69,7 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Update web-features across workspaces
         run: |
@@ -107,7 +107,7 @@ jobs:
           title: "chore(deps): bump web-features package"
           body: |
             Automated check for `web-features` updates across `/`, `/src`, and `/guides`.
-            
+
             CI workflow checks will automatically run on this PR to report if any guidance macros, tests, or features require updates.
           branch: "auto/web-features-update"
           delete-branch: true

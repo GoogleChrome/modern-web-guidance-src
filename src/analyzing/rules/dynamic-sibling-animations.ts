@@ -3,21 +3,22 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH = '26f6d4e848cc';
+export const DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH = "26f6d4e848cc";
 
-const NTH_CHILD_SELECTOR_REGEX = /^(.*?):nth-(?:child|of-type)\(\s*(\d+)\s*\)(.*)$/i;
+const NTH_CHILD_SELECTOR_REGEX =
+  /^(.*?):nth-(?:child|of-type)\(\s*(\d+)\s*\)(.*)$/i;
 
 const DELAY_PROPERTIES = new Set([
-  'animation-delay',
-  '-webkit-animation-delay',
-  '-moz-animation-delay',
-  '-o-animation-delay',
-  'transition-delay',
-  '-webkit-transition-delay',
-  '-moz-transition-delay',
-  '-o-transition-delay',
+  "animation-delay",
+  "-webkit-animation-delay",
+  "-moz-animation-delay",
+  "-o-animation-delay",
+  "transition-delay",
+  "-webkit-transition-delay",
+  "-moz-transition-delay",
+  "-o-transition-delay",
 ]);
 
 const DELAY_VALUE_REGEX = /^\s*(-?\d*\.?\d+)\s*(ms|s)\s*$/i;
@@ -31,7 +32,7 @@ function parseDelayMs(raw: string): number | null {
   if (!Number.isFinite(num)) {
     return null;
   }
-  return m[2].toLowerCase() === 's' ? num * 1000 : num;
+  return m[2].toLowerCase() === "s" ? num * 1000 : num;
 }
 
 function parseNthChildBaseSelector(selectorText: string): {
@@ -77,7 +78,7 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
     return cached;
   }
   const result = new Set<CssRuleView>();
-  if (ctx.stylesheetHasValue('sibling-index(')) {
+  if (ctx.stylesheetHasValue("sibling-index(")) {
     computedMatchedRulesByContext.set(ctx, result);
     return result;
   }
@@ -89,14 +90,14 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
 
   for (const r of ctx.styleRules ?? []) {
     const parentAt = r.parentAtRule?.toLowerCase();
-    if (parentAt?.includes('@supports') && parentAt.includes('sibling-index')) {
+    if (parentAt?.includes("@supports") && parentAt.includes("sibling-index")) {
       continue;
     }
     const sel = parseNthChildBaseSelector(r.selectorText);
     if (!sel) {
       continue;
     }
-    const key = `${r.parentAtRule ?? ''}||${sel.baseSelector}`;
+    const key = `${r.parentAtRule ?? ""}||${sel.baseSelector}`;
     const existing = byKey.get(key);
     if (existing === null) {
       continue;
@@ -136,8 +137,13 @@ function getSequenceStartRules(ctx: CssMatcherContext): Set<CssRuleView> {
 }
 
 const dynamicSiblingAnimationsCssMatcher: CssRuleMatcher = {
-  kind: 'css',
-  fastTokens: [':nth-child(1)', ':nth-child(2)', ':nth-of-type(1)', ':nth-of-type(2)'],
+  kind: "css",
+  fastTokens: [
+    ":nth-child(1)",
+    ":nth-child(2)",
+    ":nth-of-type(1)",
+    ":nth-of-type(2)",
+  ],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const startRules = getSequenceStartRules(ctx);
     if (!startRules.has(styleRule)) {
@@ -145,26 +151,26 @@ const dynamicSiblingAnimationsCssMatcher: CssRuleMatcher = {
     }
     return {
       message:
-        'Repetitive :nth-child(N) CSS rules set staggered animation-delay/transition-delay values; replace with a single rule using calc(sibling-index() * <step>).',
+        "Repetitive :nth-child(N) CSS rules set staggered animation-delay/transition-delay values; replace with a single rule using calc(sibling-index() * <step>).",
     };
   },
 };
 
 export const dynamicSiblingAnimationsCssRule: AnalyzerRule = {
-  id: 'dynamic-sibling-animations',
-  guideId: 'dynamic-sibling-animations',
+  id: "dynamic-sibling-animations",
+  guideId: "dynamic-sibling-animations",
   guideHash: DYNAMIC_SIBLING_ANIMATIONS_GUIDE_HASH,
   summary:
-    'Replace repetitive :nth-child(N) CSS rules that only set staggered animation-delay or transition-delay values with CSS sibling-index().',
+    "Replace repetitive :nth-child(N) CSS rules that only set staggered animation-delay or transition-delay values with CSS sibling-index().",
   matcher: dynamicSiblingAnimationsCssMatcher,
   verifierRubric: {
     keepWhen: [
-      'A stylesheet defines 3 or more sequential :nth-child(1), :nth-child(2), :nth-child(3) rules on the same selector that only set staggered animation-delay or transition-delay values.',
-      'The repetitive :nth-child delay rules can be collapsed into a single rule using calc(sibling-index() * <step>).',
+      "A stylesheet defines 3 or more sequential :nth-child(1), :nth-child(2), :nth-child(3) rules on the same selector that only set staggered animation-delay or transition-delay values.",
+      "The repetitive :nth-child delay rules can be collapsed into a single rule using calc(sibling-index() * <step>).",
     ],
     dropWhen: [
-      'The :nth-child rules set distinct per-child colors, positions, transforms, or custom properties (--i, --index) in addition to animation-delay.',
-      'The stylesheet already uses sibling-index() or wraps the rules in an @supports fallback.',
+      "The :nth-child rules set distinct per-child colors, positions, transforms, or custom properties (--i, --index) in addition to animation-delay.",
+      "The stylesheet already uses sibling-index() or wraps the rules in an @supports fallback.",
     ],
   },
 };

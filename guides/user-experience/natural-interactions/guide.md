@@ -20,11 +20,19 @@ Interfaces feel natural when every input gets an immediate response, motion beha
 ```css
 :where(button) {
   /* example durations */
-  transition: box-shadow 150ms ease-out, scale 150ms ease-out;
+  transition:
+    box-shadow 150ms ease-out,
+    scale 150ms ease-out;
 }
-button:hover { box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
-a:hover { text-decoration-thickness: 2px; }
-button:active { scale: 0.97; } /* example value */
+button:hover {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
+button:active {
+  scale: 0.97;
+} /* example value */
 
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid CanvasText;
@@ -50,15 +58,27 @@ Popovers and dropdowns should visibly open from the control that triggered them:
   transform-origin: top left;
 }
 /* example durations */
-.dropdown:is(:popover-open, .\:popover-open) { animation: fade-in 150ms ease-out both; }
+.dropdown:is(:popover-open, .\:popover-open) {
+  animation: fade-in 150ms ease-out both;
+}
 @media (prefers-reduced-motion: no-preference) {
   .dropdown:is(:popover-open, .\:popover-open) {
     /* optional example spring curve, written inline */
-    animation: grow 300ms linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1) both, fade-in 150ms ease-out both;
+    animation:
+      grow 300ms linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1) both,
+      fade-in 150ms ease-out both;
   }
 }
-@keyframes grow { from { scale: 0.9; } }
-@keyframes fade-in { from { opacity: 0; } }
+@keyframes grow {
+  from {
+    scale: 0.9;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
 ```
 
 - Keep animations on the compositor (`transform`, its individual properties, and `opacity`) and respect reduced-motion preferences; see {{ GUIDE_REF("motion") }}. This example animates the opening only; for exit transitions, see {{ GUIDE_REF("animate-to-from-top-layer") }}.
@@ -93,10 +113,15 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
-  .sheet.is-open { animation: sheet-in 300ms ease-out both; } /* example duration */
+  .sheet.is-open {
+    animation: sheet-in 300ms ease-out both;
+  } /* example duration */
 }
 @keyframes sheet-in {
-  from { translate: 0 100%; filter: blur(6px); } /* example blur radius */
+  from {
+    translate: 0 100%;
+    filter: blur(6px);
+  } /* example blur radius */
 }
 ```
 
@@ -111,9 +136,13 @@ For large, rapid translations (such as a full-screen sheet sliding into view), a
   opacity: 0;
 
   .card:hover &,
-  .card:focus-within & { opacity: 1; }
+  .card:focus-within & {
+    opacity: 1;
+  }
 
-  @media (hover: none) { opacity: 1; }
+  @media (hover: none) {
+    opacity: 1;
+  }
 }
 ```
 

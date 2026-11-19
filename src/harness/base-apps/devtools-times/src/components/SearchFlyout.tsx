@@ -29,7 +29,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        
+
         // Bug: Redundant fetch for suggestions
         const fetchSuggestions = async () => {
             try {

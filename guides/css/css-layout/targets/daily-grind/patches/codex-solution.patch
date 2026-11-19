@@ -15,7 +15,7 @@ index 66c9173..ccddc02 100644
        background-color: var(--light);
 +      overflow-wrap: anywhere;
      }
- 
+
      /* Navigation */
      nav {
        background: var(--primary);
@@ -34,14 +34,14 @@ index 66c9173..ccddc02 100644
 +      inset-block-start: 0;
        z-index: 1000;
      }
- 
+
      .logo {
 +      min-inline-size: 0;
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
 @@ -48,14 +53,21 @@
- 
+
      nav ul {
        display: flex;
 +      flex-wrap: wrap;
@@ -52,20 +52,20 @@ index 66c9173..ccddc02 100644
 +      margin-inline-start: auto;
        list-style: none;
      }
- 
+
 -    nav ul li {
 -      margin-left: 20px;
 +    nav li {
 +      min-inline-size: 0;
      }
- 
+
      nav a {
 +      display: block;
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
 @@ -68,13 +80,15 @@
- 
+
      .logout-link {
        border: 1px solid var(--accent);
 -      padding: 5px 12px;
@@ -73,7 +73,7 @@ index 66c9173..ccddc02 100644
 +      padding-inline: 0.75rem;
        border-radius: 4px;
      }
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -95,7 +95,7 @@ index 66c9173..ccddc02 100644
 +      padding-block: clamp(2rem, 8vi, 5rem);
 +      padding-inline: 1.25rem;
      }
- 
+
      .hero h1 {
 -      font-size: 3rem;
 -      margin-bottom: 1rem;
@@ -107,7 +107,7 @@ index 66c9173..ccddc02 100644
 +    .hero p {
 +      max-inline-size: 60ch;
      }
- 
+
      /* Content Sections */
      .container {
 -      max-width: 1100px;
@@ -125,7 +125,7 @@ index 66c9173..ccddc02 100644
 +      font-size: 1.5rem;
 +      font-size: clamp(1.5rem, 4cqi, 2rem);
      }
- 
+
      .grid {
        display: grid;
 -      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -135,7 +135,7 @@ index 66c9173..ccddc02 100644
 +      gap: 1.25rem;
 +      margin-block-start: 1.25rem;
      }
- 
+
      .card {
 +      min-inline-size: 0;
 +      display: grid;
@@ -148,12 +148,12 @@ index 66c9173..ccddc02 100644
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
      }
- 
+
      .card h3 {
 -      margin-bottom: 10px;
        color: var(--primary);
      }
- 
+
 +    .card .btn {
 +      align-self: start;
 +    }
@@ -193,7 +193,7 @@ index 66c9173..ccddc02 100644
 -      margin-top: 15px;
        transition: background 0.3s;
      }
- 
+
 @@ -138,16 +197,21 @@
      footer {
        background: var(--secondary);
@@ -204,7 +204,7 @@ index 66c9173..ccddc02 100644
 +      padding-inline: 1.25rem;
 +      margin-block-start: 2.5rem;
      }
- 
+
      .footer-links {
 -      margin-bottom: 20px;
 +      display: flex;
@@ -214,14 +214,14 @@ index 66c9173..ccddc02 100644
 +      gap: 0.5rem 1.25rem;
 +      margin-block-end: 1.25rem;
      }
- 
+
      .footer-links a {
 -      margin: 0 10px;
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
 @@ -176,7 +240,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -230,7 +230,7 @@ index 66c9173..ccddc02 100644
          <div class="card">
            <h3>Maple Oat Latte</h3>
 @@ -199,9 +263,9 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

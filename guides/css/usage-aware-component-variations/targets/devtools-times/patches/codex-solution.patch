@@ -96,7 +96,7 @@ index af1fa02..56f571f 100644
  import BookmarkButton from './BookmarkButton';
 +import ArticlePromotion from './ArticlePromotion.astro';
  import { BookOpenIcon } from '@heroicons/react/24/outline'
- 
+
  export interface Props {
 @@ -29,6 +30,7 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                          {article.data.summary}
@@ -131,11 +131,11 @@ index e015eae..70b38cd 100644
  import BookmarkButton from './BookmarkButton';
 +import ArticlePromotion from './ArticlePromotion.astro';
  import { BookOpenIcon } from '@heroicons/react/24/outline'
- 
+
  export interface Props {
 @@ -32,7 +33,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
      </h2>
- 
+
      <!-- Top Section: Large Article -->
 -    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
 +    <div data-surface="featured" class="shadow-sm overflow-hidden mb-6 lg:mb-8">
@@ -158,16 +158,16 @@ index 92f6399..3ee1746 100644
 +++ b/src/pages/index.astro
 @@ -55,7 +55,7 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <main data-surface="featured" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
      </main>
- 
+
 @@ -81,4 +81,4 @@ politicsArticles[2] = {
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-         
+
      </div>
 -</Layout>
 \ No newline at end of file
@@ -178,7 +178,7 @@ index e9a9abb..27d68ba 100644
 +++ b/src/styles/global.css
 @@ -1,7 +1,12 @@
  @import "tailwindcss";
- 
+
 +/* Surfaces publish context; components own their contextual variations. */
 +[data-surface="featured"] {
 +  --surface: featured;

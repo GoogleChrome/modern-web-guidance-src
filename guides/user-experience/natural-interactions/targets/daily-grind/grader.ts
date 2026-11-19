@@ -8,10 +8,7 @@
 // Expectation 8: SKIPPED - Base application has no in-place hover-revealed controls or content outside popovers/menus; all card actions are visible by default in the base app.
 // Expectation 9: TESTED - Popovers/dropdowns triggered by "View Details" buttons must not animate transform/scale when prefers-reduced-motion: reduce is active.
 
-import {
-  test,
-  expect,
-} from '../../../../../src/grading/test-fixture.ts';
+import { test, expect } from "../../../../../src/grading/test-fixture.ts";
 
 function getVisualState(el: Element) {
   const cs = window.getComputedStyle(el);
@@ -43,17 +40,22 @@ function hasVisualDifference(
   );
 }
 
-test.describe('natural-interactions Target Grader', () => {
-  test.describe('Browser tests', () => {
+test.describe("natural-interactions Target Grader", () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });
 
-    test('Expectation 1: Hovering a button changes at least one of its computed background-color, color, border-color, box-shadow, transform, scale, or other individual transform property values', async ({ page }) => {
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+    test("Expectation 1: Hovering a button changes at least one of its computed background-color, color, border-color, box-shadow, transform, scale, or other individual transform property values", async ({
+      page,
+    }) => {
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
-      const card = page.locator('.card').first();
+      const card = page.locator(".card").first();
       await card.hover();
       await page.mouse.move(0, 0);
       await page.waitForTimeout(250);
@@ -67,8 +69,13 @@ test.describe('natural-interactions Target Grader', () => {
       expect(hasVisualDifference(initialState, hoverState)).toBe(true);
     });
 
-    test('Expectation 2: Pressing the mouse button down on a button, before releasing it, changes at least one of its computed background-color, color, border-color, box-shadow, transform, scale, or other individual transform property values compared with its hover state', async ({ page }) => {
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+    test("Expectation 2: Pressing the mouse button down on a button, before releasing it, changes at least one of its computed background-color, color, border-color, box-shadow, transform, scale, or other individual transform property values compared with its hover state", async ({
+      page,
+    }) => {
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
       await btn.hover();
@@ -83,8 +90,13 @@ test.describe('natural-interactions Target Grader', () => {
       expect(hasVisualDifference(hoverState, activeState)).toBe(true);
     });
 
-    test('Expectation 3: Moving keyboard focus to a button or link with the Tab key gives it either the browser native focus ring or a custom outline or box-shadow with at least 3:1 contrast ratio against the page background', async ({ page }) => {
-      const target = page.locator('button').filter({ hasText: /view details/i }).first();
+    test("Expectation 3: Moving keyboard focus to a button or link with the Tab key gives it either the browser native focus ring or a custom outline or box-shadow with at least 3:1 contrast ratio against the page background", async ({
+      page,
+    }) => {
+      const target = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(target).toHaveCount(1);
 
       const unfocused = await target.evaluate((el) => {
@@ -98,18 +110,20 @@ test.describe('natural-interactions Target Grader', () => {
         };
       });
 
-      await page.keyboard.press('Tab');
+      await page.keyboard.press("Tab");
       await target.focus();
 
       const focusAnalysis = await target.evaluate((el, unfocusedState) => {
         el.getAnimations().forEach((a) => a.finish());
         const cs = window.getComputedStyle(el);
 
-        function parseRgba(colorStr: string): [number, number, number, number] | null {
-          const canvas = document.createElement('canvas');
+        function parseRgba(
+          colorStr: string,
+        ): [number, number, number, number] | null {
+          const canvas = document.createElement("canvas");
           canvas.width = 1;
           canvas.height = 1;
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext("2d");
           if (!ctx) return null;
           ctx.clearRect(0, 0, 1, 1);
           ctx.fillStyle = colorStr;
@@ -131,7 +145,10 @@ test.describe('natural-interactions Target Grader', () => {
           );
         }
 
-        function contrastRatio(c1: [number, number, number, number], c2: [number, number, number, number]): number {
+        function contrastRatio(
+          c1: [number, number, number, number],
+          c2: [number, number, number, number],
+        ): number {
           const l1 = getLuminance(c1);
           const l2 = getLuminance(c2);
           const lighter = Math.max(l1, l2);
@@ -139,24 +156,31 @@ test.describe('natural-interactions Target Grader', () => {
           return (lighter + 0.05) / (darker + 0.05);
         }
 
-        const isNativeAuto = cs.outlineStyle === 'auto' && parseFloat(cs.outlineWidth) > 0;
+        const isNativeAuto =
+          cs.outlineStyle === "auto" && parseFloat(cs.outlineWidth) > 0;
         const hasCustomOutline =
-          cs.outlineStyle !== 'none' &&
-          cs.outlineStyle !== 'auto' &&
+          cs.outlineStyle !== "none" &&
+          cs.outlineStyle !== "auto" &&
           parseFloat(cs.outlineWidth) > 0 &&
           (cs.outlineStyle !== unfocusedState.outlineStyle ||
             parseFloat(cs.outlineWidth) !== unfocusedState.outlineWidth ||
             cs.outlineColor !== unfocusedState.outlineColor);
-        const hasCustomBoxShadow = cs.boxShadow !== 'none' && cs.boxShadow !== unfocusedState.boxShadow;
+        const hasCustomBoxShadow =
+          cs.boxShadow !== "none" && cs.boxShadow !== unfocusedState.boxShadow;
 
-        const bodyBgStr = window.getComputedStyle(document.body).backgroundColor;
+        const bodyBgStr = window.getComputedStyle(
+          document.body,
+        ).backgroundColor;
         const bodyBg = parseRgba(bodyBgStr) || [250, 250, 250, 1];
-        const effectiveBg: [number, number, number, number] = bodyBg[3] === 0 ? [255, 255, 255, 1] : bodyBg;
+        const effectiveBg: [number, number, number, number] =
+          bodyBg[3] === 0 ? [255, 255, 255, 1] : bodyBg;
 
         const candidateColors: string[] = [];
         if (hasCustomOutline) candidateColors.push(cs.outlineColor);
         if (hasCustomBoxShadow) {
-          const matches = cs.boxShadow.match(/(?:rgba?\([^)]+\)|#[0-9a-fA-F]{3,8})/g);
+          const matches = cs.boxShadow.match(
+            /(?:rgba?\([^)]+\)|#[0-9a-fA-F]{3,8})/g,
+          );
           if (matches) candidateColors.push(...matches);
         }
 
@@ -184,20 +208,30 @@ test.describe('natural-interactions Target Grader', () => {
 
       const hasValidFocusIndicator =
         focusAnalysis.isNativeAuto ||
-        ((focusAnalysis.hasCustomOutline || focusAnalysis.hasCustomBoxShadow) && focusAnalysis.ratio >= 3);
+        ((focusAnalysis.hasCustomOutline || focusAnalysis.hasCustomBoxShadow) &&
+          focusAnalysis.ratio >= 3);
       expect(hasValidFocusIndicator).toBe(true);
     });
 
-    test('Expectation 4: Clicking a button with the mouse does not give it the keyboard focus outline', async ({ page }) => {
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+    test("Expectation 4: Clicking a button with the mouse does not give it the keyboard focus outline", async ({
+      page,
+    }) => {
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
-      await page.keyboard.press('Tab');
+      await page.keyboard.press("Tab");
       const hasKeyboardFocusRing = await page.evaluate(() => {
         const el = document.activeElement;
         if (!el) return false;
         const cs = window.getComputedStyle(el);
-        return (cs.outlineStyle !== 'none' && (parseFloat(cs.outlineWidth) || 0) > 0) || cs.boxShadow !== 'none';
+        return (
+          (cs.outlineStyle !== "none" &&
+            (parseFloat(cs.outlineWidth) || 0) > 0) ||
+          cs.boxShadow !== "none"
+        );
       });
       expect(hasKeyboardFocusRing).toBe(true);
 
@@ -205,8 +239,9 @@ test.describe('natural-interactions Target Grader', () => {
 
       const outlineAfterClick = await btn.evaluate((el) => {
         const cs = window.getComputedStyle(el);
-        const matchesFocusVisible = el.matches(':focus-visible');
-        const hasVisibleOutline = cs.outlineStyle !== 'none' && (parseFloat(cs.outlineWidth) || 0) > 0;
+        const matchesFocusVisible = el.matches(":focus-visible");
+        const hasVisibleOutline =
+          cs.outlineStyle !== "none" && (parseFloat(cs.outlineWidth) || 0) > 0;
         return { matchesFocusVisible, hasVisibleOutline };
       });
 
@@ -214,23 +249,34 @@ test.describe('natural-interactions Target Grader', () => {
       expect(outlineAfterClick.hasVisibleOutline).toBe(false);
     });
 
-    test('Expectation 5: Shortly after a popover or dropdown that opens next to its trigger starts opening, its computed transform, scale, or other individual transform property differs from its final settled value', async ({ page }) => {
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+    test("Expectation 5: Shortly after a popover or dropdown that opens next to its trigger starts opening, its computed transform, scale, or other individual transform property differs from its final settled value", async ({
+      page,
+    }) => {
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
-      await btn.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await btn.evaluate((el) =>
+        el.scrollIntoView({ block: "center", behavior: "instant" }),
+      );
 
       const snapshotResult = await page.evaluate(async () => {
         const trigger =
-          Array.from(document.querySelectorAll('button')).find((b) =>
-            /view details/i.test(b.textContent || ''),
+          Array.from(document.querySelectorAll("button")).find((b) =>
+            /view details/i.test(b.textContent || ""),
           ) ||
-          (document.querySelector('.card button[popovertarget], .card button[commandfor], .card button[aria-controls]') as HTMLElement | null);
+          (document.querySelector(
+            ".card button[popovertarget], .card button[commandfor], .card button[aria-controls]",
+          ) as HTMLElement | null);
         if (!trigger) return null;
 
         const hookedAnims: Animation[] = [];
         const origAnimate = Element.prototype.animate;
-        Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
+        Element.prototype.animate = function (
+          ...args: Parameters<Element["animate"]>
+        ) {
           const anim = origAnimate.apply(this, args);
           hookedAnims.push(anim);
           return anim;
@@ -241,22 +287,24 @@ test.describe('natural-interactions Target Grader', () => {
 
           const isOpenOrVisible = (el: Element | null): el is HTMLElement => {
             if (!(el instanceof HTMLElement)) return false;
-            if (el.matches(':popover-open, [open], .is-open, .\\:popover-open')) return true;
+            if (el.matches(":popover-open, [open], .is-open, .\\:popover-open"))
+              return true;
             const cs = window.getComputedStyle(el);
-            if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+            if (cs.display === "none" || cs.visibility === "hidden")
+              return false;
             const r = el.getBoundingClientRect();
             return r.width > 0 && r.height > 0;
           };
 
           const findDisclosure = (): HTMLElement | null => {
             const targetId =
-              trigger.getAttribute('popovertarget') ||
-              trigger.getAttribute('commandfor') ||
-              trigger.getAttribute('aria-controls');
+              trigger.getAttribute("popovertarget") ||
+              trigger.getAttribute("commandfor") ||
+              trigger.getAttribute("aria-controls");
             const byId = targetId ? document.getElementById(targetId) : null;
             if (isOpenOrVisible(byId)) return byId;
             return document.querySelector<HTMLElement>(
-              'dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open',
+              "dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open",
             );
           };
 
@@ -289,7 +337,10 @@ test.describe('natural-interactions Target Grader', () => {
               disclosure,
               ...anims
                 .map((a) => (a.effect as KeyframeEffect | null)?.target)
-                .filter((t): t is Element => t instanceof Element && disclosure!.contains(t)),
+                .filter(
+                  (t): t is Element =>
+                    t instanceof Element && disclosure!.contains(t),
+                ),
             ]),
           );
 
@@ -317,7 +368,9 @@ test.describe('natural-interactions Target Grader', () => {
           const isValidSurface = (el: Element) => {
             if (el === disclosure) return true;
             const r = el.getBoundingClientRect();
-            return r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5;
+            return (
+              r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5
+            );
           };
 
           const validIndices = rawTargets
@@ -342,7 +395,10 @@ test.describe('natural-interactions Target Grader', () => {
               e.rotate !== settledList[idx].rotate,
           );
           const chosenIdx = activeIdx >= 0 ? activeIdx : 0;
-          return { early: earlyList[chosenIdx], settled: settledList[chosenIdx] };
+          return {
+            early: earlyList[chosenIdx],
+            settled: settledList[chosenIdx],
+          };
         } finally {
           Element.prototype.animate = origAnimate;
         }
@@ -358,23 +414,32 @@ test.describe('natural-interactions Target Grader', () => {
       expect(differed).toBe(true);
     });
 
-    test('Expectation 6: A popover or dropdown that scales open computes a transform-origin on its edge nearest its trigger', async ({ page }) => {
+    test("Expectation 6: A popover or dropdown that scales open computes a transform-origin on its edge nearest its trigger", async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 1280, height: 2400 });
 
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
       const originAnalysis = await page.evaluate(async () => {
         const trigger =
-          Array.from(document.querySelectorAll('button')).find((b) =>
-            /view details/i.test(b.textContent || ''),
+          Array.from(document.querySelectorAll("button")).find((b) =>
+            /view details/i.test(b.textContent || ""),
           ) ||
-          (document.querySelector('.card button[popovertarget], .card button[commandfor], .card button[aria-controls]') as HTMLElement | null);
+          (document.querySelector(
+            ".card button[popovertarget], .card button[commandfor], .card button[aria-controls]",
+          ) as HTMLElement | null);
         if (!trigger) return null;
 
         const hookedAnims: Animation[] = [];
         const origAnimate = Element.prototype.animate;
-        Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
+        Element.prototype.animate = function (
+          ...args: Parameters<Element["animate"]>
+        ) {
           const anim = origAnimate.apply(this, args);
           hookedAnims.push(anim);
           return anim;
@@ -385,22 +450,24 @@ test.describe('natural-interactions Target Grader', () => {
 
           const isOpenOrVisible = (el: Element | null): el is HTMLElement => {
             if (!(el instanceof HTMLElement)) return false;
-            if (el.matches(':popover-open, [open], .is-open, .\\:popover-open')) return true;
+            if (el.matches(":popover-open, [open], .is-open, .\\:popover-open"))
+              return true;
             const cs = window.getComputedStyle(el);
-            if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+            if (cs.display === "none" || cs.visibility === "hidden")
+              return false;
             const r = el.getBoundingClientRect();
             return r.width > 0 && r.height > 0;
           };
 
           const findDisclosure = (): HTMLElement | null => {
             const targetId =
-              trigger.getAttribute('popovertarget') ||
-              trigger.getAttribute('commandfor') ||
-              trigger.getAttribute('aria-controls');
+              trigger.getAttribute("popovertarget") ||
+              trigger.getAttribute("commandfor") ||
+              trigger.getAttribute("aria-controls");
             const byId = targetId ? document.getElementById(targetId) : null;
             if (isOpenOrVisible(byId)) return byId;
             return document.querySelector<HTMLElement>(
-              'dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open',
+              "dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open",
             );
           };
 
@@ -443,7 +510,9 @@ test.describe('natural-interactions Target Grader', () => {
           const isValidSurface = (el: Element) => {
             if (el === disclosure) return true;
             const r = el.getBoundingClientRect();
-            return r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5;
+            return (
+              r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5
+            );
           };
 
           const candidateSurfaces = Array.from(
@@ -451,7 +520,12 @@ test.describe('natural-interactions Target Grader', () => {
               disclosure,
               ...anims
                 .map((a) => (a.effect as KeyframeEffect | null)?.target)
-                .filter((t): t is Element => t instanceof Element && disclosure!.contains(t) && isValidSurface(t)),
+                .filter(
+                  (t): t is Element =>
+                    t instanceof Element &&
+                    disclosure!.contains(t) &&
+                    isValidSurface(t),
+                ),
             ]),
           );
 
@@ -463,21 +537,27 @@ test.describe('natural-interactions Target Grader', () => {
             const oy = parseFloat(oyStr);
             const pRect = surface.getBoundingClientRect();
 
-            const explicitlyAbove = pRect.bottom <= tRect.top + 20 && pRect.top > 0;
+            const explicitlyAbove =
+              pRect.bottom <= tRect.top + 20 && pRect.top > 0;
             const explicitlyBelow = pRect.top >= tRect.bottom - 20;
-            const explicitlyLeft = pRect.right <= tRect.left + 20 && pRect.left > 0;
+            const explicitlyLeft =
+              pRect.right <= tRect.left + 20 && pRect.left > 0;
             const explicitlyRight = pRect.left >= tRect.right - 20;
             const isNearestEdge =
               (explicitlyAbove && Math.abs(oy - pRect.height) <= 5) ||
               (explicitlyBelow && oy <= 5) ||
               (explicitlyLeft && Math.abs(ox - pRect.width) <= 5) ||
               (explicitlyRight && ox <= 5) ||
-              (!explicitlyAbove && !explicitlyLeft && !explicitlyRight && oy <= 5);
+              (!explicitlyAbove &&
+                !explicitlyLeft &&
+                !explicitlyRight &&
+                oy <= 5);
             return { cs, ox, oy, pRect, isNearestEdge };
           };
 
           const surfaceResults = candidateSurfaces.map(checkSurface);
-          const matchedSurface = surfaceResults.find((r) => r.isNearestEdge) || surfaceResults[0];
+          const matchedSurface =
+            surfaceResults.find((r) => r.isNearestEdge) || surfaceResults[0];
           const { cs, ox, oy, pRect, isNearestEdge } = matchedSurface;
 
           const earlyCx = earlyRect.left + earlyRect.width / 2;
@@ -509,18 +589,26 @@ test.describe('natural-interactions Target Grader', () => {
       });
 
       expect(originAnalysis).not.toBeNull();
-      expect(originAnalysis!.isNearestEdge || originAnalysis!.opensFromTriggerFlip).toBe(true);
+      expect(
+        originAnalysis!.isNearestEdge || originAnalysis!.opensFromTriggerFlip,
+      ).toBe(true);
     });
 
-    test('Expectation 7: Every horizontally scrollable row of repeated items computes a scroll-snap-type on the x or inline axis, and its items compute a scroll-snap-align other than none', async ({ page }) => {
+    test("Expectation 7: Every horizontally scrollable row of repeated items computes a scroll-snap-type on the x or inline axis, and its items compute a scroll-snap-align other than none", async ({
+      page,
+    }) => {
       const snapCheck = await page.evaluate(() => {
-        const cards = Array.from(document.querySelectorAll('.card'));
+        const cards = Array.from(document.querySelectorAll(".card"));
         if (cards.length === 0) return null;
 
         let container: HTMLElement | null = cards[0].parentElement;
         for (let depth = 0; depth < 3 && container; depth++) {
           const cs = window.getComputedStyle(container);
-          if (cs.overflowX === 'auto' || cs.overflowX === 'scroll' || cs.scrollSnapType !== 'none') {
+          if (
+            cs.overflowX === "auto" ||
+            cs.overflowX === "scroll" ||
+            cs.scrollSnapType !== "none"
+          ) {
             break;
           }
           container = container.parentElement;
@@ -534,12 +622,18 @@ test.describe('natural-interactions Target Grader', () => {
 
         const itemAligns = cards.map((c) => {
           const cardAlign = window.getComputedStyle(c).scrollSnapAlign;
-          if (cardAlign !== 'none') return cardAlign;
+          if (cardAlign !== "none") return cardAlign;
           let item: HTMLElement | null = c as HTMLElement;
-          while (item && item.parentElement && item.parentElement !== container) {
+          while (
+            item &&
+            item.parentElement &&
+            item.parentElement !== container
+          ) {
             item = item.parentElement;
           }
-          return item ? window.getComputedStyle(item).scrollSnapAlign : cardAlign;
+          return item
+            ? window.getComputedStyle(item).scrollSnapAlign
+            : cardAlign;
         });
         return {
           overflowX,
@@ -549,34 +643,46 @@ test.describe('natural-interactions Target Grader', () => {
       });
 
       expect(snapCheck).not.toBeNull();
-      expect(['auto', 'scroll']).toContain(snapCheck!.overflowX);
+      expect(["auto", "scroll"]).toContain(snapCheck!.overflowX);
       expect(snapCheck!.scrollSnapType).toMatch(/\b(x|inline|both)\b/);
       expect(snapCheck!.itemAligns.length).toBeGreaterThan(0);
       for (const align of snapCheck!.itemAligns) {
-        expect(align).not.toBe('none');
+        expect(align).not.toBe("none");
       }
     });
 
-    test('Expectation 9: With prefers-reduced-motion: reduce emulated, opening a popover, dropdown, menu, or hovercard does not animate its transform, scale, or other individual transform properties', async ({ page, TARGET_URL }) => {
-      await page.emulateMedia({ reducedMotion: 'reduce' });
+    test("Expectation 9: With prefers-reduced-motion: reduce emulated, opening a popover, dropdown, menu, or hovercard does not animate its transform, scale, or other individual transform properties", async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto(TARGET_URL);
 
-      const btn = page.locator('button').filter({ hasText: /view details/i }).first();
+      const btn = page
+        .locator("button")
+        .filter({ hasText: /view details/i })
+        .first();
       await expect(btn).toHaveCount(1);
 
-      await btn.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await btn.evaluate((el) =>
+        el.scrollIntoView({ block: "center", behavior: "instant" }),
+      );
 
       const snapshotResult = await page.evaluate(async () => {
         const trigger =
-          Array.from(document.querySelectorAll('button')).find((b) =>
-            /view details/i.test(b.textContent || ''),
+          Array.from(document.querySelectorAll("button")).find((b) =>
+            /view details/i.test(b.textContent || ""),
           ) ||
-          (document.querySelector('.card button[popovertarget], .card button[commandfor], .card button[aria-controls]') as HTMLElement | null);
+          (document.querySelector(
+            ".card button[popovertarget], .card button[commandfor], .card button[aria-controls]",
+          ) as HTMLElement | null);
         if (!trigger) return null;
 
         const hookedAnims: Animation[] = [];
         const origAnimate = Element.prototype.animate;
-        Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
+        Element.prototype.animate = function (
+          ...args: Parameters<Element["animate"]>
+        ) {
           const anim = origAnimate.apply(this, args);
           hookedAnims.push(anim);
           return anim;
@@ -587,22 +693,24 @@ test.describe('natural-interactions Target Grader', () => {
 
           const isOpenOrVisible = (el: Element | null): el is HTMLElement => {
             if (!(el instanceof HTMLElement)) return false;
-            if (el.matches(':popover-open, [open], .is-open, .\\:popover-open')) return true;
+            if (el.matches(":popover-open, [open], .is-open, .\\:popover-open"))
+              return true;
             const cs = window.getComputedStyle(el);
-            if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+            if (cs.display === "none" || cs.visibility === "hidden")
+              return false;
             const r = el.getBoundingClientRect();
             return r.width > 0 && r.height > 0;
           };
 
           const findDisclosure = (): HTMLElement | null => {
             const targetId =
-              trigger.getAttribute('popovertarget') ||
-              trigger.getAttribute('commandfor') ||
-              trigger.getAttribute('aria-controls');
+              trigger.getAttribute("popovertarget") ||
+              trigger.getAttribute("commandfor") ||
+              trigger.getAttribute("aria-controls");
             const byId = targetId ? document.getElementById(targetId) : null;
             if (isOpenOrVisible(byId)) return byId;
             return document.querySelector<HTMLElement>(
-              'dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open',
+              "dialog[open], [popover]:popover-open, [popover].is-open, [popover].\\:popover-open, dialog.is-open",
             );
           };
 
@@ -635,7 +743,10 @@ test.describe('natural-interactions Target Grader', () => {
               disclosure,
               ...anims
                 .map((a) => (a.effect as KeyframeEffect | null)?.target)
-                .filter((t): t is Element => t instanceof Element && disclosure!.contains(t)),
+                .filter(
+                  (t): t is Element =>
+                    t instanceof Element && disclosure!.contains(t),
+                ),
             ]),
           );
 
@@ -663,7 +774,9 @@ test.describe('natural-interactions Target Grader', () => {
           const isValidSurface = (el: Element) => {
             if (el === disclosure) return true;
             const r = el.getBoundingClientRect();
-            return r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5;
+            return (
+              r.width >= dRect.width * 0.5 && r.height >= dRect.height * 0.5
+            );
           };
 
           const validIndices = rawTargets
@@ -688,7 +801,10 @@ test.describe('natural-interactions Target Grader', () => {
               e.rotate !== settledList[idx].rotate,
           );
           const chosenIdx = activeIdx >= 0 ? activeIdx : 0;
-          return { early: earlyList[chosenIdx], settled: settledList[chosenIdx] };
+          return {
+            early: earlyList[chosenIdx],
+            settled: settledList[chosenIdx],
+          };
         } finally {
           Element.prototype.animate = origAnimate;
         }

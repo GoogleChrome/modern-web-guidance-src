@@ -28,7 +28,7 @@ index 66c9173..1078661 100644
 @@ -120,6 +120,136 @@
        color: var(--primary);
      }
- 
+
 +    #favorites-actions {
 +      display: flex;
 +      align-items: center;
@@ -212,7 +212,7 @@ index 66c9173..1078661 100644
 @@ -207,6 +375,92 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const favoritesToolbar = document.getElementById('favorites-actions');
 +    const favoritesCards = document.getElementById('favorites-cards');
@@ -300,7 +300,7 @@ index 66c9173..1078661 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

@@ -13,7 +13,7 @@ index 66c9173..66793e9 100644
 @@ -135,6 +135,47 @@
        background: #3e2723;
      }
- 
+
 +    /* Rewards Sign-up */
 +    .signup {
 +      max-width: 520px;
@@ -81,7 +81,7 @@ index 66c9173..66793e9 100644
 +      </form>
 +    </section>
    </main>
- 
+
    <footer>
 diff --git a/package.json b/package.json
 index 2bd4d77..3581e3f 100644

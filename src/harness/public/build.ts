@@ -1,13 +1,22 @@
-import path from 'node:path';
-import { parseArgs } from 'node:util';
-import { cRed, cYellow } from '../../core/colors.ts';
-import { outDir as defaultOutRoot } from '../../core/paths.ts';
-import { DEFAULT_ALLOWLIST_PATH, loadValidatedAllowlist, selectSuites } from './allowlist.ts';
-import { buildSelectedSuites, buildSuite, PUBLIC_EVALS_DIR, writeManifest } from './builder.ts';
-import type { BuildOptions, SuiteBuildResult } from './builder.ts';
-import { forbiddenTokens, forbiddenTokensVersion } from './forbidden-tokens.ts';
-import { reportResults } from './report.ts';
-import { GcsSuiteStore, LocalSuiteStore } from './suite-store.ts';
+import path from "node:path";
+import { parseArgs } from "node:util";
+import { cRed, cYellow } from "../../core/colors.ts";
+import { outDir as defaultOutRoot } from "../../core/paths.ts";
+import {
+  DEFAULT_ALLOWLIST_PATH,
+  loadValidatedAllowlist,
+  selectSuites,
+} from "./allowlist.ts";
+import {
+  buildSelectedSuites,
+  buildSuite,
+  PUBLIC_EVALS_DIR,
+  writeManifest,
+} from "./builder.ts";
+import type { BuildOptions, SuiteBuildResult } from "./builder.ts";
+import { forbiddenTokens, forbiddenTokensVersion } from "./forbidden-tokens.ts";
+import { reportResults } from "./report.ts";
+import { GcsSuiteStore, LocalSuiteStore } from "./suite-store.ts";
 
 /**
  * CLI: build the public copy of eval suites.
@@ -32,33 +41,42 @@ import { GcsSuiteStore, LocalSuiteStore } from './suite-store.ts';
 async function main(): Promise<number> {
   const { values } = parseArgs({
     options: {
-      all: { type: 'boolean', default: false },
-      suite: { type: 'string', multiple: true, default: [] },
-      out: { type: 'string', default: defaultOutRoot },
-      allowlist: { type: 'string', default: DEFAULT_ALLOWLIST_PATH },
-      source: { type: 'string', default: 'gcs' },
-      'forbidden-tokens': { type: 'string', default: '' },
-      force: { type: 'boolean', default: false },
-      help: { type: 'boolean', short: 'h', default: false },
+      all: { type: "boolean", default: false },
+      suite: { type: "string", multiple: true, default: [] },
+      out: { type: "string", default: defaultOutRoot },
+      allowlist: { type: "string", default: DEFAULT_ALLOWLIST_PATH },
+      source: { type: "string", default: "gcs" },
+      "forbidden-tokens": { type: "string", default: "" },
+      force: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
   });
 
   if (values.help || (!values.all && values.suite.length === 0)) {
-    console.log('Usage: build.ts (--all | --suite <id>...) [--out <dir>] [--allowlist <file>] [--source gcs|<dir>] [--forbidden-tokens a,b] [--force]');
+    console.log(
+      "Usage: build.ts (--all | --suite <id>...) [--out <dir>] [--allowlist <file>] [--source gcs|<dir>] [--forbidden-tokens a,b] [--force]",
+    );
     return values.help ? 0 : 1;
   }
 
   const options: BuildOptions = {
-    store: values.source === 'gcs' ? new GcsSuiteStore() : new LocalSuiteStore(values.source),
+    store:
+      values.source === "gcs"
+        ? new GcsSuiteStore()
+        : new LocalSuiteStore(values.source),
     outDir: path.resolve(values.out),
     allowlist: loadValidatedAllowlist(values.allowlist),
-    forbiddenTokens: forbiddenTokens(values['forbidden-tokens'].split(',')),
+    forbiddenTokens: forbiddenTokens(values["forbidden-tokens"].split(",")),
     forbiddenTokensVersion: forbiddenTokensVersion(),
     force: values.force,
   };
 
   if (options.allowlist.releasedModels.length === 0) {
-    console.warn(cYellow('releasedModels is empty in the allowlist; every suite will be skipped.'));
+    console.warn(
+      cYellow(
+        "releasedModels is empty in the allowlist; every suite will be skipped.",
+      ),
+    );
   }
 
   let results: SuiteBuildResult[];
@@ -66,9 +84,11 @@ async function main(): Promise<number> {
     results = await buildSelectedSuites(options);
   } else {
     const selected = new Set(selectSuites(options.allowlist, values.suite));
-    const unselected = values.suite.filter(suiteId => !selected.has(suiteId));
+    const unselected = values.suite.filter((suiteId) => !selected.has(suiteId));
     if (unselected.length > 0) {
-      throw new Error(`${unselected.join(', ')}: not selected by the allowlist; use --all or edit the allowlist`);
+      throw new Error(
+        `${unselected.join(", ")}: not selected by the allowlist; use --all or edit the allowlist`,
+      );
     }
     results = [];
     for (const suiteId of values.suite) {
@@ -78,13 +98,15 @@ async function main(): Promise<number> {
   }
 
   reportResults(results, path.join(options.outDir, PUBLIC_EVALS_DIR));
-  return results.some(result => result.status === 'failed') ? 1 : 0;
+  return results.some((result) => result.status === "failed") ? 1 : 0;
 }
 
 main().then(
-  code => process.exit(code),
-  err => {
-    console.error(cRed(err instanceof Error ? err.stack ?? err.message : String(err)));
+  (code) => process.exit(code),
+  (err) => {
+    console.error(
+      cRed(err instanceof Error ? (err.stack ?? err.message) : String(err)),
+    );
     process.exit(1);
   },
 );

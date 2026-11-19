@@ -39,8 +39,8 @@
       border-radius: 4px;
     }
 
-    /* 
-      Visual State - Native Browser Logic 
+    /*
+      Visual State - Native Browser Logic
       We duplicate styles for the fallback class to ensure consistency.
       :is() keeps the rule working where :user-invalid isn't supported: in a plain
       selector list, one unsupported selector drops the whole rule.
@@ -261,7 +261,7 @@
                 if (event.type === 'input' || event.type === 'change') {
                   state.hasInteracted = true;
                   dirtyState.set(input, state);
-                
+
                   // Only update live if they've already blurred once (mimicking native behavior)
                   if (state.hasBlurred) {
                     updateState(input);

@@ -61,9 +61,9 @@
         const section = sections[i];
         const rect = section.getBoundingClientRect();
         const height = section.offsetHeight;
-        
+
         section.style.height = (250 + Math.sin(window.scrollY / 10) * 10) + 'px';
-        
+
         const overlap = Math.min(window.innerHeight, rect.bottom) - Math.max(0, rect.top);
         if (overlap > maxOverlap) {
           maxOverlap = overlap;

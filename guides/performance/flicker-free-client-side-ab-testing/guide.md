@@ -60,7 +60,7 @@ If the experiment requires a variant stylesheet, use `blocking="render"` on the 
     rel="stylesheet"
     href="https://cdn.example.com/experiment-variant-b.css"
     blocking="render"
-  >
+  />
 </head>
 ```
 
@@ -77,8 +77,9 @@ If the experiment logic is lightweight enough to inline, use an inline module sc
   -->
   <script type="module" blocking="render">
     // Fetch the experiment configuration from your testing platform.
-    const config = await fetch('/api/experiment?id=homepage-cta')
-      .then(res => res.json());
+    const config = await fetch("/api/experiment?id=homepage-cta").then((res) =>
+      res.json(),
+    );
 
     // Apply the variant by setting a data attribute on <html>.
     // CSS rules keyed to this attribute will style the variant.
@@ -132,16 +133,16 @@ DO: Use a lightweight anti-flicker snippet as a fallback only when `blocking="re
   <script>
     // DO: Only apply the anti-flicker fallback in browsers
     // that do not support blocking="render".
-    if (!Object.hasOwn(HTMLScriptElement.prototype, 'blocking')) {
+    if (!Object.hasOwn(HTMLScriptElement.prototype, "blocking")) {
       // Hide the page until the experiment script runs.
-      document.documentElement.classList.add('ab-loading');
+      document.documentElement.classList.add("ab-loading");
 
       // DO: Set a timeout to reveal the page if the experiment
       // script takes too long. This prevents an indefinitely
       // blank page on slow connections. Adjust the timeout
       // to match your experiment SDK's expected load time.
       setTimeout(() => {
-        document.documentElement.classList.remove('ab-loading');
+        document.documentElement.classList.remove("ab-loading");
       }, 4000);
     }
   </script>
@@ -162,7 +163,7 @@ DO: Use a lightweight anti-flicker snippet as a fallback only when `blocking="re
 // DO: In your experiment SDK's initialization callback,
 // remove the fallback class to reveal the page.
 function onExperimentReady() {
-  document.documentElement.classList.remove('ab-loading');
+  document.documentElement.classList.remove("ab-loading");
 }
 ```
 

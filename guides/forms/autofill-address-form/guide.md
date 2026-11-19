@@ -17,8 +17,8 @@ Outlined below are the most important guidelines for building successful address
 
 Make the most of the elements and attributes built for creating forms:
 
--   `<form>`, `<input>`, `<label>`, and `<button>`
--   `type`, `autocomplete`, and `inputmode`
+- `<form>`, `<input>`, `<label>`, and `<button>`
+- `type`, `autocomplete`, and `inputmode`
 
 These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
@@ -34,8 +34,8 @@ Always use `type="email"` for email addresses and `type="tel"` for phone numbers
 
 ```html
 <!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
-<input type="email" id="email" name="email" autocomplete="email" required>
-<input type="tel" id="phone" name="phone" autocomplete="tel">
+<input type="email" id="email" name="email" autocomplete="email" required />
+<input type="tel" id="phone" name="phone" autocomplete="tel" />
 ```
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
@@ -51,7 +51,7 @@ Give each form submit button a value that says what it does. For each step towar
 Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
 
 ```html
-<input type="text" id="fullname" name="fullname" autocomplete="name">
+<input type="text" id="fullname" name="fullname" autocomplete="name" />
 ```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
@@ -64,7 +64,12 @@ Use a single `<textarea>` element for the street address if possible.
 
 ```html
 <!-- textarea handles multi-line international address formats that split inputs can't accommodate -->
-<textarea id="address" name="address" autocomplete="street-address" required></textarea>
+<textarea
+  id="address"
+  name="address"
+  autocomplete="street-address"
+  required
+></textarea>
 ```
 
 This is the most flexible option for a variety of local and international address formats.
@@ -73,8 +78,19 @@ If your data model needs separate address lines, use one `<input>` per line with
 
 ```html
 <!-- Alternative: one input per line, each with its own autocomplete token -->
-<input type="text" id="address-line1" name="address-line1" autocomplete="address-line1" required>
-<input type="text" id="address-line2" name="address-line2" autocomplete="address-line2">
+<input
+  type="text"
+  id="address-line1"
+  name="address-line1"
+  autocomplete="address-line1"
+  required
+/>
+<input
+  type="text"
+  id="address-line2"
+  name="address-line2"
+  autocomplete="address-line2"
+/>
 ```
 
 ### Help save users from accidentally missing data fields
@@ -82,7 +98,13 @@ If your data model needs separate address lines, use one `<input>` per line with
 Add the `required` attribute to mandatory fields.
 
 ```html
-<input type="text" id="city" name="city" autocomplete="address-level2" required>
+<input
+  type="text"
+  id="city"
+  name="city"
+  autocomplete="address-level2"
+  required
+/>
 ```
 
 ### Fallback strategies

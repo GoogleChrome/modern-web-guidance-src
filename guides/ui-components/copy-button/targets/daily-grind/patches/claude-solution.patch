@@ -5,7 +5,7 @@ index 66c9173..b6f2b74 100644
 @@ -135,6 +135,149 @@
        background: #3e2723;
      }
- 
+
 +    /* Copy buttons */
 +    .copy {
 +      position: relative; /* positioning context for the bubble */
@@ -227,7 +227,7 @@ index 66c9173..b6f2b74 100644
 @@ -207,6 +401,60 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      const timers = new WeakMap();
@@ -283,5 +283,5 @@ index 66c9173..b6f2b74 100644
 +  </script>
 +
  </body>
- 
+
  </html>

@@ -22,7 +22,7 @@ To implement this successfully:
 In this example, a feed starts scrolled to a specific "featured" item rather than the very top of the list.
 
 ```css
-/** 
+/**
  * TARGET: The item that should be visible on initial load.
  */
 .item.target {

@@ -55,10 +55,10 @@
       const initialHeight = 200;
       const finalHeight = 50;
       const scrollDistance = 150;
-      
+
       const scrollPercent = Math.min(1, scrollY / scrollDistance);
       const newHeight = initialHeight - (initialHeight - finalHeight) * scrollPercent;
-      
+
       header.style.height = newHeight + 'px';
     });
   </script>

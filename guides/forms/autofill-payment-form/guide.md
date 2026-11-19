@@ -21,8 +21,8 @@ Outlined below are the most important guidelines for building successful payment
 
 Make the most of the elements and attributes built for creating forms:
 
--   `<form>`, `<input>`, `<label>`, and `<button>`
--   `type`, `autocomplete`, and `inputmode`
+- `<form>`, `<input>`, `<label>`, and `<button>`
+- `type`, `autocomplete`, and `inputmode`
 
 These enable built-in browser functionality, improve accessibility, and add meaning to markup.
 
@@ -38,8 +38,8 @@ Always use `type="email"` for email addresses and `type="tel"` for phone numbers
 
 ```html
 <!-- type="email"/"tel" gives mobile users the right keyboard and enables built-in validation -->
-<input type="email" id="email" name="email" autocomplete="email" required>
-<input type="tel" id="phone" name="phone" autocomplete="tel">
+<input type="email" id="email" name="email" autocomplete="email" required />
+<input type="tel" id="phone" name="phone" autocomplete="tel" />
 ```
 
 Every `<input>`, `<select>`, and `<textarea>` element SHOULD have an appropriate `autocomplete` attribute, to improve accessibility and help users avoid re-entering data.
@@ -55,7 +55,7 @@ Give each form submit button a value that says what it does. For each step towar
 Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
 
 ```html
-<input type="text" id="fullname" name="fullname" autocomplete="name">
+<input type="text" id="fullname" name="fullname" autocomplete="name" />
 ```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
@@ -74,9 +74,9 @@ Use appropriate autocomplete values for the billing address, just as you do for 
 
 ```html
 <!-- Prefix with shipping or billing; note that the valid token is address-line1 (no hyphen before the digit) -->
-<input autocomplete="shipping address-line1" ...>
+<input autocomplete="shipping address-line1" ... />
 ...
-<input autocomplete="billing address-line1" ...>
+<input autocomplete="billing address-line1" ... />
 ```
 
 ### Show checkout progress
@@ -93,22 +93,52 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
 <!-- cc-number tells autofill this is a card number, not a generic number field -->
 <!-- inputmode="numeric" gives a numeric keyboard without the increment/decrement spinner -->
 <!-- DO NOT use type="number" — it adds increment/decrement controls and strips leading zeros -->
-<input id="cc-number" name="cc-number" type="text" autocomplete="cc-number"
-       inputmode="numeric" maxlength="19" pattern="[\d ]{13,19}" required>
+<input
+  id="cc-number"
+  name="cc-number"
+  type="text"
+  autocomplete="cc-number"
+  inputmode="numeric"
+  maxlength="19"
+  pattern="[\d ]{13,19}"
+  required
+/>
 
 <!-- cc-name autofills with the name exactly as it appears on the card; Unicode pattern allows international names -->
-<input id="cc-name" name="cc-name" type="text" autocomplete="cc-name"
-       maxlength="50" pattern="[\p{L} \-\.]+" required>
+<input
+  id="cc-name"
+  name="cc-name"
+  type="text"
+  autocomplete="cc-name"
+  maxlength="50"
+  pattern="[\p{L} \-\.]+"
+  required
+/>
 
 <!-- cc-exp autofills the full expiry date as MM/YY -->
 <!-- MANDATORY: Place format hints above the input so autocomplete popovers or virtual keyboards do not obscure them during editing -->
 <span id="exp-hint" class="hint">Format: MM/YY</span>
-<input id="cc-exp" name="cc-exp" type="text" autocomplete="cc-exp"
-       aria-describedby="exp-hint" maxlength="5" required>
+<input
+  id="cc-exp"
+  name="cc-exp"
+  type="text"
+  autocomplete="cc-exp"
+  aria-describedby="exp-hint"
+  maxlength="5"
+  required
+/>
 
 <!-- cc-csc autofills the security code; DO NOT use type="password" here -->
-<input id="cc-csc" name="cc-csc" type="text" autocomplete="cc-csc"
-       inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
+<input
+  id="cc-csc"
+  name="cc-csc"
+  type="text"
+  autocomplete="cc-csc"
+  inputmode="numeric"
+  maxlength="4"
+  pattern="[0-9]{3,4}"
+  required
+/>
 ```
 
 ### Show format hints above the input

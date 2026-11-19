@@ -9,7 +9,8 @@ web-feature-ids:
 
 When a web application served from a `public` origin (or an intranet `local` origin) connects to a user's private local network (such as a LAN printer, IoT hub, or router at `192.168.1.x` or `device.local`) or to a local companion service running on the user's machine (`127.0.0.1`, `[::1]`, or `localhost`), browsers gate the connection behind a **Local Network Access (LNA)** permission prompt.
 
-Local Network Access splits access into two granular permissions and `Permissions-Policy` tokens based on the IP address space lattice (`public` → `local` → `loopback`), enforcing checks **only** when a request crosses from a *less private* address space into a *more private* address space:
+Local Network Access splits access into two granular permissions and `Permissions-Policy` tokens based on the IP address space lattice (`public` → `local` → `loopback`), enforcing checks **only** when a request crosses from a _less private_ address space into a _more private_ address space:
+
 - **`local-network`**: Required when connecting from a `public` origin to the `local` address space (RFC 1918 private IPv4 ranges `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, link-local `169.254.0.0/16` / `fe80::/10`, IPv6 Unique Local Addresses `fc00::/7`, and `.local` mDNS hostnames).
 - **`loopback-network`**: Required when connecting from a `public` or `local` origin to the `loopback` address space (`127.0.0.0/8`, `::1/128`, or `localhost`).
 
@@ -26,6 +27,7 @@ Because `localhost` (`127.0.0.1` and `[::1]`) is already in the most private (`l
 Never fire local network or loopback requests unconditionally on page load (`DOMContentLoaded`) when the permission state is `'prompt'`, and never initiate the first permission-triggering request from a **Service Worker** or **Shared Worker** (which lack an attached `Document` and will immediately fail if permission is not already `'granted'`).
 
 Instead, query `navigator.permissions.query()` for `'local-network'` or `'loopback-network'` first:
+
 - If `state === 'granted'`, connect automatically.
 - If `state === 'prompt'`, display clear UI explaining why the app needs access to the local device or companion app, and trigger the request from an explicit user gesture (such as a button click).
 - If `state === 'denied'`, render actionable remediation UI instructing the user how to re-enable Local Network or Loopback access in browser site settings.
@@ -39,7 +41,7 @@ export async function checkNetworkPermission(permissionName) {
   const status = await navigator.permissions.query({ name: permissionName });
 
   // Keep UI synchronized if the user changes permission in browser site settings
-  status.addEventListener('change', () => {
+  status.addEventListener("change", () => {
     updatePermissionUI(permissionName, status.state);
   });
 
@@ -48,14 +50,18 @@ export async function checkNetworkPermission(permissionName) {
 }
 
 function updatePermissionUI(permissionName, state) {
-  const statusBadge = document.querySelector(`[data-permission-status="${permissionName}"]`);
-  const remediationBox = document.querySelector(`[data-remediation="${permissionName}"]`);
+  const statusBadge = document.querySelector(
+    `[data-permission-status="${permissionName}"]`,
+  );
+  const remediationBox = document.querySelector(
+    `[data-remediation="${permissionName}"]`,
+  );
   if (statusBadge) {
     statusBadge.textContent = state;
   }
   if (remediationBox) {
     // Show remediation instructions whenever permission is explicitly denied
-    remediationBox.hidden = state !== 'denied';
+    remediationBox.hidden = state !== "denied";
   }
 }
 ```
@@ -65,7 +71,8 @@ function updatePermissionUI(permissionName, state) {
 When an `https://` page requests an `http://` endpoint on the local network or loopback interface, specify `targetAddressSpace: 'local'` or `targetAddressSpace: 'loopback'` in the `fetch()` or `Request` options.
 
 Explicitly setting `targetAddressSpace` does two critical things:
-1. **Mixed Content Exemption**: Mixed Content checks run *before* DNS resolution. Declaring `targetAddressSpace: 'local'` (or `'loopback'`) informs the browser ahead of DNS resolution that an `http://` URL (including a custom DNS hostname that resolves to a local IP) targets a local/loopback endpoint and should be exempted from Mixed Content blocking once the user grants the permission.
+
+1. **Mixed Content Exemption**: Mixed Content checks run _before_ DNS resolution. Declaring `targetAddressSpace: 'local'` (or `'loopback'`) informs the browser ahead of DNS resolution that an `http://` URL (including a custom DNS hostname that resolves to a local IP) targets a local/loopback endpoint and should be exempted from Mixed Content blocking once the user grants the permission.
 2. **Address Space Verification**: After DNS resolution, the browser verifies that the resolved IP address actually belongs to the declared `targetAddressSpace`. If a hostname with `targetAddressSpace: 'local'` unexpectedly resolves to a `public` IP address, the browser immediately aborts the request with a `TypeError` network error.
 
 ```javascript
@@ -73,12 +80,14 @@ Explicitly setting `targetAddressSpace` does two critical things:
  * Connects to a local network device (e.g., LAN printer or IoT hub) over HTTP.
  * Example endpoint URL is illustrative; replace with your device's address.
  */
-export async function fetchLocalDeviceStatus(deviceUrl = 'http://192.168.1.100:8080/api/status') {
+export async function fetchLocalDeviceStatus(
+  deviceUrl = "http://192.168.1.100:8080/api/status",
+) {
   const request = new Request(deviceUrl, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     // MANDATORY: Declare 'local' when targeting RFC 1918 / .local LAN addresses
-    targetAddressSpace: 'local',
+    targetAddressSpace: "local",
   });
 
   const response = await fetch(request);
@@ -92,12 +101,14 @@ export async function fetchLocalDeviceStatus(deviceUrl = 'http://192.168.1.100:8
  * Connects to a local companion daemon running on the user's loopback interface.
  * Example loopback port is illustrative; replace with your service's port.
  */
-export async function fetchLoopbackDaemon(daemonUrl = 'http://127.0.0.1:45678/health') {
+export async function fetchLoopbackDaemon(
+  daemonUrl = "http://127.0.0.1:45678/health",
+) {
   const request = new Request(daemonUrl, {
-    method: 'GET',
-    mode: 'cors',
+    method: "GET",
+    mode: "cors",
     // MANDATORY: Declare 'loopback' when targeting 127.0.0.1, [::1], or localhost
-    targetAddressSpace: 'loopback',
+    targetAddressSpace: "loopback",
   });
 
   const response = await fetch(request);
@@ -119,22 +130,25 @@ Local Network Access restrictions also govern `WebSocket` and `WebTransport` con
 /**
  * Opens a WebSocket connection to a local network device (IP literal, .local, or localhost).
  */
-export function openLocalWebSocket(wsUrl = 'ws://192.168.1.100:8080/stream') {
+export function openLocalWebSocket(wsUrl = "ws://192.168.1.100:8080/stream") {
   // Pass only subprotocol string(s) as the second argument (never an options object).
   // Browsers exempt ws:// from Mixed Content when the host is a local/loopback IP literal,
   // .local, or localhost, and gate the connection on 'local-network' or 'loopback-network'.
-  const socket = new WebSocket(wsUrl, ['v1.telemetry']);
+  const socket = new WebSocket(wsUrl, ["v1.telemetry"]);
   return socket;
 }
 
 /**
  * Opens a WebTransport session to a local network endpoint using a pinned self-signed certificate hash.
  */
-export async function openLocalWebTransport(wtUrl = 'https://192.168.1.100:4433/wt', certSha256Bytes) {
+export async function openLocalWebTransport(
+  wtUrl = "https://192.168.1.100:4433/wt",
+  certSha256Bytes,
+) {
   const transport = new WebTransport(wtUrl, {
     serverCertificateHashes: [
       {
-        algorithm: 'sha-256',
+        algorithm: "sha-256",
         value: certSha256Bytes,
       },
     ],
@@ -156,7 +170,8 @@ By default, `local-network` and `loopback-network` have a default allowlist of `
 <iframe
   src="https://setup.partner.example.com/device-bridge"
   allow="local-network; loopback-network"
-  title="Local Device Bridge">
+  title="Local Device Bridge"
+>
 </iframe>
 ```
 
@@ -184,14 +199,14 @@ If your Baseline target does not support Local Network Access permissions and `t
  */
 export async function queryLnaPermissionSafe(permissionName) {
   if (!navigator.permissions?.query) {
-    return 'prompt';
+    return "prompt";
   }
   try {
     const status = await navigator.permissions.query({ name: permissionName });
     return status.state;
   } catch {
     // Unrecognized permission name; proceed on user gesture
-    return 'prompt';
+    return "prompt";
   }
 }
 ```

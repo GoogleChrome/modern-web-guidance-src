@@ -4,7 +4,7 @@ index 66c9173..3a74815 100644
 +++ b/index.html
 @@ -28,7 +28,7 @@
      }
- 
+
      /* Navigation */
 -    nav {
 +    .site-header {
@@ -14,18 +14,18 @@ index 66c9173..3a74815 100644
 @@ -46,23 +46,23 @@
        letter-spacing: 1px;
      }
- 
+
 -    nav ul {
 +    .site-header ul {
        display: flex;
        list-style: none;
      }
- 
+
 -    nav ul li {
 +    .site-header li {
        margin-left: 20px;
      }
- 
+
 -    nav a {
 +    .site-header a {
        color: white;
@@ -33,16 +33,16 @@ index 66c9173..3a74815 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    .site-header a:hover {
        color: var(--accent);
      }
- 
+
 @@ -93,6 +93,10 @@
        margin-bottom: 1rem;
      }
- 
+
 +    .section-title {
 +      text-align: center;
 +    }
@@ -52,7 +52,7 @@ index 66c9173..3a74815 100644
        max-width: 1100px;
 @@ -101,6 +105,7 @@
      }
- 
+
      .grid {
 +      list-style: none;
        display: grid;
@@ -61,7 +61,7 @@ index 66c9173..3a74815 100644
 @@ -146,6 +151,18 @@
        margin-bottom: 20px;
      }
- 
+
 +    .footer-links ul {
 +      display: flex;
 +      flex-wrap: wrap;
@@ -78,9 +78,9 @@ index 66c9173..3a74815 100644
        margin: 0 10px;
        color: var(--text);
 @@ -157,53 +174,63 @@
- 
+
  <body>
- 
+
 -  <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -108,7 +108,7 @@ index 66c9173..3a74815 100644
 +      </ul>
 +    </nav>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -163,7 +163,7 @@ index 66c9173..3a74815 100644
 +      </ul>
      </section>
    </main>
- 
+
    <footer>
 -    <div class="footer-links">
 -      <a href="/about">Our Story</a> |
@@ -181,4 +181,4 @@ index 66c9173..3a74815 100644
 +    </nav>
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+

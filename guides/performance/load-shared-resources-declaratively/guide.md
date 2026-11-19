@@ -46,15 +46,15 @@ Popular scripts, stylesheets, and JavaScript modules, such as UI frameworks or w
 // import attribute support.
 let mod;
 try {
-  mod = await import('/assets/shared-config.js', {
+  mod = await import("/assets/shared-config.js", {
     with: {
-      integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
-      crossOriginStorage: '*',
+      integrity: "sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=",
+      crossOriginStorage: "*",
     },
   });
 } catch {
   // Fall back to a plain import of the same URL.
-  mod = await import('/assets/shared-config.js');
+  mod = await import("/assets/shared-config.js");
 }
 ```
 

@@ -13,7 +13,7 @@ index 66c9173..883b9cc 100644
 @@ -120,6 +120,10 @@
        color: var(--primary);
      }
- 
+
 +    coffee-favorite:not(:defined) {
 +      display: none;
 +    }
@@ -44,10 +44,10 @@ index 66c9173..883b9cc 100644
 @@ -207,6 +214,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/src/coffee-favorite.ts"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..0a1d82a 100644

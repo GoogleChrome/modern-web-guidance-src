@@ -5,7 +5,7 @@ index 66c9173..5d1b043 100644
 @@ -46,6 +46,10 @@
        letter-spacing: 1px;
      }
- 
+
 +    .logo::before {
 +      content: "☕ " / "";
 +    }
@@ -16,7 +16,7 @@ index 66c9173..5d1b043 100644
 @@ -72,6 +76,10 @@
        border-radius: 4px;
      }
- 
+
 +    .logout-link::before {
 +      content: "↪ " / "";
 +    }
@@ -27,7 +27,7 @@ index 66c9173..5d1b043 100644
 @@ -135,6 +143,10 @@
        background: #3e2723;
      }
- 
+
 +    .btn::after {
 +      content: " →" / "";
 +    }
@@ -47,9 +47,9 @@ index 66c9173..5d1b043 100644
 +    }
    </style>
  </head>
- 
+
 @@ -199,9 +217,9 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

@@ -66,7 +66,7 @@ index 66c9173..cf9d6d8 100644
 +    }
    </style>
  </head>
- 
+
 @@ -178,20 +236,41 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -124,7 +124,7 @@ index 66c9173..cf9d6d8 100644
 @@ -207,6 +286,16 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
 +      content.addEventListener('focusin', (event) => {
@@ -136,5 +136,5 @@ index 66c9173..cf9d6d8 100644
 +  </script>
 +
  </body>
- 
+
  </html>

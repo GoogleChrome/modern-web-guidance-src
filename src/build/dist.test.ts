@@ -1,285 +1,599 @@
-import test from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { execSync } from 'node:child_process';
-import matter from '@11ty/gray-matter';
-import { rootDir } from '../core/paths.ts';
-import { loadVectors, type CompactSearchResult, type UseCaseResult } from '../rag/search.ts';
+import test from "node:test";
+import assert from "node:assert";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { execSync } from "node:child_process";
+import matter from "@11ty/gray-matter";
+import { rootDir } from "../core/paths.ts";
+import {
+  loadVectors,
+  type CompactSearchResult,
+  type UseCaseResult,
+} from "../rag/search.ts";
 
 export function assertSearchResults(output: string) {
-    const results = JSON.parse(output) as CompactSearchResult[];
-    assert.ok(Array.isArray(results), 'Output should be a JSON array');
-    assert.strictEqual(results.length, 10, 'Default CLI search should return top-10 results');
-    
-    const hasAddressForm = results.some(r => r.id === 'autofill-address-form');
-    assert.ok(hasAddressForm, 'Results should contain autofill-address-form');
-    
-    const topResult = results[0];
-    assert.ok(topResult.id, 'Top result should have an id');
-    assert.ok(topResult.description, 'Top result should have a description');
-    assert.deepStrictEqual(Object.keys(topResult).sort(), ['description', 'id']);
+  const results = JSON.parse(output) as CompactSearchResult[];
+  assert.ok(Array.isArray(results), "Output should be a JSON array");
+  assert.strictEqual(
+    results.length,
+    10,
+    "Default CLI search should return top-10 results",
+  );
+
+  const hasAddressForm = results.some((r) => r.id === "autofill-address-form");
+  assert.ok(hasAddressForm, "Results should contain autofill-address-form");
+
+  const topResult = results[0];
+  assert.ok(topResult.id, "Top result should have an id");
+  assert.ok(topResult.description, "Top result should have a description");
+  assert.deepStrictEqual(Object.keys(topResult).sort(), ["description", "id"]);
 }
 
 const ROOT_DIR = rootDir; // modern-web-guidance-src/
 const STAGING_DIR = path.join(ROOT_DIR, "dist/skills-cli");
 
-
-test('Claude Plugin Config in Dist', async () => {
-  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.claude-plugin/marketplace.json'), 'utf8');
+test("Claude Plugin Config in Dist", async () => {
+  const marketplaceJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".claude-plugin/marketplace.json"),
+    "utf8",
+  );
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
-  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
-  assert.strictEqual(marketplaceJson.owner.name, 'Google Chrome', 'marketplace.json owner should be Google Chrome');
-  
-  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'should have plugins');
-  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
-  assert.strictEqual(marketplaceJson.plugins[0].source, './');
+  assert.strictEqual(
+    marketplaceJson.name,
+    "googlechrome",
+    "marketplace.json name should be googlechrome",
+  );
+  assert.strictEqual(
+    marketplaceJson.owner.name,
+    "Google Chrome",
+    "marketplace.json owner should be Google Chrome",
+  );
 
-  const pluginJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.claude-plugin/plugin.json'), 'utf8');
+  assert.ok(
+    Array.isArray(marketplaceJson.plugins) &&
+      marketplaceJson.plugins.length > 0,
+    "should have plugins",
+  );
+  assert.strictEqual(marketplaceJson.plugins[0].name, "modern-web-guidance");
+  assert.strictEqual(marketplaceJson.plugins[0].source, "./");
+
+  const pluginJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".claude-plugin/plugin.json"),
+    "utf8",
+  );
   const pluginJson = JSON.parse(pluginJsonRaw);
-  assert.strictEqual(pluginJson.name, 'modern-web-guidance', 'plugin.json name should match');
-  assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
+  assert.strictEqual(
+    pluginJson.name,
+    "modern-web-guidance",
+    "plugin.json name should match",
+  );
+  assert.strictEqual(
+    pluginJson.author.name,
+    "Google Chrome",
+    "plugin.json author should be Google Chrome",
+  );
 });
 
-test('Grok Plugin Config in Dist', async () => {
-  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.grok-plugin/marketplace.json'), 'utf8');
+test("Grok Plugin Config in Dist", async () => {
+  const marketplaceJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".grok-plugin/marketplace.json"),
+    "utf8",
+  );
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
-  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
-  assert.strictEqual(marketplaceJson.owner.name, 'Google Chrome', 'marketplace.json owner should be Google Chrome');
-  
-  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'should have plugins');
-  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
-  assert.strictEqual(marketplaceJson.plugins[0].source, './');
+  assert.strictEqual(
+    marketplaceJson.name,
+    "googlechrome",
+    "marketplace.json name should be googlechrome",
+  );
+  assert.strictEqual(
+    marketplaceJson.owner.name,
+    "Google Chrome",
+    "marketplace.json owner should be Google Chrome",
+  );
+
+  assert.ok(
+    Array.isArray(marketplaceJson.plugins) &&
+      marketplaceJson.plugins.length > 0,
+    "should have plugins",
+  );
+  assert.strictEqual(marketplaceJson.plugins[0].name, "modern-web-guidance");
+  assert.strictEqual(marketplaceJson.plugins[0].source, "./");
 });
 
-test('Codex Plugin Config in Dist', async () => {
-  const pluginJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.codex-plugin/plugin.json'), 'utf8');
+test("Codex Plugin Config in Dist", async () => {
+  const pluginJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".codex-plugin/plugin.json"),
+    "utf8",
+  );
   const pluginJson = JSON.parse(pluginJsonRaw);
-  assert.strictEqual(pluginJson.name, 'modern-web-guidance', 'plugin.json name should match');
-  assert.strictEqual(pluginJson.author.name, 'Google Chrome', 'plugin.json author should be Google Chrome');
-  assert.strictEqual(pluginJson.skills, './skills/', 'plugin.json skills should point to ./skills/');
+  assert.strictEqual(
+    pluginJson.name,
+    "modern-web-guidance",
+    "plugin.json name should match",
+  );
+  assert.strictEqual(
+    pluginJson.author.name,
+    "Google Chrome",
+    "plugin.json author should be Google Chrome",
+  );
+  assert.strictEqual(
+    pluginJson.skills,
+    "./skills/",
+    "plugin.json skills should point to ./skills/",
+  );
 
   // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
-  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
-  assert.strictEqual(pluginJson.version, pkgJson.version, 'plugin.json version should match package.json version');
+  const pkgJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "package.json"), "utf8"),
+  );
+  assert.strictEqual(
+    pluginJson.version,
+    pkgJson.version,
+    "plugin.json version should match package.json version",
+  );
 
   // Codex resolves skills directory relative to the plugin root (the dist dir)
-  assert.ok(pluginJson.skills.startsWith('./'), `Codex skills path ${pluginJson.skills} must start with './'`);
+  assert.ok(
+    pluginJson.skills.startsWith("./"),
+    `Codex skills path ${pluginJson.skills} must start with './'`,
+  );
   const resolvedSkillsDir = path.join(STAGING_DIR, pluginJson.skills);
-  await assert.doesNotReject(fs.access(resolvedSkillsDir), `Codex skills path ${pluginJson.skills} must resolve to a valid directory`);
-  const skillMdPath = path.join(resolvedSkillsDir, 'modern-web-guidance/SKILL.md');
-  await assert.doesNotReject(fs.access(skillMdPath), `Codex skills directory must contain modern-web-guidance/SKILL.md`);
+  await assert.doesNotReject(
+    fs.access(resolvedSkillsDir),
+    `Codex skills path ${pluginJson.skills} must resolve to a valid directory`,
+  );
+  const skillMdPath = path.join(
+    resolvedSkillsDir,
+    "modern-web-guidance/SKILL.md",
+  );
+  await assert.doesNotReject(
+    fs.access(skillMdPath),
+    `Codex skills directory must contain modern-web-guidance/SKILL.md`,
+  );
 
   // Interface metadata validation
-  assert.strictEqual(pluginJson.interface.category, 'Developer Tools', 'plugin.json interface category should be Developer Tools');
-  assert.ok(pluginJson.interface.shortDescription, 'plugin.json must define interface.shortDescription');
-  assert.ok(pluginJson.interface.shortDescription.length < 30, `shortDescription must be fewer than 30 characters (was ${pluginJson.interface.shortDescription.length})`);
-  assert.ok(pluginJson.interface.composerIcon, 'plugin.json must define interface.composerIcon');
-  assert.ok(pluginJson.interface.composerIcon.startsWith('./'), 'composerIcon path must start with ./');
-  const resolvedComposerIcon = path.join(STAGING_DIR, pluginJson.interface.composerIcon);
-  await assert.doesNotReject(fs.access(resolvedComposerIcon), 'composerIcon must resolve to an existing file');
+  assert.strictEqual(
+    pluginJson.interface.category,
+    "Developer Tools",
+    "plugin.json interface category should be Developer Tools",
+  );
+  assert.ok(
+    pluginJson.interface.shortDescription,
+    "plugin.json must define interface.shortDescription",
+  );
+  assert.ok(
+    pluginJson.interface.shortDescription.length < 30,
+    `shortDescription must be fewer than 30 characters (was ${pluginJson.interface.shortDescription.length})`,
+  );
+  assert.ok(
+    pluginJson.interface.composerIcon,
+    "plugin.json must define interface.composerIcon",
+  );
+  assert.ok(
+    pluginJson.interface.composerIcon.startsWith("./"),
+    "composerIcon path must start with ./",
+  );
+  const resolvedComposerIcon = path.join(
+    STAGING_DIR,
+    pluginJson.interface.composerIcon,
+  );
+  await assert.doesNotReject(
+    fs.access(resolvedComposerIcon),
+    "composerIcon must resolve to an existing file",
+  );
 
-  assert.ok(pluginJson.interface.logo, 'plugin.json must define interface.logo');
-  assert.ok(pluginJson.interface.logo.startsWith('./'), 'logo path must start with ./');
+  assert.ok(
+    pluginJson.interface.logo,
+    "plugin.json must define interface.logo",
+  );
+  assert.ok(
+    pluginJson.interface.logo.startsWith("./"),
+    "logo path must start with ./",
+  );
   const resolvedLogo = path.join(STAGING_DIR, pluginJson.interface.logo);
-  await assert.doesNotReject(fs.access(resolvedLogo), 'logo must resolve to an existing file');
+  await assert.doesNotReject(
+    fs.access(resolvedLogo),
+    "logo must resolve to an existing file",
+  );
 
   // Directory listing URLs. The OpenAI submission portal flags missing support, privacy policy,
   // and terms URLs as findings, so keep all four present, HTTPS, and within the 1,024-char
   // final-submission limit (https://developers.openai.com/plugins/deploy/submission-errors).
-  for (const urlField of ['websiteURL', 'supportURL', 'privacyPolicyURL', 'termsOfServiceURL']) {
+  for (const urlField of [
+    "websiteURL",
+    "supportURL",
+    "privacyPolicyURL",
+    "termsOfServiceURL",
+  ]) {
     const url = pluginJson.interface[urlField];
-    assert.ok(typeof url === 'string' && url.length > 0, `plugin.json must define interface.${urlField}`);
-    assert.ok(url.startsWith('https://'), `interface.${urlField} must be an HTTPS URL (was ${url})`);
-    assert.ok(url.length <= 1024, `interface.${urlField} must be 1,024 characters or fewer`);
+    assert.ok(
+      typeof url === "string" && url.length > 0,
+      `plugin.json must define interface.${urlField}`,
+    );
+    assert.ok(
+      url.startsWith("https://"),
+      `interface.${urlField} must be an HTTPS URL (was ${url})`,
+    );
+    assert.ok(
+      url.length <= 1024,
+      `interface.${urlField} must be 1,024 characters or fewer`,
+    );
   }
-  assert.ok(pluginJson.interface.defaultPrompt.length <= 3, 'interface.defaultPrompt must contain at most three prompts');
+  assert.ok(
+    pluginJson.interface.defaultPrompt.length <= 3,
+    "interface.defaultPrompt must contain at most three prompts",
+  );
   for (const prompt of pluginJson.interface.defaultPrompt) {
-    assert.ok(prompt.length <= 128, `defaultPrompt entries must be 128 characters or fewer (was ${prompt.length}: ${prompt})`);
+    assert.ok(
+      prompt.length <= 128,
+      `defaultPrompt entries must be 128 characters or fewer (was ${prompt.length}: ${prompt})`,
+    );
   }
 
   // Codex Marketplace config validation
-  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.agents/plugins/marketplace.json'), 'utf8');
+  const marketplaceJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".agents/plugins/marketplace.json"),
+    "utf8",
+  );
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
-  assert.strictEqual(marketplaceJson.name, 'googlechrome', 'marketplace.json name should be googlechrome');
-  assert.strictEqual(marketplaceJson.interface.displayName, 'Google Chrome', 'marketplace.json displayName should match');
-  assert.ok(Array.isArray(marketplaceJson.plugins) && marketplaceJson.plugins.length > 0, 'marketplace must declare plugins');
-  assert.strictEqual(marketplaceJson.plugins[0].name, 'modern-web-guidance');
-  assert.strictEqual(marketplaceJson.plugins[0].category, 'Developer Tools');
+  assert.strictEqual(
+    marketplaceJson.name,
+    "googlechrome",
+    "marketplace.json name should be googlechrome",
+  );
+  assert.strictEqual(
+    marketplaceJson.interface.displayName,
+    "Google Chrome",
+    "marketplace.json displayName should match",
+  );
+  assert.ok(
+    Array.isArray(marketplaceJson.plugins) &&
+      marketplaceJson.plugins.length > 0,
+    "marketplace must declare plugins",
+  );
+  assert.strictEqual(marketplaceJson.plugins[0].name, "modern-web-guidance");
+  assert.strictEqual(marketplaceJson.plugins[0].category, "Developer Tools");
   assert.strictEqual(marketplaceJson.plugins[0].version, pkgJson.version);
 
   // Distribution archive compatibility: verify no symbolic links exist
-  const distEntries = await fs.readdir(STAGING_DIR, { recursive: true, withFileTypes: true });
+  const distEntries = await fs.readdir(STAGING_DIR, {
+    recursive: true,
+    withFileTypes: true,
+  });
   for (const entry of distEntries) {
-    assert.strictEqual(entry.isSymbolicLink(), false, `Distribution should not contain symlinks: ${path.join(entry.parentPath, entry.name)}`);
+    assert.strictEqual(
+      entry.isSymbolicLink(),
+      false,
+      `Distribution should not contain symlinks: ${path.join(entry.parentPath, entry.name)}`,
+    );
   }
 });
 
-test('Gemini and VS Code manifests', async () => {
-  const geminiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'gemini-extension.json'), 'utf8'));
-  assert.strictEqual(geminiJson.name, 'modern-web-guidance');
-  assert.strictEqual(geminiJson.author.name, 'Google Chrome');
+test("Gemini and VS Code manifests", async () => {
+  const geminiJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "gemini-extension.json"), "utf8"),
+  );
+  assert.strictEqual(geminiJson.name, "modern-web-guidance");
+  assert.strictEqual(geminiJson.author.name, "Google Chrome");
 
-  const pkgJsonRaw = await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8');
+  const pkgJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, "package.json"),
+    "utf8",
+  );
   const pkgJson = JSON.parse(pkgJsonRaw);
-  assert.strictEqual(pkgJson.publisher, 'GoogleChrome');
-  assert.ok(pkgJson.contributes?.chatSkills, 'Must contribute chatSkills');
-  assert.strictEqual(pkgJson.contributes.chatSkills[0].path, './skills/modern-web-guidance/SKILL.md');
+  assert.strictEqual(pkgJson.publisher, "GoogleChrome");
+  assert.ok(pkgJson.contributes?.chatSkills, "Must contribute chatSkills");
+  assert.strictEqual(
+    pkgJson.contributes.chatSkills[0].path,
+    "./skills/modern-web-guidance/SKILL.md",
+  );
 });
 
-test('Kimi plugin manifest', async () => {
-  const kimiJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'kimi.plugin.json'), 'utf8'));
-  assert.strictEqual(kimiJson.name, 'modern-web-guidance');
-  assert.strictEqual(kimiJson.author.name, 'Google Chrome');
+test("Kimi plugin manifest", async () => {
+  const kimiJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "kimi.plugin.json"), "utf8"),
+  );
+  assert.strictEqual(kimiJson.name, "modern-web-guidance");
+  assert.strictEqual(kimiJson.author.name, "Google Chrome");
 
   // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
-  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
-  assert.strictEqual(kimiJson.version, pkgJson.version, 'kimi.plugin.json version should match package.json version');
+  const pkgJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "package.json"), "utf8"),
+  );
+  assert.strictEqual(
+    kimiJson.version,
+    pkgJson.version,
+    "kimi.plugin.json version should match package.json version",
+  );
 
   // Kimi resolves each `skills` entry relative to the plugin root (the dist dir)
-  assert.deepStrictEqual(kimiJson.skills, ['./skills/modern-web-guidance/', './skills/chrome-extensions/']);
+  assert.deepStrictEqual(kimiJson.skills, [
+    "./skills/modern-web-guidance/",
+    "./skills/chrome-extensions/",
+  ]);
   for (const skillDir of kimiJson.skills) {
-    assert.ok(skillDir.startsWith('./'), `Kimi skills path ${skillDir} must start with './'`);
-    const resolvedSkillMd = path.join(STAGING_DIR, skillDir, 'SKILL.md');
-    await assert.doesNotReject(fs.access(resolvedSkillMd), `Kimi skills path ${skillDir} must resolve to a directory containing SKILL.md`);
+    assert.ok(
+      skillDir.startsWith("./"),
+      `Kimi skills path ${skillDir} must start with './'`,
+    );
+    const resolvedSkillMd = path.join(STAGING_DIR, skillDir, "SKILL.md");
+    await assert.doesNotReject(
+      fs.access(resolvedSkillMd),
+      `Kimi skills path ${skillDir} must resolve to a directory containing SKILL.md`,
+    );
   }
 });
 
-test('Agent Plugins manifest (plugin.json)', async () => {
-  const pluginJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'plugin.json'), 'utf8'));
-  assert.strictEqual(pluginJson.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
-  assert.strictEqual(pluginJson.name, 'modern-web-guidance');
-  assert.strictEqual(pluginJson.author.name, 'Google Chrome');
-  assert.strictEqual(pluginJson.license, 'Apache-2.0');
+test("Agent Plugins manifest (plugin.json)", async () => {
+  const pluginJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "plugin.json"), "utf8"),
+  );
+  assert.strictEqual(
+    pluginJson.$schema,
+    "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  );
+  assert.strictEqual(pluginJson.name, "modern-web-guidance");
+  assert.strictEqual(pluginJson.author.name, "Google Chrome");
+  assert.strictEqual(pluginJson.license, "Apache-2.0");
 
   // updateVersionsInDir must keep the manifest version in sync with the rest of the distribution
-  const pkgJson = JSON.parse(await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8'));
-  assert.strictEqual(pluginJson.version, pkgJson.version, 'plugin.json version should match package.json version');
+  const pkgJson = JSON.parse(
+    await fs.readFile(path.join(STAGING_DIR, "package.json"), "utf8"),
+  );
+  assert.strictEqual(
+    pluginJson.version,
+    pkgJson.version,
+    "plugin.json version should match package.json version",
+  );
 
   // Agent Plugins 1.0 discovers skills at ./skills/<skill>/SKILL.md relative to plugin.json
-  const skillsDir = path.join(STAGING_DIR, 'skills');
-  await assert.doesNotReject(fs.access(skillsDir), 'Agent Plugins skills/ directory must exist at root');
-  for (const skillName of ['modern-web-guidance', 'chrome-extensions']) {
-    const skillMdPath = path.join(skillsDir, skillName, 'SKILL.md');
-    await assert.doesNotReject(fs.access(skillMdPath), `skills/${skillName}/SKILL.md must exist`);
+  const skillsDir = path.join(STAGING_DIR, "skills");
+  await assert.doesNotReject(
+    fs.access(skillsDir),
+    "Agent Plugins skills/ directory must exist at root",
+  );
+  for (const skillName of ["modern-web-guidance", "chrome-extensions"]) {
+    const skillMdPath = path.join(skillsDir, skillName, "SKILL.md");
+    await assert.doesNotReject(
+      fs.access(skillMdPath),
+      `skills/${skillName}/SKILL.md must exist`,
+    );
   }
 });
 
-test('SKILL.md validations', async () => {
-  const skillPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/SKILL.md');
-  await assert.doesNotReject(fs.access(skillPath), `Missing SKILL.md in modern-web-guidance`);
+test("SKILL.md validations", async () => {
+  const skillPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/SKILL.md",
+  );
+  await assert.doesNotReject(
+    fs.access(skillPath),
+    `Missing SKILL.md in modern-web-guidance`,
+  );
 
-  const content = await fs.readFile(skillPath, 'utf8');
+  const content = await fs.readFile(skillPath, "utf8");
   const { data } = matter(content);
   assert.ok(data.name, `Missing 'name' field in frontmatter`);
-  assert.strictEqual(data.name, 'modern-web-guidance', `Frontmatter name must match folder name`);
+  assert.strictEqual(
+    data.name,
+    "modern-web-guidance",
+    `Frontmatter name must match folder name`,
+  );
 });
 
-test('Discipline guides present (forms, performance)', async () => {
+test("Discipline guides present (forms, performance)", async () => {
   const checkGuide = async (name: string) => {
-    const guidesDir = path.join(STAGING_DIR, 'skills/modern-web-guidance/guides');
+    const guidesDir = path.join(
+      STAGING_DIR,
+      "skills/modern-web-guidance/guides",
+    );
     const guidePath = path.join(guidesDir, name, `${name}.md`);
-    await assert.doesNotReject(fs.access(guidePath), `Missing guide file in ${name}`);
+    await assert.doesNotReject(
+      fs.access(guidePath),
+      `Missing guide file in ${name}`,
+    );
   };
 
-  await checkGuide('forms');
-  await checkGuide('performance');
+  await checkGuide("forms");
+  await checkGuide("performance");
 });
 
-test('Manifest source paths resolve relative to dist directory', async () => {
+test("Manifest source paths resolve relative to dist directory", async () => {
   // Claude Code source
-  const marketplaceJsonRaw = await fs.readFile(path.join(STAGING_DIR, '.claude-plugin/marketplace.json'), 'utf8');
+  const marketplaceJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, ".claude-plugin/marketplace.json"),
+    "utf8",
+  );
   const marketplaceJson = JSON.parse(marketplaceJsonRaw);
   const claudeSourcePath = marketplaceJson.plugins[0].source;
   const resolvedClaudePath = path.join(STAGING_DIR, claudeSourcePath);
-  await assert.doesNotReject(fs.access(resolvedClaudePath), `Claude source path ${claudeSourcePath} must resolve to a valid directory`);
-  
+  await assert.doesNotReject(
+    fs.access(resolvedClaudePath),
+    `Claude source path ${claudeSourcePath} must resolve to a valid directory`,
+  );
+
   // Claude plugin resolution logic mapping
   // If source is './', the plugin resides precisely at STAGING_DIR/.claude-plugin/plugin.json
-  const expectedPluginJsonPath = path.join(resolvedClaudePath, '.claude-plugin/plugin.json');
-  await assert.doesNotReject(fs.access(expectedPluginJsonPath), `Claude Plugin must be resolving from the source pointer`);
+  const expectedPluginJsonPath = path.join(
+    resolvedClaudePath,
+    ".claude-plugin/plugin.json",
+  );
+  await assert.doesNotReject(
+    fs.access(expectedPluginJsonPath),
+    `Claude Plugin must be resolving from the source pointer`,
+  );
 
   // VS Code Extension source
-  const pkgJsonRaw = await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8');
+  const pkgJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, "package.json"),
+    "utf8",
+  );
   const pkgJson = JSON.parse(pkgJsonRaw);
   const vscodePath = pkgJson.contributes.chatSkills[0].path;
   const resolvedVsCodePath = path.join(STAGING_DIR, vscodePath);
-  await assert.doesNotReject(fs.access(resolvedVsCodePath), `VS Code skill path ${vscodePath} must resolve to an existing SKILL.md`);
+  await assert.doesNotReject(
+    fs.access(resolvedVsCodePath),
+    `VS Code skill path ${vscodePath} must resolve to an existing SKILL.md`,
+  );
 });
 
-test('README template and dynamic Skill Coverage content', async () => {
-  const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
-  assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
-  
+test("README template and dynamic Skill Coverage content", async () => {
+  const readmeRaw = await fs.readFile(
+    path.join(STAGING_DIR, "README.md"),
+    "utf8",
+  );
+  assert.ok(
+    readmeRaw.includes("Modern Web Guidance"),
+    "README should contain title",
+  );
+
   // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
-  if (readmeRaw.includes('#### The full list')) {
-    assert.ok(readmeRaw.includes('modern web features'), 'README should contain the feature count summary text');
-    assert.ok(readmeRaw.includes('<details>'), 'README should contain collapsible details tags');
-    assert.ok(readmeRaw.includes('<h3>'), 'README should contain category h3 headings');
-    assert.match(readmeRaw, /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//, 'README should contain links to Web Features Explorer');
-    assert.match(readmeRaw, /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//, 'README should contain GitHub blob links for use cases');
+  if (readmeRaw.includes("#### The full list")) {
+    assert.ok(
+      readmeRaw.includes("modern web features"),
+      "README should contain the feature count summary text",
+    );
+    assert.ok(
+      readmeRaw.includes("<details>"),
+      "README should contain collapsible details tags",
+    );
+    assert.ok(
+      readmeRaw.includes("<h3>"),
+      "README should contain category h3 headings",
+    );
+    assert.match(
+      readmeRaw,
+      /https:\/\/web-platform-dx\.github\.io\/web-features-explorer\/features\//,
+      "README should contain links to Web Features Explorer",
+    );
+    assert.match(
+      readmeRaw,
+      /https:\/\/github\.com\/GoogleChrome\/modern-web-guidance\/blob\/main\/skills\/modern-web-guidance\/guides\//,
+      "README should contain GitHub blob links for use cases",
+    );
   }
 });
 
-test('.github/img assets in Dist', async () => {
-  const logoPath = path.join(STAGING_DIR, '.github/img/modern-web-guidance.svg');
-  await assert.doesNotReject(fs.access(logoPath), '.github/img/modern-web-guidance.svg must exist in dist');
+test(".github/img assets in Dist", async () => {
+  const logoPath = path.join(
+    STAGING_DIR,
+    ".github/img/modern-web-guidance.svg",
+  );
+  await assert.doesNotReject(
+    fs.access(logoPath),
+    ".github/img/modern-web-guidance.svg must exist in dist",
+  );
 });
 
-test('modern-web CLI search and retrieve', async () => {
-  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
-  
+test("modern-web CLI search and retrieve", async () => {
+  const binaryPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/modern-web.mjs",
+  );
+
   // 1. Validate search
-  const searchOut = execSync(`node "${binaryPath}" search "address form"`, { encoding: 'utf8' });
+  const searchOut = execSync(`node "${binaryPath}" search "address form"`, {
+    encoding: "utf8",
+  });
   assertSearchResults(searchOut);
 
   // 1b. Validate search with --skill-version after search query
-  const skillVersionPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/skill-version.txt');
-  const skillVersion = (await fs.readFile(skillVersionPath, 'utf8')).trim();
-  const searchOutWithVersion = execSync(`node "${binaryPath}" search "address form" --skill-version "${skillVersion}"`, { encoding: 'utf8' });
+  const skillVersionPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/skill-version.txt",
+  );
+  const skillVersion = (await fs.readFile(skillVersionPath, "utf8")).trim();
+  const searchOutWithVersion = execSync(
+    `node "${binaryPath}" search "address form" --skill-version "${skillVersion}"`,
+    { encoding: "utf8" },
+  );
   assertSearchResults(searchOutWithVersion);
 
   // 2. Validate retrieve
-  let retrieveOut = execSync(`node "${binaryPath}" retrieve accessible-error-announcement`, { encoding: 'utf8' });
+  let retrieveOut = execSync(
+    `node "${binaryPath}" retrieve accessible-error-announcement`,
+    { encoding: "utf8" },
+  );
   // Output over the CLI's inline limit is saved to a file, and its path is printed instead
   const savedPath = retrieveOut.match(/saved to (\S+\.md)/)?.[1];
-  if (savedPath) retrieveOut = await fs.readFile(savedPath, 'utf8');
-  assert.match(retrieveOut, /# Accessible Error/, 'Retrieve output should contain the guide title');
+  if (savedPath) retrieveOut = await fs.readFile(savedPath, "utf8");
+  assert.match(
+    retrieveOut,
+    /# Accessible Error/,
+    "Retrieve output should contain the guide title",
+  );
 
   // 3. Validate list
-  const listOut = execSync(`node "${binaryPath}" list`, { encoding: 'utf8' }).trim();
-  assert.ok(listOut.includes('accessible-error-announcement'), 'List output should contain known guide IDs');
+  const listOut = execSync(`node "${binaryPath}" list`, {
+    encoding: "utf8",
+  }).trim();
+  assert.ok(
+    listOut.includes("accessible-error-announcement"),
+    "List output should contain known guide IDs",
+  );
   const catalog = JSON.parse(listOut);
-  assert.ok(Array.isArray(catalog), 'List output should be a JSON array');
-  assert.ok(catalog.length > 100, 'Catalog should contain all documented guidelines');
+  assert.ok(Array.isArray(catalog), "List output should be a JSON array");
+  assert.ok(
+    catalog.length > 100,
+    "Catalog should contain all documented guidelines",
+  );
   const firstItem = catalog[0];
-  assert.ok(firstItem.id, 'First item should have an id');
-  assert.ok(firstItem.description, 'First item should have a description');
-  assert.deepStrictEqual(Object.keys(firstItem).sort(), ['description', 'id'], 'List items should only contain id and description');
-  assert.strictEqual(listOut.split('\n').length, catalog.length, 'List output should be formatted as one compact JSON line per item');
+  assert.ok(firstItem.id, "First item should have an id");
+  assert.ok(firstItem.description, "First item should have a description");
+  assert.deepStrictEqual(
+    Object.keys(firstItem).sort(),
+    ["description", "id"],
+    "List items should only contain id and description",
+  );
+  assert.strictEqual(
+    listOut.split("\n").length,
+    catalog.length,
+    "List output should be formatted as one compact JSON line per item",
+  );
 });
 
-test('modern-web CLI version flags', async () => {
-  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
-  const pkgJsonRaw = await fs.readFile(path.join(STAGING_DIR, 'package.json'), 'utf8');
+test("modern-web CLI version flags", async () => {
+  const binaryPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/modern-web.mjs",
+  );
+  const pkgJsonRaw = await fs.readFile(
+    path.join(STAGING_DIR, "package.json"),
+    "utf8",
+  );
   const pkgJson = JSON.parse(pkgJsonRaw);
   const expectedVersion = pkgJson.version;
 
-  assert.ok(expectedVersion, 'expectedVersion should exist in package.json');
+  assert.ok(expectedVersion, "expectedVersion should exist in package.json");
 
   // 1. Test --version
-  const versionOutLong = execSync(`node "${binaryPath}" --version`, { encoding: 'utf8' }).trim();
-  assert.strictEqual(versionOutLong, expectedVersion, '--version output should match package.json version');
+  const versionOutLong = execSync(`node "${binaryPath}" --version`, {
+    encoding: "utf8",
+  }).trim();
+  assert.strictEqual(
+    versionOutLong,
+    expectedVersion,
+    "--version output should match package.json version",
+  );
 
   // 2. Test -v
-  const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
-  assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
+  const versionOutShort = execSync(`node "${binaryPath}" -v`, {
+    encoding: "utf8",
+  }).trim();
+  assert.strictEqual(
+    versionOutShort,
+    expectedVersion,
+    "-v output should match package.json version",
+  );
 });
 
-test('modern-web CLI fails fast on Node < 22', async () => {
-  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
-  const { spawnSync } = await import('node:child_process');
-  const { pathToFileURL } = await import('node:url');
+test("modern-web CLI fails fast on Node < 22", async () => {
+  const binaryPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/modern-web.mjs",
+  );
+  const { spawnSync } = await import("node:child_process");
+  const { pathToFileURL } = await import("node:url");
   const fileUrl = pathToFileURL(binaryPath).href;
 
   const spoofCode = `
@@ -288,76 +602,108 @@ test('modern-web CLI fails fast on Node < 22', async () => {
     import(${JSON.stringify(fileUrl)});
   `;
 
-  const res = spawnSync(process.execPath, ['--input-type=module', '-e', spoofCode], {
-    encoding: 'utf8',
-  });
+  const res = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", spoofCode],
+    {
+      encoding: "utf8",
+    },
+  );
 
-  assert.strictEqual(res.status, 1, 'Expected exit code 1');
+  assert.strictEqual(res.status, 1, "Expected exit code 1");
   assert.match(
     res.stderr,
-    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//
+    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//,
   );
 });
 
 // TODO: this has been failing locally from publish-skills.ts
-test.skip('THIRD_PARTY_NOTICES validation', async () => {
-  const noticesPath = path.join(STAGING_DIR, 'THIRD_PARTY_NOTICES');
-  await assert.doesNotReject(fs.access(noticesPath), `Missing THIRD_PARTY_NOTICES in dist`);
+test.skip("THIRD_PARTY_NOTICES validation", async () => {
+  const noticesPath = path.join(STAGING_DIR, "THIRD_PARTY_NOTICES");
+  await assert.doesNotReject(
+    fs.access(noticesPath),
+    `Missing THIRD_PARTY_NOTICES in dist`,
+  );
 
-  const content = await fs.readFile(noticesPath, 'utf8');
-  
+  const content = await fs.readFile(noticesPath, "utf8");
+
   // Check structure
-  assert.ok(content.includes('-------------------- DEPENDENCY DIVIDER --------------------'), 'Should contain dividers');
+  assert.ok(
+    content.includes(
+      "-------------------- DEPENDENCY DIVIDER --------------------",
+    ),
+    "Should contain dividers",
+  );
 });
 
-test('packaged dist contains gen/ search tables and no .cache', async () => {
-  const packJson = execSync('npm pack --dry-run --json', { encoding: 'utf8', cwd: STAGING_DIR });
+test("packaged dist contains gen/ search tables and no .cache", async () => {
+  const packJson = execSync("npm pack --dry-run --json", {
+    encoding: "utf8",
+    cwd: STAGING_DIR,
+  });
   const parsed = JSON.parse(packJson);
   const pkgInfo = Array.isArray(parsed) ? parsed[0] : parsed;
   const paths: string[] = pkgInfo.files.map((f: { path: string }) => f.path);
 
   // Must not have skills/.cache
-  const cacheFiles = paths.filter((p: string) => p.includes('.cache'));
-  assert.strictEqual(cacheFiles.length, 0, `Expected 0 .cache files in pack, found: ${cacheFiles.join(', ')}`);
+  const cacheFiles = paths.filter((p: string) => p.includes(".cache"));
+  assert.strictEqual(
+    cacheFiles.length,
+    0,
+    `Expected 0 .cache files in pack, found: ${cacheFiles.join(", ")}`,
+  );
 
   // Must not have build metadata files
-  const metaFiles = paths.filter((p: string) => p.endsWith('.meta.json'));
-  assert.strictEqual(metaFiles.length, 0, `Expected 0 .meta.json files in pack, found: ${metaFiles.join(', ')}`);
+  const metaFiles = paths.filter((p: string) => p.endsWith(".meta.json"));
+  assert.strictEqual(
+    metaFiles.length,
+    0,
+    `Expected 0 .meta.json files in pack, found: ${metaFiles.join(", ")}`,
+  );
 
   // Must have generated search and catalog tables under gen/
   for (const genFile of [
-    'gen/guides.json',
-    'gen/guide-chunks.json.gz',
-    'gen/guide-chunks.i8',
-    'gen/guide-chunks.scale.f32',
-    'gen/query-words.json',
-    'gen/query-words.i8',
-    'gen/query-words.scale.f32',
+    "gen/guides.json",
+    "gen/guide-chunks.json.gz",
+    "gen/guide-chunks.i8",
+    "gen/guide-chunks.scale.f32",
+    "gen/query-words.json",
+    "gen/query-words.i8",
+    "gen/query-words.scale.f32",
   ]) {
     assert.ok(
       paths.some((p: string) => p.endsWith(genFile)),
-      `Pack must contain ${genFile}`
+      `Pack must contain ${genFile}`,
     );
   }
 });
 
-test('search operates strictly offline with zero socket or fetch calls', async () => {
-  const searchOut = execSync(`node --input-type=module -e '
+test("search operates strictly offline with zero socket or fetch calls", async () => {
+  const searchOut = execSync(
+    `node --input-type=module -e '
     import { Socket } from "node:net";
     Socket.prototype.connect = function() { throw new Error("Network forbidden during offline search"); };
     globalThis.fetch = () => { throw new Error("Fetch forbidden during offline search"); };
     const { searchUseCases } = await import("./dist/skills-cli/skills/modern-web-guidance/search.mjs");
     const res = await searchUseCases("address form", 2);
     console.log(JSON.stringify(res));
-  '`, { encoding: 'utf8', cwd: ROOT_DIR });
+  '`,
+    { encoding: "utf8", cwd: ROOT_DIR },
+  );
   const results = JSON.parse(searchOut) as UseCaseResult[];
   assert.strictEqual(results.length, 2);
-  assert.ok(results.some(r => r.id === 'autofill-address-form'));
-  assert.ok(results[0].tokenCount > 0, 'Library result should include tokenCount');
-  assert.ok(results[0].similarity > 0.3, 'Library result should include similarity');
+  assert.ok(results.some((r) => r.id === "autofill-address-form"));
+  assert.ok(
+    results[0].tokenCount > 0,
+    "Library result should include tokenCount",
+  );
+  assert.ok(
+    results[0].similarity > 0.3,
+    "Library result should include similarity",
+  );
 });
 
-test('bundled search handles linguistic and sequence edge cases with precise kernels', async () => {
+test("bundled search handles linguistic and sequence edge cases with precise kernels", async () => {
   const edgeQueries = [
     "",
     "a ".repeat(600),
@@ -365,62 +711,123 @@ test('bundled search handles linguistic and sequence edge cases with precise ker
     "CSS :has() & @container — naïve résumé 🚀",
   ];
   for (const q of edgeQueries) {
-    const out = execSync(`node --input-type=module -e '
+    const out = execSync(
+      `node --input-type=module -e '
       const { searchUseCases } = await import("./dist/skills-cli/skills/modern-web-guidance/search.mjs");
       const res = await searchUseCases(${JSON.stringify(q)}, 2);
       console.log(JSON.stringify(res));
-    '`, { encoding: 'utf8', cwd: ROOT_DIR });
+    '`,
+      { encoding: "utf8", cwd: ROOT_DIR },
+    );
     const parsed = JSON.parse(out);
-    assert.ok(Array.isArray(parsed), `Expected array for query "${q.slice(0, 30)}"`);
-    assert.ok(parsed.length <= 2, `Expected at most 2 results for query "${q.slice(0, 30)}"`);
+    assert.ok(
+      Array.isArray(parsed),
+      `Expected array for query "${q.slice(0, 30)}"`,
+    );
+    assert.ok(
+      parsed.length <= 2,
+      `Expected at most 2 results for query "${q.slice(0, 30)}"`,
+    );
   }
 });
 
-test('no build-machine rootDir path leak in bundled dist binaries', async () => {
-  const modernWebMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs'), 'utf8');
-  assert.strictEqual(modernWebMjs.includes(ROOT_DIR), false, 'modern-web.mjs should not contain build-machine rootDir');
+test("no build-machine rootDir path leak in bundled dist binaries", async () => {
+  const modernWebMjs = await fs.readFile(
+    path.join(STAGING_DIR, "skills/modern-web-guidance/modern-web.mjs"),
+    "utf8",
+  );
+  assert.strictEqual(
+    modernWebMjs.includes(ROOT_DIR),
+    false,
+    "modern-web.mjs should not contain build-machine rootDir",
+  );
 
-  const searchMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/search.mjs'), 'utf8');
-  assert.strictEqual(searchMjs.includes(ROOT_DIR), false, 'search.mjs should not contain build-machine rootDir');
+  const searchMjs = await fs.readFile(
+    path.join(STAGING_DIR, "skills/modern-web-guidance/search.mjs"),
+    "utf8",
+  );
+  assert.strictEqual(
+    searchMjs.includes(ROOT_DIR),
+    false,
+    "search.mjs should not contain build-machine rootDir",
+  );
 
-  const legacyScanMjs = await fs.readFile(path.join(STAGING_DIR, 'skills/modern-web-guidance/legacy-scan.mjs'), 'utf8');
-  assert.strictEqual(legacyScanMjs.includes(ROOT_DIR), false, 'legacy-scan.mjs should not contain build-machine rootDir');
+  const legacyScanMjs = await fs.readFile(
+    path.join(STAGING_DIR, "skills/modern-web-guidance/legacy-scan.mjs"),
+    "utf8",
+  );
+  assert.strictEqual(
+    legacyScanMjs.includes(ROOT_DIR),
+    false,
+    "legacy-scan.mjs should not contain build-machine rootDir",
+  );
 });
 
-test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .d.ts library payload', async () => {
-  const legacyScanPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/legacy-scan.mjs');
+test("bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .d.ts library payload", async () => {
+  const legacyScanPath = path.join(
+    STAGING_DIR,
+    "skills/modern-web-guidance/legacy-scan.mjs",
+  );
   const stat = await fs.stat(legacyScanPath);
 
   // The unstripped bundle is ~7.47 MB; stripping the 2.37 MB inlined libFiles reduces it to ~5.10 MB (< 6.0 MB)
-  assert.ok(stat.size < 6.0 * 1024 * 1024, `legacy-scan.mjs should be smaller than 6 MB, was ${(stat.size / (1024 * 1024)).toFixed(2)} MB`);
+  assert.ok(
+    stat.size < 6.0 * 1024 * 1024,
+    `legacy-scan.mjs should be smaller than 6 MB, was ${(stat.size / (1024 * 1024)).toFixed(2)} MB`,
+  );
 
-  const content = await fs.readFile(legacyScanPath, 'utf8');
-  assert.strictEqual(content.includes('ClassMemberDecoratorContext'), false, 'legacy-scan.mjs should not contain inlined lib.decorators.d.ts');
-  assert.strictEqual(content.includes('/// <reference lib="dom"'), false, 'legacy-scan.mjs should not contain inlined lib.d.ts text');
+  const content = await fs.readFile(legacyScanPath, "utf8");
+  assert.strictEqual(
+    content.includes("ClassMemberDecoratorContext"),
+    false,
+    "legacy-scan.mjs should not contain inlined lib.decorators.d.ts",
+  );
+  assert.strictEqual(
+    content.includes('/// <reference lib="dom"'),
+    false,
+    "legacy-scan.mjs should not contain inlined lib.d.ts text",
+  );
 
   // Executes --help cleanly
-  const helpOut = execSync(`node ${JSON.stringify(legacyScanPath)} --help`, { encoding: 'utf8', cwd: ROOT_DIR });
-  assert.ok(helpOut.includes('Usage: modern-web-guidance legacy-scan'), 'legacy-scan.mjs --help should show usage');
+  const helpOut = execSync(`node ${JSON.stringify(legacyScanPath)} --help`, {
+    encoding: "utf8",
+    cwd: ROOT_DIR,
+  });
+  assert.ok(
+    helpOut.includes("Usage: modern-web-guidance legacy-scan"),
+    "legacy-scan.mjs --help should show usage",
+  );
 
   // Executes --json cleanly
-  const jsonOut = execSync(`node ${JSON.stringify(legacyScanPath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });
+  const jsonOut = execSync(
+    `node ${JSON.stringify(legacyScanPath)} ${JSON.stringify(STAGING_DIR)} --json`,
+    { encoding: "utf8", cwd: ROOT_DIR },
+  );
   const parsed = JSON.parse(jsonOut);
-  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid AnalyzeJsonOutput');
-  assert.ok(Array.isArray(parsed.guides), 'legacy-scan.mjs --json should return guides array');
+  assert.ok(
+    typeof parsed.totalFindings === "number",
+    "legacy-scan.mjs --json should return valid AnalyzeJsonOutput",
+  );
+  assert.ok(
+    Array.isArray(parsed.guides),
+    "legacy-scan.mjs --json should return guides array",
+  );
 });
 
-test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage', async () => {
-  const zlib = await import('node:zlib');
-  const distSkillDir = path.join(STAGING_DIR, 'skills/modern-web-guidance');
-  const vectorFile = path.join(distSkillDir, 'gen/guide-chunks.json.gz');
+test("packaged dist contains valid vectors (256-d cached teacher or 0-d uncached BM25-only) with high coverage", async () => {
+  const zlib = await import("node:zlib");
+  const distSkillDir = path.join(STAGING_DIR, "skills/modern-web-guidance");
+  const vectorFile = path.join(distSkillDir, "gen/guide-chunks.json.gz");
   const compressed = await fs.readFile(vectorFile);
-  const rawItems = JSON.parse(zlib.gunzipSync(compressed).toString('utf-8')) as Array<Record<string, unknown>>;
-  assert.ok(rawItems.length > 0, 'Corpus should contain chunks');
+  const rawItems = JSON.parse(
+    zlib.gunzipSync(compressed).toString("utf-8"),
+  ) as Array<Record<string, unknown>>;
+  assert.ok(rawItems.length > 0, "Corpus should contain chunks");
   for (const raw of rawItems) {
     assert.strictEqual(
-      'vector' in raw,
+      "vector" in raw,
       false,
-      'guide-chunks.json.gz must not contain serialized ASCII vector arrays'
+      "guide-chunks.json.gz must not contain serialized ASCII vector arrays",
     );
   }
 
@@ -430,7 +837,7 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
   for (const item of items) {
     assert.ok(
       item.vector.length === 256 || item.vector.length === 0,
-      `Chunk "${item.id}" should have 256-d teacher vector or 0-d uncached vector, got ${item.vector.length}`
+      `Chunk "${item.id}" should have 256-d teacher vector or 0-d uncached vector, got ${item.vector.length}`,
     );
     if (item.vector.length === 256) {
       teacherCount++;
@@ -439,19 +846,33 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
   const coverage = teacherCount / items.length;
   assert.ok(
     coverage >= 0.9,
-    `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`
+    `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`,
   );
 });
 
-test('release gate pipeline hash differs between dev and release builds', async () => {
-  const { computePipelineHash } = await import('./build-guides.ts');
-  const { scanAllGuides } = await import('../core/guide-validation.ts');
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
-  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
-  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
-  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
+test("release gate pipeline hash differs between dev and release builds", async () => {
+  const { computePipelineHash } = await import("./build-guides.ts");
+  const { scanAllGuides } = await import("../core/guide-validation.ts");
+  const readyGuides = scanAllGuides()
+    .filter((inv) => inv.isPublished)
+    .slice(0, 5);
+  const hashDev = await computePipelineHash(
+    readyGuides,
+    "skills-cli",
+    false,
+    undefined,
+    false,
+  );
+  const hashRelease = await computePipelineHash(
+    readyGuides,
+    "skills-cli",
+    false,
+    undefined,
+    true,
+  );
+  assert.notStrictEqual(
+    hashDev,
+    hashRelease,
+    "Pipeline hash must differ when failOnMissingVectors differs",
+  );
 });
-
-
-
-

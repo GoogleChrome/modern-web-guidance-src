@@ -1,7 +1,4 @@
-import {
-  test,
-  expect,
-} from '../../../../../src/grading/test-fixture.ts';
+import { test, expect } from "../../../../../src/grading/test-fixture.ts";
 
 function parseInnerList(headerValue: string): {
   innerTokens: string[];
@@ -9,7 +6,7 @@ function parseInnerList(headerValue: string): {
   paramsPart: string;
 } | null {
   const trimmed = headerValue.trim();
-  if (!trimmed.startsWith('(')) return null;
+  if (!trimmed.startsWith("(")) return null;
 
   // Locate closing ')' outside double quotes.
   let inQuotes = false;
@@ -21,7 +18,7 @@ function parseInnerList(headerValue: string): {
       escaped = false;
       continue;
     }
-    if (inQuotes && ch === '\\') {
+    if (inQuotes && ch === "\\") {
       escaped = true;
       continue;
     }
@@ -29,7 +26,7 @@ function parseInnerList(headerValue: string): {
       inQuotes = !inQuotes;
       continue;
     }
-    if (!inQuotes && ch === ')') {
+    if (!inQuotes && ch === ")") {
       closeIdx = i;
       break;
     }
@@ -46,7 +43,7 @@ function parseInnerList(headerValue: string): {
   while (rest.length > 0) {
     rest = rest.trimStart();
     if (rest.startsWith('"')) {
-      let val = '';
+      let val = "";
       let esc = false;
       let i = 1;
       for (; i < rest.length; i++) {
@@ -56,7 +53,7 @@ function parseInnerList(headerValue: string): {
           esc = false;
           continue;
         }
-        if (ch === '\\') {
+        if (ch === "\\") {
           esc = true;
           continue;
         }
@@ -71,7 +68,7 @@ function parseInnerList(headerValue: string): {
       const m = rest.match(/^([^\s]+)/);
       if (!m) break;
       const tok = m[1];
-      if (tok.includes(',') || tok.startsWith("'")) return null;
+      if (tok.includes(",") || tok.startsWith("'")) return null;
       innerTokens.push(tok);
       rest = rest.slice(tok.length);
     }
@@ -82,7 +79,7 @@ function parseInnerList(headerValue: string): {
 
 function parseCspDirectives(policy: string): Map<string, string[]> {
   const directives = new Map<string, string[]>();
-  for (const part of policy.split(';')) {
+  for (const part of policy.split(";")) {
     const tokens = part.trim().split(/\s+/).filter(Boolean);
     if (tokens.length === 0) continue;
     const name = tokens[0].toLowerCase();
@@ -95,7 +92,7 @@ function parseCspDirectives(policy: string): Map<string, string[]> {
 
 function isStrictSelfOrNone(tokens: string[] | undefined): boolean {
   if (!tokens || tokens.length === 0) return false;
-  const hasWildcard = tokens.includes('*');
+  const hasWildcard = tokens.includes("*");
   const hasSelfOrNone = tokens.some((t) => {
     const lower = t.toLowerCase();
     return lower === "'self'" || lower === "'none'";
@@ -103,8 +100,8 @@ function isStrictSelfOrNone(tokens: string[] | undefined): boolean {
   return !hasWildcard && hasSelfOrNone;
 }
 
-test.describe('restrict-outbound-connections Target Grader', () => {
-  test('The Connection-Allowlist or Connection-Allowlist-Report-Only policy is formatted as a single RFC 9651 Inner List (...) of space-separated entries where response-origin is an unquoted token and external URL patterns are double-quoted strings', async ({
+test.describe("restrict-outbound-connections Target Grader", () => {
+  test("The Connection-Allowlist or Connection-Allowlist-Report-Only policy is formatted as a single RFC 9651 Inner List (...) of space-separated entries where response-origin is an unquoted token and external URL patterns are double-quoted strings", async ({
     page,
     TARGET_URL,
   }) => {
@@ -112,13 +109,13 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     expect(response).not.toBeNull();
     const headers = response!.headers();
     const allowlist =
-      headers['connection-allowlist'] ||
-      headers['connection-allowlist-report-only'] ||
-      '';
+      headers["connection-allowlist"] ||
+      headers["connection-allowlist-report-only"] ||
+      "";
 
     const parsed = parseInnerList(allowlist);
     expect(parsed).not.toBeNull();
-    expect(parsed!.innerTokens).toContain('response-origin');
+    expect(parsed!.innerTokens).toContain("response-origin");
     expect(parsed!.quotedPatterns.length).toBeGreaterThan(0);
   });
 
@@ -130,15 +127,15 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     expect(response).not.toBeNull();
     const headers = response!.headers();
     const allowlist =
-      headers['connection-allowlist'] ||
-      headers['connection-allowlist-report-only'] ||
-      '';
+      headers["connection-allowlist"] ||
+      headers["connection-allowlist-report-only"] ||
+      "";
 
     const parsed = parseInnerList(allowlist);
     expect(parsed).not.toBeNull();
 
     const patterns = parsed!.quotedPatterns;
-    expect(patterns.some((p) => p.includes('images.unsplash.com'))).toBe(true);
+    expect(patterns.some((p) => p.includes("images.unsplash.com"))).toBe(true);
     expect(
       patterns.every(
         (p) =>
@@ -149,7 +146,7 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     ).toBe(true);
   });
 
-  test('Violation reporting is configured with a Reporting-Endpoints definition and an unquoted ; report-to=<endpoint-name> parameter appended after the closing parenthesis of the Connection-Allowlist inner list', async ({
+  test("Violation reporting is configured with a Reporting-Endpoints definition and an unquoted ; report-to=<endpoint-name> parameter appended after the closing parenthesis of the Connection-Allowlist inner list", async ({
     page,
     TARGET_URL,
   }) => {
@@ -157,10 +154,10 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     expect(response).not.toBeNull();
     const headers = response!.headers();
     const allowlist =
-      headers['connection-allowlist'] ||
-      headers['connection-allowlist-report-only'] ||
-      '';
-    const reportingEndpoints = headers['reporting-endpoints'] || '';
+      headers["connection-allowlist"] ||
+      headers["connection-allowlist-report-only"] ||
+      "";
+    const reportingEndpoints = headers["reporting-endpoints"] || "";
 
     const parsed = parseInnerList(allowlist);
     expect(parsed).not.toBeNull();
@@ -192,20 +189,22 @@ test.describe('restrict-outbound-connections Target Grader', () => {
     expect(response).not.toBeNull();
     const headers = response!.headers();
     const allowlist =
-      headers['connection-allowlist'] ||
-      headers['connection-allowlist-report-only'] ||
-      '';
+      headers["connection-allowlist"] ||
+      headers["connection-allowlist-report-only"] ||
+      "";
     expect(parseInnerList(allowlist)).not.toBeNull();
 
     const metaContents = await page.evaluate(() =>
       Array.from(
-        document.querySelectorAll('meta[http-equiv="Content-Security-Policy" i]'),
-      ).map((el) => el.getAttribute('content') || ''),
+        document.querySelectorAll(
+          'meta[http-equiv="Content-Security-Policy" i]',
+        ),
+      ).map((el) => el.getAttribute("content") || ""),
     );
 
     const policies = [
-      headers['content-security-policy'],
-      headers['content-security-policy-report-only'],
+      headers["content-security-policy"],
+      headers["content-security-policy-report-only"],
       ...metaContents,
     ].filter((p): p is string => Boolean(p && p.trim()));
 
@@ -213,103 +212,123 @@ test.describe('restrict-outbound-connections Target Grader', () => {
 
     const hasRequiredFallback = policies.some((policy) => {
       const directives = parseCspDirectives(policy);
-      const defaultSrc = directives.get('default-src');
-      const connectSrc = directives.get('connect-src');
-      const formAction = directives.get('form-action');
-      const workerSrc = directives.get('worker-src');
+      const defaultSrc = directives.get("default-src");
+      const connectSrc = directives.get("connect-src");
+      const formAction = directives.get("form-action");
+      const workerSrc = directives.get("worker-src");
 
       return (
         isStrictSelfOrNone(defaultSrc) &&
         isStrictSelfOrNone(connectSrc) &&
         isStrictSelfOrNone(formAction) &&
         isStrictSelfOrNone(workerSrc) &&
-        !workerSrc!.some((t) => t.toLowerCase().startsWith('blob:'))
+        !workerSrc!.some((t) => t.toLowerCase().startsWith("blob:"))
       );
     });
 
     expect(hasRequiredFallback).toBe(true);
   });
 
-  test('Outbound fetch() requests to response-origin or allowlisted endpoints succeed, while requests to unlisted third-party origins are blocked and caught gracefully with visible status feedback instead of throwing unhandled promise rejections', async ({
+  test("Outbound fetch() requests to response-origin or allowlisted endpoints succeed, while requests to unlisted third-party origins are blocked and caught gracefully with visible status feedback instead of throwing unhandled promise rejections", async ({
     page,
     TARGET_URL,
   }) => {
     const pageErrors: string[] = [];
-    page.on('pageerror', (err) => pageErrors.push(err.message));
+    page.on("pageerror", (err) => pageErrors.push(err.message));
 
     await page.addInitScript(() => {
-      (window as unknown as { __unhandledRejections: number }).__unhandledRejections = 0;
-      window.addEventListener('unhandledrejection', () => {
-        (window as unknown as { __unhandledRejections: number }).__unhandledRejections += 1;
+      (
+        window as unknown as { __unhandledRejections: number }
+      ).__unhandledRejections = 0;
+      window.addEventListener("unhandledrejection", () => {
+        (
+          window as unknown as { __unhandledRejections: number }
+        ).__unhandledRejections += 1;
       });
     });
 
     await page.goto(TARGET_URL);
 
     // Must expose a newsletter form and live status element on the page.
-    const form = page.locator('form').filter({ has: page.locator('input[type="email"]') }).first();
+    const form = page
+      .locator("form")
+      .filter({ has: page.locator('input[type="email"]') })
+      .first();
     await expect(form).toBeVisible();
     const emailInput = form.locator('input[type="email"]').first();
-    const submitBtn = form.locator('button[type="submit"], input[type="submit"]').first();
-    const statusEl = page.locator('[role="status"], [aria-live], output').first();
+    const submitBtn = form
+      .locator('button[type="submit"], input[type="submit"]')
+      .first();
+    const statusEl = page
+      .locator('[role="status"], [aria-live], output')
+      .first();
     await expect(statusEl).toHaveCount(1);
 
-    const PENDING_STATUS_RE = /^(?:\s*|(?:sending|signing|submitting|loading|working|processing)\b.*)$/i;
+    const PENDING_STATUS_RE =
+      /^(?:\s*|(?:sending|signing|submitting|loading|working|processing)\b.*)$/i;
 
     // Same-origin submission succeeds and updates status feedback.
-    await emailInput.fill('coffee@example.com');
+    await emailInput.fill("coffee@example.com");
     const [firstResponse] = await Promise.all([
-      page.waitForResponse((res) => res.request().method() === 'POST', { timeout: 5000 }),
+      page.waitForResponse((res) => res.request().method() === "POST", {
+        timeout: 5000,
+      }),
       submitBtn.click(),
     ]);
     expect(firstResponse.ok()).toBe(true);
     await expect
       .poll(
         async () => {
-          const text = ((await statusEl.textContent()) || '').trim();
+          const text = ((await statusEl.textContent()) || "").trim();
           return text.length > 0 && !PENDING_STATUS_RE.test(text);
         },
         { timeout: 5000 },
       )
       .toBe(true);
     await expect(statusEl).toBeVisible();
-    const successText = ((await statusEl.textContent()) || '').trim();
+    const successText = ((await statusEl.textContent()) || "").trim();
 
     // Abort client-side POST fetches (simulating Connection-Allowlist / CSP / network block)
     // and ensure the rejection is caught and surfaces visible status feedback with no pageerror.
-    await page.route('**/*', (route) => {
+    await page.route("**/*", (route) => {
       const req = route.request();
-      if (req.method() === 'POST') {
-        return route.abort('blockedbyclient');
+      if (req.method() === "POST") {
+        return route.abort("blockedbyclient");
       }
       return route.continue();
     });
 
-    await emailInput.fill('blocked@example.com');
+    await emailInput.fill("blocked@example.com");
     const [blockedRequest] = await Promise.all([
-      page.waitForEvent('requestfailed', {
-        predicate: (req) => req.method() === 'POST',
+      page.waitForEvent("requestfailed", {
+        predicate: (req) => req.method() === "POST",
         timeout: 5000,
       }),
       submitBtn.click(),
     ]);
-    expect(blockedRequest.method()).toBe('POST');
+    expect(blockedRequest.method()).toBe("POST");
 
     await expect
       .poll(
         async () => {
-          const text = ((await statusEl.textContent()) || '').trim();
-          return text.length > 0 && text !== successText && !PENDING_STATUS_RE.test(text);
+          const text = ((await statusEl.textContent()) || "").trim();
+          return (
+            text.length > 0 &&
+            text !== successText &&
+            !PENDING_STATUS_RE.test(text)
+          );
         },
         { timeout: 5000 },
       )
       .toBe(true);
     await expect(statusEl).toBeVisible();
-    const blockedText = ((await statusEl.textContent()) || '').trim();
+    const blockedText = ((await statusEl.textContent()) || "").trim();
     expect(blockedText.length).toBeGreaterThan(0);
 
     const unhandledRejections = await page.evaluate(
-      () => (window as unknown as { __unhandledRejections: number }).__unhandledRejections,
+      () =>
+        (window as unknown as { __unhandledRejections: number })
+          .__unhandledRejections,
     );
     expect(unhandledRejections).toBe(0);
     expect(pageErrors).toEqual([]);

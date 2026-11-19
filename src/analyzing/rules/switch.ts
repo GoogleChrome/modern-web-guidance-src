@@ -1,13 +1,13 @@
-import { parseHTML } from 'linkedom';
-import { tokenizeHtmlTags } from '../scanners/dom-scanner.ts';
+import { parseHTML } from "linkedom";
+import { tokenizeHtmlTags } from "../scanners/dom-scanner.ts";
 import type {
   AnalyzerRule,
   DomElementView,
   DomMatcherContext,
   DomRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const SWITCH_GUIDE_HASH = '0b0a9d49545e';
+export const SWITCH_GUIDE_HASH = "0b0a9d49545e";
 
 interface DomAttrLike {
   readonly name: string;
@@ -43,57 +43,57 @@ const switchDomCache = new WeakMap<DomMatcherContext, SwitchDomCache>();
 
 function isDomElementLike(value: unknown): value is DomElementLike {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'tagName' in value &&
-    typeof value.tagName === 'string' &&
-    'hasAttribute' in value &&
-    typeof value.hasAttribute === 'function' &&
-    'getAttribute' in value &&
-    typeof value.getAttribute === 'function' &&
-    'children' in value
+    "tagName" in value &&
+    typeof value.tagName === "string" &&
+    "hasAttribute" in value &&
+    typeof value.hasAttribute === "function" &&
+    "getAttribute" in value &&
+    typeof value.getAttribute === "function" &&
+    "children" in value
   );
 }
 
 function isDomRootLike(value: unknown): value is DomRootLike {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'querySelector' in value &&
-    typeof value.querySelector === 'function' &&
-    'querySelectorAll' in value &&
-    typeof value.querySelectorAll === 'function'
+    "querySelector" in value &&
+    typeof value.querySelector === "function" &&
+    "querySelectorAll" in value &&
+    typeof value.querySelectorAll === "function"
   );
 }
 
 function isSwitchDomElement(el: DomElementLike): boolean {
-  if (el.tagName.toLowerCase() !== 'input') {
+  if (el.tagName.toLowerCase() !== "input") {
     return false;
   }
-  const typeAttr = (getOptionalAttr(el, 'type') ?? '').trim().toLowerCase();
-  const roleAttr = (getOptionalAttr(el, 'role') ?? '').trim().toLowerCase();
-  return typeAttr === 'checkbox' && roleAttr === 'switch';
+  const typeAttr = (getOptionalAttr(el, "type") ?? "").trim().toLowerCase();
+  const roleAttr = (getOptionalAttr(el, "role") ?? "").trim().toLowerCase();
+  return typeAttr === "checkbox" && roleAttr === "switch";
 }
 
 function isSwitchHtmlToken(token: HtmlTagToken): boolean {
-  if (token.tagName !== 'input') {
+  if (token.tagName !== "input") {
     return false;
   }
-  const typeAttr = (token.attributes['type'] ?? '').trim().toLowerCase();
-  const roleAttr = (token.attributes['role'] ?? '').trim().toLowerCase();
-  return typeAttr === 'checkbox' && roleAttr === 'switch';
+  const typeAttr = (token.attributes["type"] ?? "").trim().toLowerCase();
+  const roleAttr = (token.attributes["role"] ?? "").trim().toLowerCase();
+  return typeAttr === "checkbox" && roleAttr === "switch";
 }
 
 function collectSwitchInputsIncludingTemplates(
   root: DomRootLike,
 ): DomElementLike[] {
   const direct: DomElementLike[] = [];
-  for (const node of root.querySelectorAll('input')) {
+  for (const node of root.querySelectorAll("input")) {
     if (isDomElementLike(node) && isSwitchDomElement(node)) {
       direct.push(node);
     }
   }
-  if (!root.querySelector('template')) {
+  if (!root.querySelector("template")) {
     return direct;
   }
 
@@ -111,7 +111,7 @@ function collectSwitchInputsIncludingTemplates(
         ordered.push(child);
       }
       if (
-        child.tagName.toLowerCase() === 'template' &&
+        child.tagName.toLowerCase() === "template" &&
         isDomRootLike(child.content)
       ) {
         ordered.push(...collectSwitchInputsIncludingTemplates(child.content));
@@ -125,30 +125,30 @@ function collectSwitchInputsIncludingTemplates(
 }
 
 function getOptionalAttr(
-  el:
-    | DomElementLike
-    | Pick<DomElementView, 'hasAttribute' | 'getAttribute'>,
+  el: DomElementLike | Pick<DomElementView, "hasAttribute" | "getAttribute">,
   attr: string,
 ): string | null {
   if (el.hasAttribute(attr)) {
     return el.getAttribute(attr) ?? null;
   }
-  if ('attributes' in el && Array.isArray(el.attributes)) {
+  if ("attributes" in el && Array.isArray(el.attributes)) {
     const lowerAttr = attr.toLowerCase();
     for (const entry of el.attributes) {
       if (entry.name.toLowerCase() === lowerAttr) {
-        return typeof entry.value === 'string' ? entry.value : '';
+        return typeof entry.value === "string" ? entry.value : "";
       }
     }
   }
   return null;
 }
 
-function normalizeOptionalClass(value: string | null | undefined): string | null {
+function normalizeOptionalClass(
+  value: string | null | undefined,
+): string | null {
   if (value == null) {
     return null;
   }
-  return value.trim().replace(/\s+/g, ' ');
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function sameOptionalAttr(
@@ -158,7 +158,7 @@ function sameOptionalAttr(
 ): boolean {
   const domVal = getOptionalAttr(domEl, attr);
   const viewVal = getOptionalAttr(view, attr);
-  if (attr === 'class') {
+  if (attr === "class") {
     return normalizeOptionalClass(domVal) === normalizeOptionalClass(viewVal);
   }
   return domVal === viewVal;
@@ -166,10 +166,10 @@ function sameOptionalAttr(
 
 function sameTokenGroupingKey(a: HtmlTagToken, b: HtmlTagToken): boolean {
   return (
-    (a.attributes['id'] ?? null) === (b.attributes['id'] ?? null) &&
-    (a.attributes['name'] ?? null) === (b.attributes['name'] ?? null) &&
-    normalizeOptionalClass(a.attributes['class']) ===
-      normalizeOptionalClass(b.attributes['class'])
+    (a.attributes["id"] ?? null) === (b.attributes["id"] ?? null) &&
+    (a.attributes["name"] ?? null) === (b.attributes["name"] ?? null) &&
+    normalizeOptionalClass(a.attributes["class"]) ===
+      normalizeOptionalClass(b.attributes["class"])
   );
 }
 
@@ -196,9 +196,9 @@ function resolveMatchingDomInput(
 
   const candidates = cached.domInputs.filter(
     (cand) =>
-      sameOptionalAttr(cand, element, 'id') &&
-      sameOptionalAttr(cand, element, 'name') &&
-      sameOptionalAttr(cand, element, 'class'),
+      sameOptionalAttr(cand, element, "id") &&
+      sameOptionalAttr(cand, element, "name") &&
+      sameOptionalAttr(cand, element, "class"),
   );
   if (candidates.length === 0) {
     return null;
@@ -229,18 +229,18 @@ function resolveMatchingDomInput(
 function isTreeDisclosureCheckboxHack(domInput: DomElementLike): boolean {
   const parent = domInput.parentElement;
   const container =
-    parent?.tagName.toLowerCase() === 'label' ? parent.parentElement : parent;
+    parent?.tagName.toLowerCase() === "label" ? parent.parentElement : parent;
   if (!container) {
     return false;
   }
   const tag = container.tagName.toLowerCase();
-  const role = (container.getAttribute('role') ?? '').trim().toLowerCase();
-  if (tag !== 'li' && role !== 'treeitem') {
+  const role = (container.getAttribute("role") ?? "").trim().toLowerCase();
+  if (tag !== "li" && role !== "treeitem") {
     return false;
   }
   for (const child of container.children) {
     const childTag = child.tagName.toLowerCase();
-    if (childTag === 'ul' || childTag === 'ol') {
+    if (childTag === "ul" || childTag === "ol") {
       return true;
     }
   }
@@ -248,29 +248,26 @@ function isTreeDisclosureCheckboxHack(domInput: DomElementLike): boolean {
 }
 
 export const switchMatcher: DomRuleMatcher = {
-  kind: 'dom',
-  selector: 'input',
-  fastTokens: [
-    ['checkbox'],
-    ['switch'],
-  ],
+  kind: "dom",
+  selector: "input",
+  fastTokens: [["checkbox"], ["switch"]],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['switch'],
+  skipIfDynamicAttributes: ["switch"],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
-    if (element.tagName !== 'input') {
+    if (element.tagName !== "input") {
       return null;
     }
 
-    const typeAttr = (element.getAttribute('type') ?? '').trim().toLowerCase();
-    const roleAttr = (element.getAttribute('role') ?? '').trim().toLowerCase();
-    if (typeAttr !== 'checkbox' || roleAttr !== 'switch') {
+    const typeAttr = (element.getAttribute("type") ?? "").trim().toLowerCase();
+    const roleAttr = (element.getAttribute("role") ?? "").trim().toLowerCase();
+    if (typeAttr !== "checkbox" || roleAttr !== "switch") {
       return null;
     }
 
     if (
-      element.hasAttribute('switch') ||
-      element.hasDynamicAttribute?.('switch') ||
-      element.hasAttribute('v-bind')
+      element.hasAttribute("switch") ||
+      element.hasDynamicAttribute?.("switch") ||
+      element.hasAttribute("v-bind")
     ) {
       return null;
     }
@@ -288,8 +285,8 @@ export const switchMatcher: DomRuleMatcher = {
 };
 
 export const switchRule: AnalyzerRule = {
-  id: 'switch',
-  guideId: 'switch',
+  id: "switch",
+  guideId: "switch",
   guideHash: SWITCH_GUIDE_HASH,
   summary:
     '<input type="checkbox" role="switch"> elements should use the native HTML switch attribute (<input type="checkbox" switch>).',
@@ -301,8 +298,8 @@ export const switchRule: AnalyzerRule = {
     dropWhen: [
       'The <input type="checkbox"> already has the native switch attribute.',
       'Standard checkbox controls without role="switch" or three-state toggle buttons.',
-      'CSS checkbox-hack disclosure toggles that expand or collapse navigation trees, accordions, or sibling <ul> menus rather than rendering a switch control.',
-      'Bespoke multi-layer SVG art demos driving sibling <svg> filters, gradients, or stroke-dasharray animations via :checked ~ sibling selectors.',
+      "CSS checkbox-hack disclosure toggles that expand or collapse navigation trees, accordions, or sibling <ul> menus rather than rendering a switch control.",
+      "Bespoke multi-layer SVG art demos driving sibling <svg> filters, gradients, or stroke-dasharray animations via :checked ~ sibling selectors.",
     ],
   },
 };

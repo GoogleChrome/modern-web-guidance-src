@@ -13,23 +13,19 @@ import {
   getCssStyleSheet,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import {
-  getCascadedStyle,
-  CSSStyleRule,
-  type CSSStyleSheet,
-} from 'cssomnom';
-import type { Document } from 'linkedom';
+} from "../../../../../src/grading/test-fixture.ts";
+import { getCascadedStyle, CSSStyleRule, type CSSStyleSheet } from "cssomnom";
+import type { Document } from "linkedom";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('typography Target Grader', () => {
-  test('Fluid typography uses clamp() combining rem and vw or cqi units', () => {
+test.describe("typography Target Grader", () => {
+  test("Fluid typography uses clamp() combining rem and vw or cqi units", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasFluidClamp = styleRules.some((rule) => {
-      const fontSize = rule.style.getPropertyValue('font-size');
+      const fontSize = rule.style.getPropertyValue("font-size");
       return (
-        fontSize.includes('clamp(') &&
+        fontSize.includes("clamp(") &&
         /\b\d*\.?\d+rem\b/.test(fontSize) &&
         /\b\d*\.?\d+(?:vw|cqi)\b/.test(fontSize)
       );
@@ -37,37 +33,41 @@ test.describe('typography Target Grader', () => {
     expect(hasFluidClamp).toBe(true);
   });
 
-  test('Headings apply text-wrap: balance', () => {
+  test("Headings apply text-wrap: balance", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
     const headings = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+      Array.from(d.document.querySelectorAll("h1, h2, h3, h4, h5, h6")),
     );
     const allBalanced =
       headings.length > 0 &&
       headings.every((heading) => {
         const cascaded = getCascadedStyle(heading, rules);
         return (
-          cascaded.getPropertyValue('text-wrap') === 'balance' ||
-          heading.classList.contains('text-balance')
+          cascaded.getPropertyValue("text-wrap") === "balance" ||
+          heading.classList.contains("text-balance")
         );
       });
     expect(allBalanced).toBe(true);
   });
 
-  test('Body text paragraphs apply text-wrap: pretty', () => {
+  test("Body text paragraphs apply text-wrap: pretty", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = Array.from(stylesheet.cssRules);
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const paragraphs = docs.flatMap((d) => Array.from(d.document.querySelectorAll('p')));
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const paragraphs = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("p")),
+    );
     const allPretty =
       paragraphs.length > 0 &&
       paragraphs.every((p) => {
         const cascaded = getCascadedStyle(p, rules);
         return (
-          cascaded.getPropertyValue('text-wrap') === 'pretty' ||
-          p.classList.contains('text-pretty')
+          cascaded.getPropertyValue("text-wrap") === "pretty" ||
+          p.classList.contains("text-pretty")
         );
       });
     expect(allPretty).toBe(true);

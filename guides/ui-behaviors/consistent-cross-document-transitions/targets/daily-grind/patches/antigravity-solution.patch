@@ -937,7 +937,7 @@ index 66c9173..c91ec91 100644
 +      --light: #1a1210;
 +      --card-bg: #2a1d1a;
      }
- 
+
      * {
 @@ -38,12 +71,21 @@
        position: sticky;
@@ -945,7 +945,7 @@ index 66c9173..c91ec91 100644
        z-index: 1000;
 +      view-transition-name: site-nav;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
@@ -959,7 +959,7 @@ index 66c9173..c91ec91 100644
 +      font-size: inherit;
 +      font-weight: inherit;
      }
- 
+
      nav ul {
 @@ -75,7 +117,9 @@
      /* Hero Section */
@@ -978,18 +978,18 @@ index 66c9173..c91ec91 100644
        padding: 0 20px;
 +      view-transition-name: hero;
      }
- 
+
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
 +      view-transition-name: page-title;
      }
- 
+
      /* Content Sections */
 @@ -100,6 +146,10 @@
        padding: 0 20px;
      }
- 
+
 +    #seasonal-favorites {
 +      view-transition-name: seasonal-favorites;
 +    }
@@ -1000,7 +1000,7 @@ index 66c9173..c91ec91 100644
 @@ -107,8 +157,12 @@
        margin-top: 20px;
      }
- 
+
 +    :root[data-layout="list"] .grid {
 +      grid-template-columns: 1fr;
 +    }
@@ -1014,7 +1014,7 @@ index 66c9173..c91ec91 100644
 @@ -120,6 +174,10 @@
        color: var(--primary);
      }
- 
+
 +    :root[data-theme="dark"] .card h3 {
 +      color: var(--accent);
 +    }
@@ -1024,7 +1024,7 @@ index 66c9173..c91ec91 100644
        background: var(--primary);
 @@ -158,8 +216,9 @@
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
@@ -1036,14 +1036,14 @@ index 66c9173..c91ec91 100644
 @@ -168,27 +227,27 @@
      </ul>
    </nav>
- 
+
 -  <header class="hero">
 +  <header id="hero" class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
      <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 +  <main id="main-content" class="container">
@@ -1174,12 +1174,12 @@ index 66c9173..79c1292 100644
 +      --light: #1a1210;
 +      --card-bg: #2a1d1a;
      }
- 
+
      * {
 @@ -27,7 +60,6 @@
        background-color: var(--light);
      }
- 
+
 -    /* Navigation */
      nav {
        background: var(--primary);
@@ -1190,7 +1190,7 @@ index 66c9173..79c1292 100644
        z-index: 1000;
 +      view-transition-name: site-nav;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
@@ -1204,12 +1204,12 @@ index 66c9173..79c1292 100644
 +      font-size: inherit;
 +      font-weight: inherit;
      }
- 
+
      nav ul {
 @@ -72,10 +113,11 @@
        border-radius: 4px;
      }
- 
+
 -    /* Hero Section */
      .hero {
        height: 60vh;
@@ -1226,20 +1226,20 @@ index 66c9173..79c1292 100644
        padding: 0 20px;
 +      view-transition-name: hero;
      }
- 
+
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
 +      view-transition-name: page-title;
      }
- 
+
 -    /* Content Sections */
      .container {
        max-width: 1100px;
        margin: 40px auto;
        padding: 0 20px;
      }
- 
+
 +    #seasonal-favorites {
 +      view-transition-name: seasonal-favorites;
 +    }
@@ -1250,7 +1250,7 @@ index 66c9173..79c1292 100644
 @@ -107,8 +154,12 @@
        margin-top: 20px;
      }
- 
+
 +    :root[data-layout="list"] .grid {
 +      grid-template-columns: 1fr;
 +    }
@@ -1264,7 +1264,7 @@ index 66c9173..79c1292 100644
 @@ -120,6 +171,10 @@
        color: var(--primary);
      }
- 
+
 +    :root[data-theme="dark"] .card h3 {
 +      color: var(--accent);
 +    }
@@ -1274,7 +1274,7 @@ index 66c9173..79c1292 100644
        background: var(--primary);
 @@ -158,40 +213,41 @@
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
@@ -1288,7 +1288,7 @@ index 66c9173..79c1292 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
 -  <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -1298,7 +1298,7 @@ index 66c9173..79c1292 100644
 +    <p>Visit our cozy roasteries and cafes across the city.</p>
 +    <a href="/order-online" class="btn">Order Pickup</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -1388,12 +1388,12 @@ index 66c9173..79c1292 100644
 +      --light: #1a1210;
 +      --card-bg: #2a1d1a;
      }
- 
+
      * {
 @@ -27,7 +60,6 @@
        background-color: var(--light);
      }
- 
+
 -    /* Navigation */
      nav {
        background: var(--primary);
@@ -1404,7 +1404,7 @@ index 66c9173..79c1292 100644
        z-index: 1000;
 +      view-transition-name: site-nav;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
@@ -1418,12 +1418,12 @@ index 66c9173..79c1292 100644
 +      font-size: inherit;
 +      font-weight: inherit;
      }
- 
+
      nav ul {
 @@ -72,10 +113,11 @@
        border-radius: 4px;
      }
- 
+
 -    /* Hero Section */
      .hero {
        height: 60vh;
@@ -1440,20 +1440,20 @@ index 66c9173..79c1292 100644
        padding: 0 20px;
 +      view-transition-name: hero;
      }
- 
+
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
 +      view-transition-name: page-title;
      }
- 
+
 -    /* Content Sections */
      .container {
        max-width: 1100px;
        margin: 40px auto;
        padding: 0 20px;
      }
- 
+
 +    #seasonal-favorites {
 +      view-transition-name: seasonal-favorites;
 +    }
@@ -1464,7 +1464,7 @@ index 66c9173..79c1292 100644
 @@ -107,8 +154,12 @@
        margin-top: 20px;
      }
- 
+
 +    :root[data-layout="list"] .grid {
 +      grid-template-columns: 1fr;
 +    }
@@ -1478,7 +1478,7 @@ index 66c9173..79c1292 100644
 @@ -120,6 +171,10 @@
        color: var(--primary);
      }
- 
+
 +    :root[data-theme="dark"] .card h3 {
 +      color: var(--accent);
 +    }
@@ -1488,7 +1488,7 @@ index 66c9173..79c1292 100644
        background: var(--primary);
 @@ -158,40 +213,41 @@
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
@@ -1502,7 +1502,7 @@ index 66c9173..79c1292 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
 -  <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -1512,7 +1512,7 @@ index 66c9173..79c1292 100644
 +    <p>Visit our cozy roasteries and cafes across the city.</p>
 +    <a href="/order-online" class="btn">Order Pickup</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -1770,12 +1770,12 @@ index 66c9173..567347c 100644
 +      --light: #1a1210;
 +      --card-bg: #2a1d1a;
      }
- 
+
      * {
 @@ -27,7 +60,6 @@
        background-color: var(--light);
      }
- 
+
 -    /* Navigation */
      nav {
        background: var(--primary);
@@ -1786,7 +1786,7 @@ index 66c9173..567347c 100644
        z-index: 1000;
 +      view-transition-name: site-nav;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
@@ -1800,12 +1800,12 @@ index 66c9173..567347c 100644
 +      font-size: inherit;
 +      font-weight: inherit;
      }
- 
+
      nav ul {
 @@ -72,10 +113,11 @@
        border-radius: 4px;
      }
- 
+
 -    /* Hero Section */
      .hero {
        height: 60vh;
@@ -1822,20 +1822,20 @@ index 66c9173..567347c 100644
        padding: 0 20px;
 +      view-transition-name: hero;
      }
- 
+
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
 +      view-transition-name: page-title;
      }
- 
+
 -    /* Content Sections */
      .container {
        max-width: 1100px;
        margin: 40px auto;
        padding: 0 20px;
      }
- 
+
 +    #seasonal-favorites {
 +      view-transition-name: seasonal-favorites;
 +    }
@@ -1846,7 +1846,7 @@ index 66c9173..567347c 100644
 @@ -107,8 +154,12 @@
        margin-top: 20px;
      }
- 
+
 +    :root[data-layout="list"] .grid {
 +      grid-template-columns: 1fr;
 +    }
@@ -1860,7 +1860,7 @@ index 66c9173..567347c 100644
 @@ -120,6 +171,10 @@
        color: var(--primary);
      }
- 
+
 +    :root[data-theme="dark"] .card h3 {
 +      color: var(--accent);
 +    }
@@ -1870,7 +1870,7 @@ index 66c9173..567347c 100644
        background: var(--primary);
 @@ -158,9 +213,10 @@
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
@@ -1884,7 +1884,7 @@ index 66c9173..567347c 100644
 @@ -168,29 +224,29 @@
      </ul>
    </nav>
- 
+
 -  <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -1893,7 +1893,7 @@ index 66c9173..567347c 100644
 +    <p>Small-batch roasts, signature lattes, and fresh pastries baked daily.</p>
      <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 +  <main id="main-content" class="container">
@@ -2314,12 +2314,12 @@ index 66c9173..567347c 100644
 +      --light: #1a1210;
 +      --card-bg: #2a1d1a;
      }
- 
+
      * {
 @@ -27,7 +60,6 @@
        background-color: var(--light);
      }
- 
+
 -    /* Navigation */
      nav {
        background: var(--primary);
@@ -2330,7 +2330,7 @@ index 66c9173..567347c 100644
        z-index: 1000;
 +      view-transition-name: site-nav;
      }
- 
+
      .logo {
        font-size: 1.5rem;
        font-weight: bold;
@@ -2344,12 +2344,12 @@ index 66c9173..567347c 100644
 +      font-size: inherit;
 +      font-weight: inherit;
      }
- 
+
      nav ul {
 @@ -72,10 +113,11 @@
        border-radius: 4px;
      }
- 
+
 -    /* Hero Section */
      .hero {
        height: 60vh;
@@ -2366,20 +2366,20 @@ index 66c9173..567347c 100644
        padding: 0 20px;
 +      view-transition-name: hero;
      }
- 
+
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
 +      view-transition-name: page-title;
      }
- 
+
 -    /* Content Sections */
      .container {
        max-width: 1100px;
        margin: 40px auto;
        padding: 0 20px;
      }
- 
+
 +    #seasonal-favorites {
 +      view-transition-name: seasonal-favorites;
 +    }
@@ -2390,7 +2390,7 @@ index 66c9173..567347c 100644
 @@ -107,8 +154,12 @@
        margin-top: 20px;
      }
- 
+
 +    :root[data-layout="list"] .grid {
 +      grid-template-columns: 1fr;
 +    }
@@ -2404,7 +2404,7 @@ index 66c9173..567347c 100644
 @@ -120,6 +171,10 @@
        color: var(--primary);
      }
- 
+
 +    :root[data-theme="dark"] .card h3 {
 +      color: var(--accent);
 +    }
@@ -2414,7 +2414,7 @@ index 66c9173..567347c 100644
        background: var(--primary);
 @@ -158,9 +213,10 @@
  <body>
- 
+
    <nav>
 -    <div class="logo">THE DAILY GRIND</div>
 +    <div class="logo"><a href="/">THE DAILY GRIND</a></div>
@@ -2428,7 +2428,7 @@ index 66c9173..567347c 100644
 @@ -168,29 +224,29 @@
      </ul>
    </nav>
- 
+
 -  <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 -    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -2437,7 +2437,7 @@ index 66c9173..567347c 100644
 +    <p>Small-batch roasts, signature lattes, and fresh pastries baked daily.</p>
      <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 -  <main class="container">
 -    <section>
 +  <main id="main-content" class="container">

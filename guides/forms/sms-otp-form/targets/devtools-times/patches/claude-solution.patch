@@ -45,7 +45,7 @@ index 22f7b64..1ba65e2 100644
 +    stopSmsOtpListener?: () => void;
    }
  }
- 
+
 diff --git a/package.json b/package.json
 index 5e71a8a..04f694f 100644
 --- a/package.json
@@ -64,7 +64,7 @@ index 980b279..a3114ae 100644
 --- a/src/components/Header.astro
 +++ b/src/components/Header.astro
 @@ -25,6 +25,13 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
- 
+
        <!-- Right: Buttons -->
        <div class="flex items-center space-x-3">
 +        <a
@@ -85,7 +85,7 @@ index 980b279..a3114ae 100644
 +          <img src={`${baseUrl}logo.svg`} alt="The DevTools Times" class="w-80 h-auto mx-auto" />
          </a>
        </div>
- 
+
 diff --git a/src/components/OtpVerificationForm.tsx b/src/components/OtpVerificationForm.tsx
 new file mode 100644
 index 0000000..c406814
@@ -477,7 +477,7 @@ index a7c52b6..7945e31 100644
 -import React, { useState } from 'react';
 +import React, { useState, useEffect, useRef, useCallback } from 'react';
 +import { formatOriginBoundSms } from '../utils/smsOtp';
- 
+
  export default function SignInForm() {
 -  const [username, setUsername] = useState('');
 -  const [password, setPassword] = useState('');
@@ -563,7 +563,7 @@ index a7c52b6..7945e31 100644
 +      otpInput.value = otp.code;
 +      liveInput.value = otp.code;
 +      liveInput.setAttribute('value', otp.code);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 -    e.preventDefault();
 +      // Trigger standard form submission so submit event listeners and validation run
@@ -657,7 +657,7 @@ index a7c52b6..7945e31 100644
 +
 +    // Restart WebOTP listener (aborts previous controller before creating a new one)
 +    void startSmsOtpListener();
- 
+
      try {
 -      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/login', {
 -        method: 'POST',
@@ -754,11 +754,11 @@ index a7c52b6..7945e31 100644
 +      stopSmsOtpListener();
 +    };
 +  }, [startSmsOtpListener, stopSmsOtpListener, submitOtpForm]);
- 
+
    return (
 -    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
--      
+-
 +    <div className="max-w-md mx-auto mt-8 p-6 sm:p-8 bg-white border border-gray-200 rounded-xl shadow-sm">
 +      <div className="mb-6">
 +        <h1 className="text-2xl font-bold text-gray-900">
@@ -779,7 +779,7 @@ index a7c52b6..7945e31 100644
            {error}
          </div>
        )}
--      
+-
 +
        {success && (
 -        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
@@ -792,7 +792,7 @@ index a7c52b6..7945e31 100644
            {success}
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 -        <div>
 -          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -815,7 +815,7 @@ index a7c52b6..7945e31 100644
 +        >
 +          {resendNotice}
          </div>
--        
+-
 -        <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
 -            Password
@@ -864,7 +864,7 @@ index a7c52b6..7945e31 100644
 +            className="w-full border border-gray-300 rounded-md text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-shadow"
            />
          </div>
- 
+
          <button
            type="submit"
 -          disabled={loading}
@@ -915,7 +915,7 @@ index 589fe62..df856dd 100644
 -import React, { useState } from 'react';
 +import React, { useState, useEffect, useRef, useCallback } from 'react';
 +import { formatOriginBoundSms } from '../utils/smsOtp';
- 
+
  export default function SignUpForm() {
 -  const [username, setUsername] = useState('');
 -  const [password, setPassword] = useState('');
@@ -963,7 +963,7 @@ index 589fe62..df856dd 100644
 +    const otpForm =
 +      otpFormRef.current ||
 +      (document.getElementById('otp-form') as HTMLFormElement | null);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 -    e.preventDefault();
 +    // Feature-detect WebOTP support
@@ -1095,7 +1095,7 @@ index 589fe62..df856dd 100644
 +
 +    // Restart WebOTP listener (aborts previous controller before creating a new one)
 +    void startSmsOtpListener();
- 
+
      try {
 -      const response = await fetch('https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/api/register', {
 -        method: 'POST',
@@ -1193,11 +1193,11 @@ index 589fe62..df856dd 100644
 +      stopSmsOtpListener();
 +    };
 +  }, [startSmsOtpListener, stopSmsOtpListener, submitOtpForm]);
- 
+
    return (
 -    <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
--      
+-
 +    <div className="max-w-md mx-auto mt-8 p-6 sm:p-8 bg-white border border-gray-200 rounded-xl shadow-sm">
 +      <div className="mb-6">
 +        <h1 className="text-2xl font-bold text-gray-900">
@@ -1218,7 +1218,7 @@ index 589fe62..df856dd 100644
            {error}
          </div>
        )}
--      
+-
 +
        {success && (
 -        <div className="mb-4 p-3 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
@@ -1231,7 +1231,7 @@ index 589fe62..df856dd 100644
            {success}
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 -        <div>
 -          <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1254,7 +1254,7 @@ index 589fe62..df856dd 100644
 +        >
 +          {resendNotice}
          </div>
--        
+-
 -        <div>
 -          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
 -            Password
@@ -1306,7 +1306,7 @@ index 589fe62..df856dd 100644
 -             Must be at least 8 characters and contain a number.
 -          </p>
          </div>
- 
+
          <button
            type="submit"
 -          disabled={loading}
@@ -1356,7 +1356,7 @@ index dcf9696..bbb9be6 100644
 @@ -4,8 +4,6 @@ import Footer from "../components/Footer.astro";
  import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
  import "../styles/global.css";
- 
+
 -import { ClientRouter } from "astro:transitions";
 -
  export interface Props {
@@ -1374,7 +1374,7 @@ index dcf9696..bbb9be6 100644
 +      content="The DevTools Times — News, investigative reports, and secure SMS OTP phone verification."
 +    />
      <title>{title}</title>
- 
+
      <link rel="preconnect" href="https://fonts.googleapis.com" />
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1384,7 +1384,7 @@ index dcf9696..bbb9be6 100644
 @@ -32,9 +33,7 @@ const baseUrl = import.meta.env.BASE_URL;
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
      <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
- 
+
 -    <link rel="icon" href=`${baseUrl}/favicon.svg` />
 -
 -    <ClientRouter />
@@ -1504,7 +1504,7 @@ index 1684cf6..96a8cf2 100644
 @@ -1,4 +1,3 @@
 -
  import { defineMiddleware } from 'astro:middleware';
- 
+
  export const onRequest = defineMiddleware(async (context, next) => {
 @@ -9,5 +8,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
        await context.session.set('readingList', []);
@@ -1643,12 +1643,12 @@ index 92f6399..686201b 100644
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
 +import OtpVerificationForm from '../components/OtpVerificationForm';
  import type { RenderResult } from 'astro:content';
- 
+
  const articles = await getCollection('articles');
 @@ -54,10 +55,20 @@ politicsArticles[2] = {
          </div>
      </div>
- 
+
 +    <!-- Subscriber SMS OTP Verification Section -->
 +    <section aria-label="Phone number verification" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 border-b border-gray-200 bg-gray-50/60">
 +        <OtpVerificationForm
@@ -1665,7 +1665,7 @@ index 92f6399..686201b 100644
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </div>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <section class="p-4 md:p-6 text-center">
 diff --git a/src/pages/verify-otp.astro b/src/pages/verify-otp.astro

@@ -12,19 +12,23 @@ To reliably detect discrete `display` transition support, probe whether a tempor
 let supportsDisplayTransition;
 function canTransitionDisplay() {
   if (supportsDisplayTransition !== undefined) return supportsDisplayTransition;
-  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+  if (
+    !window.CSS?.supports?.("transition-behavior", "allow-discrete") ||
+    !document.body
+  ) {
     return false;
   }
-  const probe = document.createElement('div');
+  const probe = document.createElement("div");
   // The shorthand is intentional here: browsers that don't parse allow-discrete
   // drop the whole declaration, so display: none applies instantly and the probe
   // correctly returns false. !important guards against global reduced-motion
   // resets like `* { transition: none !important }`.
-  probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
+  probe.style.cssText =
+    "transition: display 1s allow-discrete !important; display: block;";
   document.body.appendChild(probe);
   getComputedStyle(probe).display;
-  probe.style.display = 'none';
-  supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+  probe.style.display = "none";
+  supportsDisplayTransition = getComputedStyle(probe).display === "block";
   probe.remove();
   return supportsDisplayTransition;
 }

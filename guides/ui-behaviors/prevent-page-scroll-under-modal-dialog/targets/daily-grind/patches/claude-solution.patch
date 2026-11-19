@@ -61,11 +61,11 @@ index 66c9173..a14d8ee 100644
 +    }
    </style>
  </head>
- 
+
 @@ -207,6 +260,25 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <dialog id="patio-notice" class="patio-notice" aria-labelledby="patio-notice-title"
 +    aria-describedby="patio-notice-desc">
 +    <h2 id="patio-notice-title">Seasonal Patio Notice</h2>
@@ -86,5 +86,5 @@ index 66c9173..a14d8ee 100644
 +  </script>
 +
  </body>
- 
+
  </html>

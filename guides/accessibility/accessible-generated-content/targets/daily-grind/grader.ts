@@ -4,17 +4,19 @@ import {
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, type RuleRoot } from 'cssomnom';
+} from "../../../../../src/grading/test-fixture.ts";
+import { CSSStyleRule, type RuleRoot } from "cssomnom";
 
-import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const currentFilePath =
-  typeof __filename !== 'undefined'
+  typeof __filename !== "undefined"
     ? __filename
-    : path.resolve(process.cwd(), 'grader.ts');
-const targetFiles: string[] = getTargetFiles(pathToFileURL(currentFilePath).href);
+    : path.resolve(process.cwd(), "grader.ts");
+const targetFiles: string[] = getTargetFiles(
+  pathToFileURL(currentFilePath).href,
+);
 
 interface ParsedContent {
   primary: string;
@@ -38,18 +40,18 @@ function parseContentValue(contentValue: string): ParsedContent {
 
   for (let i = 0; i < trimmed.length; i++) {
     const char = trimmed[i];
-    const prevChar = i > 0 ? trimmed[i - 1] : '';
+    const prevChar = i > 0 ? trimmed[i - 1] : "";
 
-    if (char === '"' && !inSingleQuote && prevChar !== '\\') {
+    if (char === '"' && !inSingleQuote && prevChar !== "\\") {
       inDoubleQuote = !inDoubleQuote;
-    } else if (char === "'" && !inDoubleQuote && prevChar !== '\\') {
+    } else if (char === "'" && !inDoubleQuote && prevChar !== "\\") {
       inSingleQuote = !inSingleQuote;
     } else if (!inDoubleQuote && !inSingleQuote) {
-      if (!inUrl && trimmed.substring(i).toLowerCase().startsWith('url(')) {
+      if (!inUrl && trimmed.substring(i).toLowerCase().startsWith("url(")) {
         inUrl = true;
-      } else if (inUrl && char === ')') {
+      } else if (inUrl && char === ")") {
         inUrl = false;
-      } else if (!inUrl && char === '/') {
+      } else if (!inUrl && char === "/") {
         slashIndex = i;
       }
     }
@@ -75,23 +77,28 @@ function parseContentValue(contentValue: string): ParsedContent {
 
 function getHostSelectors(selectorText: string): string[] {
   return selectorText
-    .split(',')
+    .split(",")
     .map((part) =>
       part
-        .replace(/(::|:)(before|after)\b/gi, '')
-        .replace(/:(hover|focus|active|focus-visible|focus-within|visited)\b/gi, '')
-        .trim()
+        .replace(/(::|:)(before|after)\b/gi, "")
+        .replace(
+          /:(hover|focus|active|focus-visible|focus-within|visited)\b/gi,
+          "",
+        )
+        .trim(),
     )
     .filter(Boolean);
 }
 
-function getPseudoElementRulesWithAlt(sheet: RuleRoot | string[]): PseudoElementWithAlt[] {
+function getPseudoElementRulesWithAlt(
+  sheet: RuleRoot | string[],
+): PseudoElementWithAlt[] {
   const allRules = getRules(sheet, CSSStyleRule);
   const results: PseudoElementWithAlt[] = [];
 
   for (const rule of allRules) {
     if (!PSEUDO_ELEMENT_REGEX.test(rule.selectorText)) continue;
-    const content = rule.style.getPropertyValue('content');
+    const content = rule.style.getPropertyValue("content");
     if (!content) continue;
     const parsed = parseContentValue(content);
     if (parsed && parsed.alt !== null) {
@@ -108,7 +115,7 @@ function getPseudoElementRulesWithAlt(sheet: RuleRoot | string[]): PseudoElement
 
 function getHostElementsForRules(
   rulesWithAlt: PseudoElementWithAlt[],
-  docs: Array<{ file: string; document: any }>
+  docs: Array<{ file: string; document: any }>,
 ): any[] {
   const elements: any[] = [];
   for (const { rule } of rulesWithAlt) {
@@ -128,19 +135,20 @@ function getHostElementsForRules(
 }
 
 function hasAccessibleLabel(element: any): boolean {
-  const text = element.textContent?.trim() || '';
+  const text = element.textContent?.trim() || "";
   if (text.length > 0) return true;
 
-  const ariaLabel = element.getAttribute?.('aria-label')?.trim() || '';
+  const ariaLabel = element.getAttribute?.("aria-label")?.trim() || "";
   if (ariaLabel.length > 0) return true;
 
-  const ariaLabelledBy = element.getAttribute?.('aria-labelledby')?.trim() || '';
+  const ariaLabelledBy =
+    element.getAttribute?.("aria-labelledby")?.trim() || "";
   if (ariaLabelledBy.length > 0) return true;
 
-  const title = element.getAttribute?.('title')?.trim() || '';
+  const title = element.getAttribute?.("title")?.trim() || "";
   if (title.length > 0) return true;
 
-  const alt = element.getAttribute?.('alt')?.trim() || '';
+  const alt = element.getAttribute?.("alt")?.trim() || "";
   if (alt.length > 0) return true;
 
   return false;
@@ -148,18 +156,18 @@ function hasAccessibleLabel(element: any): boolean {
 
 function isValidAltSyntax(
   item: PseudoElementWithAlt,
-  docs: Array<{ file: string; document: any }>
+  docs: Array<{ file: string; document: any }>,
 ): boolean {
   const isImage = /url\s*\(/i.test(item.primary);
 
   // If alt text is empty: must NOT be an image (never url(...) / "")
-  if (item.alt === '') {
+  if (item.alt === "") {
     return !isImage;
   }
 
   // If alt text is non-empty:
   // 1. Must differ from primary content value
-  const unquotedPrimary = item.primary.replace(/^['"]|['"]$/g, '').trim();
+  const unquotedPrimary = item.primary.replace(/^['"]|['"]$/g, "").trim();
   if (item.alt.trim() === unquotedPrimary) {
     return false;
   }
@@ -173,7 +181,7 @@ function isValidAltSyntax(
       try {
         const matched = Array.from(document.querySelectorAll(selector));
         for (const el of matched as any[]) {
-          const hostText = (el.textContent?.trim() || '').toLowerCase();
+          const hostText = (el.textContent?.trim() || "").toLowerCase();
           if (hostText.length > 0 && hostText === normalizedAlt) {
             return false;
           }
@@ -187,26 +195,27 @@ function isValidAltSyntax(
   return true;
 }
 
-test.describe('accessible-generated-content Target Grader', () => {
-  test('Stylesheets define ::before or ::after pseudo-element rules using content alternative text syntax to silence decorative text', () => {
+test.describe("accessible-generated-content Target Grader", () => {
+  test("Stylesheets define ::before or ::after pseudo-element rules using content alternative text syntax to silence decorative text", () => {
     const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
     const decorativeSilencedRules = rulesWithAlt.filter(
-      (r) => r.alt === '' && !/url\s*\(/i.test(r.primary)
+      (r) => r.alt === "" && !/url\s*\(/i.test(r.primary),
     );
     expect(decorativeSilencedRules.length).toBeGreaterThan(0);
   });
 
-  test('Elements styled with pseudo-elements using alternative text convey meaningful label or state through DOM text or ARIA attributes', () => {
+  test("Elements styled with pseudo-elements using alternative text convey meaningful label or state through DOM text or ARIA attributes", () => {
     const docs = getHtmlDocuments(targetFiles);
     const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
     const hostElements = getHostElementsForRules(rulesWithAlt, docs);
 
     const allHaveAccessibleContent =
-      hostElements.length > 0 && hostElements.every((el) => hasAccessibleLabel(el));
+      hostElements.length > 0 &&
+      hostElements.every((el) => hasAccessibleLabel(el));
     expect(allHaveAccessibleContent).toBe(true);
   });
 
-  test('Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text', () => {
+  test("Every pseudo-element content declaration using alternative text silences non-image decorative text with empty alt or specifies valid non-duplicative alt text", () => {
     const docs = getHtmlDocuments(targetFiles);
     const rulesWithAlt = getPseudoElementRulesWithAlt(targetFiles);
 

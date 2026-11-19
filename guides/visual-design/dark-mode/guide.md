@@ -2,12 +2,12 @@
 name: dark-mode
 description: Implement dark mode support in a way that respects the user's light/dark theme preference and adapts browser UI (e.g. scrollbars, form controls, etc)
 web-feature-ids:
-- color-scheme
-- prefers-color-scheme
-- light-dark
-- light-dark-image
-- image-function
-- accent-color
+  - color-scheme
+  - prefers-color-scheme
+  - light-dark
+  - light-dark-image
+  - image-function
+  - accent-color
 ---
 
 # Dark mode
@@ -22,7 +22,7 @@ MANDATORY: To help prevent a "flash of un-themed content" (FOUC), place a `<meta
 
 ```html
 <!-- MANDATORY: Declare support for both light and dark themes -->
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="light dark" />
 ```
 
 ### 2. Apply page-wide color scheme to CSS :root or html
@@ -53,7 +53,10 @@ For more control over the colors of built-in UI such as `accent-color` or `scrol
   --color-brand-text-dark: oklch(40% 0.23 270);
 
   --color-brand: light-dark(var(--color-brand-light), var(--color-brand-dark));
-  --color-brand-text: light-dark(var(--color-brand-text-light), var(--color-brand-text-dark));
+  --color-brand-text: light-dark(
+    var(--color-brand-text-light),
+    var(--color-brand-text-dark)
+  );
 
   /* MANDATORY: Automatically adapt native UI to user system preferences */
   color-scheme: light dark;
@@ -73,7 +76,6 @@ OPTIONAL: A number of system colors are available, which also automatically adap
 Even when overriding the system default, it can be useful to use the `prefers-color-scheme` media query to define **different** color pairs that take into account the colors of the browser and OS chrome around the page (or of the surrounding page, when the page is used as an iframe).
 
 For example, use a slightly dimmer light theme when the system setting is `dark`, or a more contrasting dark theme when the system setting is `light`, so the page is not visually overpowered by the surrounding UI.
-
 
 ## Fine-grained browser UI customization
 
@@ -112,6 +114,7 @@ You can use `scrollbar-color` together with `light-dark()` to set custom scrollb
 ### Further customization
 
 Most browser UI exposes pseudo-elements to fully customize its appearance, such as:
+
 - `::placeholder`
 - `::spelling-error`
 - `::grammar-error`

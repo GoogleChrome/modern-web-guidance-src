@@ -20,11 +20,13 @@ Both need no scroll listeners and no extra elements in the markup.
 ## Choosing between a shadow and a fade
 
 Use a **fade** when:
+
 - The scroller scrolls horizontally through a row of items (tabs, chips, carousels). Items cut off by a fade read as "more of the same".
 - The background is not a solid color (gradients, images, translucent surfaces). A mask makes content transparent instead of painting over it, so it works on any background.
 - The scroller has no visible boundary. A fade needs no edge to tuck content under.
 
 Use a **shadow** when:
+
 - The content must stay legible right up to the edge (long text, tables, forms). A fade makes content near the edge hard to read.
 - The scroller is bounded by fixed chrome, such as a dialog's header and footer or a table's sticky header. The shadow makes the chrome look raised above the content.
 
@@ -52,26 +54,34 @@ DO NOT add indicator elements to the markup. The scroller's own `::before` and `
   display: block;
   position: sticky;
   /* Example value: how far the shadow reaches into the content */
-  block-size: .75rem;
+  block-size: 0.75rem;
   /* Paint above positioned content */
   z-index: 1;
   /* Let clicks through to the content underneath */
   pointer-events: none;
   opacity: 0;
-  transition: opacity .2s;
+  transition: opacity 0.2s;
 }
 
 /* Radial, so the shadow curves and tapers off at the sides. Keep it subtle: it should not compete with the content. */
 .scroller::before {
   inset-block-start: 0;
-  margin-block-end: -.75rem;
-  background: radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / .15), transparent);
+  margin-block-end: -0.75rem;
+  background: radial-gradient(
+    farthest-side at 50% 0,
+    rgb(0 0 0 / 0.15),
+    transparent
+  );
 }
 
 .scroller::after {
   inset-block-end: 0;
-  margin-block-start: -.75rem;
-  background: radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / .15), transparent);
+  margin-block-start: -0.75rem;
+  background: radial-gradient(
+    farthest-side at 50% 100%,
+    rgb(0 0 0 / 0.15),
+    transparent
+  );
 }
 ```
 
@@ -122,12 +132,18 @@ Fade the content with a mask on the scroller itself: an opaque layer minus a gra
   --fade-end-pos: 100%;
   mask:
     linear-gradient(black, black) no-clip subtract,
-    linear-gradient(to var(--fade-dir), black, transparent) var(--fade-start-pos) 0 / var(--fade-start) 100% no-repeat no-clip,
-    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-end-pos) 0 / var(--fade-end) 100% no-repeat no-clip;
-  animation: reveal-fade-start linear both, hide-fade-end linear both;
+    linear-gradient(to var(--fade-dir), black, transparent)
+      var(--fade-start-pos) 0 / var(--fade-start) 100% no-repeat no-clip,
+    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-end-pos)
+      0 / var(--fade-end) 100% no-repeat no-clip;
+  animation:
+    reveal-fade-start linear both,
+    hide-fade-end linear both;
   animation-timeline: scroll(self inline);
   /* Each fade animates over the first or last --fade-size of scrolling */
-  animation-range: 0 var(--fade-size), calc(100% - var(--fade-size)) 100%;
+  animation-range:
+    0 var(--fade-size),
+    calc(100% - var(--fade-size)) 100%;
 
   &:dir(rtl) {
     --fade-dir: left;
@@ -210,15 +226,21 @@ Each shadow has a cover: a `local` background in the scroller's own color, which
 At either end of the content its cover sits on top of its shadow and hides it; once the user scrolls away from that end, the cover moves away and the shadow shows.
 
 ```css
-@supports not ((container-type: scroll-state) or (animation-timeline: scroll())) {
+@supports not (
+  (container-type: scroll-state) or (animation-timeline: scroll())
+) {
   .scroller {
     background:
       /* Covers: scroll with the content. Must use the scroller's own background color. */
-      linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
-      linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      linear-gradient(var(--surface) 30%, transparent) top / 100% 2.5rem
+        no-repeat local,
+      linear-gradient(transparent, var(--surface) 70%) bottom / 100% 2.5rem
+        no-repeat local,
       /* Shadows: stay at the edges of the scrollport */
-      radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / .15), transparent) top / 100% .75rem no-repeat,
-      radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / .15), transparent) bottom / 100% .75rem no-repeat,
+        radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 0.15), transparent)
+        top / 100% 0.75rem no-repeat,
+      radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 0.15), transparent)
+        bottom / 100% 0.75rem no-repeat,
       var(--surface);
   }
 }
@@ -231,15 +253,24 @@ The shadows paint behind the content, so content with its own opaque background 
 Use an `IntersectionObserver` to mark which edges have more content, and show the hints from those attributes. Observe the scroller's first and last children, with the scroller as the root and `threshold: 1`: a child that is not fully visible means there is more content beyond it.
 
 ```js
-if (!CSS.supports('animation-timeline', 'scroll()')) {
-  for (const scroller of document.querySelectorAll('.scroller')) {
-    const [first, last] = [scroller.firstElementChild, scroller.lastElementChild];
+if (!CSS.supports("animation-timeline", "scroll()")) {
+  for (const scroller of document.querySelectorAll(".scroller")) {
+    const [first, last] = [
+      scroller.firstElementChild,
+      scroller.lastElementChild,
+    ];
     // rootMargin: without it, sub-pixel widths can leave an edge child a fraction of a pixel short of fully visible
-    const observer = new IntersectionObserver(entries => {
-      for (const { target, intersectionRatio } of entries) {
-        scroller.classList.toggle(target === first ? 'more-start' : 'more-end', intersectionRatio < 1);
-      }
-    }, { root: scroller, threshold: 1, rootMargin: '1px' });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const { target, intersectionRatio } of entries) {
+          scroller.classList.toggle(
+            target === first ? "more-start" : "more-end",
+            intersectionRatio < 1,
+          );
+        }
+      },
+      { root: scroller, threshold: 1, rootMargin: "1px" },
+    );
 
     observer.observe(first);
     observer.observe(last);
@@ -256,7 +287,9 @@ if (!CSS.supports('animation-timeline', 'scroll()')) {
 
 /* Fades */
 .scroller {
-  transition: --fade-start .2s, --fade-end .2s;
+  transition:
+    --fade-start 0.2s,
+    --fade-end 0.2s;
 
   &.more-start {
     --fade-start: var(--fade-size);
@@ -272,10 +305,13 @@ If a single child can be larger than the scroller (e.g. one long article), it is
 
 ```js
 // Must be valid children of the scroller (e.g. <li aria-hidden="true"> in a list)
-const [start, end] = [document.createElement('div'), document.createElement('div')];
+const [start, end] = [
+  document.createElement("div"),
+  document.createElement("div"),
+];
 for (const sentinel of [start, end]) {
   // A zero-size sentinel at the very edge never counts as intersecting
-  sentinel.style.cssText = 'min-inline-size: 1px; min-block-size: 1px';
+  sentinel.style.cssText = "min-inline-size: 1px; min-block-size: 1px";
 }
 scroller.prepend(start);
 scroller.append(end);

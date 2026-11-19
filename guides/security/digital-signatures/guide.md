@@ -16,22 +16,21 @@ ML-DSA (Module-Lattice-Based Digital Signature Algorithm, standardized in NIST F
 
 Use **`'ML-DSA-65'`** by default for general-purpose signing. Choose `'ML-DSA-44'` when you need smaller public keys and signatures over bandwidth-constrained channels and 128-bit security is sufficient, or `'ML-DSA-87'` when a security policy requires NIST Category 5 (CNSA 2.0) compliance.
 
-| Algorithm name | Security level & use case | Public key (`'raw-public'`) | Signature size |
-|---|---|---|---|
-| `'ML-DSA-44'` | NIST Category 2 (~128-bit security); smallest keys and signatures | 1312 bytes | 2420 bytes |
-| **`'ML-DSA-65'`** | **NIST Category 3 (~192-bit security); recommended default** | 1952 bytes | 3309 bytes |
-| `'ML-DSA-87'` | NIST Category 5 (~256-bit security); highest security margin | 2592 bytes | 4627 bytes |
+| Algorithm name    | Security level & use case                                         | Public key (`'raw-public'`) | Signature size |
+| ----------------- | ----------------------------------------------------------------- | --------------------------- | -------------- |
+| `'ML-DSA-44'`     | NIST Category 2 (~128-bit security); smallest keys and signatures | 1312 bytes                  | 2420 bytes     |
+| **`'ML-DSA-65'`** | **NIST Category 3 (~192-bit security); recommended default**      | 1952 bytes                  | 3309 bytes     |
+| `'ML-DSA-87'`     | NIST Category 5 (~256-bit security); highest security margin      | 2592 bytes                  | 4627 bytes     |
 
 - Pass `'ML-DSA-44'`, `'ML-DSA-65'`, or `'ML-DSA-87'` as the algorithm name (pre-standardization names such as `'Dilithium'` or `'CRYSTALS-Dilithium'` throw `NotSupportedError`).
 - Neither ML-DSA nor `'Ed25519'` takes a `hash` parameter.
 - Pass `['sign', 'verify']` when generating a key pair with `generateKey()`:
 
 ```javascript
-const signerKeyPair = await crypto.subtle.generateKey(
-  'ML-DSA-65',
-  false,
-  ['sign', 'verify'],
-);
+const signerKeyPair = await crypto.subtle.generateKey("ML-DSA-65", false, [
+  "sign",
+  "verify",
+]);
 ```
 
 ## 2. Export and import keys
@@ -47,27 +46,26 @@ Always export the verification public key with `'raw-public'` so the public key 
 ```javascript
 // Export the public key bytes on the signer
 const publicKeyBytes = await crypto.subtle.exportKey(
-  'raw-public',
+  "raw-public",
   signerKeyPair.publicKey,
 );
 
 // Import the public key bytes on the verifier (usage must be ['verify'] only)
 const verifierPublicKey = await crypto.subtle.importKey(
-  'raw-public',
+  "raw-public",
   publicKeyBytes,
-  'ML-DSA-65',
+  "ML-DSA-65",
   true,
-  ['verify'],
+  ["verify"],
 );
 ```
 
 If you only hold a private signing `CryptoKey` (even with `extractable: false`) and need its corresponding public `CryptoKey`, call `crypto.subtle.getPublicKey()` with `['verify']`:
 
 ```javascript
-const publicKey = await crypto.subtle.getPublicKey(
-  signerKeyPair.privateKey,
-  ['verify'],
-);
+const publicKey = await crypto.subtle.getPublicKey(signerKeyPair.privateKey, [
+  "verify",
+]);
 ```
 
 ## 3. Sign and verify payloads
@@ -80,13 +78,13 @@ const payloadBytes = new TextEncoder().encode(
 );
 
 const signatureBuffer = await crypto.subtle.sign(
-  'ML-DSA-65',
+  "ML-DSA-65",
   signerKeyPair.privateKey,
   payloadBytes,
 );
 
 const isValid = await crypto.subtle.verify(
-  'ML-DSA-65',
+  "ML-DSA-65",
   verifierPublicKey,
   signatureBuffer,
   payloadBytes,
@@ -100,11 +98,11 @@ To prevent a signature created for one purpose from being replayed in another pa
 Instead of a bare algorithm name string, pass a `ContextParams` dictionary (`{ name, context }`) to `sign()` and `verify()`, where `context` is a `BufferSource` (`Uint8Array` or `ArrayBuffer`):
 
 ```javascript
-const contextBytes = new TextEncoder().encode('release-manifest-v1');
+const contextBytes = new TextEncoder().encode("release-manifest-v1");
 
 const signatureBuffer = await crypto.subtle.sign(
   {
-    name: 'ML-DSA-65',
+    name: "ML-DSA-65",
     context: contextBytes,
   },
   signerKeyPair.privateKey,
@@ -113,7 +111,7 @@ const signatureBuffer = await crypto.subtle.sign(
 
 const isValid = await crypto.subtle.verify(
   {
-    name: 'ML-DSA-65',
+    name: "ML-DSA-65",
     context: contextBytes,
   },
   verifierPublicKey,
@@ -139,38 +137,46 @@ If your Baseline target does not yet support `SubtleCrypto.supports()` or ML-DSA
 
 ```javascript
 const ML_DSA_PUBLIC_KEY_ALGORITHMS = {
-  1312: 'ML-DSA-44',
-  1952: 'ML-DSA-65',
-  2592: 'ML-DSA-87',
+  1312: "ML-DSA-44",
+  1952: "ML-DSA-65",
+  2592: "ML-DSA-87",
 };
 
 export function supportsPostQuantumSignatures() {
   return (
-    typeof globalThis.SubtleCrypto?.supports === 'function' &&
-    SubtleCrypto.supports('sign', 'ML-DSA-65')
+    typeof globalThis.SubtleCrypto?.supports === "function" &&
+    SubtleCrypto.supports("sign", "ML-DSA-65")
   );
 }
 
 export async function generateSigningKeyPair() {
   if (supportsPostQuantumSignatures()) {
-    const keyPair = await crypto.subtle.generateKey('ML-DSA-65', false, ['sign', 'verify']);
+    const keyPair = await crypto.subtle.generateKey("ML-DSA-65", false, [
+      "sign",
+      "verify",
+    ]);
     const publicKeyBytes = new Uint8Array(
-      await crypto.subtle.exportKey('raw-public', keyPair.publicKey),
+      await crypto.subtle.exportKey("raw-public", keyPair.publicKey),
     );
     return {
-      suite: 'ML-DSA-65',
-      keyFormat: 'raw-public',
+      suite: "ML-DSA-65",
+      keyFormat: "raw-public",
       keyPair,
       publicKeyBytes,
     };
   }
 
   // Classical fallback: Ed25519
-  const keyPair = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']);
-  const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey('raw', keyPair.publicKey));
+  const keyPair = await crypto.subtle.generateKey("Ed25519", false, [
+    "sign",
+    "verify",
+  ]);
+  const publicKeyBytes = new Uint8Array(
+    await crypto.subtle.exportKey("raw", keyPair.publicKey),
+  );
   return {
-    suite: 'Ed25519',
-    keyFormat: 'raw',
+    suite: "Ed25519",
+    keyFormat: "raw",
     keyPair,
     publicKeyBytes,
   };
@@ -178,9 +184,14 @@ export async function generateSigningKeyPair() {
 
 function frameFallbackInput(payloadBytes, contextBytes) {
   if (contextBytes.byteLength > 255) {
-    throw new DOMException('Context must not exceed 255 bytes', 'OperationError');
+    throw new DOMException(
+      "Context must not exceed 255 bytes",
+      "OperationError",
+    );
   }
-  const framed = new Uint8Array(1 + contextBytes.byteLength + payloadBytes.byteLength);
+  const framed = new Uint8Array(
+    1 + contextBytes.byteLength + payloadBytes.byteLength,
+  );
   framed[0] = contextBytes.byteLength;
   framed.set(contextBytes, 1);
   framed.set(payloadBytes, 1 + contextBytes.byteLength);
@@ -192,7 +203,7 @@ export async function signPayload(
   payloadBytes,
   contextBytes = new Uint8Array(0),
 ) {
-  if (privateKey.algorithm.name.startsWith('ML-DSA')) {
+  if (privateKey.algorithm.name.startsWith("ML-DSA")) {
     const sig = await crypto.subtle.sign(
       { name: privateKey.algorithm.name, context: contextBytes },
       privateKey,
@@ -202,7 +213,7 @@ export async function signPayload(
   }
 
   const framed = frameFallbackInput(payloadBytes, contextBytes);
-  const sig = await crypto.subtle.sign('Ed25519', privateKey, framed);
+  const sig = await crypto.subtle.sign("Ed25519", privateKey, framed);
   return new Uint8Array(sig);
 }
 
@@ -222,11 +233,15 @@ export async function verifyPayload(
               : new Uint8Array(publicKeyOrBytes);
           const mlDsaName = ML_DSA_PUBLIC_KEY_ALGORITHMS[bytes.byteLength];
           return mlDsaName
-            ? crypto.subtle.importKey('raw-public', bytes, mlDsaName, true, ['verify'])
-            : crypto.subtle.importKey('raw', bytes, 'Ed25519', true, ['verify']);
+            ? crypto.subtle.importKey("raw-public", bytes, mlDsaName, true, [
+                "verify",
+              ])
+            : crypto.subtle.importKey("raw", bytes, "Ed25519", true, [
+                "verify",
+              ]);
         })();
 
-  if (publicKey.algorithm.name.startsWith('ML-DSA')) {
+  if (publicKey.algorithm.name.startsWith("ML-DSA")) {
     return crypto.subtle.verify(
       { name: publicKey.algorithm.name, context: contextBytes },
       publicKey,
@@ -236,6 +251,6 @@ export async function verifyPayload(
   }
 
   const framed = frameFallbackInput(payloadBytes, contextBytes);
-  return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, framed);
+  return crypto.subtle.verify("Ed25519", publicKey, signatureBytes, framed);
 }
 ```

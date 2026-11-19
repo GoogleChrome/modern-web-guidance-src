@@ -32,7 +32,7 @@ index 66c9173..68c2ebb 100644
 +    }
    </style>
  </head>
- 
+
 @@ -182,16 +206,43 @@
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
@@ -80,7 +80,7 @@ index 66c9173..68c2ebb 100644
 @@ -207,6 +258,53 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // Sanitizer config: rich text only, no scripts/handlers/styles.
 +    const reviewElements = ['p', 'b', 'i', 'strong', 'em', 'u', 'br', 'ul', 'ol', 'li', 'blockquote', 'span', 'a'];
@@ -129,5 +129,5 @@ index 66c9173..68c2ebb 100644
 +  </script>
 +
  </body>
- 
+
  </html>

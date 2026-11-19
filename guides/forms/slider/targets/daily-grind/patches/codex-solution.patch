@@ -368,7 +368,7 @@ index 66c9173..67ffb18 100644
 @@ -135,6 +135,111 @@
        background: #3e2723;
      }
- 
+
 +    .brew-strength {
 +      max-inline-size: 560px;
 +      margin: 40px auto 0;
@@ -491,12 +491,12 @@ index 66c9173..67ffb18 100644
 +      <div class="strength-scale" aria-hidden="true"><span>Light</span><span>Extra bold</span></div>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +321,27 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const strengthSlider = document.getElementById('brew-strength');
 +    const strengthOutput = document.getElementById('brew-strength-value');
@@ -519,7 +519,7 @@ index 66c9173..67ffb18 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

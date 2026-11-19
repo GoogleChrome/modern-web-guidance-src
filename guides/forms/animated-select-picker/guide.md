@@ -18,7 +18,7 @@ To implement an animated select picker:
 1. **Opt-in to customization:** Apply `appearance: base-select` to both the `<select>` element and the `::picker(select)` pseudo-element.
 2. **Enable auto-sizing transitions (Optional):** Define `interpolate-size: allow-keywords` (usually on `:root`) to allow the browser to transition between discrete metric values like `height: auto` and `height: 0`.
 3. **Animate the top-layer container:** Apply standard entry/exit styles to `::picker(select)`. Include `display` and `overlay` in the `transition` property and set `transition-behavior: allow-discrete` so the picker stays rendered in the top layer when transitioning between `display: none` and `display: block`.
-4. **Hook into the opening state with `@starting-style`:** Use `@starting-style` to define the baseline styles the browser should compute *before* the transition begins. For example, if you want it to fade in, set the opacity to `0` inside the `@starting-style` block.
+4. **Hook into the opening state with `@starting-style`:** Use `@starting-style` to define the baseline styles the browser should compute _before_ the transition begins. For example, if you want it to fade in, set the opacity to `0` inside the `@starting-style` block.
 5. **Rotate the icon:** Use pseudo-element focus or active selectors like `:open::picker-icon` to apply transitions (such as rotation or translation) to the arrow indicator.
 
 ## Example Code: Smooth Select Scale and Fade
@@ -36,7 +36,15 @@ The following example demonstrates a custom select styled with standard page ani
   </button>
   <option value="system">
     <!-- MANDATORY: Decorative inline SVGs MUST set aria-hidden="true" to prevent redundant screen reader announcement -->
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
       <line x1="8" y1="21" x2="16" y2="21"></line>
       <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -44,7 +52,15 @@ The following example demonstrates a custom select styled with standard page ani
     System Default
   </option>
   <option value="light">
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
       <circle cx="12" cy="12" r="5"></circle>
       <line x1="12" y1="1" x2="12" y2="3"></line>
       <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -102,7 +118,7 @@ The following example demonstrates a custom select styled with standard page ani
   background: white;
   color: black;
   border-radius: 12px;
-  box-shadow: 0 10px 25px -3px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
   padding: 0.5rem;
   margin-top: 0.25rem;
   width: anchor-size(width);

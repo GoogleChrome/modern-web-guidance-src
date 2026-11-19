@@ -1,19 +1,24 @@
-import { test, expect, expectNever } from '../../test-fixture.ts';
+import { test, expect, expectNever } from "../../test-fixture.ts";
 
 declare const process: any;
 
-const targetFile = process.env.TARGET_FILE || '';
+const targetFile = process.env.TARGET_FILE || "";
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable is required');
+  throw new Error("TARGET_FILE environment variable is required");
 }
-const targetUrl = targetFile.startsWith('http') ? targetFile : `file://${targetFile}`;
+const targetUrl = targetFile.startsWith("http")
+  ? targetFile
+  : `file://${targetFile}`;
 
 async function getSearchTerm(page: any): Promise<string> {
   return await page.evaluate(() => {
-    const container = document.getElementById('content') || document.querySelector('.grid') || document.body;
-    const text = container.textContent || '';
+    const container =
+      document.getElementById("content") ||
+      document.querySelector(".grid") ||
+      document.body;
+    const text = container.textContent || "";
     const matches = text.match(/[a-zA-Z]{5,10}/g) || [];
-    return matches.length > 0 ? matches[0] : 'latte';
+    return matches.length > 0 ? matches[0] : "latte";
   });
 }
 
@@ -38,7 +43,7 @@ test.beforeEach(async ({ page }) => {
     // Instrument CSS.highlights if supported
     if (window.CSS && (window.CSS as any).highlights) {
       let val = (window.CSS as any).highlights;
-      Object.defineProperty(window.CSS, 'highlights', {
+      Object.defineProperty(window.CSS, "highlights", {
         get() {
           (window as any).__instrumentation.featureDetectionChecked = true;
           return val;
@@ -46,23 +51,23 @@ test.beforeEach(async ({ page }) => {
         set(newVal) {
           val = newVal;
         },
-        configurable: true
+        configurable: true,
       });
 
       const originalSet = val.set;
-      val.set = function(name: string, highlight: any) {
+      val.set = function (name: string, highlight: any) {
         (window as any).__instrumentation.highlightsSetCalled = true;
         return originalSet.call(this, name, highlight);
       };
 
       const originalClear = val.clear;
-      val.clear = function() {
+      val.clear = function () {
         (window as any).__instrumentation.highlightsClearCalled = true;
         return originalClear.call(this);
       };
 
       const originalDelete = val.delete;
-      val.delete = function(name: string) {
+      val.delete = function (name: string) {
         (window as any).__instrumentation.highlightsDeleteCalled = true;
         return originalDelete.call(this, name);
       };
@@ -71,7 +76,7 @@ test.beforeEach(async ({ page }) => {
     // Instrument Highlight constructor
     if ((window as any).Highlight) {
       const OriginalHighlight = (window as any).Highlight;
-      (window as any).Highlight = function(...ranges: any[]) {
+      (window as any).Highlight = function (...ranges: any[]) {
         (window as any).__instrumentation.highlightConstructorCalled = true;
         (window as any).__instrumentation.rangesUsedInHighlight.push(...ranges);
         return new OriginalHighlight(...ranges);
@@ -82,7 +87,7 @@ test.beforeEach(async ({ page }) => {
 
     // Instrument Range prototype
     const originalSetStart = Range.prototype.setStart;
-    Range.prototype.setStart = function(node, offset) {
+    Range.prototype.setStart = function (node, offset) {
       if (node && node.nodeType === Node.TEXT_NODE) {
         (window as any).__instrumentation.rangeSetStartOnTextNode = true;
       } else if (node && node.nodeType === Node.ELEMENT_NODE) {
@@ -92,7 +97,7 @@ test.beforeEach(async ({ page }) => {
     };
 
     const originalSetEnd = Range.prototype.setEnd;
-    Range.prototype.setEnd = function(node, offset) {
+    Range.prototype.setEnd = function (node, offset) {
       if (node && node.nodeType === Node.TEXT_NODE) {
         (window as any).__instrumentation.rangeSetEndOnTextNode = true;
       } else if (node && node.nodeType === Node.ELEMENT_NODE) {
@@ -103,13 +108,18 @@ test.beforeEach(async ({ page }) => {
 
     // Instrument createTreeWalker
     const originalCreateTreeWalker = document.createTreeWalker;
-    document.createTreeWalker = function(root, whatToShow, filter) {
+    document.createTreeWalker = function (root, whatToShow, filter) {
       if (whatToShow === NodeFilter.SHOW_TEXT) {
         (window as any).__instrumentation.treeWalkerCreatedWithShowText = true;
       }
-      const walker = originalCreateTreeWalker.call(this, root, whatToShow, filter);
+      const walker = originalCreateTreeWalker.call(
+        this,
+        root,
+        whatToShow,
+        filter,
+      );
       const originalNextNode = walker.nextNode;
-      walker.nextNode = function() {
+      walker.nextNode = function () {
         (window as any).__instrumentation.treeWalkerMethodsCalled = true;
         return originalNextNode.call(this);
       };
@@ -117,29 +127,38 @@ test.beforeEach(async ({ page }) => {
     };
 
     // Instrument Element.prototype.innerHTML setter
-    const originalHTMLDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    const originalHTMLDescriptor = Object.getOwnPropertyDescriptor(
+      Element.prototype,
+      "innerHTML",
+    );
     if (originalHTMLDescriptor && originalHTMLDescriptor.set) {
-      Object.defineProperty(Element.prototype, 'innerHTML', {
+      Object.defineProperty(Element.prototype, "innerHTML", {
         ...originalHTMLDescriptor,
-        set: function(value) {
-          if (this.id === 'content' || this.tagName === 'ARTICLE') {
+        set: function (value) {
+          if (this.id === "content" || this.tagName === "ARTICLE") {
             (window as any).__instrumentation.innerHTMLSetOnArticle = true;
           }
           return (originalHTMLDescriptor.set as any).call(this, value);
-        }
+        },
       });
     }
   });
 });
 
-test('::highlight() pseudo-element is used in CSS to style at least one named highlight', async ({ page }) => {
+test("::highlight() pseudo-element is used in CSS to style at least one named highlight", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const hasHighlightStyle = await page.evaluate(() => {
     let found = false;
     for (const sheet of document.styleSheets) {
       try {
         for (const rule of sheet.cssRules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('::highlight(')) {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText &&
+            rule.selectorText.includes("::highlight(")
+          ) {
             found = true;
             break;
           }
@@ -153,68 +172,97 @@ test('::highlight() pseudo-element is used in CSS to style at least one named hi
   expect(hasHighlightStyle).toBe(true);
 });
 
-test('CSS.highlights.set() is called to register at least one Highlight object in the HighlightRegistry', async ({ page }) => {
+test("CSS.highlights.set() is called to register at least one Highlight object in the HighlightRegistry", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
-  const highlightsSetCalled = await page.evaluate(() => (window as any).__instrumentation.highlightsSetCalled);
+  await page.fill("#search-input", term);
+  const highlightsSetCalled = await page.evaluate(
+    () => (window as any).__instrumentation.highlightsSetCalled,
+  );
   expect(highlightsSetCalled).toBe(true);
 });
 
-test('Highlight objects are constructed from one or more Range objects', async ({ page }) => {
+test("Highlight objects are constructed from one or more Range objects", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
+  await page.fill("#search-input", term);
   const results = await page.evaluate(() => {
     const ranges = (window as any).__instrumentation.rangesUsedInHighlight;
     return {
       called: (window as any).__instrumentation.highlightConstructorCalled,
-      hasRange: ranges.length > 0
+      hasRange: ranges.length > 0,
     };
   });
   expect(results.called && results.hasRange).toBe(true);
 });
 
-test('Range objects have their start and end set on text nodes and not element nodes', async ({ page }) => {
+test("Range objects have their start and end set on text nodes and not element nodes", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
+  await page.fill("#search-input", term);
   const results = await page.evaluate(() => {
     const instr = (window as any).__instrumentation;
-    return instr.rangeSetStartOnTextNode && 
-           instr.rangeSetEndOnTextNode && 
-           !instr.rangeSetStartElementNode && 
-           !instr.rangeSetEndElementNode;
+    return (
+      instr.rangeSetStartOnTextNode &&
+      instr.rangeSetEndOnTextNode &&
+      !instr.rangeSetStartElementNode &&
+      !instr.rangeSetEndElementNode
+    );
   });
   expect(results).toBe(true);
 });
 
-test('CSS.highlights.clear() is called before recalculating highlights to prevent stale ranges', async ({ page }) => {
+test("CSS.highlights.clear() is called before recalculating highlights to prevent stale ranges", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
-  const cleared = await page.evaluate(() => 
-    (window as any).__instrumentation.highlightsClearCalled || 
-    (window as any).__instrumentation.highlightsDeleteCalled
+  await page.fill("#search-input", term);
+  const cleared = await page.evaluate(
+    () =>
+      (window as any).__instrumentation.highlightsClearCalled ||
+      (window as any).__instrumentation.highlightsDeleteCalled,
   );
   expect(cleared).toBe(true);
 });
 
-test('Only allowable CSS properties are used inside ::highlight()', async ({ page }) => {
+test("Only allowable CSS properties are used inside ::highlight()", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const invalidHighlightProperties = await page.evaluate(() => {
     const allowed = [
-      'color', 'background-color', 'background',
-      'text-decoration', 'text-decoration-line', 'text-decoration-color', 'text-decoration-style', 'text-decoration-thickness',
-      'text-shadow', '-webkit-text-stroke-color', '-webkit-text-fill-color', '-webkit-text-stroke-width',
-      'stroke', 'fill'
+      "color",
+      "background-color",
+      "background",
+      "text-decoration",
+      "text-decoration-line",
+      "text-decoration-color",
+      "text-decoration-style",
+      "text-decoration-thickness",
+      "text-shadow",
+      "-webkit-text-stroke-color",
+      "-webkit-text-fill-color",
+      "-webkit-text-stroke-width",
+      "stroke",
+      "fill",
     ];
     let invalidProps: string[] = [];
     let foundHighlightRule = false;
     for (const sheet of document.styleSheets) {
       try {
         for (const rule of sheet.cssRules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('::highlight(')) {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText &&
+            rule.selectorText.includes("::highlight(")
+          ) {
             foundHighlightRule = true;
             const style = rule.style;
             for (let i = 0; i < style.length; i++) {
@@ -230,17 +278,19 @@ test('Only allowable CSS properties are used inside ::highlight()', async ({ pag
       }
     }
     if (!foundHighlightRule) {
-      return ['no-highlight-rule-found'];
+      return ["no-highlight-rule-found"];
     }
     return invalidProps;
   });
   expect(invalidHighlightProperties.length).toBe(0);
 });
 
-test('Text nodes are collected using TreeWalker with NodeFilter.SHOW_TEXT without manipulating innerHTML', async ({ page }) => {
+test("Text nodes are collected using TreeWalker with NodeFilter.SHOW_TEXT without manipulating innerHTML", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
+  await page.fill("#search-input", term);
   const results = await page.evaluate(() => {
     const instr = (window as any).__instrumentation;
     return instr.treeWalkerCreatedWithShowText && !instr.innerHTMLSetOnArticle;
@@ -248,15 +298,21 @@ test('Text nodes are collected using TreeWalker with NodeFilter.SHOW_TEXT withou
   expect(results).toBe(true);
 });
 
-test('Feature detection checks for CSS.highlights before using the API', async ({ page }) => {
+test("Feature detection checks for CSS.highlights before using the API", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
-  const featureDetectionChecked = await page.evaluate(() => (window as any).__instrumentation.featureDetectionChecked);
+  await page.fill("#search-input", term);
+  const featureDetectionChecked = await page.evaluate(
+    () => (window as any).__instrumentation.featureDetectionChecked,
+  );
   expect(featureDetectionChecked).toBe(true);
 });
 
-test('A fallback strategy is implemented for browsers that do not support the API', async ({ page }) => {
+test("A fallback strategy is implemented for browsers that do not support the API", async ({
+  page,
+}) => {
   // Override CSS.highlights to undefined to simulate lack of support
   await page.addInitScript(() => {
     if (window.CSS) {
@@ -265,54 +321,64 @@ test('A fallback strategy is implemented for browsers that do not support the AP
   });
   await page.goto(targetUrl);
   const term = await getSearchTerm(page);
-  await page.fill('#search-input', term);
-  
+  await page.fill("#search-input", term);
+
   const hasFallbackMarks = await page.evaluate(() => {
-    const marks = document.querySelectorAll('mark');
+    const marks = document.querySelectorAll("mark");
     return marks.length > 0;
   });
   expect(hasFallbackMarks).toBe(true);
 });
 
-test('If the fallback builds matches dynamically search input is escaped or inserted via textContent to avoid injection', async ({ page }) => {
+test("If the fallback builds matches dynamically search input is escaped or inserted via textContent to avoid injection", async ({
+  page,
+}) => {
   // Override CSS.highlights to undefined to simulate lack of support
   await page.addInitScript(() => {
     if (window.CSS) {
       delete (window.CSS as any).highlights;
     }
     (window as any).__threwError = false;
-    window.addEventListener('error', () => {
+    window.addEventListener("error", () => {
       (window as any).__threwError = true;
     });
   });
   await page.goto(targetUrl);
-  
+
   let threwError = false;
-  page.on('pageerror', () => {
+  page.on("pageerror", () => {
     threwError = true;
   });
 
-  await page.fill('#search-input', '[');
-  await expectNever(page, () => Boolean((window as any).__threwError), { forMs: 150 });
+  await page.fill("#search-input", "[");
+  await expectNever(page, () => Boolean((window as any).__threwError), {
+    forMs: 150,
+  });
 
   expect(threwError).toBe(false);
 });
 
-test('The highlight visually changes the appearance of matched text', async ({ page }) => {
+test("The highlight visually changes the appearance of matched text", async ({
+  page,
+}) => {
   await page.goto(targetUrl);
   const hasVisualHighlightStyles = await page.evaluate(() => {
     let hasVisual = false;
     for (const sheet of document.styleSheets) {
       try {
         for (const rule of sheet.cssRules) {
-          if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('::highlight(')) {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText &&
+            rule.selectorText.includes("::highlight(")
+          ) {
             const style = rule.style;
             if (
-              style.getPropertyValue('background-color') ||
-              style.getPropertyValue('background') ||
-              style.getPropertyValue('color') ||
-              style.getPropertyValue('text-decoration') ||
-              style.getPropertyValue('text-shadow')
+              style.getPropertyValue("background-color") ||
+              style.getPropertyValue("background") ||
+              style.getPropertyValue("color") ||
+              style.getPropertyValue("text-decoration") ||
+              style.getPropertyValue("text-shadow")
             ) {
               hasVisual = true;
             }

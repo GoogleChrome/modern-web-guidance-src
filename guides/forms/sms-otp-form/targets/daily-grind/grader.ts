@@ -4,7 +4,7 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../test-fixture.ts';
+} from "../../../../test-fixture.ts";
 import {
   SyntaxKind,
   Node,
@@ -12,7 +12,7 @@ import {
   type JsxOpeningElement,
   type JsxSelfClosingElement,
   type JsxElement,
-} from 'ts-morph';
+} from "ts-morph";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -47,7 +47,7 @@ function isOtpCandidateAttrs(attrs: {
   maxlength: string;
   pattern: string;
 }): boolean {
-  if (attrs.autocomplete.toLowerCase().includes('one-time-code')) {
+  if (attrs.autocomplete.toLowerCase().includes("one-time-code")) {
     return true;
   }
   const combined = `${attrs.id} ${attrs.name} ${attrs.placeholder} ${attrs.ariaLabel} ${attrs.className}`;
@@ -55,8 +55,8 @@ function isOtpCandidateAttrs(attrs: {
     return true;
   }
   if (
-    attrs.inputmode.toLowerCase() === 'numeric' &&
-    (attrs.maxlength === '6' || /\\d|\d|\[0-9\]/.test(attrs.pattern))
+    attrs.inputmode.toLowerCase() === "numeric" &&
+    (attrs.maxlength === "6" || /\\d|\d|\[0-9\]/.test(attrs.pattern))
   ) {
     return true;
   }
@@ -64,76 +64,100 @@ function isOtpCandidateAttrs(attrs: {
 }
 
 function extractHtmlOtpInputs(
-  docs: Array<{ file: string; document: any }>
+  docs: Array<{ file: string; document: any }>,
 ): OtpInputInfo[] {
   const results: OtpInputInfo[] = [];
 
   for (const { document } of docs) {
-    const allElements = Array.from(document.querySelectorAll('*')) as any[];
-    const allInputs = Array.from(document.querySelectorAll('input')) as any[];
+    const allElements = Array.from(document.querySelectorAll("*")) as any[];
+    const allInputs = Array.from(document.querySelectorAll("input")) as any[];
 
     const candidateInputs = allInputs.filter((input) => {
-      const inputType = (input.getAttribute('type') || 'text').toLowerCase();
-      if (['hidden', 'submit', 'button', 'reset', 'checkbox', 'radio', 'email', 'password'].includes(inputType)) {
+      const inputType = (input.getAttribute("type") || "text").toLowerCase();
+      if (
+        [
+          "hidden",
+          "submit",
+          "button",
+          "reset",
+          "checkbox",
+          "radio",
+          "email",
+          "password",
+        ].includes(inputType)
+      ) {
         return false;
       }
-      if (inputType === 'tel' && (input.getAttribute('autocomplete') || '').toLowerCase().includes('tel')) {
+      if (
+        inputType === "tel" &&
+        (input.getAttribute("autocomplete") || "").toLowerCase().includes("tel")
+      ) {
         return false;
       }
       return isOtpCandidateAttrs({
-        autocomplete: input.getAttribute('autocomplete') || '',
-        id: input.getAttribute('id') || '',
-        name: input.getAttribute('name') || '',
-        placeholder: input.getAttribute('placeholder') || '',
-        ariaLabel: input.getAttribute('aria-label') || '',
-        className: input.getAttribute('class') || '',
-        inputmode: input.getAttribute('inputmode') || '',
-        maxlength: input.getAttribute('maxlength') || '',
-        pattern: input.getAttribute('pattern') || '',
+        autocomplete: input.getAttribute("autocomplete") || "",
+        id: input.getAttribute("id") || "",
+        name: input.getAttribute("name") || "",
+        placeholder: input.getAttribute("placeholder") || "",
+        ariaLabel: input.getAttribute("aria-label") || "",
+        className: input.getAttribute("class") || "",
+        inputmode: input.getAttribute("inputmode") || "",
+        maxlength: input.getAttribute("maxlength") || "",
+        pattern: input.getAttribute("pattern") || "",
       });
     });
 
     for (const input of candidateInputs) {
-      const form = input.closest('form');
+      const form = input.closest("form");
       const scopeRoot = form || document;
-      const scopeInputs = Array.from(scopeRoot.querySelectorAll('input')) as any[];
+      const scopeInputs = Array.from(
+        scopeRoot.querySelectorAll("input"),
+      ) as any[];
 
       const otpInputsInScope = scopeInputs.filter((inp) =>
-        candidateInputs.includes(inp)
+        candidateInputs.includes(inp),
       );
       const singleDigitInputs = scopeInputs.filter(
-        (inp) => (inp.getAttribute('maxlength') || '').trim() === '1'
+        (inp) => (inp.getAttribute("maxlength") || "").trim() === "1",
       );
 
       let formHasSubmitButtonWithText = false;
       if (form) {
-        const buttons = Array.from(form.querySelectorAll('button, input[type="submit"]')) as any[];
+        const buttons = Array.from(
+          form.querySelectorAll('button, input[type="submit"]'),
+        ) as any[];
         formHasSubmitButtonWithText = buttons.some((btn) => {
-          const tag = (btn.tagName || '').toLowerCase();
-          if (tag === 'input') {
-            return Boolean((btn.getAttribute('value') || '').trim());
+          const tag = (btn.tagName || "").toLowerCase();
+          if (tag === "input") {
+            return Boolean((btn.getAttribute("value") || "").trim());
           }
-          const btnType = (btn.getAttribute('type') || '').toLowerCase();
-          const text = (btn.textContent || btn.getAttribute('aria-label') || '').trim();
-          return btnType === 'submit' && text.length > 0;
+          const btnType = (btn.getAttribute("type") || "").toLowerCase();
+          const text = (
+            btn.textContent ||
+            btn.getAttribute("aria-label") ||
+            ""
+          ).trim();
+          return btnType === "submit" && text.length > 0;
         });
       }
 
-      const id = (input.getAttribute('id') || '').trim();
+      const id = (input.getAttribute("id") || "").trim();
       let hasMatchingVisibleLabel = false;
       if (id) {
-        const labels = Array.from(document.querySelectorAll('label')) as any[];
+        const labels = Array.from(document.querySelectorAll("label")) as any[];
         hasMatchingVisibleLabel = labels.some((label) => {
-          const forAttr = (label.getAttribute('for') || '').trim();
-          const text = (label.textContent || '').trim();
+          const forAttr = (label.getAttribute("for") || "").trim();
+          const text = (label.textContent || "").trim();
           const isHidden =
-            label.hasAttribute('hidden') ||
-            (label.getAttribute('aria-hidden') || '').toLowerCase() === 'true';
+            label.hasAttribute("hidden") ||
+            (label.getAttribute("aria-hidden") || "").toLowerCase() === "true";
           return forAttr === id && text.length > 0 && !isHidden;
         });
       }
 
-      const ariaDescribedBy = String(input.getAttribute('aria-describedby') || '').trim();
+      const ariaDescribedBy = String(
+        input.getAttribute("aria-describedby") || "",
+      ).trim();
       let isHintAboveInput = true;
       if (ariaDescribedBy) {
         const inputIdx = allElements.indexOf(input);
@@ -142,18 +166,19 @@ function extractHtmlOtpInputs(
           .map((hintId: string) => document.getElementById(hintId))
           .filter(Boolean);
         const formatHintEls = hintEls.filter((hintEl: any) => {
-          const role = (hintEl.getAttribute('role') || '').toLowerCase();
-          const hasAriaLive = hintEl.hasAttribute('aria-live');
-          const isHidden = hintEl.hasAttribute('hidden');
-          const text = (hintEl.textContent || '').trim();
-          const idAndClass = `${hintEl.getAttribute('id') || ''} ${hintEl.getAttribute('class') || ''}`;
+          const role = (hintEl.getAttribute("role") || "").toLowerCase();
+          const hasAriaLive = hintEl.hasAttribute("aria-live");
+          const isHidden = hintEl.hasAttribute("hidden");
+          const text = (hintEl.textContent || "").trim();
+          const idAndClass = `${hintEl.getAttribute("id") || ""} ${hintEl.getAttribute("class") || ""}`;
           const isStatusOrError =
-            role === 'status' ||
-            role === 'alert' ||
+            role === "status" ||
+            role === "alert" ||
             hasAriaLive ||
             isHidden ||
             text.length === 0 ||
-            (/error|status|alert/i.test(idAndClass) && !/hint|format|help|desc|instruction/i.test(idAndClass));
+            (/error|status|alert/i.test(idAndClass) &&
+              !/hint|format|help|desc|instruction/i.test(idAndClass));
           return !isStatusOrError;
         });
         isHintAboveInput =
@@ -165,13 +190,15 @@ function extractHtmlOtpInputs(
       }
 
       results.push({
-        type: (input.getAttribute('type') || 'text').trim().toLowerCase(),
-        inputmode: (input.getAttribute('inputmode') || '').trim().toLowerCase(),
-        autocomplete: (input.getAttribute('autocomplete') || '').trim().toLowerCase(),
-        required: input.hasAttribute('required'),
-        pattern: (input.getAttribute('pattern') || '').trim(),
-        maxlength: (input.getAttribute('maxlength') || '').trim(),
-        name: (input.getAttribute('name') || '').trim(),
+        type: (input.getAttribute("type") || "text").trim().toLowerCase(),
+        inputmode: (input.getAttribute("inputmode") || "").trim().toLowerCase(),
+        autocomplete: (input.getAttribute("autocomplete") || "")
+          .trim()
+          .toLowerCase(),
+        required: input.hasAttribute("required"),
+        pattern: (input.getAttribute("pattern") || "").trim(),
+        maxlength: (input.getAttribute("maxlength") || "").trim(),
+        name: (input.getAttribute("name") || "").trim(),
         id,
         ariaDescribedBy,
         hasWrappingForm: Boolean(form),
@@ -179,7 +206,7 @@ function extractHtmlOtpInputs(
         otpInputCountInForm: otpInputsInScope.length,
         hasSingleDigitSplit:
           singleDigitInputs.length > 1 ||
-          (input.getAttribute('maxlength') || '').trim() === '1',
+          (input.getAttribute("maxlength") || "").trim() === "1",
         hasMatchingVisibleLabel,
         isHintAboveInput,
       });
@@ -191,7 +218,7 @@ function extractHtmlOtpInputs(
 
 function getJsxAttrValue(
   el: JsxOpeningElement | JsxSelfClosingElement,
-  attrNames: string[]
+  attrNames: string[],
 ): string | undefined {
   const lowerNames = attrNames.map((n) => n.toLowerCase());
   for (const attr of el.getAttributes()) {
@@ -200,12 +227,15 @@ function getJsxAttrValue(
     if (!lowerNames.includes(name)) continue;
 
     const init = attr.getInitializer();
-    if (!init) return 'true';
+    if (!init) return "true";
     if (Node.isStringLiteral(init)) return init.getLiteralValue();
     if (Node.isJsxExpression(init)) {
       const expr = init.getExpression();
-      if (!expr) return 'true';
-      if (Node.isStringLiteral(expr) || Node.isNoSubstitutionTemplateLiteral(expr)) {
+      if (!expr) return "true";
+      if (
+        Node.isStringLiteral(expr) ||
+        Node.isNoSubstitutionTemplateLiteral(expr)
+      ) {
         return expr.getLiteralValue();
       }
       return expr.getText().trim();
@@ -214,7 +244,10 @@ function getJsxAttrValue(
   return undefined;
 }
 
-function findEnclosingJsxElement(node: Node, tagName: string): JsxElement | undefined {
+function findEnclosingJsxElement(
+  node: Node,
+  tagName: string,
+): JsxElement | undefined {
   for (const ancestor of node.getAncestors()) {
     if (Node.isJsxElement(ancestor)) {
       const tag = ancestor.getOpeningElement().getTagNameNode().getText();
@@ -232,58 +265,74 @@ function extractJsxOtpInputs(project: Project): OtpInputInfo[] {
       .getDescendants()
       .filter(
         (n): n is JsxOpeningElement | JsxSelfClosingElement =>
-          Node.isJsxOpeningElement(n) || Node.isJsxSelfClosingElement(n)
+          Node.isJsxOpeningElement(n) || Node.isJsxSelfClosingElement(n),
       );
 
     const inputNodes = jsxTagNodes.filter(
-      (n) => n.getTagNameNode().getText() === 'input'
+      (n) => n.getTagNameNode().getText() === "input",
     );
 
     const candidateInputs = inputNodes.filter((input) => {
-      const inputType = (getJsxAttrValue(input, ['type']) || 'text').toLowerCase();
-      if (['hidden', 'submit', 'button', 'reset', 'checkbox', 'radio', 'email', 'password'].includes(inputType)) {
+      const inputType = (
+        getJsxAttrValue(input, ["type"]) || "text"
+      ).toLowerCase();
+      if (
+        [
+          "hidden",
+          "submit",
+          "button",
+          "reset",
+          "checkbox",
+          "radio",
+          "email",
+          "password",
+        ].includes(inputType)
+      ) {
         return false;
       }
-      const autocomplete = getJsxAttrValue(input, ['autocomplete', 'autoComplete']) || '';
-      if (inputType === 'tel' && autocomplete.toLowerCase().includes('tel')) {
+      const autocomplete =
+        getJsxAttrValue(input, ["autocomplete", "autoComplete"]) || "";
+      if (inputType === "tel" && autocomplete.toLowerCase().includes("tel")) {
         return false;
       }
       return isOtpCandidateAttrs({
         autocomplete,
-        id: getJsxAttrValue(input, ['id']) || '',
-        name: getJsxAttrValue(input, ['name']) || '',
-        placeholder: getJsxAttrValue(input, ['placeholder']) || '',
-        ariaLabel: getJsxAttrValue(input, ['aria-label', 'ariaLabel']) || '',
-        className: getJsxAttrValue(input, ['class', 'className']) || '',
-        inputmode: getJsxAttrValue(input, ['inputmode', 'inputMode']) || '',
-        maxlength: getJsxAttrValue(input, ['maxlength', 'maxLength']) || '',
-        pattern: getJsxAttrValue(input, ['pattern']) || '',
+        id: getJsxAttrValue(input, ["id"]) || "",
+        name: getJsxAttrValue(input, ["name"]) || "",
+        placeholder: getJsxAttrValue(input, ["placeholder"]) || "",
+        ariaLabel: getJsxAttrValue(input, ["aria-label", "ariaLabel"]) || "",
+        className: getJsxAttrValue(input, ["class", "className"]) || "",
+        inputmode: getJsxAttrValue(input, ["inputmode", "inputMode"]) || "",
+        maxlength: getJsxAttrValue(input, ["maxlength", "maxLength"]) || "",
+        pattern: getJsxAttrValue(input, ["pattern"]) || "",
       });
     });
 
     for (const input of candidateInputs) {
-      const formEl = findEnclosingJsxElement(input, 'form');
+      const formEl = findEnclosingJsxElement(input, "form");
       const scopeNode: Node = formEl || sf;
       const scopeInputs = scopeNode
         .getDescendants()
         .filter(
           (n): n is JsxOpeningElement | JsxSelfClosingElement =>
             (Node.isJsxOpeningElement(n) || Node.isJsxSelfClosingElement(n)) &&
-            n.getTagNameNode().getText() === 'input'
+            n.getTagNameNode().getText() === "input",
         );
 
       const otpInputsInScope = scopeInputs.filter((inp) =>
-        candidateInputs.includes(inp)
+        candidateInputs.includes(inp),
       );
       const singleDigitInputs = scopeInputs.filter(
-        (inp) => (getJsxAttrValue(inp, ['maxlength', 'maxLength']) || '').trim() === '1'
+        (inp) =>
+          (getJsxAttrValue(inp, ["maxlength", "maxLength"]) || "").trim() ===
+          "1",
       );
       const isInsideArrayMap = input
         .getAncestors()
         .some(
           (a) =>
             Node.isCallExpression(a) &&
-            a.getExpression().getText().endsWith('.map')
+            a.getExpression().getText().endsWith(".map"),
         );
 
       let formHasSubmitButtonWithText = false;
@@ -291,83 +340,100 @@ function extractJsxOtpInputs(project: Project): OtpInputInfo[] {
         const jsxElements = formEl.getDescendantsOfKind(SyntaxKind.JsxElement);
         formHasSubmitButtonWithText = jsxElements.some((el) => {
           const open = el.getOpeningElement();
-          if (open.getTagNameNode().getText() !== 'button') return false;
-          const btnType = (getJsxAttrValue(open, ['type']) || '').toLowerCase();
+          if (open.getTagNameNode().getText() !== "button") return false;
+          const btnType = (getJsxAttrValue(open, ["type"]) || "").toLowerCase();
           const innerText = el
             .getJsxChildren()
             .map((c) => c.getText())
-            .join('')
+            .join("")
             .trim();
-          return btnType === 'submit' && innerText.length > 0;
+          return btnType === "submit" && innerText.length > 0;
         });
       }
 
-      const id = (getJsxAttrValue(input, ['id']) || '').trim();
+      const id = (getJsxAttrValue(input, ["id"]) || "").trim();
       let hasMatchingVisibleLabel = false;
       if (id) {
         const labelElements = sf
           .getDescendantsOfKind(SyntaxKind.JsxElement)
-          .filter((el) => el.getOpeningElement().getTagNameNode().getText() === 'label');
+          .filter(
+            (el) =>
+              el.getOpeningElement().getTagNameNode().getText() === "label",
+          );
         hasMatchingVisibleLabel = labelElements.some((labelEl) => {
           const open = labelEl.getOpeningElement();
-          const forVal = (getJsxAttrValue(open, ['for', 'htmlFor']) || '').trim();
-          const hasHidden = getJsxAttrValue(open, ['hidden']) !== undefined;
+          const forVal = (
+            getJsxAttrValue(open, ["for", "htmlFor"]) || ""
+          ).trim();
+          const hasHidden = getJsxAttrValue(open, ["hidden"]) !== undefined;
           const innerText = labelEl
             .getJsxChildren()
             .map((c) => c.getText())
-            .join('')
+            .join("")
             .trim();
           return forVal === id && !hasHidden && innerText.length > 0;
         });
       }
 
       const ariaDescribedBy = (
-        getJsxAttrValue(input, ['aria-describedby', 'ariaDescribedby']) || ''
+        getJsxAttrValue(input, ["aria-describedby", "ariaDescribedby"]) || ""
       ).trim();
       let isHintAboveInput = true;
       if (ariaDescribedBy) {
         const hintIds = ariaDescribedBy.split(/\s+/).filter(Boolean);
         const hintNodes = jsxTagNodes.filter((n) => {
-          const nodeId = (getJsxAttrValue(n, ['id']) || '').trim();
+          const nodeId = (getJsxAttrValue(n, ["id"]) || "").trim();
           return hintIds.includes(nodeId);
         });
         const formatHintNodes = hintNodes.filter((n) => {
-          const role = (getJsxAttrValue(n, ['role']) || '').toLowerCase();
-          const hasAriaLive = getJsxAttrValue(n, ['aria-live', 'ariaLive']) !== undefined;
-          const isHidden = getJsxAttrValue(n, ['hidden']) !== undefined;
-          const idAndClass = `${getJsxAttrValue(n, ['id']) || ''} ${getJsxAttrValue(n, ['class', 'className']) || ''}`;
+          const role = (getJsxAttrValue(n, ["role"]) || "").toLowerCase();
+          const hasAriaLive =
+            getJsxAttrValue(n, ["aria-live", "ariaLive"]) !== undefined;
+          const isHidden = getJsxAttrValue(n, ["hidden"]) !== undefined;
+          const idAndClass = `${getJsxAttrValue(n, ["id"]) || ""} ${getJsxAttrValue(n, ["class", "className"]) || ""}`;
           const isStatusOrError =
-            role === 'status' ||
-            role === 'alert' ||
+            role === "status" ||
+            role === "alert" ||
             hasAriaLive ||
             isHidden ||
-            (/error|status|alert/i.test(idAndClass) && !/hint|format|help|desc|instruction/i.test(idAndClass));
+            (/error|status|alert/i.test(idAndClass) &&
+              !/hint|format|help|desc|instruction/i.test(idAndClass));
           return !isStatusOrError;
         });
         isHintAboveInput =
           hintNodes.length > 0 &&
-          formatHintNodes.every((hintNode) => hintNode.getPos() < input.getPos());
+          formatHintNodes.every(
+            (hintNode) => hintNode.getPos() < input.getPos(),
+          );
       }
 
-      const reqVal = getJsxAttrValue(input, ['required']);
-      const required = reqVal !== undefined && reqVal !== 'false';
-      const maxlength = (getJsxAttrValue(input, ['maxlength', 'maxLength']) || '').trim();
+      const reqVal = getJsxAttrValue(input, ["required"]);
+      const required = reqVal !== undefined && reqVal !== "false";
+      const maxlength = (
+        getJsxAttrValue(input, ["maxlength", "maxLength"]) || ""
+      ).trim();
 
       results.push({
-        type: (getJsxAttrValue(input, ['type']) || 'text').trim().toLowerCase(),
-        inputmode: (getJsxAttrValue(input, ['inputmode', 'inputMode']) || '').trim().toLowerCase(),
-        autocomplete: (getJsxAttrValue(input, ['autocomplete', 'autoComplete']) || '').trim().toLowerCase(),
+        type: (getJsxAttrValue(input, ["type"]) || "text").trim().toLowerCase(),
+        inputmode: (getJsxAttrValue(input, ["inputmode", "inputMode"]) || "")
+          .trim()
+          .toLowerCase(),
+        autocomplete: (
+          getJsxAttrValue(input, ["autocomplete", "autoComplete"]) || ""
+        )
+          .trim()
+          .toLowerCase(),
         required,
-        pattern: (getJsxAttrValue(input, ['pattern']) || '').trim(),
+        pattern: (getJsxAttrValue(input, ["pattern"]) || "").trim(),
         maxlength,
-        name: (getJsxAttrValue(input, ['name']) || '').trim(),
+        name: (getJsxAttrValue(input, ["name"]) || "").trim(),
         id,
         ariaDescribedBy,
         hasWrappingForm: Boolean(formEl),
         formHasSubmitButtonWithText,
         otpInputCountInForm: otpInputsInScope.length,
         hasSingleDigitSplit:
-          singleDigitInputs.length > 1 || maxlength === '1' || isInsideArrayMap,
+          singleDigitInputs.length > 1 || maxlength === "1" || isInsideArrayMap,
         hasMatchingVisibleLabel,
         isHintAboveInput,
       });
@@ -383,19 +449,19 @@ function getAllOtpInputs(): OtpInputInfo[] {
   return [...extractHtmlOtpInputs(docs), ...extractJsxOtpInputs(project)];
 }
 
-test.describe('sms-otp-form Target Grader', () => {
+test.describe("sms-otp-form Target Grader", () => {
   test('The OTP verification control is wrapped in a semantic <form> element with an explicit <button type="submit"> with actionable text', () => {
     const inputs = getAllOtpInputs();
     const hasSemanticFormWithSubmit = inputs.some(
-      (inp) => inp.hasWrappingForm && inp.formHasSubmitButtonWithText
+      (inp) => inp.hasWrappingForm && inp.formHasSubmitButtonWithText,
     );
     expect(hasSemanticFormWithSubmit).toBe(true);
   });
 
-  test('The OTP code is collected using a single <input> element rather than splitting individual digits across multiple <input> elements', () => {
+  test("The OTP code is collected using a single <input> element rather than splitting individual digits across multiple <input> elements", () => {
     const inputs = getAllOtpInputs();
     const hasSingleOtpInput = inputs.some(
-      (inp) => inp.otpInputCountInForm === 1 && !inp.hasSingleDigitSplit
+      (inp) => inp.otpInputCountInForm === 1 && !inp.hasSingleDigitSplit,
     );
     expect(hasSingleOtpInput).toBe(true);
   });
@@ -404,28 +470,29 @@ test.describe('sms-otp-form Target Grader', () => {
     const inputs = getAllOtpInputs();
     const hasValidInputAttributes = inputs.some(
       (inp) =>
-        inp.type === 'text' &&
-        inp.inputmode === 'numeric' &&
-        inp.autocomplete === 'one-time-code'
+        inp.type === "text" &&
+        inp.inputmode === "numeric" &&
+        inp.autocomplete === "one-time-code",
     );
     expect(hasValidInputAttributes).toBe(true);
   });
 
-  test('The OTP <input> element includes native validation attributes (required and pattern or maxlength) and a name attribute', () => {
+  test("The OTP <input> element includes native validation attributes (required and pattern or maxlength) and a name attribute", () => {
     const inputs = getAllOtpInputs();
     const hasValidationAndName = inputs.some(
       (inp) =>
         inp.required &&
         Boolean(inp.name) &&
-        (Boolean(inp.pattern) || (Boolean(inp.maxlength) && Number(inp.maxlength) >= 4))
+        (Boolean(inp.pattern) ||
+          (Boolean(inp.maxlength) && Number(inp.maxlength) >= 4)),
     );
     expect(hasValidationAndName).toBe(true);
   });
 
-  test('The OTP <input> element is programmatically associated with a visible <label> via matching for and id attributes, and any format hint linked via aria-describedby is positioned above the <input>', () => {
+  test("The OTP <input> element is programmatically associated with a visible <label> via matching for and id attributes, and any format hint linked via aria-describedby is positioned above the <input>", () => {
     const inputs = getAllOtpInputs();
     const hasAccessibleLabelAndHint = inputs.some(
-      (inp) => inp.hasMatchingVisibleLabel && inp.isHintAboveInput
+      (inp) => inp.hasMatchingVisibleLabel && inp.isHintAboveInput,
     );
     expect(hasAccessibleLabelAndHint).toBe(true);
   });
@@ -435,19 +502,19 @@ test.describe('sms-otp-form Target Grader', () => {
     const sourceFiles = project.getSourceFiles();
 
     const hasOtpCredentialCheck = sourceFiles.some((sf) =>
-      sf.getText().includes('OTPCredential')
+      sf.getText().includes("OTPCredential"),
     );
 
     const hasAbortController = sourceFiles.some((sf) =>
       sf
         .getDescendantsOfKind(SyntaxKind.NewExpression)
-        .some((ne) => ne.getExpression().getText() === 'AbortController')
+        .some((ne) => ne.getExpression().getText() === "AbortController"),
     );
 
     const hasWebOtpCredentialsGet = sourceFiles.some((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
         const callee = call.getExpression().getText();
-        if (!callee.endsWith('credentials.get') && !callee.endsWith('.get')) {
+        if (!callee.endsWith("credentials.get") && !callee.endsWith(".get")) {
           return false;
         }
         const firstArg = call.getArguments()[0];
@@ -461,22 +528,22 @@ test.describe('sms-otp-form Target Grader', () => {
           /['"`]sms['"`]/.test(argText);
         const hasSignal = /signal\b/.test(argText);
         return hasOtpSms && hasSignal;
-      })
+      }),
     );
 
     expect(
-      hasOtpCredentialCheck && hasAbortController && hasWebOtpCredentialsGet
+      hasOtpCredentialCheck && hasAbortController && hasWebOtpCredentialsGet,
     ).toBe(true);
   });
 
-  test('Submitting the <form> manually calls abort() on the active AbortController to cancel any pending WebOTP request', () => {
+  test("Submitting the <form> manually calls abort() on the active AbortController to cancel any pending WebOTP request", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasAbortCall = sourceFiles.some((sf) =>
       sf
         .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((call) => call.getExpression().getText().endsWith('.abort'))
+        .some((call) => call.getExpression().getText().endsWith(".abort")),
     );
 
     const hasSubmitHandlerAbort = sourceFiles.some((sf) => {
@@ -491,15 +558,14 @@ test.describe('sms-otp-form Target Grader', () => {
     expect(hasAbortCall && hasSubmitHandlerAbort).toBe(true);
   });
 
-  test('When navigator.credentials.get resolves with an OTP credential object, the client populates the OTP <input> value with code and triggers the form submission flow', () => {
+  test("When navigator.credentials.get resolves with an OTP credential object, the client populates the OTP <input> value with code and triggers the form submission flow", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
     const hasCodeAssignmentAndSubmit = sourceFiles.some((sf) => {
       const text = sf.getText();
-      if (!text.includes('credentials.get')) return false;
-      const accessesCode =
-        /\.code\b/.test(text) || /\{\s*code\s*\}/.test(text);
+      if (!text.includes("credentials.get")) return false;
+      const accessesCode = /\.code\b/.test(text) || /\{\s*code\s*\}/.test(text);
       const populatesInput =
         /\.value\s*=/.test(text) || /\bset[A-Z]\w*\s*\(/.test(text);
       const triggersSubmitFlow =

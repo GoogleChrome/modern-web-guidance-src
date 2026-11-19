@@ -21,15 +21,14 @@
  * Expectation 20: TESTED - Logout endpoint (/logout) sends Clear-Site-Data header with "cookies", "storage", and "cache"
  */
 
-import {
-  test,
-  expect,
-} from '../../../../../src/grading/test-fixture.ts';
+import { test, expect } from "../../../../../src/grading/test-fixture.ts";
 
-function parseCspDirectives(cspHeader: string | undefined): Map<string, string[]> {
+function parseCspDirectives(
+  cspHeader: string | undefined,
+): Map<string, string[]> {
   const directives = new Map<string, string[]>();
   if (!cspHeader) return directives;
-  for (const rawPart of cspHeader.split(';')) {
+  for (const rawPart of cspHeader.split(";")) {
     const trimmed = rawPart.trim();
     if (!trimmed) continue;
     const tokens = trimmed.split(/\s+/);
@@ -39,22 +38,22 @@ function parseCspDirectives(cspHeader: string | undefined): Map<string, string[]
   return directives;
 }
 
-test.describe('security Target Grader', () => {
-  test.describe('Browser tests', () => {
-    test('Expectation 1: Serves Strict-Transport-Security header with positive max-age', async ({
+test.describe("security Target Grader", () => {
+  test.describe("Browser tests", () => {
+    test("Expectation 1: Serves Strict-Transport-Security header with positive max-age", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const hsts = response?.headers()['strict-transport-security'];
+      const hsts = response?.headers()["strict-transport-security"];
       expect(hsts).toBeDefined();
       const maxAgeMatch = hsts?.match(/\bmax-age=(\d+)/i) ?? null;
       expect(maxAgeMatch).not.toBeNull();
       expect(Number(maxAgeMatch?.[1])).toBeGreaterThan(0);
     });
 
-    test('Expectation 5: Protects against clickjacking with X-Frame-Options and CSP frame-ancestors', async ({
+    test("Expectation 5: Protects against clickjacking with X-Frame-Options and CSP frame-ancestors", async ({
       page,
       TARGET_URL,
     }) => {
@@ -62,19 +61,19 @@ test.describe('security Target Grader', () => {
       expect(response).not.toBeNull();
       const headers = response?.headers() ?? {};
 
-      const xfo = headers['x-frame-options'];
+      const xfo = headers["x-frame-options"];
       expect(xfo).toBeDefined();
       expect(xfo?.trim().toUpperCase()).toMatch(/^(DENY|SAMEORIGIN)$/);
 
-      const directives = parseCspDirectives(headers['content-security-policy']);
-      const frameAncestors = directives.get('frame-ancestors');
+      const directives = parseCspDirectives(headers["content-security-policy"]);
+      const frameAncestors = directives.get("frame-ancestors");
       expect(frameAncestors).toBeDefined();
       expect(frameAncestors).toEqual(
         expect.arrayContaining([expect.stringMatching(/^'(none|self)'$/i)]),
       );
     });
 
-    test('Expectation 8: Configures Reporting-Endpoints header and references it via CSP report-to', async ({
+    test("Expectation 8: Configures Reporting-Endpoints header and references it via CSP report-to", async ({
       page,
       TARGET_URL,
     }) => {
@@ -82,80 +81,91 @@ test.describe('security Target Grader', () => {
       expect(response).not.toBeNull();
       const headers = response?.headers() ?? {};
 
-      const reportingEndpoints = headers['reporting-endpoints'];
+      const reportingEndpoints = headers["reporting-endpoints"];
       expect(reportingEndpoints).toBeDefined();
 
       const endpointNames = Array.from(
-        (reportingEndpoints ?? '').matchAll(/([a-zA-Z0-9_-]+)\s*=\s*"[^"]+"/g),
+        (reportingEndpoints ?? "").matchAll(/([a-zA-Z0-9_-]+)\s*=\s*"[^"]+"/g),
         (m) => m[1],
       );
       expect(endpointNames.length).toBeGreaterThan(0);
 
-      const directives = parseCspDirectives(headers['content-security-policy']);
-      const reportTo = directives.get('report-to') ?? [];
+      const directives = parseCspDirectives(headers["content-security-policy"]);
+      const reportTo = directives.get("report-to") ?? [];
       expect(reportTo.length).toBeGreaterThan(0);
       expect(endpointNames).toContain(reportTo[0]);
     });
 
-    test('Expectation 9: Enforces nonce-based or hash-based CSP with strict-dynamic, report-sample, object-src none, and base-uri none', async ({
+    test("Expectation 9: Enforces nonce-based or hash-based CSP with strict-dynamic, report-sample, object-src none, and base-uri none", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+      const directives = parseCspDirectives(
+        response?.headers()["content-security-policy"],
+      );
 
-      const scriptSrc = directives.get('script-src') ?? [];
+      const scriptSrc = directives.get("script-src") ?? [];
       expect(
         scriptSrc.some((token) =>
-          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(token),
+          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(
+            token,
+          ),
         ),
       ).toBe(true);
       expect(scriptSrc).toContain("'strict-dynamic'");
       expect(scriptSrc).toContain("'report-sample'");
 
-      const objectSrc = directives.get('object-src') ?? directives.get('default-src') ?? [];
+      const objectSrc =
+        directives.get("object-src") ?? directives.get("default-src") ?? [];
       expect(objectSrc).toContain("'none'");
 
-      const baseUri = directives.get('base-uri') ?? [];
+      const baseUri = directives.get("base-uri") ?? [];
       expect(baseUri).toContain("'none'");
     });
 
-    test('Expectation 10: Does not use broad scheme or domain allowlists without strict-dynamic as primary script-src protection', async ({
+    test("Expectation 10: Does not use broad scheme or domain allowlists without strict-dynamic as primary script-src protection", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+      const directives = parseCspDirectives(
+        response?.headers()["content-security-policy"],
+      );
 
-      const scriptSrc = directives.get('script-src') ?? [];
+      const scriptSrc = directives.get("script-src") ?? [];
       expect(scriptSrc).toContain("'strict-dynamic'");
       expect(
         scriptSrc.some((token) =>
-          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(token),
+          /^'(nonce-[A-Za-z0-9+/=_-]+|sha(256|384|512)-[A-Za-z0-9+/=_-]+)'$/.test(
+            token,
+          ),
         ),
       ).toBe(true);
-      expect(scriptSrc).not.toContain('*');
-      expect(scriptSrc).not.toContain('http:');
-      expect(scriptSrc).not.toContain('data:');
+      expect(scriptSrc).not.toContain("*");
+      expect(scriptSrc).not.toContain("http:");
+      expect(scriptSrc).not.toContain("data:");
     });
 
-    test('Expectation 11: Enforces Trusted Types via require-trusted-types-for script in CSP and blocks unsanitized HTML sink assignments', async ({
+    test("Expectation 11: Enforces Trusted Types via require-trusted-types-for script in CSP and blocks unsanitized HTML sink assignments", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const directives = parseCspDirectives(response?.headers()['content-security-policy']);
+      const directives = parseCspDirectives(
+        response?.headers()["content-security-policy"],
+      );
 
-      const rttf = directives.get('require-trusted-types-for') ?? [];
+      const rttf = directives.get("require-trusted-types-for") ?? [];
       expect(rttf).toContain("'script'");
 
       const blocksRawInnerHtml = await page.evaluate(() => {
         try {
-          const el = document.createElement('div');
-          el.innerHTML = '<img src=x onerror=1>';
+          const el = document.createElement("div");
+          el.innerHTML = "<img src=x onerror=1>";
           return false;
         } catch {
           return true;
@@ -164,147 +174,162 @@ test.describe('security Target Grader', () => {
       expect(blocksRawInnerHtml).toBe(true);
     });
 
-    test('Expectation 12: Sets Cross-Origin-Opener-Policy to same-origin-allow-popups or same-origin on document responses', async ({
+    test("Expectation 12: Sets Cross-Origin-Opener-Policy to same-origin-allow-popups or same-origin on document responses", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const coop = response?.headers()['cross-origin-opener-policy'];
+      const coop = response?.headers()["cross-origin-opener-policy"];
       expect(coop).toBeDefined();
-      const directiveValue = (coop ?? '').split(';')[0].trim().toLowerCase();
-      expect(['same-origin-allow-popups', 'same-origin']).toContain(directiveValue);
+      const directiveValue = (coop ?? "").split(";")[0].trim().toLowerCase();
+      expect(["same-origin-allow-popups", "same-origin"]).toContain(
+        directiveValue,
+      );
     });
 
-    test('Expectation 13: Sets Cross-Origin-Resource-Policy to same-origin or same-site on app-internal server responses', async ({
+    test("Expectation 13: Sets Cross-Origin-Resource-Policy to same-origin or same-site on app-internal server responses", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const corp = response?.headers()['cross-origin-resource-policy'];
+      const corp = response?.headers()["cross-origin-resource-policy"];
       expect(corp).toBeDefined();
-      expect(['same-origin', 'same-site']).toContain((corp ?? '').trim().toLowerCase());
+      expect(["same-origin", "same-site"]).toContain(
+        (corp ?? "").trim().toLowerCase(),
+      );
 
-      const logoutUrl = new URL('/logout', TARGET_URL);
+      const logoutUrl = new URL("/logout", TARGET_URL);
       let logoutRes = await fetch(logoutUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Dest': 'document',
+          "Sec-Fetch-Site": "same-origin",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Dest": "document",
         },
-        redirect: 'manual',
+        redirect: "manual",
       });
       if (logoutRes.status === 405) {
         logoutRes = await fetch(logoutUrl, {
-          method: 'POST',
+          method: "POST",
           headers: {
             Origin: new URL(TARGET_URL).origin,
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'same-origin',
-            'Sec-Fetch-Dest': 'empty',
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "same-origin",
+            "Sec-Fetch-Dest": "empty",
           },
-          redirect: 'manual',
+          redirect: "manual",
         });
       }
-      const logoutCorp = logoutRes.headers.get('cross-origin-resource-policy');
+      const logoutCorp = logoutRes.headers.get("cross-origin-resource-policy");
       expect(logoutCorp).not.toBeNull();
-      expect(['same-origin', 'same-site']).toContain((logoutCorp ?? '').trim().toLowerCase());
+      expect(["same-origin", "same-site"]).toContain(
+        (logoutCorp ?? "").trim().toLowerCase(),
+      );
     });
 
-    test('Expectation 14: Implements server-side Fetch Metadata protection rejecting unauthorized cross-site requests with 403 and setting Vary', async ({
+    test("Expectation 14: Implements server-side Fetch Metadata protection rejecting unauthorized cross-site requests with 403 and setting Vary", async ({
       TARGET_URL,
     }) => {
-      const crossSiteRes = await fetch(new URL('/logout', TARGET_URL), {
-        method: 'POST',
+      const crossSiteRes = await fetch(new URL("/logout", TARGET_URL), {
+        method: "POST",
         headers: {
-          'Sec-Fetch-Site': 'cross-site',
-          'Sec-Fetch-Mode': 'no-cors',
-          'Sec-Fetch-Dest': 'empty',
+          "Sec-Fetch-Site": "cross-site",
+          "Sec-Fetch-Mode": "no-cors",
+          "Sec-Fetch-Dest": "empty",
         },
-        redirect: 'manual',
+        redirect: "manual",
       });
       expect(crossSiteRes.status).toBe(403);
 
       const docRes = await fetch(TARGET_URL, {
         headers: {
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Dest': 'document',
+          "Sec-Fetch-Site": "same-origin",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Dest": "document",
         },
       });
-      const vary = docRes.headers.get('vary') || crossSiteRes.headers.get('vary') || '';
+      const vary =
+        docRes.headers.get("vary") || crossSiteRes.headers.get("vary") || "";
       const varyTokens = vary
-        .split(',')
+        .split(",")
         .map((h) => h.trim().toLowerCase())
         .filter(Boolean);
       expect(varyTokens).toEqual(
-        expect.arrayContaining(['sec-fetch-dest', 'sec-fetch-mode', 'sec-fetch-site']),
+        expect.arrayContaining([
+          "sec-fetch-dest",
+          "sec-fetch-mode",
+          "sec-fetch-site",
+        ]),
       );
     });
 
-    test('Expectation 15: Sets X-Content-Type-Options: nosniff alongside accurate Content-Type headers', async ({
+    test("Expectation 15: Sets X-Content-Type-Options: nosniff alongside accurate Content-Type headers", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
       const headers = response?.headers() ?? {};
-      expect(headers['x-content-type-options']?.trim().toLowerCase()).toBe('nosniff');
-      expect(headers['content-type']?.toLowerCase()).toContain('text/html');
+      expect(headers["x-content-type-options"]?.trim().toLowerCase()).toBe(
+        "nosniff",
+      );
+      expect(headers["content-type"]?.toLowerCase()).toContain("text/html");
     });
 
-    test('Expectation 16: Sets Referrer-Policy: strict-origin-when-cross-origin on document responses', async ({
+    test("Expectation 16: Sets Referrer-Policy: strict-origin-when-cross-origin on document responses", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const referrerPolicy = response?.headers()['referrer-policy'];
-      expect(referrerPolicy?.trim().toLowerCase()).toBe('strict-origin-when-cross-origin');
+      const referrerPolicy = response?.headers()["referrer-policy"];
+      expect(referrerPolicy?.trim().toLowerCase()).toBe(
+        "strict-origin-when-cross-origin",
+      );
     });
 
-    test('Expectation 17: Sets restrictive Permissions-Policy header disabling unused browser features', async ({
+    test("Expectation 17: Sets restrictive Permissions-Policy header disabling unused browser features", async ({
       page,
       TARGET_URL,
     }) => {
       const response = await page.goto(TARGET_URL);
       expect(response).not.toBeNull();
-      const permissionsPolicy = response?.headers()['permissions-policy'];
+      const permissionsPolicy = response?.headers()["permissions-policy"];
       expect(permissionsPolicy).toBeDefined();
       expect(permissionsPolicy).toMatch(/\bcamera=\(\)/);
       expect(permissionsPolicy).toMatch(/\bgeolocation=\(\)/);
       expect(permissionsPolicy).toMatch(/\bmicrophone=\(\)/);
     });
 
-    test('Expectation 20: Sends Clear-Site-Data header with cookies, storage, and cache on logout responses', async ({
+    test("Expectation 20: Sends Clear-Site-Data header with cookies, storage, and cache on logout responses", async ({
       TARGET_URL,
     }) => {
-      const logoutUrl = new URL('/logout', TARGET_URL);
+      const logoutUrl = new URL("/logout", TARGET_URL);
       let response = await fetch(logoutUrl, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Dest': 'document',
+          "Sec-Fetch-Site": "same-origin",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Dest": "document",
         },
-        redirect: 'manual',
+        redirect: "manual",
       });
       if (response.status === 405) {
         response = await fetch(logoutUrl, {
-          method: 'POST',
+          method: "POST",
           headers: {
             Origin: new URL(TARGET_URL).origin,
-            'Sec-Fetch-Site': 'same-origin',
-            'Sec-Fetch-Mode': 'same-origin',
-            'Sec-Fetch-Dest': 'empty',
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "same-origin",
+            "Sec-Fetch-Dest": "empty",
           },
-          redirect: 'manual',
+          redirect: "manual",
         });
       }
       expect(response.status).toBeLessThan(400);
-      const clearSiteData = response.headers.get('clear-site-data') ?? '';
+      const clearSiteData = response.headers.get("clear-site-data") ?? "";
       expect(clearSiteData).toContain('"cookies"');
       expect(clearSiteData).toContain('"storage"');
       expect(clearSiteData).toContain('"cache"');

@@ -6,7 +6,10 @@ import {
   type OriginTrialMetadata,
   type VolatileFeatureMetadata,
 } from "../core/feature-gates.ts";
-import { isGithubAlertType, type GithubAlertType } from "../core/guide-validation.ts";
+import {
+  isGithubAlertType,
+  type GithubAlertType,
+} from "../core/guide-validation.ts";
 
 function isOrderedList(token: Token): token is Tokens.List {
   return token.type === "list" && Boolean((token as Tokens.List).ordered);
@@ -20,7 +23,10 @@ function indentBlock(text: string): string {
   return text.replace(/^(?=[^\n]*\S)/gm, "    ");
 }
 
-const ALERT_LABELS: Record<GithubAlertType, { label: string; className: string }> = {
+const ALERT_LABELS: Record<
+  GithubAlertType,
+  { label: string; className: string }
+> = {
   NOTE: { label: "Note", className: "note" },
   TIP: { label: "Tip", className: "tip" },
   IMPORTANT: { label: "Important", className: "special" },
@@ -44,8 +50,11 @@ function convertAlert(token: Tokens.Blockquote): string {
     .replace(/^> ?/gm, "")
     .trim();
 
-  const bodyTokens: Token[] = marked.lexer(body).filter(t => t.type !== "space");
-  const isSingleParagraph = bodyTokens.length === 1 && bodyTokens[0].type === "paragraph";
+  const bodyTokens: Token[] = marked
+    .lexer(body)
+    .filter((t) => t.type !== "space");
+  const isSingleParagraph =
+    bodyTokens.length === 1 && bodyTokens[0].type === "paragraph";
   if (isSingleParagraph) {
     return `${alert.label}: ${body}${trailing}`;
   }
@@ -68,7 +77,8 @@ export {
   buildHeadingMap,
 };
 
-const RE_RAW_JINJA = /(\{\{\s*macros\.[^}]+\}\}|\{%\s*(?:import|include)\s+[^%]+%\}|\{%\s*(?:verbatim|endverbatim)\s*%\})|(\{\{[^\n]*?\}\}|\{\{|\{%|\{#)/g;
+const RE_RAW_JINJA =
+  /(\{\{\s*macros\.[^}]+\}\}|\{%\s*(?:import|include)\s+[^%]+%\}|\{%\s*(?:verbatim|endverbatim)\s*%\})|(\{\{[^\n]*?\}\}|\{\{|\{%|\{#)/g;
 
 /**
  * Escapes non-macro Jinja delimiters with {% verbatim %} tags.
@@ -146,7 +156,8 @@ function normalizeListItemFences(listRaw: string): string {
   return result.join("\n");
 }
 
-const RE_BASELINE_MACRO = /(\{\{\s*macros\.BaselineStatus\('[^']+'\)\s*\}\})\.?([ \t\r\n]+(?=\S))?/g;
+const RE_BASELINE_MACRO =
+  /(\{\{\s*macros\.BaselineStatus\('[^']+'\)\s*\}\})\.?([ \t\r\n]+(?=\S))?/g;
 
 export interface DevsiteMarkdownOptions {
   filePath?: string;
@@ -173,7 +184,7 @@ export interface DevsiteMarkdownResult {
  */
 export function toDevsiteMarkdown(
   markdown: string,
-  options?: DevsiteMarkdownOptions | ((stepNumber: number) => void)
+  options?: DevsiteMarkdownOptions | ((stepNumber: number) => void),
 ): DevsiteMarkdownResult {
   const opts: DevsiteMarkdownOptions =
     typeof options === "function" ? { onListMerge: options } : (options ?? {});
@@ -182,9 +193,11 @@ export function toDevsiteMarkdown(
   const { headingMap, headingIds } = buildHeadingMap(normalized);
 
   const tokens = marked.lexer(normalized);
-  const reconstructed = tokens.map(t => t.raw).join("");
+  const reconstructed = tokens.map((t) => t.raw).join("");
   if (reconstructed !== normalized) {
-    throw new Error("marked lexer tokens don't round-trip the source markdown; refusing to rewrite it.");
+    throw new Error(
+      "marked lexer tokens don't round-trip the source markdown; refusing to rewrite it.",
+    );
   }
 
   const out: string[] = [];
@@ -205,7 +218,10 @@ export function toDevsiteMarkdown(
 
       const listContent = normalizeListItemFences(token.raw);
       out.push(listContent);
-      pending = { nextNumber: start + token.items.length, outIndex: out.length };
+      pending = {
+        nextNumber: start + token.items.length,
+        outIndex: out.length,
+      };
       continue;
     }
 
@@ -231,10 +247,15 @@ export function toDevsiteMarkdown(
         const explicitMatch = token.text.match(EXPLICIT_HEADING_ID_PATTERN);
         if (explicitMatch) {
           const explicitId = explicitMatch[1];
-          const headingPrefix = token.raw.slice(0, token.raw.indexOf(token.text));
+          const headingPrefix = token.raw.slice(
+            0,
+            token.raw.indexOf(token.text),
+          );
           const strippedText = token.text.slice(0, explicitMatch.index).trim();
           const trailingNewlines = token.raw.match(/\n*$/)?.[0] ?? "\n";
-          out.push(`${headingPrefix}${strippedText} {: #${explicitId} }${trailingNewlines}`);
+          out.push(
+            `${headingPrefix}${strippedText} {: #${explicitId} }${trailingNewlines}`,
+          );
           continue;
         }
       }
@@ -270,14 +291,20 @@ export function toDevsiteMarkdown(
   }
 
   // Rewrite internal anchors [text](#anchor) using headingMap
-  assembled = assembled.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, (fullMatch, linkText, fragment) => {
-    const resolved = headingMap.get(fragment) ?? headingMap.get(fragment.replace(/-/g, "_"));
-    if (!resolved) {
-      const location = opts.filePath ? ` in ${opts.filePath}` : "";
-      throw new Error(`Unresolved anchor "#${fragment}"${location}. No matching heading found on this page.`);
-    }
-    return `[${linkText}](#${resolved})`;
-  });
+  assembled = assembled.replace(
+    /\[([^\]]+)\]\(#([^)]+)\)/g,
+    (fullMatch, linkText, fragment) => {
+      const resolved =
+        headingMap.get(fragment) ?? headingMap.get(fragment.replace(/-/g, "_"));
+      if (!resolved) {
+        const location = opts.filePath ? ` in ${opts.filePath}` : "";
+        throw new Error(
+          `Unresolved anchor "#${fragment}"${location}. No matching heading found on this page.`,
+        );
+      }
+      return `[${linkText}](#${resolved})`;
+    },
+  );
 
   // Escape raw Jinja delimiters outside existing emitted macros/includes
   assembled = escapeJinjaDelimiters(assembled);
@@ -289,7 +316,11 @@ export function toDevsiteMarkdown(
   };
 }
 
-function ensureBlankLineBeforeBlock(out: string[], prevToken: Token | undefined, currentToken: Token): void {
+function ensureBlankLineBeforeBlock(
+  out: string[],
+  prevToken: Token | undefined,
+  currentToken: Token,
+): void {
   if (out.length === 0 || !prevToken) return;
   if (currentToken.type === "space") return;
   if (prevToken.type === "space") return;
@@ -321,13 +352,18 @@ export interface DevsiteGateNoticesInput {
   volatileFeatures: readonly VolatileFeatureMetadata[];
 }
 
-function formatChromestatusSentence(originTrials: readonly OriginTrialMetadata[]): string {
+function formatChromestatusSentence(
+  originTrials: readonly OriginTrialMetadata[],
+): string {
   const uniqueLinks = new Map<string, string>();
   for (const trial of originTrials) {
     if (!trial.chromestatus_url || uniqueLinks.has(trial.chromestatus_url)) {
       continue;
     }
-    uniqueLinks.set(trial.chromestatus_url, trial.name ?? getFeatureName(trial.id));
+    uniqueLinks.set(
+      trial.chromestatus_url,
+      trial.name ?? getFeatureName(trial.id),
+    );
   }
   if (uniqueLinks.size === 0) return "";
   if (uniqueLinks.size === 1) {
@@ -335,14 +371,20 @@ function formatChromestatusSentence(originTrials: readonly OriginTrialMetadata[]
     return ` See the <a href="${escapeHtml(url)}">ChromeStatus entry</a> for current trial status and timeline.`;
   }
   const anchors = [...uniqueLinks.entries()]
-    .map(([url, label]) => `<a href="${escapeHtml(url)}">${escapeHtml(label)}</a>`)
+    .map(
+      ([url, label]) => `<a href="${escapeHtml(url)}">${escapeHtml(label)}</a>`,
+    )
     .join(", ");
   return ` See the ChromeStatus entries for current trial status and timeline: ${anchors}.`;
 }
 
-function formatGateCautionAside(gateKey: FeatureGateId, bodyHtml: string): string {
+function formatGateCautionAside(
+  gateKey: FeatureGateId,
+  bodyHtml: string,
+): string {
   const gate = FEATURE_GATES[gateKey];
-  const heading = gate.headingLabel.charAt(0).toUpperCase() + gate.headingLabel.slice(1);
+  const heading =
+    gate.headingLabel.charAt(0).toUpperCase() + gate.headingLabel.slice(1);
   const command = `npx modern-web-guidance@latest ${gate.cliCommand}`;
   return [
     '<aside class="caution">',
@@ -360,7 +402,11 @@ export function formatDevsiteGateNotices({
   originTrials,
   volatileFeatures,
 }: DevsiteGateNoticesInput): string[] {
-  const entries: Array<{ gateKey: FeatureGateId; active: boolean; bodyHtml: string }> = [
+  const entries: Array<{
+    gateKey: FeatureGateId;
+    active: boolean;
+    bodyHtml: string;
+  }> = [
     {
       gateKey: "origin-trials",
       active: originTrials.length > 0,

@@ -2,13 +2,11 @@
 
 This directory contains the prompt benchmarking harness, base applications, agent runners, and evaluation orchestration tools for Modern Web Guidance.
 
-
 ## Overview
 
 The evaluation harness measures how effectively AI coding agents adopt modern web platform guidance. It executes real-world coding benchmarks across supported agent runners and verifies output against Playwright test assertions (`grader.ts`).
 
 Supported agents and canonical configurations are defined in [`src/harness/config.ts`](./config.ts). For agent installation, authentication, and `.env` configuration (Antigravity CLI, Jetski CLI, Claude Code, Codex CLI), see **[`docs/EVALS.md`](../../docs/EVALS.md)**.
-
 
 ## Stage 3 Guide Development: `gd dev`
 
@@ -29,6 +27,7 @@ gd dev guides/<category>/<use-case-slug> --targets daily-grind
 ```
 
 ### The 5-Step `gd dev` Pipeline:
+
 1. **Solutions Generation**: Generates golden solution patches and zero-passrate baseline patches across target base applications (`daily-grind`, `devtools-times`).
 2. **Grader Generation**: Generates Playwright test assertions in `grader.ts` based on `expectations.md`.
 3. **Grader Calibration**: Calibrates the grader (ensures golden patches pass 100% and zero-passrate baseline fails 100%).
@@ -66,8 +65,7 @@ When an evaluation report in a PR is unhealthy, `gd dev` applies recommended fix
 
 `src/ci/sync-pipeline-issue.ts` maintains the canonical [Content & Eval Pipeline issue (#1815)](https://github.com/GoogleChrome/modern-web-guidance-src/issues/1815), including flagging guides under **Stale evals** whenever `expectations.md` has substantive changes newer than `grader.ts` or `targets/`.
 
-* **Normative Specification & Rules**: See [`.agents/skills/project-evals/SKILL.md`](../../.agents/skills/project-evals/SKILL.md).
-
+- **Normative Specification & Rules**: See [`.agents/skills/project-evals/SKILL.md`](../../.agents/skills/project-evals/SKILL.md).
 
 ## Running Multi-Agent Benchmarks: `gd eval`
 
@@ -88,7 +86,9 @@ gd eval task1 task2 task3
 ```
 
 ### Configuration Profiles:
+
 To override suite parameters without modifying `src/harness/config.ts` directly, copy the example template from the **repository root**:
+
 ```bash
 # From the repository root:
 cp config.ts.example config.ts
@@ -96,7 +96,6 @@ cp config.ts.example config.ts
 # Pass custom config to gd eval:
 gd eval --config config.ts
 ```
-
 
 ## Evaluation Results Dashboard
 
@@ -178,18 +177,20 @@ src/harness/
 
 The harness does **not** centrally hardcode which model each agent uses. Instead, each agent runner reads the model from environment variables:
 
-| Agent | Model Env Var | Effort Env Var / Knob | CLI Effort Flag | Default Effort When Unset |
-|-------|---------------|-----------------------|-----------------|---------------------------|
-| **Antigravity CLI** | `ANTIGRAVITY_MODEL` | `ANTIGRAVITY_EFFORT` | `--effort <level>` | agy's built-in default (`agent-default`, or `model-id` if the model ends in `-<level>`) |
-| **Claude Code** | `ANTHROPIC_MODEL` | `CLAUDE_EFFORT` | `--effort <level>` | Claude Code's built-in default (captured as `observed` from `api-request` `params.output_config.effort` or `assistant` `effort`, else `agent-default`) |
-| **Codex CLI** | `CODEX_MODEL` | `CODEX_EFFORT` | `-c model_reasoning_effort=<level>` | `~/.codex/config.toml` / CLI default (captured as `observed` from rollout `turn_context`) |
-| **Jetski CLI** | `JETSKI_MODEL` | `JETSKI_EFFORT` | `--effort <level>` | Jetski CLI's built-in default (captured as `observed` from `gen_metadata` fields `1.21` / `3.28` / `1.19`) |
-| **Pi** | `PI_MODEL` or `PROMPT_MODEL` | `:<thinking>` suffix on `PI_MODEL` (e.g. `...:low`, `...:off`) | Passed via `--model <id>:<thinking>` | `~/.pi/agent/settings.json` / CLI default (`model-id` when `:suffix` is set, `observed` on `thinking_level_change`) |
+| Agent               | Model Env Var                | Effort Env Var / Knob                                          | CLI Effort Flag                      | Default Effort When Unset                                                                                                                              |
+| ------------------- | ---------------------------- | -------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Antigravity CLI** | `ANTIGRAVITY_MODEL`          | `ANTIGRAVITY_EFFORT`                                           | `--effort <level>`                   | agy's built-in default (`agent-default`, or `model-id` if the model ends in `-<level>`)                                                                |
+| **Claude Code**     | `ANTHROPIC_MODEL`            | `CLAUDE_EFFORT`                                                | `--effort <level>`                   | Claude Code's built-in default (captured as `observed` from `api-request` `params.output_config.effort` or `assistant` `effort`, else `agent-default`) |
+| **Codex CLI**       | `CODEX_MODEL`                | `CODEX_EFFORT`                                                 | `-c model_reasoning_effort=<level>`  | `~/.codex/config.toml` / CLI default (captured as `observed` from rollout `turn_context`)                                                              |
+| **Jetski CLI**      | `JETSKI_MODEL`               | `JETSKI_EFFORT`                                                | `--effort <level>`                   | Jetski CLI's built-in default (captured as `observed` from `gen_metadata` fields `1.21` / `3.28` / `1.19`)                                             |
+| **Pi**              | `PI_MODEL` or `PROMPT_MODEL` | `:<thinking>` suffix on `PI_MODEL` (e.g. `...:low`, `...:off`) | Passed via `--model <id>:<thinking>` | `~/.pi/agent/settings.json` / CLI default (`model-id` when `:suffix` is set, `observed` on `thinking_level_change`)                                    |
 
 > **Conflict rule:** Setting `<AGENT>_EFFORT` alongside a model ID that already bakes in a trailing `-<level>` or `:<level>` tier suffix (such as `ANTIGRAVITY_MODEL=gemini-3.8-flash-medium` + `ANTIGRAVITY_EFFORT=high`) throws a startup error in `resolveEffortCliArgs()` (`src/harness/lib/reasoning-effort.ts`). Use either a base model ID with `<AGENT>_EFFORT` or a tiered model ID without `<AGENT>_EFFORT`.
 
 #### Fallback Behavior
+
 If no model env var is set:
+
 - **Antigravity CLI**: Uses `agy`'s default model (override with `ANTIGRAVITY_MODEL`)
 - **Jetski CLI**: Uses default model from Jetski config
 - **Codex CLI**: Uses default model (configurable via `codex settings`)
@@ -197,7 +198,9 @@ If no model env var is set:
 - **Pi**: Uses the model from `~/.pi/agent/settings.json` (`defaultModel`)
 
 #### Token Efficiency Tips
+
 For development testing, use cheaper/faster models:
+
 ```bash
 # Fast model for smoke tests
 PI_MODEL=qwen/qwen3.5-plus node src/harness/quick-smoke.ts pi
@@ -213,6 +216,7 @@ PI_MODEL=anthropic/claude-opus GD_SUITE_CONFIG='...' node src/harness/run-suite.
 ### 1. Isolated HOME Directory
 
 Each test run gets a fresh temporary directory as `HOME` to prevent:
+
 - Cross-test contamination
 - Auth credential leakage between runs
 - Config file race conditions
@@ -223,16 +227,16 @@ Each test run gets a fresh temporary directory as `HOME` to prevent:
 export function createIsolatedHome(prefix: string, targetDir?: string): string {
   const tempHome = `/tmp/${prefix}-${Math.random().toString(36).substring(7)}`;
   fs.mkdirSync(tempHome, { recursive: true });
-  
+
   // Copy .npmrc for auth in isolated env
   copyFileIfExists(
-    path.join(os.homedir(), '.npmrc'),
-    path.join(tempHome, '.npmrc')
+    path.join(os.homedir(), ".npmrc"),
+    path.join(tempHome, ".npmrc"),
   );
-  
+
   // Setup shell profiles to maintain PATH
   setupIsolatedShellProfiles(tempHome, targetDir);
-  
+
   return tempHome;
 }
 ```
@@ -244,23 +248,24 @@ export function createIsolatedHome(prefix: string, targetDir?: string): string {
 
 Each agent has different auth file locations copied to the isolated environment:
 
-| Agent | Auth Files | Location |
-|-------|-----------|----------|
-| Pi | `auth.json`, `settings.json`, `trust.json` | `~/.pi/agent/` |
-| Claude Code | GCP credentials via env | `gcloud` config |
-| Codex CLI | OAuth via login flow | `~/.codex/` |
-| Jetski CLI | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/` |
-| Antigravity CLI | `settings.json`, `antigravity-oauth-token` (Linux) or Keychain symlink (macOS) | `~/.gemini/antigravity-cli/` |
+| Agent           | Auth Files                                                                                                                                                | Location                     |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Pi              | `auth.json`, `settings.json`, `trust.json`                                                                                                                | `~/.pi/agent/`               |
+| Claude Code     | GCP credentials via env                                                                                                                                   | `gcloud` config              |
+| Codex CLI       | OAuth via login flow                                                                                                                                      | `~/.codex/`                  |
+| Jetski CLI      | `installation_id`, `user_settings.pb`; on macOS the OAuth token lives in the login Keychain, so `~/Library/Keychains` is symlinked into the isolated HOME | `~/.gemini/jetski/`          |
+| Antigravity CLI | `settings.json`, `antigravity-oauth-token` (Linux) or Keychain symlink (macOS)                                                                            | `~/.gemini/antigravity-cli/` |
 
 Example for Pi:
+
 ```typescript
 // src/harness/agents/pi-agent.ts
-const piDestAgent = path.join(tempHome, '.pi', 'agent');
+const piDestAgent = path.join(tempHome, ".pi", "agent");
 fs.mkdirSync(piDestAgent, { recursive: true });
 
 copyFileIfExists(
-  path.join(os.homedir(), '.pi', 'agent', 'auth.json'),
-  path.join(piDestAgent, 'auth.json')
+  path.join(os.homedir(), ".pi", "agent", "auth.json"),
+  path.join(piDestAgent, "auth.json"),
 );
 ```
 
@@ -276,13 +281,13 @@ copySkills(tempHome, Agents.PI, skillsToEnable);
 
 Each agent outputs trajectories in distinct formats:
 
-| Agent | Format | Location | Parser |
-|-------|--------|----------|--------|
-| Pi | JSONL | `.pi/agent/sessions/*.jsonl` | Line-by-line JSON |
-| Claude Code | JSON | `~/.claude/projects/*/sessions/` | `JSON.parse()` |
-| Codex CLI | TOML config + JSONL | `~/.codex/` | Custom parser |
-| Jetski CLI | Protocol Buffers / SQLite | `.gemini/jetski/conversations/*` | `parseJetskiCliSession` |
-| Antigravity CLI | SQLite | `.gemini/antigravity-cli/conversations/*.db` | `parseJetskiCliSession` |
+| Agent           | Format                    | Location                                     | Parser                  |
+| --------------- | ------------------------- | -------------------------------------------- | ----------------------- |
+| Pi              | JSONL                     | `.pi/agent/sessions/*.jsonl`                 | Line-by-line JSON       |
+| Claude Code     | JSON                      | `~/.claude/projects/*/sessions/`             | `JSON.parse()`          |
+| Codex CLI       | TOML config + JSONL       | `~/.codex/`                                  | Custom parser           |
+| Jetski CLI      | Protocol Buffers / SQLite | `.gemini/jetski/conversations/*`             | `parseJetskiCliSession` |
+| Antigravity CLI | SQLite                    | `.gemini/antigravity-cli/conversations/*.db` | `parseJetskiCliSession` |
 
 Each agent runner colocates a trajectory parser (`parse<Agent>Trajectory` and `load<Agent>Logs`) and calls `generateNormalizedTrajectory(targetDir, Agents.<AGENT>, userPrompt)` in its `finally` block to write a unified `trajectory_summary.json` in `targetDir`:
 
@@ -300,14 +305,13 @@ The harness tracks which guides the agent retrieved or read:
 
 ```typescript
 // src/harness/lib/guide-usage.ts
-export async function collectGuidesUsed(
-  dirPath: string
-): Promise<GuideUsage> {
+export async function collectGuidesUsed(dirPath: string): Promise<GuideUsage> {
   // Reads from trajectory_summary.json
 }
 ```
 
 This scans trajectories for:
+
 - `get_best_practices` tool calls with `use_case_id`
 - `read_file` calls to paths containing `/skills/` or `guide.md`
 - Shell commands with `--retrieve` flags
@@ -320,18 +324,23 @@ Agents can fail at multiple stages. The harness captures failures for grading:
 // src/harness/lib/agent-shared.ts
 if (exitCode !== 0) {
   fs.writeFileSync(
-    path.join(targetDir, 'generation_failed.json'),
-    JSON.stringify({
-      agentName,
-      exitCode,
-      stderr,
-      stdout
-    }, null, 2)
+    path.join(targetDir, "generation_failed.json"),
+    JSON.stringify(
+      {
+        agentName,
+        exitCode,
+        stderr,
+        stdout,
+      },
+      null,
+      2,
+    ),
   );
 }
 ```
 
 The grader reads this to distinguish:
+
 - **Early failures**: Agent crashed, no output generated
 - **Grader failures**: Agent generated code, but tests failed
 
@@ -344,11 +353,11 @@ An isolated HOME alone doesn't stop an agent from finding this repo (e.g. via `$
 
 Only these paths are re-exposed:
 
-| Path | Access | Why |
-|------|--------|-----|
-| `node_modules` | read-only | Agent CLI binaries |
-| `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
-| isolated `HOME` (`/tmp/ghh-*`) | writable | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
+| Path                           | Access                 | Why                                                                  |
+| ------------------------------ | ---------------------- | -------------------------------------------------------------------- |
+| `node_modules`                 | read-only              | Agent CLI binaries                                                   |
+| `dist/skills-cli`              | read-only, guided only | The npx/pnpx shim runs the local skills CLI                          |
+| isolated `HOME` (`/tmp/ghh-*`) | writable               | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
 
 If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
 
@@ -362,45 +371,60 @@ Copy an existing harness (e.g., `src/harness/agents/pi-agent.ts`) and create `sr
 
 ```typescript
 // src/harness/agents/my-agent.ts
-import config, { Agents } from '../config.ts';
+import config, { Agents } from "../config.ts";
 import {
   cleanupIsolatedHome,
   copyFileIfExists,
   parseAgentArgs,
   runCliAgentCommand,
   setupIsolatedWorkDir,
-} from '../lib/agent-shared.ts';
+} from "../lib/agent-shared.ts";
 import {
   type TrajectorySummary,
   generateNormalizedTrajectory,
-} from '../lib/trajectory-normalizer.ts';
+} from "../lib/trajectory-normalizer.ts";
 
 export function setupMyAgentCredentials(tempHome: string): void {
-  const agentDest = path.join(tempHome, '.my-agent');
+  const agentDest = path.join(tempHome, ".my-agent");
   fs.mkdirSync(agentDest, { recursive: true });
   copyFileIfExists(
-    path.join(os.homedir(), '.my-agent', 'config.json'),
-    path.join(agentDest, 'config.json')
+    path.join(os.homedir(), ".my-agent", "config.json"),
+    path.join(agentDest, "config.json"),
   );
   process.env.MY_AGENT_CONFIG_DIR = agentDest;
 }
 
-export function getMyAgentCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
-  const command = config.environment.myAgentBin || 'my-agent';
-  return { command, commandArgs: ['-p', prompt] };
+export function getMyAgentCommandAndArgs(prompt: string): {
+  command: string;
+  commandArgs: string[];
+} {
+  const command = config.environment.myAgentBin || "my-agent";
+  return { command, commandArgs: ["-p", prompt] };
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('my-agent.ts');
+  const { userPrompt, runType, targetDir, templateDir } =
+    parseAgentArgs("my-agent.ts");
   const workDir = setupIsolatedWorkDir(Agents.MY_AGENT, templateDir, runType);
 
   try {
     const { command, commandArgs } = getMyAgentCommandAndArgs(userPrompt);
     try {
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        "My Agent",
+        runType,
+      );
     } finally {
       exportMyAgentTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.MY_AGENT, userPrompt);
+      await generateNormalizedTrajectory(
+        targetDir,
+        Agents.MY_AGENT,
+        userPrompt,
+      );
     }
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));
@@ -422,12 +446,12 @@ export function parseMyAgentTrajectory(logData: any[]): TrajectorySummary {
 // src/harness/config.ts
 export const Agents = {
   // ... existing agents
-  MY_AGENT: 'my_agent'
+  MY_AGENT: "my_agent",
 } as const;
 
 export const environmentConfig: EnvironmentConfig = {
   // ... existing config
-  myAgentBin: process.env.MY_AGENT_BIN || 'my-agent',
+  myAgentBin: process.env.MY_AGENT_BIN || "my-agent",
 };
 
 export interface EnvironmentConfig {
@@ -444,13 +468,14 @@ export interface EnvironmentConfig {
    ```typescript
    const AGENT_SCRIPTS: Record<string, string> = {
      // ... other agents
-     [Agents.MY_AGENT]: 'my-agent.ts',
+     [Agents.MY_AGENT]: "my-agent.ts",
    };
    ```
 
 ### Step 4: Add Smoke Test
 
 Register the agent in `AGENT_CONFIGS` in `src/harness/quick-smoke.ts` and run a smoke test:
+
 ```bash
 # Usage: node src/harness/quick-smoke.ts [agent] [guided|unguided]
 node src/harness/quick-smoke.ts my-agent unguided
@@ -466,25 +491,30 @@ SMOKE_AGENT=claude-code node src/harness/quick-smoke.ts
 ## Common Pitfalls
 
 ### 1. PATH Interference
+
 Agents may invoke login shells that reset PATH via `/usr/libexec/path_helper`. The harness creates shell profiles in the isolated HOME to maintain PATH:
+
 ```typescript
 setupIsolatedShellProfiles(tempHome, targetDir);
 ```
 
 ### 2. Unix Socket Path Limits
+
 On macOS, Unix socket paths have a ~100 character limit. Use `/tmp/` directly instead of `os.tmpdir()` for isolated HOME directories.
 
 ### 3. Trajectory Parsing
+
 Different agents use different trajectory formats. Always handle:
+
 - Missing files (graceful degradation)
 - Parse errors (skip malformed entries)
 - Multiple files per session (aggregate)
 
 ```typescript
 try {
-  const content = fs.readFileSync(sessionPath, 'utf8');
-  const lines = content.split('\n').filter(line => line.trim());
-  
+  const content = fs.readFileSync(sessionPath, "utf8");
+  const lines = content.split("\n").filter((line) => line.trim());
+
   for (const line of lines) {
     try {
       const msg = JSON.parse(line);
@@ -503,6 +533,7 @@ try {
 ## Debugging & Diagnostics
 
 ### Check Isolated HOME Contents
+
 ```bash
 # Temporarily disable cleanup to inspect isolated HOME:
 console.log(`DEBUG: Isolated HOME at ${tempHome}`);
@@ -510,6 +541,7 @@ console.log(`DEBUG: Isolated HOME at ${tempHome}`);
 ```
 
 ### Inspect Trajectory Files
+
 ```bash
 # Pi
 cat /tmp/ghh-pi-*/.pi/agent/sessions/*.jsonl | jq '.'
@@ -519,12 +551,14 @@ grep -o '"use_case_id":"[^"]*"' trajectory.jsonl
 ```
 
 ### Test the Skills CLI Independently
+
 ```bash
 # Run the skills CLI directly to verify it works
 node src/cli/modern-web.ts search "address form"
 ```
 
 ### Check Guide Validation
+
 ```bash
 # Verify guides are "eval-ready" before running suite
 node src/core/guide-validation.ts
@@ -535,6 +569,7 @@ node src/core/guide-validation.ts
 ## Harness Testing & Smoke Tests
 
 ### Quick Smoke Test
+
 Use the agent-agnostic smoke test for fast validation:
 
 ```bash
@@ -554,37 +589,45 @@ node src/harness/quick-smoke.ts
 ```
 
 ### Custom Smoke Tests
+
 For agent-specific validation logic, create `src/harness/<agent>-smoke.ts`:
 
 ```typescript
 // src/harness/my-agent-smoke.ts
-import { spawnSync } from 'child_process';
+import { spawnSync } from "child_process";
 
 export async function runMyAgentSmokeTest() {
-  const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'my-agent-smoke-test-'));
-  const prompt = "Please create a file named 'hello.txt' containing exactly 'hello world'.";
-  
+  const tempProjectDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "my-agent-smoke-test-"),
+  );
+  const prompt =
+    "Please create a file named 'hello.txt' containing exactly 'hello world'.";
+
   const suiteConfig = {
-    name: 'smoke-test',
+    name: "smoke-test",
     numRuns: 1,
     tasks: [],
     skillsToEnable: [],
-    agent: 'my_agent'
+    agent: "my_agent",
   };
-  
-  const result = spawnSync('node', [
-    path.join(import.meta.dirname, 'agents/my-agent.ts'),
-    prompt,
-    'unguided',
-    tempProjectDir,
-    tempProjectDir
-  ], {
-    stdio: 'inherit',
-    env: { ...process.env, GD_SUITE_CONFIG: JSON.stringify(suiteConfig) }
-  });
+
+  const result = spawnSync(
+    "node",
+    [
+      path.join(import.meta.dirname, "agents/my-agent.ts"),
+      prompt,
+      "unguided",
+      tempProjectDir,
+      tempProjectDir,
+    ],
+    {
+      stdio: "inherit",
+      env: { ...process.env, GD_SUITE_CONFIG: JSON.stringify(suiteConfig) },
+    },
+  );
 
   if (result.status !== 0) {
-    console.error('❌ Agent harness failed to execute.');
+    console.error("❌ Agent harness failed to execute.");
     process.exit(1);
   }
 }
@@ -593,12 +636,15 @@ export async function runMyAgentSmokeTest() {
 ### Testing the Pi Agent Harness
 
 #### Unit Tests
+
 Run the Pi trajectory parsing unit tests:
+
 ```bash
 node --test src/harness/agents/pi-agent.test.ts
 ```
 
 #### Manual Trajectory Inspection
+
 ```bash
 # Run full eval suite with Pi (sessions enabled by default)
 GD_SUITE_CONFIG='{"agent":"pi"}' \
@@ -625,13 +671,17 @@ gd compare nightly-2026-08-10_17-00-02-jetski_cli/1/details-styling/task/guided 
 ```
 
 ### Path Formats
+
 Run directory paths can be:
+
 - **Local repository paths**: Paths relative to repo root (e.g. `results/<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
 - **Results-relative or remote suite paths**: Paths relative to `results/` (e.g. `<suite-name>/<run-number>/<guide-name>/<task-name>/<run-type>`).
 - **Remote GCS buckets**: If the specified run directory is not found locally, `gd compare` automatically downloads the run artifacts from Google Cloud Storage (`gs://guidance-evals/<suite-path>`) before launching analysis.
 
 ### Analysis Pipeline
+
 The comparison runs in four steps:
+
 1. **Loads both runs.** Missing runs are downloaded from GCS. If a `trajectory_summary.json` is missing or from an older normalizer version, it's rebuilt from the raw session logs.
 2. **Pre-processes trajectories** into tagged milestone steps (skill search, guide retrieval, code mutation, noise) and counts error/retry loops.
 3. **Runs one diagnostic prompt** with the configured solution agent CLI in an isolated temp workspace. The full guide, grader, diffs and trajectories are staged there as files. The agent may split the guide-compliance and code/friction audits across its own subagents.

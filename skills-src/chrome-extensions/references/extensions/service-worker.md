@@ -14,12 +14,12 @@ persistent background pages, you CANNOT rely on in-memory state.
 
 ## Storage Tier Selection
 
-| Need | Use |
-|------|-----|
+| Need                                           | Use                                           |
+| ---------------------------------------------- | --------------------------------------------- |
 | Survives browser restart, syncs across devices | `chrome.storage.sync` (8KB/item, 100KB total) |
-| Survives browser restart, local only | `chrome.storage.local` (10MB default) |
-| Survives SW restart only | `chrome.storage.session` (10MB default) |
-| Never persisted (avoid) | Global variables ❌ |
+| Survives browser restart, local only           | `chrome.storage.local` (10MB default)         |
+| Survives SW restart only                       | `chrome.storage.session` (10MB default)       |
+| Never persisted (avoid)                        | Global variables ❌                           |
 
 ## Pattern: State Read-on-Demand
 
@@ -48,9 +48,9 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
 setInterval(() => checkForUpdates(), 60000);
 
 // ✅ GOOD: Alarm persists
-chrome.alarms.create('check-updates', { periodInMinutes: 1 });
+chrome.alarms.create("check-updates", { periodInMinutes: 1 });
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'check-updates') {
+  if (alarm.name === "check-updates") {
     checkForUpdates();
   }
 });
@@ -63,14 +63,14 @@ Minimum alarm interval: 0.5 minutes.
 ```js
 // Set up defaults and context menus on install
 chrome.runtime.onInstalled.addListener(async (details) => {
-  if (details.reason === 'install') {
+  if (details.reason === "install") {
     await chrome.storage.local.set({ settings: defaultSettings });
   }
   // Context menus must be re-created (they persist, but re-creating is idempotent)
   chrome.contextMenus.create({
-    id: 'myItem',
-    title: 'My Context Menu Item',
-    contexts: ['selection']
+    id: "myItem",
+    title: "My Context Menu Item",
+    contexts: ["selection"],
   });
 });
 ```
@@ -85,7 +85,7 @@ Occasionally you need the SW alive for a long-running operation. Use one of:
 
 ```js
 // Port-based keepalive from popup/side panel
-const port = chrome.runtime.connect({ name: 'keepalive' });
+const port = chrome.runtime.connect({ name: "keepalive" });
 // The SW stays alive as long as this port is open
 ```
 
@@ -104,7 +104,7 @@ chrome.webNavigation.onCompleted.addListener(handleNavigation);
 
 // ❌ BAD: Conditional or async registration
 async function setup() {
-  const { enabled } = await chrome.storage.local.get('enabled');
+  const { enabled } = await chrome.storage.local.get("enabled");
   if (enabled) {
     chrome.tabs.onUpdated.addListener(handleTabUpdate); // Too late!
   }
@@ -116,7 +116,7 @@ Instead, register all listeners and check conditions inside them:
 
 ```js
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  const { enabled } = await chrome.storage.local.get('enabled');
+  const { enabled } = await chrome.storage.local.get("enabled");
   if (!enabled) return;
   // Process...
 });
@@ -128,11 +128,14 @@ For daily counters, store the date alongside the count:
 
 ```js
 function getToday() {
-  return new Date().toISOString().split('T')[0]; // "2025-01-15"
+  return new Date().toISOString().split("T")[0]; // "2025-01-15"
 }
 
 async function incrementDailyCount() {
-  const { dailyCount = 0, countDate = '' } = await chrome.storage.local.get(['dailyCount', 'countDate']);
+  const { dailyCount = 0, countDate = "" } = await chrome.storage.local.get([
+    "dailyCount",
+    "countDate",
+  ]);
   const today = getToday();
 
   if (countDate !== today) {

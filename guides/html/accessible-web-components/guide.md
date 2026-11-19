@@ -22,23 +22,26 @@ class ToggleSwitch extends HTMLElement {
   constructor() {
     super();
     this.#internals = this.attachInternals();
-    this.#internals.role = 'switch';          // default role, no host attribute needed
-    this.#internals.ariaChecked = 'false';    // exposed to the accessibility tree
-    this.addEventListener('click', () => this.toggle());
-    this.addEventListener('keydown', (e) => {
-      if (e.key === ' ') { e.preventDefault(); this.toggle(); }
+    this.#internals.role = "switch"; // default role, no host attribute needed
+    this.#internals.ariaChecked = "false"; // exposed to the accessibility tree
+    this.addEventListener("click", () => this.toggle());
+    this.addEventListener("keydown", (e) => {
+      if (e.key === " ") {
+        e.preventDefault();
+        this.toggle();
+      }
     });
   }
   connectedCallback() {
     // Put the host in the tab order on connect (setting tabIndex in the constructor throws on createElement).
-    if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
+    if (!this.hasAttribute("tabindex")) this.tabIndex = 0;
   }
   toggle() {
-    const on = this.#internals.ariaChecked !== 'true';
+    const on = this.#internals.ariaChecked !== "true";
     this.#internals.ariaChecked = String(on);
   }
 }
-customElements.define('toggle-switch', ToggleSwitch);
+customElements.define("toggle-switch", ToggleSwitch);
 ```
 
 This avoids polluting the DOM with ARIA attributes and prevents consumers from accidentally clobbering them, while the accessibility tree still sees the correct role and state.
@@ -52,8 +55,8 @@ This avoids polluting the DOM with ARIA attributes and prevents consumers from a
 ## ARIA relationships across shadow roots
 
 - **MANDATORY**: an `id` referenced by `aria-labelledby`, `aria-describedby`, `aria-controls`, etc. resolves only within the referencing element's **own** tree. An `id`-based attribute in the Light DOM cannot point at an `id` inside a shadow tree, and vice versa; the reference is silently ignored.
-- To cross the boundary, use the reflected ARIA *element* properties (e.g. `ariaLabelledByElements`, `ariaDescribedByElements`, etc), which take direct JS element references instead of ids. They resolve **outward**: an element inside a shadow tree can point at a target in the Light DOM or any ancestor tree (including slotted content), so you can label a shadow-internal control from Light DOM content — something `id` references can't express.
-- They do **not** resolve **inward**: an element can't reference *into* a descendant shadow tree (e.g. a host can't be labeled by its own shadow content). For that direction the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available.
+- To cross the boundary, use the reflected ARIA _element_ properties (e.g. `ariaLabelledByElements`, `ariaDescribedByElements`, etc), which take direct JS element references instead of ids. They resolve **outward**: an element inside a shadow tree can point at a target in the Light DOM or any ancestor tree (including slotted content), so you can label a shadow-internal control from Light DOM content — something `id` references can't express.
+- They do **not** resolve **inward**: an element can't reference _into_ a descendant shadow tree (e.g. a host can't be labeled by its own shadow content). For that direction the emerging **Reference Target** mechanism is the standards direction, but it is not yet broadly available.
 - When a relationship can't be expressed either way, keep it within one tree (render the label in the same tree) or use `aria-label` text instead of an `id` reference.
 
 ## Fallback strategies
@@ -64,4 +67,4 @@ Where the `ElementInternals` ARIA mixin is unavailable, set the role and ARIA st
 
 {{ BASELINE_STATUS("aria-attribute-reflection", "api.Element.ariaLabelledByElements") }}
 
-Where the reflected ARIA *element* properties are unavailable, use an `id`-based `aria-*` attribute for same-tree relationships; a cross-boundary label has no `id`-based equivalent, so fall back to `aria-label` text.
+Where the reflected ARIA _element_ properties are unavailable, use an `id`-based `aria-*` attribute for same-tree relationships; a cross-boundary label has no `id`-based equivalent, so fall back to `aria-label` text.

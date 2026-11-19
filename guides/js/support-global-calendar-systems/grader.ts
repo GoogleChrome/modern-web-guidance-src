@@ -1,12 +1,12 @@
-import { test, expect } from '../../test-fixture.ts';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "../../test-fixture.ts";
+import * as fs from "fs";
+import * as path from "path";
 
 declare const process: any;
 
 function getTargetCode(): string {
   const currentTargetFile = process.env.TARGET_FILE;
-  if (!currentTargetFile || !fs.existsSync(currentTargetFile)) return '';
+  if (!currentTargetFile || !fs.existsSync(currentTargetFile)) return "";
   const currentFilePath = path.resolve(currentTargetFile);
   const visited = new Set<string>();
   const chunks: string[] = [];
@@ -16,7 +16,7 @@ function getTargetCode(): string {
     if (visited.has(resolved) || !fs.existsSync(resolved)) return;
     visited.add(resolved);
 
-    const content = fs.readFileSync(resolved, 'utf-8');
+    const content = fs.readFileSync(resolved, "utf-8");
     // Skip large vendored polyfill bundles so polyfill internals don't trip source checks.
     if (
       resolved !== currentFilePath &&
@@ -28,13 +28,21 @@ function getTargetCode(): string {
 
     const dir = path.dirname(resolved);
     const refs = [
-      ...[...content.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(m => m[1]),
-      ...[...content.matchAll(/(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.[^"']+)["']/g)].map(m => m[1]),
-      ...[...content.matchAll(/import\s*\(\s*["'](\.[^"']+)["']\s*\)/g)].map(m => m[1]),
+      ...[...content.matchAll(/<script[^>]+src=["']([^"']+)["']/gi)].map(
+        (m) => m[1],
+      ),
+      ...[
+        ...content.matchAll(
+          /(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.[^"']+)["']/g,
+        ),
+      ].map((m) => m[1]),
+      ...[...content.matchAll(/import\s*\(\s*["'](\.[^"']+)["']\s*\)/g)].map(
+        (m) => m[1],
+      ),
     ];
     for (const ref of refs) {
-      if (!ref.startsWith('http') && !ref.startsWith('//')) {
-        const candidate = ref.startsWith('/')
+      if (!ref.startsWith("http") && !ref.startsWith("//")) {
+        const candidate = ref.startsWith("/")
           ? path.join(path.dirname(currentFilePath), ref.slice(1))
           : path.join(dir, ref);
         readRecursive(candidate);
@@ -43,7 +51,7 @@ function getTargetCode(): string {
   }
 
   readRecursive(currentFilePath);
-  return chunks.join('\n');
+  return chunks.join("\n");
 }
 
 interface GraderStats {
@@ -65,10 +73,13 @@ interface GraderStats {
   requestedScripts?: string[];
 }
 
-function isLocalPolyfillContent(localFilePath: string, content: string): boolean {
+function isLocalPolyfillContent(
+  localFilePath: string,
+  content: string,
+): boolean {
   return (
     /\.m?js$/i.test(localFilePath) &&
-    content.includes('Temporal') &&
+    content.includes("Temporal") &&
     (content.length > 50_000 || /polyfill/i.test(path.basename(localFilePath)))
   );
 }
@@ -76,26 +87,36 @@ function isLocalPolyfillContent(localFilePath: string, content: string): boolean
 async function handleLocalhostRoute(
   page: any,
   targetUrl?: string,
-  onLocalFileServed?: (localFilePath: string, content: string) => void
+  onLocalFileServed?: (localFilePath: string, content: string) => void,
 ) {
   const currentTargetFile = process.env.TARGET_FILE;
-  const currentFilePath = currentTargetFile ? path.resolve(currentTargetFile) : '';
-  const currentTargetDir = currentFilePath ? path.dirname(currentFilePath) : '';
-  const currentDemoName = currentFilePath ? path.basename(currentFilePath) : '';
+  const currentFilePath = currentTargetFile
+    ? path.resolve(currentTargetFile)
+    : "";
+  const currentTargetDir = currentFilePath ? path.dirname(currentFilePath) : "";
+  const currentDemoName = currentFilePath ? path.basename(currentFilePath) : "";
 
-  if (targetUrl && targetUrl.includes('localhost') && currentTargetDir) {
+  if (targetUrl && targetUrl.includes("localhost") && currentTargetDir) {
     await page.route(/(http:\/\/localhost(:\d+)?\/.*)/, async (route: any) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const sanitizedPath = requestPath === '/' ? currentDemoName : requestPath.replace(/^\//, '');
+      const sanitizedPath =
+        requestPath === "/" ? currentDemoName : requestPath.replace(/^\//, "");
       const localFilePath = path.join(currentTargetDir, sanitizedPath);
 
       if (fs.existsSync(localFilePath)) {
         if (onLocalFileServed && /\.m?js$/i.test(localFilePath)) {
-          onLocalFileServed(localFilePath, fs.readFileSync(localFilePath, 'utf-8'));
+          onLocalFileServed(
+            localFilePath,
+            fs.readFileSync(localFilePath, "utf-8"),
+          );
         }
         await route.fulfill({ path: localFilePath });
       } else if (fs.existsSync(currentFilePath)) {
-        await route.fulfill({ status: 200, contentType: 'text/html', body: fs.readFileSync(currentFilePath, 'utf-8') });
+        await route.fulfill({
+          status: 200,
+          contentType: "text/html",
+          body: fs.readFileSync(currentFilePath, "utf-8"),
+        });
       } else {
         await route.continue();
       }
@@ -103,18 +124,21 @@ async function handleLocalhostRoute(
   }
 }
 
-async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderStats> {
+async function setupNormalPage(
+  page: any,
+  targetUrl?: string,
+): Promise<GraderStats> {
   let cdnPolyfillLoaded = false;
   let localPolyfillLoaded = false;
   const localPolyfillBasenames = new Set<string>();
   const requestedScripts = new Set<string>();
   let hasUncaughtPageError = false;
-  page.on('request', (req: any) => {
-    if (req.resourceType() === 'script') {
+  page.on("request", (req: any) => {
+    if (req.resourceType() === "script") {
       requestedScripts.add(req.url());
     }
   });
-  page.on('pageerror', () => {
+  page.on("pageerror", () => {
     hasUncaughtPageError = true;
   });
 
@@ -134,13 +158,13 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
       supportedValuesCalls: [],
       legacyDateConstructorCalledWithArgs: false,
       legacyDateCallStacks: [],
-      temporalUsed: false
+      temporalUsed: false,
     };
     (globalThis as any).__grader_stats__ = stats;
 
-    if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) {
+    if (typeof Intl !== "undefined" && Intl.supportedValuesOf) {
       const origSupportedValuesOf = Intl.supportedValuesOf;
-      Intl.supportedValuesOf = function(key: string) {
+      Intl.supportedValuesOf = function (key: string) {
         stats.supportedValuesCalls.push(key);
         return origSupportedValuesOf.call(Intl, key as any);
       };
@@ -150,27 +174,37 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     const dateProxy = new Proxy(originalDate, {
       construct(target, args) {
         if (args.length > 0) {
-          const stack = new Error().stack || '';
-          const isInternal = stack.includes('polyfill') || stack.includes('esm.sh') || stack.includes('playwright');
+          const stack = new Error().stack || "";
+          const isInternal =
+            stack.includes("polyfill") ||
+            stack.includes("esm.sh") ||
+            stack.includes("playwright");
           if (!isInternal) {
             stats.legacyDateConstructorCalledWithArgs = true;
             stats.legacyDateCallStacks?.push(stack);
           }
         }
         return Reflect.construct(target, args);
-      }
+      },
     });
     globalThis.Date = dateProxy;
 
     function spyOnTemporal(val: any) {
-      if (val && typeof val === 'object') {
-        const spyOnMethod = (targetObj: any, prop: string, callback: (...args: any[]) => void) => {
+      if (val && typeof val === "object") {
+        const spyOnMethod = (
+          targetObj: any,
+          prop: string,
+          callback: (...args: any[]) => void,
+        ) => {
           let curr = targetObj;
           while (curr && curr !== Object.prototype) {
-            if (Object.prototype.hasOwnProperty.call(curr, prop) || typeof curr[prop] === 'function') {
+            if (
+              Object.prototype.hasOwnProperty.call(curr, prop) ||
+              typeof curr[prop] === "function"
+            ) {
               const origFn = curr[prop];
-              if (typeof origFn === 'function') {
-                curr[prop] = function(...args: any[]) {
+              if (typeof origFn === "function") {
+                curr[prop] = function (...args: any[]) {
                   const res = origFn.apply(this, args);
                   callback(...args);
                   return res;
@@ -182,7 +216,11 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
           }
         };
 
-        const spyOnGetter = (targetObj: any, prop: string, callback: () => void) => {
+        const spyOnGetter = (
+          targetObj: any,
+          prop: string,
+          callback: () => void,
+        ) => {
           let curr = targetObj;
           while (curr && curr !== Object.prototype) {
             const desc = Object.getOwnPropertyDescriptor(curr, prop);
@@ -193,7 +231,7 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
                 get() {
                   callback();
                   return origGet.call(this);
-                }
+                },
               });
               return;
             }
@@ -202,36 +240,40 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
         };
 
         if (val.Now) {
-          spyOnMethod(val.Now, 'plainDateISO', () => {
+          spyOnMethod(val.Now, "plainDateISO", () => {
             stats.temporalUsed = true;
           });
         }
 
         if (val.PlainDate) {
-          spyOnMethod(val.PlainDate, 'from', () => {
+          spyOnMethod(val.PlainDate, "from", () => {
             stats.temporalUsed = true;
           });
 
           if (val.PlainDate.prototype) {
-            spyOnMethod(val.PlainDate.prototype, 'withCalendar', () => {
+            spyOnMethod(val.PlainDate.prototype, "withCalendar", () => {
               stats.temporalUsed = true;
               stats.originalWithCalendarCalled = true;
             });
-            spyOnGetter(val.PlainDate.prototype, 'monthCode', () => {
+            spyOnGetter(val.PlainDate.prototype, "monthCode", () => {
               stats.monthCodeGetterCalled = true;
             });
-            spyOnGetter(val.PlainDate.prototype, 'monthsInYear', () => {
+            spyOnGetter(val.PlainDate.prototype, "monthsInYear", () => {
               stats.monthsInYearGetterCalled = true;
             });
-            spyOnGetter(val.PlainDate.prototype, 'daysInMonth', () => {
+            spyOnGetter(val.PlainDate.prototype, "daysInMonth", () => {
               stats.daysInMonthGetterCalled = true;
             });
-            spyOnMethod(val.PlainDate.prototype, 'toLocaleString', (locales: any, options: any) => {
-              stats.toLocaleStringCalls.push({ locales, options });
-            });
+            spyOnMethod(
+              val.PlainDate.prototype,
+              "toLocaleString",
+              (locales: any, options: any) => {
+                stats.toLocaleStringCalls.push({ locales, options });
+              },
+            );
           }
 
-          spyOnMethod(val.PlainDate, 'compare', () => {
+          spyOnMethod(val.PlainDate, "compare", () => {
             stats.temporalUsed = true;
             stats.originalCompareCalled = true;
           });
@@ -245,9 +287,11 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     delete (globalThis as any).Temporal;
   });
 
-  await page.route(/^https?:\/\/.*(?:@js-temporal\/polyfill|temporal-polyfill).*/i, async (route: any) => {
-    cdnPolyfillLoaded = true;
-    const mockPolyfillEsm = `
+  await page.route(
+    /^https?:\/\/.*(?:@js-temporal\/polyfill|temporal-polyfill).*/i,
+    async (route: any) => {
+      cdnPolyfillLoaded = true;
+      const mockPolyfillEsm = `
       class PlainDate {
         constructor(y = 2026, m = 5, d = 15, calId = 'iso8601') {
           this._cal = calId;
@@ -334,11 +378,12 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
       export default { Temporal: T };
     `;
 
-    await route.fulfill({
-      contentType: 'application/javascript',
-      body: mockPolyfillEsm
-    });
-  });
+      await route.fulfill({
+        contentType: "application/javascript",
+        body: mockPolyfillEsm,
+      });
+    },
+  );
 
   await handleLocalhostRoute(page, targetUrl, (localFilePath, content) => {
     if (isLocalPolyfillContent(localFilePath, content)) {
@@ -347,40 +392,58 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     }
   });
 
-  const url = targetUrl || ('file://' + process.env.TARGET_FILE);
+  const url = targetUrl || "file://" + process.env.TARGET_FILE;
   await page.goto(url);
-  await page.waitForLoadState('load');
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.waitForLoadState("load");
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await page
     .waitForFunction(
       () => {
-        const text = document.getElementById('islamic-date')?.textContent?.trim() || '';
+        const text =
+          document.getElementById("islamic-date")?.textContent?.trim() || "";
         return Boolean(
-          text && !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(text)
+          text &&
+          !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(
+            text,
+          ),
         );
       },
       undefined,
-      { timeout: 400 }
+      { timeout: 400 },
     )
     .catch(() => {});
 
   const pageData = await page.evaluate(() => {
     const stats = (globalThis as any).__grader_stats__;
-    const islamic = document.getElementById('islamic-date')?.textContent?.trim() || '';
-    const isPlaceholder = /^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(islamic);
+    const islamic =
+      document.getElementById("islamic-date")?.textContent?.trim() || "";
+    const isPlaceholder =
+      /^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(islamic);
     const isErrorText =
       /^(?:null|n\/a)$/i.test(islamic) ||
-      /\b(?:error|failed|unavailable|unsupported|not supported|invalid|undefined|nan|typeerror|referenceerror|rangeerror|syntaxerror|temporal error|cannot read propert(?:y|ies)|is not a function|is not defined)\b/i.test(islamic);
-    const renderedCalendarOutput = Boolean(islamic && !isPlaceholder && !isErrorText);
+      /\b(?:error|failed|unavailable|unsupported|not supported|invalid|undefined|nan|typeerror|referenceerror|rangeerror|syntaxerror|temporal error|cannot read propert(?:y|ies)|is not a function|is not defined)\b/i.test(
+        islamic,
+      );
+    const renderedCalendarOutput = Boolean(
+      islamic && !isPlaceholder && !isErrorText,
+    );
     return {
       stats,
-      hasGlobalTemporal: typeof (globalThis as any).Temporal !== 'undefined',
-      renderedCalendarOutput
+      hasGlobalTemporal: typeof (globalThis as any).Temporal !== "undefined",
+      renderedCalendarOutput,
     };
   });
 
-  const legacyDateConstructorCalledWithArgs = (pageData.stats.legacyDateCallStacks || []).some(
-    (stack: string) => ![...localPolyfillBasenames].some(name => stack.includes(name))
+  const legacyDateConstructorCalledWithArgs = (
+    pageData.stats.legacyDateCallStacks || []
+  ).some(
+    (stack: string) =>
+      ![...localPolyfillBasenames].some((name) => stack.includes(name)),
   );
 
   return {
@@ -389,26 +452,34 @@ async function setupNormalPage(page: any, targetUrl?: string): Promise<GraderSta
     hasGlobalTemporal: pageData.hasGlobalTemporal,
     polyfillLoaded: cdnPolyfillLoaded || localPolyfillLoaded,
     localPolyfillLoaded,
-    renderedCalendarOutput: pageData.renderedCalendarOutput && !hasUncaughtPageError,
-    requestedScripts: [...requestedScripts]
+    renderedCalendarOutput:
+      pageData.renderedCalendarOutput && !hasUncaughtPageError,
+    requestedScripts: [...requestedScripts],
   };
 }
 
 async function setupNativePage(
   page: any,
-  targetUrl?: string
-): Promise<{ stats: GraderStats; polyfillRequested: boolean; requestedScripts: string[] }> {
+  targetUrl?: string,
+): Promise<{
+  stats: GraderStats;
+  polyfillRequested: boolean;
+  requestedScripts: string[];
+}> {
   let polyfillRequested = false;
   const requestedScripts = new Set<string>();
-  page.on('request', (req: any) => {
-    if (req.resourceType() === 'script') {
+  page.on("request", (req: any) => {
+    if (req.resourceType() === "script") {
       requestedScripts.add(req.url());
     }
   });
 
-  await page.route('**/*', async (route: any) => {
+  await page.route("**/*", async (route: any) => {
     const url = route.request().url();
-    if (url.includes('temporal-polyfill') || url.includes('@js-temporal/polyfill')) {
+    if (
+      url.includes("temporal-polyfill") ||
+      url.includes("@js-temporal/polyfill")
+    ) {
       polyfillRequested = true;
     }
     await route.continue();
@@ -435,7 +506,7 @@ async function setupNativePage(
       toLocaleStringCalls: [],
       supportedValuesCalls: [],
       legacyDateConstructorCalledWithArgs: false,
-      temporalUsed: false
+      temporalUsed: false,
     };
     (globalThis as any).__grader_stats__ = stats;
 
@@ -444,98 +515,140 @@ async function setupNativePage(
         plainDateISO() {
           stats.temporalUsed = true;
           return {
-            calendarId: 'iso8601',
-            toString() { return '2026-05-28'; },
+            calendarId: "iso8601",
+            toString() {
+              return "2026-05-28";
+            },
             add(_duration: any) {
               return {
-                toString() { return '2226-05-28'; }
+                toString() {
+                  return "2226-05-28";
+                },
               };
             },
             subtract(_duration: any) {
               return {
-                toString() { return '1826-05-28'; }
+                toString() {
+                  return "1826-05-28";
+                },
               };
             },
             withCalendar(calInput: any) {
-              const cal = typeof calInput === 'string'
-                ? calInput
-                : (calInput && typeof calInput === 'object' && typeof calInput.calendarId === 'string'
+              const cal =
+                typeof calInput === "string"
+                  ? calInput
+                  : calInput &&
+                      typeof calInput === "object" &&
+                      typeof calInput.calendarId === "string"
                     ? calInput.calendarId
-                    : '');
+                    : "";
               if (!cal) {
-                throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+                throw new TypeError(
+                  "Temporal error: Calendar must be string or calendared Temporal object.",
+                );
               }
               stats.originalWithCalendarCalled = true;
               return {
                 calendarId: cal,
                 year: 2026,
                 month: 5,
-                monthCode: 'M05',
+                monthCode: "M05",
                 monthsInYear: 12,
                 daysInMonth: 31,
-                add(_duration: any) { return this; },
-                subtract(_duration: any) { return this; },
-                with() { return this; },
+                add(_duration: any) {
+                  return this;
+                },
+                subtract(_duration: any) {
+                  return this;
+                },
+                with() {
+                  return this;
+                },
                 toLocaleString() {
-                  stats.toLocaleStringCalls.push({ locales: 'en-u-ca-' + cal, options: {} });
-                  return 'mock-date';
-                }
+                  stats.toLocaleStringCalls.push({
+                    locales: "en-u-ca-" + cal,
+                    options: {},
+                  });
+                  return "mock-date";
+                },
               };
-            }
+            },
           };
-        }
+        },
       },
       PlainDate: {
         from() {
           stats.temporalUsed = true;
           return {
-            calendarId: 'iso8601',
+            calendarId: "iso8601",
             year: 2026,
             month: 5,
-            monthCode: 'M05',
+            monthCode: "M05",
             monthsInYear: 12,
             daysInMonth: 31,
-            add(_duration: any) { return this; },
-            subtract(_duration: any) { return this; },
+            add(_duration: any) {
+              return this;
+            },
+            subtract(_duration: any) {
+              return this;
+            },
             withCalendar(calInput: any) {
-              const cal = typeof calInput === 'string'
-                ? calInput
-                : (calInput && typeof calInput === 'object' && typeof calInput.calendarId === 'string'
+              const cal =
+                typeof calInput === "string"
+                  ? calInput
+                  : calInput &&
+                      typeof calInput === "object" &&
+                      typeof calInput.calendarId === "string"
                     ? calInput.calendarId
-                    : '');
+                    : "";
               if (!cal) {
-                throw new TypeError('Temporal error: Calendar must be string or calendared Temporal object.');
+                throw new TypeError(
+                  "Temporal error: Calendar must be string or calendared Temporal object.",
+                );
               }
               stats.originalWithCalendarCalled = true;
               return {
                 calendarId: cal,
                 year: 2026,
                 month: 5,
-                monthCode: 'M05',
+                monthCode: "M05",
                 monthsInYear: 12,
                 daysInMonth: 31,
-                add(_duration: any) { return this; },
-                subtract(_duration: any) { return this; },
-                with() { return this; },
+                add(_duration: any) {
+                  return this;
+                },
+                subtract(_duration: any) {
+                  return this;
+                },
+                with() {
+                  return this;
+                },
                 toLocaleString() {
-                  stats.toLocaleStringCalls.push({ locales: 'en-u-ca-' + cal, options: {} });
-                  return 'mock-date';
-                }
+                  stats.toLocaleStringCalls.push({
+                    locales: "en-u-ca-" + cal,
+                    options: {},
+                  });
+                  return "mock-date";
+                },
               };
             },
-            with() { return this; },
-            toLocaleString() { return 'mock-date'; }
+            with() {
+              return this;
+            },
+            toLocaleString() {
+              return "mock-date";
+            },
           };
         },
         compare() {
           stats.originalCompareCalled = true;
           return 0;
-        }
-      }
+        },
+      },
     };
 
     let assignedValue: any = dummyTemporalObj;
-    Object.defineProperty(globalThis, 'Temporal', {
+    Object.defineProperty(globalThis, "Temporal", {
       configurable: true,
       enumerable: true,
       get() {
@@ -544,25 +657,34 @@ async function setupNativePage(
       set(val) {
         assignedValue = val;
         stats.assignCount++;
-      }
+      },
     });
   });
 
-  const url = targetUrl || ('file://' + process.env.TARGET_FILE);
+  const url = targetUrl || "file://" + process.env.TARGET_FILE;
   await page.goto(url);
-  await page.waitForLoadState('load');
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.waitForLoadState("load");
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   await page
     .waitForFunction(
       () => {
-        const text = document.getElementById('islamic-date')?.textContent?.trim() || '';
+        const text =
+          document.getElementById("islamic-date")?.textContent?.trim() || "";
         return Boolean(
           (globalThis as any).__grader_stats__?.temporalUsed ||
-            (text && !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(text))
+          (text &&
+            !/^(?:loading\.{0,3}|calculating\.{0,3}|[-–—]+|\.{2,3}|…)$/i.test(
+              text,
+            )),
         );
       },
       undefined,
-      { timeout: 400 }
+      { timeout: 400 },
     )
     .catch(() => {});
 
@@ -574,19 +696,28 @@ function usedLocalPolyfillRuntime(stats: GraderStats): boolean {
   return stats.localPolyfillLoaded && stats.renderedCalendarOutput;
 }
 
-test.describe('Temporal API Support Grader', () => {
+test.describe("Temporal API Support Grader", () => {
   test.setTimeout(30000);
 
-  test('The implementation feature-detects Temporal and assigns the loaded polyfill to `globalThis.Temporal`.', async ({ page, browser, TARGET_URL }) => {
+  test("The implementation feature-detects Temporal and assigns the loaded polyfill to `globalThis.Temporal`.", async ({
+    page,
+    browser,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     let hasDynamicPolyfill = false;
     if (stats.hasGlobalTemporal) {
       const nativeContext = await browser.newContext();
       const nativePage = await nativeContext.newPage();
       try {
-        const { requestedScripts: nativeScripts } = await setupNativePage(nativePage, TARGET_URL);
+        const { requestedScripts: nativeScripts } = await setupNativePage(
+          nativePage,
+          TARGET_URL,
+        );
         const nativeSet = new Set(nativeScripts);
-        hasDynamicPolyfill = (stats.requestedScripts || []).some(url => !nativeSet.has(url));
+        hasDynamicPolyfill = (stats.requestedScripts || []).some(
+          (url) => !nativeSet.has(url),
+        );
       } finally {
         await nativeContext.close();
       }
@@ -594,94 +725,151 @@ test.describe('Temporal API Support Grader', () => {
     expect(hasDynamicPolyfill && stats.hasGlobalTemporal).toBe(true);
   });
 
-  test('The implementation conditionally loads a Temporal polyfill only if native support is absent.', async ({ page, TARGET_URL }) => {
-    const { stats, polyfillRequested } = await setupNativePage(page, TARGET_URL);
+  test("The implementation conditionally loads a Temporal polyfill only if native support is absent.", async ({
+    page,
+    TARGET_URL,
+  }) => {
+    const { stats, polyfillRequested } = await setupNativePage(
+      page,
+      TARGET_URL,
+    );
     expect(polyfillRequested).toBe(false);
     expect(stats.temporalUsed).toBe(true);
   });
 
-  test('The implementation verifies target calendar support using `Intl.supportedValuesOf(\'calendar\')`.', async ({ page, TARGET_URL }) => {
+  test("The implementation verifies target calendar support using `Intl.supportedValuesOf('calendar')`.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedSupportedValues = stats.supportedValuesCalls.includes('calendar')
-      || (usedLocalPolyfillRuntime(stats) && /supportedValuesOf\s*\(\s*['"]calendar['"]\s*\)/.test(code));
+    const usedSupportedValues =
+      stats.supportedValuesCalls.includes("calendar") ||
+      (usedLocalPolyfillRuntime(stats) &&
+        /supportedValuesOf\s*\(\s*['"]calendar['"]\s*\)/.test(code));
     expect(usedSupportedValues).toBe(true);
   });
 
-  test('The implementation uses `withCalendar()` to associate non-ISO calendar systems.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `withCalendar()` to associate non-ISO calendar systems.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedWithCalendar = stats.originalWithCalendarCalled
-      || (usedLocalPolyfillRuntime(stats) && /\.withCalendar\s*\(/.test(code));
+    const usedWithCalendar =
+      stats.originalWithCalendarCalled ||
+      (usedLocalPolyfillRuntime(stats) && /\.withCalendar\s*\(/.test(code));
     expect(usedWithCalendar).toBe(true);
   });
 
-  test('The implementation uses `monthCode` instead of numeric month for lunisolar calendars.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `monthCode` instead of numeric month for lunisolar calendars.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedMonthCode = stats.monthCodeGetterCalled
-      || (usedLocalPolyfillRuntime(stats) && /\.monthCode\b/.test(code));
+    const usedMonthCode =
+      stats.monthCodeGetterCalled ||
+      (usedLocalPolyfillRuntime(stats) && /\.monthCode\b/.test(code));
     expect(usedMonthCode).toBe(true);
   });
 
-  test('The implementation uses `monthsInYear` as the upper bound when iterating through months.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `monthsInYear` as the upper bound when iterating through months.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedMonthsInYear = stats.monthsInYearGetterCalled
-      || (usedLocalPolyfillRuntime(stats) && /\.monthsInYear\b/.test(code));
+    const usedMonthsInYear =
+      stats.monthsInYearGetterCalled ||
+      (usedLocalPolyfillRuntime(stats) && /\.monthsInYear\b/.test(code));
     expect(usedMonthsInYear).toBe(true);
   });
 
-  test('The implementation uses `toLocaleString()` specifying the calendar in locale or options.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `toLocaleString()` specifying the calendar in locale or options.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const hasRuntimeLocales = stats.toLocaleStringCalls.some(call => {
-      const localesStr = String(call.locales || '');
-      return localesStr.includes('-u-ca-') || (call.options && call.options.calendar);
+    const hasRuntimeLocales = stats.toLocaleStringCalls.some((call) => {
+      const localesStr = String(call.locales || "");
+      return (
+        localesStr.includes("-u-ca-") || (call.options && call.options.calendar)
+      );
     });
-    const hasCodeLocales = usedLocalPolyfillRuntime(stats)
-      && /\.toLocaleString\s*\(/.test(code)
-      && (/-u-ca-/.test(code) || /calendar\s*:/.test(code) || /dateStyle/.test(code));
+    const hasCodeLocales =
+      usedLocalPolyfillRuntime(stats) &&
+      /\.toLocaleString\s*\(/.test(code) &&
+      (/-u-ca-/.test(code) ||
+        /calendar\s*:/.test(code) ||
+        /dateStyle/.test(code));
     expect(hasRuntimeLocales || hasCodeLocales).toBe(true);
   });
 
-  test('The implementation uses `Temporal.PlainDate.compare()` to compare dates.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `Temporal.PlainDate.compare()` to compare dates.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedCompare = stats.originalCompareCalled
-      || (usedLocalPolyfillRuntime(stats) && (/PlainDate\.compare\b/.test(code) || /Temporal\.compare\b/.test(code)));
+    const usedCompare =
+      stats.originalCompareCalled ||
+      (usedLocalPolyfillRuntime(stats) &&
+        (/PlainDate\.compare\b/.test(code) ||
+          /Temporal\.compare\b/.test(code)));
     expect(usedCompare).toBe(true);
   });
 
-  test('The implementation uses `daysInMonth` when checking month invariants or doing day iterations.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `daysInMonth` when checking month invariants or doing day iterations.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usedDaysInMonth = stats.daysInMonthGetterCalled
-      || (usedLocalPolyfillRuntime(stats) && /\.daysInMonth\b/.test(code));
+    const usedDaysInMonth =
+      stats.daysInMonthGetterCalled ||
+      (usedLocalPolyfillRuntime(stats) && /\.daysInMonth\b/.test(code));
     expect(usedDaysInMonth).toBe(true);
   });
 
-  test('The implementation uses `Temporal` instead of the legacy `Date` object for non-Gregorian calculations.', async ({ page, TARGET_URL }) => {
+  test("The implementation uses `Temporal` instead of the legacy `Date` object for non-Gregorian calculations.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     const stats = await setupNormalPage(page, TARGET_URL);
     const code = getTargetCode();
-    const usesTemporal = stats.temporalUsed
-      || (usedLocalPolyfillRuntime(stats) && (/\bTemporal\./.test(code) || /\bPlainDate\.from\b/.test(code)));
+    const usesTemporal =
+      stats.temporalUsed ||
+      (usedLocalPolyfillRuntime(stats) &&
+        (/\bTemporal\./.test(code) || /\bPlainDate\.from\b/.test(code)));
     expect(usesTemporal).toBe(true);
     expect(stats.legacyDateConstructorCalledWithArgs).toBe(false);
   });
 
-  test('The implementation accounts for era names in systems relying on eras.', async ({ page, TARGET_URL }) => {
+  test("The implementation accounts for era names in systems relying on eras.", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await handleLocalhostRoute(page, TARGET_URL);
-    const url = TARGET_URL || ('file://' + process.env.TARGET_FILE);
+    const url = TARGET_URL || "file://" + process.env.TARGET_FILE;
     await page.goto(url);
-    await page.waitForLoadState('load');
-    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.waitForLoadState("load");
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
 
-    const bodyText = await page.textContent('body') || '';
+    const bodyText = (await page.textContent("body")) || "";
     const code = getTargetCode();
-    const hasEra = /Reiwa|Heisei|Showa|Taisho|Meiji|令和|平成|昭和|大正|明治/i.test(bodyText)
-      || /era\s*:\s*['"](?:long|short|narrow)['"]/i.test(code)
-      || /\beraYear\b/.test(code);
+    const hasEra =
+      /Reiwa|Heisei|Showa|Taisho|Meiji|令和|平成|昭和|大正|明治/i.test(
+        bodyText,
+      ) ||
+      /era\s*:\s*['"](?:long|short|narrow)['"]/i.test(code) ||
+      /\beraYear\b/.test(code);
     expect(hasEra).toBe(true);
   });
 });

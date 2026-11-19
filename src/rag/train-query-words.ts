@@ -36,18 +36,9 @@ import { config } from "../core/skills-config.ts";
 import { extractGuideChunks } from "../core/guide-chunks.ts";
 import { tokenize, tokenizeBm25 } from "./bm25.ts";
 import { dotProduct } from "./search.ts";
-import {
-  accumulateNormalizedVector,
-  encodeTokens,
-} from "./static-embedder.ts";
-import {
-  STATIC_DIMS,
-  truncateAndNormalize256,
-} from "./quantize.ts";
-import {
-  postWithRetry,
-  isBatchEmbeddingResponse,
-} from "./gemini-api.ts";
+import { accumulateNormalizedVector, encodeTokens } from "./static-embedder.ts";
+import { STATIC_DIMS, truncateAndNormalize256 } from "./quantize.ts";
+import { postWithRetry, isBatchEmbeddingResponse } from "./gemini-api.ts";
 
 const TEACHER_DIM = 768;
 const DEFAULT_TEACHER_MODEL = "gemini-embedding-001";
@@ -69,7 +60,7 @@ export function quantizeAndExportStaticModel(
   words: string[],
   E: Float32Array,
   W: Float32Array,
-  targetDir = DEFAULT_OUT_DIR
+  targetDir = DEFAULT_OUT_DIR,
 ): QuantizeExportResult {
   const V = words.length;
   const D = STATIC_DIMS;
@@ -100,14 +91,21 @@ export function quantizeAndExportStaticModel(
   }
 
   fs.mkdirSync(targetDir, { recursive: true });
-  fs.writeFileSync(path.join(targetDir, "query-words.json"), JSON.stringify(words));
+  fs.writeFileSync(
+    path.join(targetDir, "query-words.json"),
+    JSON.stringify(words),
+  );
   fs.writeFileSync(
     path.join(targetDir, "query-words.i8"),
-    Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength)
+    Buffer.from(qTable.buffer, qTable.byteOffset, qTable.byteLength),
   );
   fs.writeFileSync(
     path.join(targetDir, "query-words.scale.f32"),
-    Buffer.from(foldedScales.buffer, foldedScales.byteOffset, foldedScales.byteLength)
+    Buffer.from(
+      foldedScales.buffer,
+      foldedScales.byteOffset,
+      foldedScales.byteLength,
+    ),
   );
 
   const wordIndex = new Map(words.map((w, i) => [w, i]));
@@ -202,7 +200,10 @@ interface CorpusScan {
 function scanCorpusAndSyntheticQueries(): CorpusScan {
   const excludedGuides = config.monoskill.excludeFromBundling || [];
   const readyGuides = scanAllGuides().filter(
-    (inv) => inv.isPublished && !excludedGuides.includes(inv.category) && !excludedGuides.includes(inv.name)
+    (inv) =>
+      inv.isPublished &&
+      !excludedGuides.includes(inv.category) &&
+      !excludedGuides.includes(inv.name),
   );
 
   const chunkTexts: string[] = [];
@@ -233,7 +234,10 @@ function scanCorpusAndSyntheticQueries(): CorpusScan {
 
     const headings = marked
       .lexer(processedMarkdown)
-      .filter((t): t is Tokens.Heading => t.type === "heading" && (t.depth === 2 || t.depth === 3))
+      .filter(
+        (t): t is Tokens.Heading =>
+          t.type === "heading" && (t.depth === 2 || t.depth === 3),
+      )
       .map((t) => t.text.trim());
     for (const h of headings) {
       syntheticQueries.push(h);
@@ -249,7 +253,7 @@ async function embedWithTeacher(
   cacheName: string,
   apiKey: string,
   teacherModel: string,
-  cacheDir: string
+  cacheDir: string,
 ): Promise<Map<string, Float32Array>> {
   fs.mkdirSync(cacheDir, { recursive: true });
   const idxPath = path.join(cacheDir, `${cacheName}.json`);
@@ -258,15 +262,21 @@ async function embedWithTeacher(
   const known: string[] = fs.existsSync(idxPath)
     ? (JSON.parse(fs.readFileSync(idxPath, "utf8")) as string[])
     : [];
-  const raw = fs.existsSync(binPath) ? fs.readFileSync(binPath) : Buffer.alloc(0);
+  const raw = fs.existsSync(binPath)
+    ? fs.readFileSync(binPath)
+    : Buffer.alloc(0);
   if (raw.byteLength !== known.length * TEACHER_DIM * 4) {
     throw new Error(
-      `${cacheName}: cache index (${known.length}) and binary (${raw.byteLength}B) mismatch; delete ${idxPath} and ${binPath}`
+      `${cacheName}: cache index (${known.length}) and binary (${raw.byteLength}B) mismatch; delete ${idxPath} and ${binPath}`,
     );
   }
-  const bin = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
+  const bin = new Float32Array(
+    raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength),
+  );
   const out = new Map<string, Float32Array>();
-  known.forEach((t, i) => out.set(t, bin.subarray(i * TEACHER_DIM, (i + 1) * TEACHER_DIM)));
+  known.forEach((t, i) =>
+    out.set(t, bin.subarray(i * TEACHER_DIM, (i + 1) * TEACHER_DIM)),
+  );
 
   const todo = [...new Set(texts)].filter((t) => !out.has(t));
   if (todo.length === 0) {
@@ -306,10 +316,12 @@ async function embedWithTeacher(
               taskType: "RETRIEVAL_QUERY",
               outputDimensionality: TEACHER_DIM,
             })),
-          }
+          },
         );
         if (!isBatchEmbeddingResponse(res)) {
-          throw new Error(`Invalid batchEmbedContents response shape from ${teacherModel}`);
+          throw new Error(
+            `Invalid batchEmbedContents response shape from ${teacherModel}`,
+          );
         }
 
         res.embeddings.forEach((e, i) => {
@@ -320,11 +332,13 @@ async function embedWithTeacher(
         });
         done++;
         if (done % 10 === 0 || done === batches.length) {
-          console.log(`  [${cacheName}] ${done}/${batches.length} batches embedded`);
+          console.log(
+            `  [${cacheName}] ${done}/${batches.length} batches embedded`,
+          );
         }
         if (done % 50 === 0) save();
       }
-    })
+    }),
   );
 
   save();
@@ -349,12 +363,18 @@ async function main(): Promise<void> {
   }
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is required in .env or environment to distill teacher embeddings.");
+    throw new Error(
+      "GEMINI_API_KEY is required in .env or environment to distill teacher embeddings.",
+    );
   }
 
   const teacherModel = values.teacher ?? DEFAULT_TEACHER_MODEL;
-  const cacheDir = values["cache-dir"] ? path.resolve(values["cache-dir"]) : DEFAULT_CACHE_DIR;
-  const targetDir = values["out-dir"] ? path.resolve(values["out-dir"]) : DEFAULT_OUT_DIR;
+  const cacheDir = values["cache-dir"]
+    ? path.resolve(values["cache-dir"])
+    : DEFAULT_CACHE_DIR;
+  const targetDir = values["out-dir"]
+    ? path.resolve(values["out-dir"])
+    : DEFAULT_OUT_DIR;
 
   console.log("Scanning guides corpus and existing vocabulary...");
   const { chunkTexts, syntheticQueries } = scanCorpusAndSyntheticQueries();
@@ -365,7 +385,9 @@ async function main(): Promise<void> {
     : [];
 
   const df = new Map<string, number>();
-  const vocabSet = new Set<string>(existingWords.filter((w) => tokenize(w).length > 0));
+  const vocabSet = new Set<string>(
+    existingWords.filter((w) => tokenize(w).length > 0),
+  );
   for (const text of chunkTexts) {
     const toks = tokenize(text);
     for (const t of toks) vocabSet.add(t);
@@ -399,7 +421,9 @@ async function main(): Promise<void> {
       }
     } else {
       const parsed = JSON.parse(raw) as Record<string, string[]> | string[];
-      const flat = Array.isArray(parsed) ? parsed : Object.values(parsed).flat();
+      const flat = Array.isArray(parsed)
+        ? parsed
+        : Object.values(parsed).flat();
       for (const q of flat) {
         if (typeof q === "string") processQuery(q);
       }
@@ -413,23 +437,34 @@ async function main(): Promise<void> {
       }
     }
     if (addedExtraTokens > 0) {
-      console.log(`Added ${addedExtraTokens} frequent web-dev tokens (query DF >= 5) from extraQueries to vocabulary.`);
+      console.log(
+        `Added ${addedExtraTokens} frequent web-dev tokens (query DF >= 5) from extraQueries to vocabulary.`,
+      );
     }
   }
 
   const words = [...vocabSet].sort();
   const V = words.length;
   const wordIndex = new Map(words.map((w, i) => [w, i]));
-  console.log(`Vocabulary: ${V} words (${df.size} present in current guide chunks).`);
+  console.log(
+    `Vocabulary: ${V} words (${df.size} present in current guide chunks).`,
+  );
 
   console.log(`Embedding vocabulary with teacher (${teacherModel})...`);
-  const wordVecs = await embedWithTeacher(words, "teacher-words-q", apiKey, teacherModel, cacheDir);
+  const wordVecs = await embedWithTeacher(
+    words,
+    "teacher-words-q",
+    apiKey,
+    teacherModel,
+    cacheDir,
+  );
 
   const D = STATIC_DIMS;
   const E0 = new Float32Array(V * D);
   for (let i = 0; i < V; i++) {
     const full = wordVecs.get(words[i]);
-    if (!full) throw new Error(`Missing teacher word embedding for "${words[i]}"`);
+    if (!full)
+      throw new Error(`Missing teacher word embedding for "${words[i]}"`);
     E0.set(truncateAndNormalize256(full), i * D);
   }
 
@@ -447,22 +482,24 @@ async function main(): Promise<void> {
 
   if (!values["skip-tokenlearn"]) {
     const excluded = loadExcludedEvalQueries();
-    const allTrainCandidates = [...new Set([...syntheticQueries, ...extraQueries])].filter(
-      (q) => q && !excluded.isExcluded(q) && q.split(/\s+/).length <= 40
+    const allTrainCandidates = [
+      ...new Set([...syntheticQueries, ...extraQueries]),
+    ].filter(
+      (q) => q && !excluded.isExcluded(q) && q.split(/\s+/).length <= 40,
     );
     console.log(
-      `Embedding ${allTrainCandidates.length} training queries with ${teacherModel} (excluded ${excluded.exact.size} exact / ${excluded.stemSignatures.size} stemmed eval holdouts)...`
+      `Embedding ${allTrainCandidates.length} training queries with ${teacherModel} (excluded ${excluded.exact.size} exact / ${excluded.stemSignatures.size} stemmed eval holdouts)...`,
     );
     const teacherTrain = await embedWithTeacher(
       allTrainCandidates,
       "tokenlearn-train-q",
       apiKey,
       teacherModel,
-      cacheDir
+      cacheDir,
     );
 
     let seed = 7;
-    const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
 
     const data: Array<{ enc: Array<[number, number]>; tgt: Float32Array }> = [];
     for (const t of allTrainCandidates) {
@@ -478,7 +515,10 @@ async function main(): Promise<void> {
       .sort((a, b) => a.r - b.r)
       .map(({ x }) => x);
 
-    const valSize = Math.min(2000, Math.max(100, Math.floor(shuffled.length * 0.1)));
+    const valSize = Math.min(
+      2000,
+      Math.max(100, Math.floor(shuffled.length * 0.1)),
+    );
     const val = shuffled.slice(0, valSize);
     const train = shuffled.slice(valSize);
 
@@ -492,15 +532,20 @@ async function main(): Promise<void> {
 
     const fidelity = (set: typeof val) =>
       set.reduce(
-        (acc, x) => acc + dotProduct(accumulateNormalizedVector(x.enc, E, W, scratchVec), x.tgt),
-        0
+        (acc, x) =>
+          acc +
+          dotProduct(
+            accumulateNormalizedVector(x.enc, E, W, scratchVec),
+            x.tgt,
+          ),
+        0,
       ) / set.length;
 
     let bestVal = fidelity(val);
     let bestE = E.slice();
     let bestW = W.slice();
     console.log(
-      `Tokenlearn fit (${train.length} train / ${val.length} val): initial val cosine = ${bestVal.toFixed(4)}`
+      `Tokenlearn fit (${train.length} train / ${val.length} val): initial val cosine = ${bestVal.toFixed(4)}`,
     );
 
     for (let epoch = 1; epoch <= 12; epoch++) {
@@ -520,7 +565,8 @@ async function main(): Promise<void> {
         n = Math.sqrt(n) || 1;
         let c = 0;
         for (let k = 0; k < D; k++) c += (scratchVec[k] / n) * x.tgt[k];
-        for (let k = 0; k < D; k++) gradVec[k] = -(x.tgt[k] - c * (scratchVec[k] / n)) / n;
+        for (let k = 0; k < D; k++)
+          gradVec[k] = -(x.tgt[k] - c * (scratchVec[k] / n)) / n;
 
         for (const [i, f] of x.enc) {
           let gw = 0;
@@ -555,11 +601,14 @@ async function main(): Promise<void> {
 
   const stats = quantizeAndExportStaticModel(words, E, W, targetDir);
   console.log(
-    `Exported static model to ${targetDir} (${stats.vocabSize} words × ${stats.dims}d, minCosine=${stats.minCosine.toFixed(6)}, maxAbsDiff=${stats.maxAbsDiff.toFixed(6)})`
+    `Exported static model to ${targetDir} (${stats.vocabSize} words × ${stats.dims}d, minCosine=${stats.minCosine.toFixed(6)}, maxAbsDiff=${stats.maxAbsDiff.toFixed(6)})`,
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

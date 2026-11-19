@@ -16,7 +16,7 @@ index 22f7b64..d31877a 100644
 +    respondWith?: (response: Promise<unknown>) => void;
 +  }
  }
- 
+
 -export {};
 \ No newline at end of file
 +declare module 'react' {
@@ -52,7 +52,7 @@ index a7c52b6..4b42ec8 100644
 @@ -7,10 +7,36 @@ export default function SignInForm() {
    const [success, setSuccess] = useState<string | null>(null);
    const [loading, setLoading] = useState(false);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 +  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
      e.preventDefault();
@@ -85,15 +85,15 @@ index a7c52b6..4b42ec8 100644
 +    }
 +
      setLoading(true);
- 
+
      try {
 @@ -22,18 +48,24 @@ export default function SignInForm() {
          body: JSON.stringify({ username, password }),
        });
- 
+
 -      const data = await response.json();
 +      const data = await response.json().catch(() => ({}));
- 
+
        if (!response.ok) {
          // TODO: Handle specific error codes (APP_ERR_2001, APP_ERR_2002) properly.
          // For now, we display a generic error message including the code.
@@ -119,7 +119,7 @@ index a7c52b6..4b42ec8 100644
 @@ -55,7 +87,12 @@ export default function SignInForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form
 +        onSubmit={handleSubmit}
@@ -155,7 +155,7 @@ index 589fe62..bf25ec2 100644
 @@ -7,10 +7,42 @@ export default function SignUpForm() {
    const [success, setSuccess] = useState<string | null>(null);
    const [loading, setLoading] = useState(false);
- 
+
 -  const handleSubmit = async (e: React.FormEvent) => {
 +  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
      e.preventDefault();
@@ -194,15 +194,15 @@ index 589fe62..bf25ec2 100644
 +    }
 +
      setLoading(true);
- 
+
      try {
 @@ -22,19 +54,25 @@ export default function SignUpForm() {
          body: JSON.stringify({ username, password }),
        });
- 
+
 -      const data = await response.json();
 +      const data = await response.json().catch(() => ({}));
- 
+
        if (!response.ok) {
          // TODO: Handle specific error codes (APP_ERR_1001, APP_ERR_1002, etc.) properly.
          // For now, we display a generic error message including the code.
@@ -229,7 +229,7 @@ index 589fe62..bf25ec2 100644
 @@ -56,7 +94,12 @@ export default function SignUpForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form
 +        onSubmit={handleSubmit}

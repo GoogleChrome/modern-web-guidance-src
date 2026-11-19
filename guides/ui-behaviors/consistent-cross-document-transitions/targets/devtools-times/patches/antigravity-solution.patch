@@ -5,7 +5,7 @@ index 980b279..0440bf7 100644
 @@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
  const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
  ---
- 
+
 -<header class="font-inter group relative bg-white">
 +<header id="header" class="font-inter group relative bg-white">
    <!-- Row 1: Search, Subscribe, Log In -->
@@ -18,31 +18,31 @@ index dcf9696..e972234 100644
 @@ -4,13 +4,12 @@ import Footer from "../components/Footer.astro";
  import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
  import "../styles/global.css";
- 
+
 -import { ClientRouter } from "astro:transitions";
 -
  export interface Props {
    title: string;
 +  expectIds?: string[];
  }
- 
+
 -const { title } = Astro.props;
 +const { title, expectIds } = Astro.props;
  const baseUrl = import.meta.env.BASE_URL;
  ---
- 
+
 @@ -27,6 +26,7 @@ const baseUrl = import.meta.env.BASE_URL;
      <link
        href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
        rel="stylesheet"
 +      blocking="render"
      />
- 
+
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
 @@ -34,7 +34,11 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
 -    <ClientRouter />
 +    <link rel="expect" href="#header" blocking="render" />
 +    <link rel="expect" href="#lead-story" blocking="render" />
@@ -71,7 +71,7 @@ index 356186f..79a1b84 100644
 +++ b/src/pages/404.astro
 @@ -4,7 +4,7 @@ import Layout from '../layouts/Layout.astro';
  ---
- 
+
  <Layout title="Page Not Found">
 -    <div class="flex flex-col items-center justify-center text-center py-20">
 +    <div id="lead-story" class="flex flex-col items-center justify-center text-center py-20">
@@ -83,7 +83,7 @@ index 24fea39..cfc5c55 100644
 --- a/src/pages/articles/[slug].astro
 +++ b/src/pages/articles/[slug].astro
 @@ -37,54 +37,56 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
  <Layout title={article.data.title}>
      <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
 -        <!-- Breadcrumbs/Category -->
@@ -95,12 +95,12 @@ index 24fea39..cfc5c55 100644
 +            <div class="text-base text-gray-600 font-semibold mb-2">
 +                <a href={`${import.meta.env.BASE_URL}category/${article.data.category.toLowerCase()}`} class="hover:text-amber-400">{article.data.category.charAt(0).toUpperCase() + article.data.category.slice(1)}</a>
 +            </div>
- 
+
 -        <!-- Headline -->
 -        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
 -            {article.data.title}
 -        </h1>
--        
+-
 -        <!-- Sub-headline / Lead Paragraph -->
 -        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
 -            {article.data.summary}
@@ -109,12 +109,12 @@ index 24fea39..cfc5c55 100644
 +            <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
 +                {article.data.title}
 +            </h1>
-+            
++
 +            <!-- Sub-headline / Lead Paragraph -->
 +            <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
 +                {article.data.summary}
 +            </p>
- 
+
 -        <!-- Author / Date -->
 -        <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
 -            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
@@ -123,12 +123,12 @@ index 24fea39..cfc5c55 100644
 +            <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
 +                By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
 +            </div>
- 
+
 -        <!-- Main Article Image -->
 -        <figure class="mb-5">
 -            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
 -            {article.data.prompt_comment ? (
--                <img 
+-                <img
 -                    src={article.data.image}
 -                    alt={article.data.title}
 -                    width="1200"
@@ -137,9 +137,9 @@ index 24fea39..cfc5c55 100644
 -                    crossorigin="use-credentials"
 -                />
 -            ) : (
--                <Image 
--                    src={articleImage} 
--                    alt={article.data.title} 
+-                <Image
+-                    src={articleImage}
+-                    alt={article.data.title}
 -                    width={1200}
 -                    height={675}
 -                    format="webp"
@@ -156,7 +156,7 @@ index 24fea39..cfc5c55 100644
 +            <figure class="mb-5">
 +                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
 +                {article.data.prompt_comment ? (
-+                    <img 
++                    <img
 +                        src={article.data.image}
 +                        alt={article.data.title}
 +                        width="1200"
@@ -165,9 +165,9 @@ index 24fea39..cfc5c55 100644
 +                        crossorigin="use-credentials"
 +                    />
 +                ) : (
-+                    <Image 
-+                        src={articleImage} 
-+                        alt={article.data.title} 
++                    <Image
++                        src={articleImage}
++                        alt={article.data.title}
 +                        width={1200}
 +                        height={675}
 +                        format="webp"
@@ -181,7 +181,7 @@ index 24fea39..cfc5c55 100644
 +                )}
 +            </figure>
 +        </header>
- 
+
          <!-- Share Buttons & Comments -->
          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
 diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
@@ -195,21 +195,21 @@ index 79bf126..f4229b4 100644
 -                <section class="mb-8 pb-8 border-b border-gray-200">
 +                <section id="lead-story" class="mb-8 pb-8 border-b border-gray-200">
                      <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
-                         <Image 
-                             src={featuredArticleImage} 
+                         <Image
+                             src={featuredArticleImage}
 diff --git a/src/pages/index.astro b/src/pages/index.astro
 index 92f6399..e5ad825 100644
 --- a/src/pages/index.astro
 +++ b/src/pages/index.astro
 @@ -55,7 +55,7 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <main id="lead-story" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
      </main>
- 
+
 diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
 index bd5dada..e53d96b 100644
 --- a/src/pages/multimedia.astro
@@ -242,7 +242,7 @@ index 6844450..fd999f6 100644
 +++ b/src/pages/signin.astro
 @@ -4,7 +4,7 @@ import SignInForm from '../components/SignInForm';
  ---
- 
+
  <Layout title="Sign In | The DevTools Times">
 -  <div class="py-12 px-4 sm:px-6 lg:px-8">
 +  <div id="lead-story" class="py-12 px-4 sm:px-6 lg:px-8">
@@ -255,7 +255,7 @@ index dc93e5d..cd420c2 100644
 +++ b/src/pages/signup.astro
 @@ -4,7 +4,7 @@ import SignUpForm from '../components/SignUpForm';
  ---
- 
+
  <Layout title="Sign Up | The DevTools Times">
 -  <div class="py-12 px-4 sm:px-6 lg:px-8">
 +  <div id="lead-story" class="py-12 px-4 sm:px-6 lg:px-8">

@@ -6,6 +6,7 @@ description: Coding style, architectural conventions, and PR review standards fo
 # Guidance Repository Coding Standards & Review Guidelines
 
 ## Overview
+
 This skill defines the architectural principles, coding conventions, and PR review standards for the `modern-web-guidance-src` repository.
 
 Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands, harness utilities, server endpoints, or dashboard code.
@@ -15,6 +16,7 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## PR Scope and Modularity
 
 ### Keep PRs Focused and Single-Purpose
+
 - **Split multi-component features:** Do not combine backend data models, CLI tools, and frontend UI changes into a single monolithic PR.
 - **Logical progression:** Structure larger features into small, stacked, or sequential PRs:
   1. Data layer / core libraries (parsing, normalization, abstractions)
@@ -27,16 +29,19 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Architectural Principles
 
 ### Use Existing Abstractions & CLI Runners
+
 - **Reuse repository tooling:** When interacting with LLMs or executing agent workflows, use the shared repository abstractions in `config.environment` (such as `config.environment.antigravityCliBin` or `config.environment.jetskiCliBin`) instead of writing custom REST API clients, bespoke fetch loops, or ad-hoc token validators.
 - **Environment and flag handling:** Respect standard environment toggles (such as `GD_DEV_USE_JETSKI === '1'`) and omit non-essential flags (e.g., omit `--yolo` for non-interactive or diagnostics tasks).
 
 ### Single Source of Truth & Canonical Enums
+
 - **Never hardcode string constants for agents:**
   - Use centralized enums like `Agents` from `src/harness/config.ts` (`Agents.ANTIGRAVITY_CLI`, `Agents.JETSKI_CLI`, `Agents.CLAUDE_CODE`, `Agents.CODEX_CLI`).
 - **Extract metadata from source-of-truth files:**
   - Never infer properties (such as `targetFile` or `agent`) using fragile path heuristics or regexes if canonical metadata files (e.g., `evals.json`) exist in the parent hierarchy. Extract canonical properties directly from `evals.json`.
 
 ### Modular Prompt & Template Management
+
 - **Separate prompts from execution logic:** Do not embed long prompt templates, system instructions, or markdown synthesizer templates inside runtime runner files.
 - Place prompts and instructions into dedicated modules (e.g., `*-prompts.ts`) to maintain clean separation of concerns.
 
@@ -45,14 +50,17 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## File, Git, & Config Integrity
 
 ### Never Weaken Shared Tooling or tsconfig
+
 - **Strict type safety is non-negotiable:** Never modify shared root configurations (`tsconfig.json`, `.oxlintignore`, `package.json`) to bypass typecheck or lint failures.
 - Fix types properly with TypeScript interfaces and types, or use targeted JSDoc annotations in `.js` files.
 
 ### Targeted Remote I/O & Robust Caching
+
 - **Scope remote storage operations:** When downloading from remote stores (such as Cloud Storage/GCS buckets), scope queries and downloads strictly to the specific prefixes and subdirectories needed for the task. Never fetch entire buckets or unrelated directories.
 - **Local caching first:** Always check whether required assets or result files already exist locally before initiating remote downloads, avoiding redundant network traffic.
 
 ### Keep Repository Clean of Generated Artifacts
+
 - **Ignore transient outputs:** Never commit test outputs, debug files, local caches, or working directories.
 - Store temporary data in standard output locations (e.g., `results/suites/`, `out/`) and ensure `.gitignore` excludes transient files.
 
@@ -61,17 +69,21 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Frontend & Dashboard Guidelines
 
 ### Dual-Environment Compatibility (Static vs. Local Server)
+
 - **Graceful degradation:** The evaluation dashboard operates in both static hosted mode (e.g., GitHub Pages) and local server mode (`gd dashboard`). Features, actions, or API endpoints requiring a local Node server must detect static mode and gracefully hide or disable themselves.
 - **Explicit data sourcing:** When requesting data from local server endpoints, pass the data source context (such as `?source=local`) so the server can distinguish local file operations from remote streaming.
 
 ### Disambiguate Multi-Run and Temporal Data
+
 - **Handle multiple runs gracefully:** Do not assume only a single run exists per day or per task. Distinguish runs using explicit run indices and timestamps to prevent datasets from overwriting or collapsing together.
 - **Robust query parameter handling:** Ensure URL query parameters are safely parsed with proper fallbacks, preserving dashboard state across navigations.
 
 ### Safe URL & Path Construction
+
 - **Avoid protocol-relative URL bugs:** When constructing URLs from path variables, sanitize slashes to avoid accidental leading double slashes (`//...`), which browsers interpret as protocol-relative hostnames.
 
 ### UI Precision & Alignment
+
 - **Mathematical centering:** Ensure chart markers, badges, indicators, and tooltips are centered horizontally and vertically over their target elements so visual associations are unmistakable.
 
 ---
@@ -79,7 +91,9 @@ Follow these guidelines whenever authoring TypeScript, JavaScript, CLI commands,
 ## Verification & Testing Gates
 
 ### Tiered Preflight Gates
+
 All changes must pass linting, typechecking, and tests before PR submission:
+
 - **Fast dev check (lint & typecheck):**
   ```bash
   pnpm typecheck && pnpm lint
@@ -92,14 +106,16 @@ All changes must pass linting, typechecking, and tests before PR submission:
   ```bash
   pnpm run test:e2e
   ```
-  *(Run `pnpm run setup:playwright` first if browser binaries are not installed).*
+  _(Run `pnpm run setup:playwright` first if browser binaries are not installed)._
 
 ### Domain-Specific Validation
+
 - **Serving & Skills:** When modifying skills packaging, verify with `pnpm run publish-skills --dry-run`.
 - **Guides & Graders:** When authoring or updating evaluation capsules, verify grader calibration via `gd dev <guide> --test-grader`.
 - **Clean Git Tree:** The build must produce zero uncommitted side effects or untracked artifacts (`git status` must remain clean).
 
 ### Code Hygiene
+
 - **Safe data parsing:** Never use `eval()` to parse data or JSON; use `JSON.parse()` or dedicated parsers.
 - **Clean regular expressions:** Avoid raw or unescaped control characters in regular expressions; use explicit Unicode escapes (e.g., `[\u001b\u009b]`).
 

@@ -4,7 +4,7 @@ index 6d031f5..37c28e2 100644
 +++ b/src/components/BottomNav.tsx
 @@ -27,9 +27,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
      const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
- 
+
      return (
 -        <div onMouseLeave={handleMouseLeave}>
 +        <div onMouseLeave={handleMouseLeave} onClick={event => {
@@ -19,7 +19,7 @@ index 6d031f5..37c28e2 100644
 +                    <a href={`${import.meta.env.BASE_URL}reports`} className="whitespace-nowrap hover:text-gray-600">Reports</a>
                      {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
                          return (
-                             <div 
+                             <div
 diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
 index dcf9696..9fd74ac 100644
 --- a/src/layouts/Layout.astro
@@ -27,15 +27,15 @@ index dcf9696..9fd74ac 100644
 @@ -4,7 +4,6 @@ import Footer from "../components/Footer.astro";
  import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
  import "../styles/global.css";
- 
+
 -import { ClientRouter } from "astro:transitions";
- 
+
  export interface Props {
    title: string;
 @@ -34,7 +33,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
 -    <ClientRouter />
 +    <script src="../scripts/section-router.ts"></script>
    </head>
@@ -203,7 +203,7 @@ index e9a9abb..abca4d8 100644
 +++ b/src/styles/global.css
 @@ -1,7 +1,22 @@
  @import "tailwindcss";
- 
+
 +.spa-view.inactive {
 +  content-visibility: hidden;
 +  position: absolute;

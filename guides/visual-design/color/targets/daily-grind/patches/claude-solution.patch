@@ -43,7 +43,7 @@ index 66c9173..f187800 100644
 +        --badge-sold-border: #ff9e9a;
 +      }
      }
- 
+
      * {
 @@ -30,7 +66,7 @@
      /* Navigation */
@@ -56,7 +56,7 @@ index 66c9173..f187800 100644
        justify-content: space-between;
 @@ -56,7 +92,7 @@
      }
- 
+
      nav a {
 -      color: white;
 +      color: var(--on-primary);
@@ -65,7 +65,7 @@ index 66c9173..f187800 100644
        transition: color 0.3s;
 @@ -108,7 +144,8 @@
      }
- 
+
      .card {
 -      background: white;
 +      background: var(--surface);
@@ -74,7 +74,7 @@ index 66c9173..f187800 100644
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 @@ -117,13 +154,50 @@
- 
+
      .card h3 {
        margin-bottom: 10px;
 -      color: var(--primary);
@@ -117,7 +117,7 @@ index 66c9173..f187800 100644
 +      color: var(--badge-sold-text);
 +      border: 2px dashed var(--badge-sold-border);
      }
- 
+
      .btn {
        display: inline-block;
 -      background: var(--primary);
@@ -129,12 +129,12 @@ index 66c9173..f187800 100644
        border-radius: 5px;
 @@ -132,11 +206,12 @@
      }
- 
+
      .btn:hover {
 -      background: #3e2723;
 +      background: var(--btn-bg-hover);
      }
- 
+
      footer {
 -      background: var(--secondary);
 +      background: var(--footer-bg);
@@ -168,7 +168,7 @@ index 66c9173..f187800 100644
 +    }
    </style>
  </head>
- 
+
 @@ -179,17 +274,25 @@
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">

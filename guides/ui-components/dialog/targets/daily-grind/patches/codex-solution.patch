@@ -22,7 +22,7 @@ index 66c9173..4e1a842 100644
 +++ b/index.html
 @@ -121,6 +121,9 @@
      }
- 
+
      .btn {
 +      border: 0;
 +      font: inherit;
@@ -33,7 +33,7 @@ index 66c9173..4e1a842 100644
 @@ -135,6 +138,32 @@
        background: #3e2723;
      }
- 
+
 +    :focus-visible { outline: 3px solid #bd6900; outline-offset: 3px; }
 +    dialog {
 +      margin: auto;
@@ -70,7 +70,7 @@ index 66c9173..4e1a842 100644
 -    <a href="/order-online" class="btn">Order Now</a>
 +    <button type="button" class="btn" data-order="maple" aria-haspopup="dialog" aria-controls="order-dialog">Order Now</button>
    </header>
- 
+
    <main class="container">
 @@ -181,22 +210,52 @@
          <div class="card">
@@ -95,7 +95,7 @@ index 66c9173..4e1a842 100644
      </section>
 +    <p id="order-status" role="status"></p>
    </main>
- 
+
 +  <dialog id="order-dialog" aria-labelledby="order-title" aria-describedby="drink-description" closedby="any">
 +    <h2 id="order-title">Maple Oat Latte</h2>
 +    <p id="drink-description"></p>
@@ -131,10 +131,10 @@ index 66c9173..4e1a842 100644
 @@ -207,6 +266,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script src="order.js" defer></script>
  </body>
- 
+
  </html>
 diff --git a/order.js b/order.js
 new file mode 100644

@@ -1,10 +1,10 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -13,11 +13,13 @@ const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
 
 test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
-
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath,
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -29,64 +31,86 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-
-
-  test(`The agent has defined an @keyframes block that animates the header or nav`, async ({ page }) => {
+  test(`The agent has defined an @keyframes block that animates the header or nav`, async ({
+    page,
+  }) => {
     const animationName = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
-      const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
-      if (!el) return 'none';
+      const elements = Array.from(document.querySelectorAll("header, nav"));
+      const el =
+        elements.find(
+          (e) => window.getComputedStyle(e).animationName !== "none",
+        ) || elements[0];
+      if (!el) return "none";
       return window.getComputedStyle(el).animationName;
     });
-    expect(animationName).not.toBe('none');
+    expect(animationName).not.toBe("none");
   });
 
-  test(`The agent has applied the animation using animation-timeline: scroll() or scroll(block root)`, async ({ page }) => {
+  test(`The agent has applied the animation using animation-timeline: scroll() or scroll(block root)`, async ({
+    page,
+  }) => {
     const animationTimeline = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
-      const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
-      if (!el) return 'none';
-      return window.getComputedStyle(el).getPropertyValue('animation-timeline');
+      const elements = Array.from(document.querySelectorAll("header, nav"));
+      const el =
+        elements.find(
+          (e) => window.getComputedStyle(e).animationName !== "none",
+        ) || elements[0];
+      if (!el) return "none";
+      return window.getComputedStyle(el).getPropertyValue("animation-timeline");
     });
-    expect(animationTimeline).toContain('scroll');
+    expect(animationTimeline).toContain("scroll");
   });
 
-  test(`The agent has used animation-range to specify the scroll distance`, async ({ page }) => {
+  test(`The agent has used animation-range to specify the scroll distance`, async ({
+    page,
+  }) => {
     const animationRange = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
-      const el = elements.find(e => window.getComputedStyle(e).animationName !== 'none') || elements[0];
-      if (!el) return 'normal';
-      return window.getComputedStyle(el).getPropertyValue('animation-range');
+      const elements = Array.from(document.querySelectorAll("header, nav"));
+      const el =
+        elements.find(
+          (e) => window.getComputedStyle(e).animationName !== "none",
+        ) || elements[0];
+      if (!el) return "normal";
+      return window.getComputedStyle(el).getPropertyValue("animation-range");
     });
-    expect(animationRange).not.toBe('normal');
+    expect(animationRange).not.toBe("normal");
   });
 
-  test(`The header or nav element has position: fixed or position: sticky`, async ({ page }) => {
+  test(`The header or nav element has position: fixed or position: sticky`, async ({
+    page,
+  }) => {
     const position = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
-      const pos = elements.map(el => window.getComputedStyle(el).position);
-      return pos.includes('fixed') || pos.includes('sticky') ? 'sticky' : 'static'; // simplified return
+      const elements = Array.from(document.querySelectorAll("header, nav"));
+      const pos = elements.map((el) => window.getComputedStyle(el).position);
+      return pos.includes("fixed") || pos.includes("sticky")
+        ? "sticky"
+        : "static"; // simplified return
     });
-    expect(position).toBe('sticky'); // or fixed, but we just check it found at least one
+    expect(position).toBe("sticky"); // or fixed, but we just check it found at least one
   });
 
   test(`The implementation includes feature detection using @supports or CSS.supports for scroll-driven animations`, async () => {
-    const html = fs.readFileSync(filePath, 'utf-8');
-    const hasSupports = html.includes('@supports') || html.includes('CSS.supports');
+    const html = fs.readFileSync(filePath, "utf-8");
+    const hasSupports =
+      html.includes("@supports") || html.includes("CSS.supports");
     expect(hasSupports).toBe(true);
   });
 
-  test(`The implementation respects user preferences for reduced motion or provides valid fallback`, async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
+  test(`The implementation respects user preferences for reduced motion or provides valid fallback`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
     const respectsReducedMotion = await page.evaluate(() => {
-      const elements = Array.from(document.querySelectorAll('header, nav'));
+      const elements = Array.from(document.querySelectorAll("header, nav"));
       const el = elements[0];
-      if (el && window.getComputedStyle(el).animationName === 'none') {
+      if (el && window.getComputedStyle(el).animationName === "none") {
         const sheets = Array.from(document.styleSheets);
         for (const sheet of sheets) {
           try {
-            const text = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
-            if (text.includes('prefers-reduced-motion')) return true;
+            const text = Array.from(sheet.cssRules)
+              .map((r) => r.cssText)
+              .join("\n");
+            if (text.includes("prefers-reduced-motion")) return true;
           } catch {}
         }
       }
@@ -96,8 +120,7 @@ test.describe(`Shrinking Header Expectations: ${demoName}`, () => {
       expect(respectsReducedMotion).toBe(true);
       return;
     }
-    const html = fs.readFileSync(filePath, 'utf-8');
-    expect(html).toContain('prefers-reduced-motion');
+    const html = fs.readFileSync(filePath, "utf-8");
+    expect(html).toContain("prefers-reduced-motion");
   });
-
 });

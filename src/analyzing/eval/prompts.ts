@@ -8,9 +8,9 @@
  * Provides deterministic content hashing and thinking budget configuration.
  */
 
-import { computePromptContentHash } from '../llm-verifier.ts';
+import { computePromptContentHash } from "../llm-verifier.ts";
 
-export const PROMPT_MODEL = 'gemini-3.8-flash';
+export const PROMPT_MODEL = "gemini-3.8-flash";
 export const JUDGE_THINKING_BUDGET = 2048;
 
 export {
@@ -24,7 +24,7 @@ export {
   formatVerifierPrompt,
   computeVerifierPromptVersion,
   VERIFIER_PROMPT_VERSION,
-} from '../llm-verifier.ts';
+} from "../llm-verifier.ts";
 
 export const JUDGE_SYSTEM_PROMPT = `You are an expert web platform modernization judge evaluating whether a static code finding is a legitimate instance of legacy web platform code that should be modernized according to a Modern Web Guidance guide.
 
@@ -53,33 +53,33 @@ Detective-then-Judge methodology:
    - 'unsure': Insufficient context in snippet/file to tell.`;
 
 export const JUDGE_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
+  type: "OBJECT",
   properties: {
-    matches_before_syntax: { type: 'BOOLEAN' },
-    has_fallback_or_feature_guard: { type: 'BOOLEAN' },
-    modern_feature_applies_here: { type: 'BOOLEAN' },
-    has_meaningful_payoff: { type: 'BOOLEAN' },
-    reasoning: { type: 'STRING' },
+    matches_before_syntax: { type: "BOOLEAN" },
+    has_fallback_or_feature_guard: { type: "BOOLEAN" },
+    modern_feature_applies_here: { type: "BOOLEAN" },
+    has_meaningful_payoff: { type: "BOOLEAN" },
+    reasoning: { type: "STRING" },
     verdict: {
-      type: 'STRING',
+      type: "STRING",
       enum: [
-        'legit-modernize-target',
-        'not-old-pattern',
-        'fallback-or-guard',
-        'loses-behavior',
-        'no-payoff',
-        'guide-wrong',
-        'unsure',
+        "legit-modernize-target",
+        "not-old-pattern",
+        "fallback-or-guard",
+        "loses-behavior",
+        "no-payoff",
+        "guide-wrong",
+        "unsure",
       ],
     },
   },
   required: [
-    'matches_before_syntax',
-    'has_fallback_or_feature_guard',
-    'modern_feature_applies_here',
-    'has_meaningful_payoff',
-    'reasoning',
-    'verdict',
+    "matches_before_syntax",
+    "has_fallback_or_feature_guard",
+    "modern_feature_applies_here",
+    "has_meaningful_payoff",
+    "reasoning",
+    "verdict",
   ],
 };
 
@@ -105,13 +105,13 @@ export function formatBlindCardPrompt(card: BlindCardPromptInput): string {
   const markdownBody = card.guideSummary.markdownBody?.trim();
   if (!markdownBody) {
     throw new Error(
-      `formatBlindCardPrompt failed: card ${card.cardId ?? 'unknown'} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
+      `formatBlindCardPrompt failed: card ${card.cardId ?? "unknown"} (guideId: "${card.guideId}") is missing required guideSummary.markdownBody. Failing fast.`,
     );
   }
 
   const explainerSection = card.guideSummary.explainerContext?.trim()
     ? `\n\n## Upstream Feature Explainer & Motivation Context (${card.guideId})\n${card.guideSummary.explainerContext.trim()}`
-    : '';
+    : "";
 
   return `## Modern Web Guidance Guide (${card.guideId})
 ${markdownBody}${explainerSection}
@@ -126,9 +126,7 @@ ${card.codeSnippet}
 \`\`\``;
 }
 
-export function computeJudgePromptVersion(
-  temperature = 0.2,
-): string {
+export function computeJudgePromptVersion(temperature = 0.2): string {
   const hash = computePromptContentHash({
     model: PROMPT_MODEL,
     systemPrompt: JUDGE_SYSTEM_PROMPT,
@@ -142,4 +140,3 @@ export function computeJudgePromptVersion(
 }
 
 export const JUDGE_VERSION = computeJudgePromptVersion();
-

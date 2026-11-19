@@ -10,7 +10,7 @@ index af1fa02..510661f 100644
 +import { getArticleImage, responsiveWidths } from '../utils/images';
  import BookmarkButton from './BookmarkButton';
  import { BookOpenIcon } from '@heroicons/react/24/outline'
- 
+
 @@ -44,7 +44,11 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                          alt=""
                          width={800}
@@ -24,7 +24,7 @@ index af1fa02..510661f 100644
                      />
                  </a>
 @@ -59,12 +63,15 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
-                 alt={article.data.title} 
+                 alt={article.data.title}
                  width={400}
                  height={225}
 +                widths={responsiveWidths(image, [400, 800])}
@@ -46,7 +46,7 @@ index f089dc0..4aa8bae 100644
 +++ b/src/components/BookmarkButton.tsx
 @@ -23,8 +23,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
    };
- 
+
    return (
 -    <button onClick={handleClick} className="p-1">
 -      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
@@ -69,25 +69,25 @@ index 6d031f5..3047de8 100644
 -import React, { useState } from 'react';
 +import React, { useEffect, useRef, useState } from 'react';
  import FlyoutMenu from './FlyoutMenu';
- 
+
  interface BottomNavProps {
 @@ -8,8 +8,12 @@ interface BottomNavProps {
      multimedia: any[];
  }
- 
+
 +const FLYOUT_ID = 'category-flyout';
 +
  const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
      const [activeCategory, setActiveCategory] = useState<string | null>(null);
 +    const barRef = useRef<HTMLDivElement>(null);
 +    const flyoutRef = useRef<HTMLDivElement>(null);
- 
+
      const groupedCategories = {
          'News & Politics': ['news', 'National', 'Politics', 'Economy', 'Labor', 'Business'],
 @@ -18,8 +22,55 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
          'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
      };
- 
+
 +    // The popover renders in the top layer, so anchor it below the nav bar via CSS custom properties
 +    const positionFlyout = () => {
 +        const bar = barRef.current;
@@ -139,23 +139,23 @@ index 6d031f5..3047de8 100644
 +            flyout.hidePopover();
 +        }
      };
- 
+
      const activeSubCategories = activeCategory ? groupedCategories[activeCategory as keyof typeof groupedCategories] : [];
 @@ -28,31 +79,39 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
- 
+
      return (
          <div onMouseLeave={handleMouseLeave}>
 -            <div className="border-t border-b border-gray-900">
 -                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
 -                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
 -                        return (
--                            <div 
+-                            <div
 -                                key={groupName}
 -                                onMouseEnter={() => setActiveCategory(groupName)}
 -                                className="h-full flex items-center"
 -                            >
--                                <a 
--                                    href="#" 
+-                                <a
+-                                    href="#"
 -                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
 +            <div ref={barRef} className="border-t border-b border-gray-900">
 +                <nav aria-label="Sections" className="container mx-auto px-4 h-10 overflow-x-auto">
@@ -193,8 +193,8 @@ index 6d031f5..3047de8 100644
 +                    </ul>
                  </nav>
              </div>
--            <FlyoutMenu 
--                isOpen={activeCategory !== null} 
+-            <FlyoutMenu
+-                isOpen={activeCategory !== null}
 +            <FlyoutMenu
 +                ref={flyoutRef}
 +                id={FLYOUT_ID}
@@ -223,13 +223,13 @@ index 847fef0..0000000
 -    const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
 -
 -    return (
--        <div 
+-        <div
 -            className="relative"
 -            onMouseEnter={() => setIsFlyoutOpen(true)}
 -            onMouseLeave={() => setIsFlyoutOpen(false)}
 -        >
--            <a 
--                href="#" 
+-            <a
+-                href="#"
 -                className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
 -            >
 -                <span>{groupName}</span>
@@ -263,7 +263,7 @@ index 37cf4bf..2642fa5 100644
 +++ b/src/components/FlyoutMenu.tsx
 @@ -1,6 +1,9 @@
  import React from 'react';
- 
+
  interface FlyoutMenuProps {
 +  ref?: React.Ref<HTMLDivElement>;
 +  id: string;
@@ -274,7 +274,7 @@ index 37cf4bf..2642fa5 100644
 @@ -8,11 +11,23 @@ interface FlyoutMenuProps {
    multimedia: any[];
  }
- 
+
 -const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
 -  if (!isOpen) {
 -    return null;
@@ -294,19 +294,19 @@ index 37cf4bf..2642fa5 100644
 +};
 +
 +type FlyoutMenuContentProps = Pick<FlyoutMenuProps, 'categories' | 'articles' | 'reports' | 'multimedia'>;
- 
+
 +const FlyoutMenuContent: React.FC<FlyoutMenuContentProps> = ({ categories, articles, reports, multimedia }) => {
    // Intentionally failing method to demonstrate debugging
    const calculateTrendingScore = (article: any) => {
      const getScore = article.getScore;
 @@ -26,13 +41,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
    }
- 
+
    return (
 -    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
        <div className="container mx-auto px-4 py-6">
          <div className="grid grid-cols-4 gap-x-8">
-           
+
            {/* Column 1: SECTIONS */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
@@ -315,7 +315,7 @@ index 37cf4bf..2642fa5 100644
                {categories.map(category => (
                  <li key={category}>
 @@ -46,7 +60,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 2: TOP STORIES */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
@@ -324,7 +324,7 @@ index 37cf4bf..2642fa5 100644
                  {topStories.map(article => (
                      <li key={article.id}>
 @@ -58,12 +72,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 3: REPORTS */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
@@ -339,7 +339,7 @@ index 37cf4bf..2642fa5 100644
                                </div>
                                <div>
 @@ -81,12 +95,12 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 4: MULTIMEDIA */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
@@ -354,13 +354,13 @@ index 37cf4bf..2642fa5 100644
                                  </div>
                                  <div>
 @@ -104,7 +118,6 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
          </div>
        </div>
 -    </div>
    );
  };
- 
+
 diff --git a/src/components/Footer.astro b/src/components/Footer.astro
 index 5f2d281..b0a508d 100644
 --- a/src/components/Footer.astro
@@ -377,11 +377,11 @@ index 5f2d281..b0a508d 100644
              />
          </a>
      </div>
- 
+
      <!-- Middle section: Main navigation links -->
 -    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
 +    <nav aria-label="Footer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
-         
+
          <!-- Column 1: NEWS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
@@ -390,7 +390,7 @@ index 5f2d281..b0a508d 100644
                  <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
                  <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
 @@ -29,7 +32,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 2: ARTS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
@@ -399,7 +399,7 @@ index 5f2d281..b0a508d 100644
                  <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
                  <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
 @@ -38,7 +41,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 3: LIFESTYLE -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
@@ -408,7 +408,7 @@ index 5f2d281..b0a508d 100644
                  <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
                  <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
 @@ -48,7 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 4: SCIENCE & TECH -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
@@ -417,7 +417,7 @@ index 5f2d281..b0a508d 100644
                  <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
              </ul>
 @@ -60,17 +63,17 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 7: ACCOUNT -->
          <div class="col-span-2 sm:col-span-1">
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
@@ -440,10 +440,10 @@ index 5f2d281..b0a508d 100644
 @@ -82,18 +85,20 @@ const baseUrl = import.meta.env.BASE_URL;
              </ul>
          </div>
- 
+
 -    </div>
 +    </nav>
- 
+
      <!-- Bottom section: Legal, copyright, and privacy -->
      <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
          <!-- Copyright and legal links -->
@@ -463,7 +463,7 @@ index 5f2d281..b0a508d 100644
 +                <li><a href=`${baseUrl}legal/imprint` class="hover:underline">Imprint</a></li>
 +            </ul>
          </div>
-         
+
          <!-- Privacy settings link -->
 diff --git a/src/components/Header.astro b/src/components/Header.astro
 index 980b279..bc6f2ea 100644
@@ -477,7 +477,7 @@ index 980b279..bc6f2ea 100644
 +          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="320" height="37" class="w-80 h-auto mx-auto" />
          </a>
        </div>
- 
+
 diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
 deleted file mode 100644
 index 4e6592b..0000000
@@ -518,16 +518,16 @@ index 29642be..b4d74bc 100644
 --- a/src/components/ReadingListButton.tsx
 +++ b/src/components/ReadingListButton.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState, useEffect } from 'react';
 +import React, { useState, useEffect, useCallback } from 'react';
  import ReadingListFlyout from './ReadingListFlyout';
- 
+
  interface Article {
 @@ -22,10 +22,14 @@ export default function ReadingListButton() {
      fetchArticles();
    }, []);
- 
+
 +  const openReadingList = () => setIsOpen(true);
 +  const closeReadingList = useCallback(() => setIsOpen(false), []);
 +
@@ -554,16 +554,16 @@ index 10bfbad..cb67f3e 100644
 --- a/src/components/ReadingListFlyout.tsx
 +++ b/src/components/ReadingListFlyout.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState, useEffect } from 'react';
 +import React, { useState, useEffect, useRef } from 'react';
- 
+
  interface Article {
    slug: string;
 @@ -22,18 +22,32 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
      setReadingList(data.readingList);
    };
- 
+
 +  const dialogRef = useRef<HTMLDialogElement>(null);
 +
    useEffect(() => {
@@ -573,7 +573,7 @@ index 10bfbad..cb67f3e 100644
 +  useEffect(() => {
 +    const dialog = dialogRef.current;
 +    if (!dialog) return;
- 
+
 -    const handleKeyDown = (event: KeyboardEvent) => {
 -      if (event.key === 'Escape') {
 -        onClose();
@@ -590,17 +590,17 @@ index 10bfbad..cb67f3e 100644
 -    window.addEventListener('keydown', handleKeyDown);
 +    dialog.addEventListener('click', handleBackdropClick);
 +    dialog.addEventListener('close', onClose);
- 
+
      return () => {
 -      window.removeEventListener('keydown', handleKeyDown);
 +      dialog.removeEventListener('click', handleBackdropClick);
 +      dialog.removeEventListener('close', onClose);
      };
    }, [onClose]);
- 
+
 @@ -51,37 +65,42 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
- 
+
    return (
 -    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -674,22 +674,22 @@ index 3f57913..af27f83 100644
 --- a/src/components/SearchButton.tsx
 +++ b/src/components/SearchButton.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState } from 'react';
 +import React, { useState, useCallback } from 'react';
  import SearchFlyout from './SearchFlyout';
- 
+
  interface Article {
 @@ -24,21 +24,24 @@ export default function SearchButton() {
          }
      };
- 
+
 -    const closeSearch = () => {
 +    const closeSearch = useCallback(() => {
          setIsFlyoutOpen(false);
 -    };
 +    }, []);
- 
+
      return (
          <>
              <button
@@ -714,10 +714,10 @@ index 9dabc6e..72fb5d9 100644
 --- a/src/components/SearchFlyout.tsx
 +++ b/src/components/SearchFlyout.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState, useMemo, useEffect } from 'react';
 +import React, { useState, useMemo, useEffect, useRef } from 'react';
- 
+
  interface Article {
      slug: string;
 @@ -21,15 +21,34 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
@@ -726,7 +726,7 @@ index 9dabc6e..72fb5d9 100644
      const [suggestions, setSuggestions] = useState<Article[]>([]);
 +    const dialogRef = useRef<HTMLDialogElement>(null);
 +    const inputRef = useRef<HTMLInputElement>(null);
- 
+
      useEffect(() => {
 -        const handleKeyDown = (event: KeyboardEvent) => {
 -            if (event.key === 'Escape') {
@@ -746,7 +746,7 @@ index 9dabc6e..72fb5d9 100644
              }
          };
 -        window.addEventListener('keydown', handleKeyDown);
--        
+-
 +        dialog.addEventListener('click', handleBackdropClick);
 +        dialog.addEventListener('close', onClose);
 +
@@ -762,7 +762,7 @@ index 9dabc6e..72fb5d9 100644
              try {
 @@ -42,11 +61,7 @@ export default function SearchFlyout({ articles, onClose }: Props) {
          };
- 
+
          fetchSuggestions();
 -
 -        return () => {
@@ -770,12 +770,12 @@ index 9dabc6e..72fb5d9 100644
 -        };
 -    }, [onClose]);
 +    }, []);
- 
+
      const filteredArticles = useMemo(() => {
          if (!searchTerm) {
 @@ -59,60 +74,78 @@ export default function SearchFlyout({ articles, onClose }: Props) {
      }, [articles, searchTerm]);
- 
+
      return (
 -        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -902,12 +902,12 @@ index a7c52b6..6217267 100644
 --- a/src/components/SignInForm.tsx
 +++ b/src/components/SignInForm.tsx
 @@ -41,7 +41,7 @@ export default function SignInForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -63,6 +63,11 @@ export default function SignInForm() {
@@ -936,12 +936,12 @@ index 589fe62..d305412 100644
 --- a/src/components/SignUpForm.tsx
 +++ b/src/components/SignUpForm.tsx
 @@ -42,7 +42,7 @@ export default function SignUpForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -64,6 +64,11 @@ export default function SignUpForm() {
@@ -980,7 +980,7 @@ index 29e7e50..768bf29 100644
 @@ -14,7 +14,7 @@ const { title, articles } = Astro.props;
          {title}
      </h2>
- 
+
 -    <div class="grid md:grid-cols-3 gap-6">
 -      {articles.map(article => <ArticleTeaser article={article} />)}
 -    </div>
@@ -1000,7 +1000,7 @@ index e015eae..60498d2 100644
 +import { getArticleImage, responsiveWidths } from '../utils/images';
  import BookmarkButton from './BookmarkButton';
  import { BookOpenIcon } from '@heroicons/react/24/outline'
- 
+
 @@ -47,7 +47,7 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
                      {topArticle.data.summary}
                  </p>
@@ -1020,7 +1020,7 @@ index e015eae..60498d2 100644
              </div>
          </div>
      </div>
- 
+
      <!-- Bottom Section: Three Smaller Articles -->
 -    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
 +    <ul class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
@@ -1053,46 +1053,46 @@ index af5e892..af5329f 100644
 --- a/src/content/articles/coastal-pulse.md
 +++ b/src/content/articles/coastal-pulse.md
 @@ -13,14 +13,14 @@ Living by the seaside offers a sensory experience that shifts with the tides. It
- 
+
  The air at the coast is rich in negative ions, which are thought to improve oxygen absorption and balance serotonin levels. Furthermore, the "blue space" effect—the mental clarity gained from being near water—is a well-documented phenomenon that reduces cortisol and encourages mindfulness.
- 
+
 -### The Coastal Environment
 +## The Coastal Environment
  **Microclimates:** Large bodies of water act as heat sinks, often resulting in cooler summers and milder winters compared to inland areas.
- 
+
  **Salt Spray & Ecology:** The high salinity creates a unique ecosystem where only hardy, salt-tolerant plants (halophytes) thrive.
- 
+
  **Tidal Dynamics:** Understanding the Lunar cycle is essential, as the gravitational pull of the moon creates the high and low tides that reshape the landscape daily.
- 
+
 -### Explore
 +## Explore
  While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
- 
+
  <script>
 diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
 index cc7e252..94df1a7 100644
 --- a/src/content/articles/coffee-alchemy.md
 +++ b/src/content/articles/coffee-alchemy.md
 @@ -13,7 +13,7 @@ Coffee is more than a morning ritual; it is a complex beverage derived from the
- 
+
  The profile of a cup depends heavily on the roast profile and extraction method. During roasting, chemical reactions like the Maillard reaction transform green beans into aromatic brown ones, developing over 800 distinct flavor compounds.
- 
+
 -### Key Varieties
 +## Key Varieties
  **Arabica:** Known for its acidity, sweetness, and nuanced floral notes.
- 
+
  **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
 diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
 index ee5cdd8..c4b9be0 100644
 --- a/src/content/articles/silent-architects.md
 +++ b/src/content/articles/silent-architects.md
 @@ -13,7 +13,7 @@ Plants are the quiet powerhouses of our planet, serving as the literal foundatio
- 
+
  Beyond just being "oxygen factories," plants are sophisticated organisms with complex systems. Their roots anchor the soil and prevent erosion, while their vascular tissues—xylem and phloem—act like a biological highway, transporting water and nutrients against the pull of gravity.
- 
+
 -### Why They Matter
 +## Why They Matter
- 
+
  *   **Biodiversity:** They provide habitats and food for countless species.
  *   **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
 diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
@@ -1102,7 +1102,7 @@ index dcf9696..b01b05b 100644
 @@ -14,16 +14,15 @@ const { title } = Astro.props;
  const baseUrl = import.meta.env.BASE_URL;
  ---
- 
+
 -<!doctype html>
 +<!DOCTYPE html>
  <html lang="en">
@@ -1111,7 +1111,7 @@ index dcf9696..b01b05b 100644
 +    <meta charset="utf-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
      <title>{title}</title>
- 
+
      <link rel="preconnect" href="https://fonts.googleapis.com" />
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1141,15 +1141,15 @@ index 24fea39..12d8470 100644
 +import { getArticleImage, responsiveWidths } from '../../utils/images';
  import BookmarkButton from '../../components/BookmarkButton.tsx';
  import ArticleTeaser from '../../components/ArticleTeaser.astro';
- 
+
 @@ -54,7 +54,7 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
          <!-- Author / Date -->
          <div class="text-sm text-gray-500 border-b border-gray-200 pb-5 mb-5">
 -            By <span class="font-semibold text-gray-700">{article.data.author}</span> | {article.data.date.toDateString()}
 +            By <span class="font-semibold text-gray-700">{article.data.author}</span> | <time datetime={article.data.date.toISOString()}>{article.data.date.toDateString()}</time>
          </div>
- 
+
          <!-- Main Article Image -->
 @@ -67,6 +67,7 @@ const isBookmarked = readingList.includes(article.slug);
                      width="1200"
@@ -1160,7 +1160,7 @@ index 24fea39..12d8470 100644
                  />
              ) : (
 @@ -75,7 +76,11 @@ const isBookmarked = readingList.includes(article.slug);
-                     alt={article.data.title} 
+                     alt={article.data.title}
                      width={1200}
                      height={675}
 +                    widths={responsiveWidths(articleImage, [400, 800, 1200])}
@@ -1193,7 +1193,7 @@ index 24fea39..12d8470 100644
              </div>
 @@ -110,16 +115,17 @@ const isBookmarked = readingList.includes(article.slug);
          </div>
- 
+
          <!-- ADVERTISEMENT -->
 -        <section class="p-4 md:p-6 text-center">
 +        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
@@ -1201,7 +1201,7 @@ index 24fea39..12d8470 100644
 -        </section>
 +        </aside>
      </article>
- 
+
      <!-- RELATED ARTICLES SECTION -->
 -    <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
 -        <div class="grid md:grid-cols-3 gap-6">
@@ -1213,8 +1213,8 @@ index 24fea39..12d8470 100644
 +            {relatedArticles.map((related_article) => <li><ArticleTeaser article={related_article} /></li>)}
 +        </ul>
      </section>
- 
- 
+
+
 diff --git a/src/pages/category/[category].astro b/src/pages/category/[category].astro
 index 79bf126..8a1b9e7 100644
 --- a/src/pages/category/[category].astro
@@ -1225,11 +1225,11 @@ index 79bf126..8a1b9e7 100644
  import { Image } from 'astro:assets';
 -import { getArticleImage } from '../../utils/images';
 +import { getArticleImage, responsiveWidths } from '../../utils/images';
- 
+
  export const getStaticPaths = (async () => {
      const articles = await getCollection('articles');
 @@ -47,8 +47,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
-                     alt={`Background for ${capitalizedCategory}`} 
+                     alt={`Background for ${capitalizedCategory}`}
                      width={1200}
                      height={400}
 +                    widths={responsiveWidths(heroImage, [600, 1200])}
@@ -1242,7 +1242,7 @@ index 79bf126..8a1b9e7 100644
                  />
              )}
 @@ -73,7 +77,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
-                             alt={featuredArticle.data.title} 
+                             alt={featuredArticle.data.title}
                              width={1200}
                              height={675}
 +                            widths={responsiveWidths(featuredArticleImage, [400, 800, 1200])}
@@ -1253,7 +1253,7 @@ index 79bf126..8a1b9e7 100644
                          />
                          <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2 group-hover:text-amber-700 transition-colors">
 @@ -88,9 +95,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
- 
+
              <!-- Other Articles -->
              {otherArticles.length > 0 ? (
 -                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -1292,38 +1292,38 @@ index 92f6399..c5e96df 100644
 +            </ul>
          </div>
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </div>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
 -        <section class="p-4 md:p-6 text-center">
 +        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
              <Ad client:visible />
 -        </section>
 +        </aside>
- 
+
          <!-- "Top News" section with the new grid variant -->
          <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
- 
+
 -        <section class="p-4 md:p-6 text-center">
 +        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
              <Ad client:visible />
 -        </section>
 +        </aside>
- 
+
          <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
- 
+
 -        <section class="p-4 md:p-6 text-center">
 +        <aside aria-label="Advertisement" class="p-4 md:p-6 text-center">
              <Ad client:visible />
 -        </section>
 +        </aside>
- 
+
          <!-- "Politics" section with the new grid variant -->
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
 diff --git a/src/utils/images.ts b/src/utils/images.ts

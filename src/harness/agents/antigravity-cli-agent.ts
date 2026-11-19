@@ -1,22 +1,22 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import config, { Agents } from '../config.ts';
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
+import config, { Agents } from "../config.ts";
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
   runCliAgentCommand,
   setupIsolatedWorkDir,
-  isEnoent
-} from '../lib/agent-shared.ts';
-import { exportTrajectories } from '../lib/trajectory-export.ts';
+  isEnoent,
+} from "../lib/agent-shared.ts";
+import { exportTrajectories } from "../lib/trajectory-export.ts";
 import {
   type TrajectorySummary,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory
-} from '../lib/trajectory-normalizer.ts';
-import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
+  generateNormalizedTrajectory,
+} from "../lib/trajectory-normalizer.ts";
+import { resolveEffortCliArgs } from "../lib/reasoning-effort.ts";
 // agy stores conversations in the same SQLite step schema as Jetski CLI, so the parser is shared.
 // TODO: The shared SQLite parser is lossy (it scrapes JSON fragments from protobuf payloads, so it can
 // drop or invent steps and doesn't attribute subagent steps). agy also writes structured data that
@@ -26,12 +26,12 @@ import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 //   - `--output-format stream-json` on stdout (tool calls, outputs, and per-step token usage)
 // Neither includes the model name, so keep `gen_metadata` (or pass `--model` explicitly) for that.
 // Switch agy to these sources when/if Jetski CLI is removed and this parser no longer needs to be shared.
-import { parseJetskiCliSession } from './jetski-cli-agent.ts';
+import { parseJetskiCliSession } from "./jetski-cli-agent.ts";
 
 /** agy app data directory, relative to HOME. */
-const AGY_APP_DATA_SUBDIR = path.join('.gemini', 'antigravity-cli');
+const AGY_APP_DATA_SUBDIR = path.join(".gemini", "antigravity-cli");
 /** OAuth token file agy writes to its app data directory on Linux. */
-const AGY_OAUTH_TOKEN_FILE = 'antigravity-oauth-token';
+const AGY_OAUTH_TOKEN_FILE = "antigravity-oauth-token";
 
 interface AgySettings {
   gcp?: { project?: string; location?: string };
@@ -40,7 +40,7 @@ interface AgySettings {
 
 function readAgySettings(settingsPath: string): AgySettings {
   try {
-    return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    return JSON.parse(fs.readFileSync(settingsPath, "utf8"));
   } catch (err) {
     if (!isEnoent(err) && !(err instanceof SyntaxError)) throw err;
     return {};
@@ -52,9 +52,9 @@ function readAgySettings(settingsPath: string): AgySettings {
  * token there. Link the real keychain dir into the isolated HOME so auth works.
  */
 function linkMacKeychains(originalHome: string, tempHome: string): void {
-  if (process.platform !== 'darwin') return;
-  const src = path.join(originalHome, 'Library', 'Keychains');
-  const dest = path.join(tempHome, 'Library', 'Keychains');
+  if (process.platform !== "darwin") return;
+  const src = path.join(originalHome, "Library", "Keychains");
+  const dest = path.join(tempHome, "Library", "Keychains");
   if (!fs.existsSync(src) || fs.existsSync(dest)) return;
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.symlinkSync(src, dest);
@@ -67,17 +67,25 @@ export function setupAntigravityCliCredentials(tempHome: string): void {
 
   fs.mkdirSync(agyDest, { recursive: true });
 
-  const sourceSettings = readAgySettings(path.join(agySource, 'settings.json'));
-  const project = config.environment.antigravityGcpProject || sourceSettings.gcp?.project;
+  const sourceSettings = readAgySettings(path.join(agySource, "settings.json"));
+  const project =
+    config.environment.antigravityGcpProject || sourceSettings.gcp?.project;
   if (!project) {
-    console.log('No GCP project configured for agy; using the signed-in Antigravity account.');
+    console.log(
+      "No GCP project configured for agy; using the signed-in Antigravity account.",
+    );
   }
 
   const settings: AgySettings = {
-    ...(project ? { gcp: { project, location: sourceSettings.gcp?.location || 'global' } } : {}),
-    trustedWorkspaces: [tempHome]
+    ...(project
+      ? { gcp: { project, location: sourceSettings.gcp?.location || "global" } }
+      : {}),
+    trustedWorkspaces: [tempHome],
   };
-  fs.writeFileSync(path.join(agyDest, 'settings.json'), JSON.stringify(settings, null, 2));
+  fs.writeFileSync(
+    path.join(agyDest, "settings.json"),
+    JSON.stringify(settings, null, 2),
+  );
 
   // On Linux, agy stores its OAuth token as a file in the app data dir rather than a keychain.
   // Copy (not symlink) so concurrent workers refreshing the token don't clobber each other.
@@ -89,51 +97,85 @@ export function setupAntigravityCliCredentials(tempHome: string): void {
   linkMacKeychains(originalHome, tempHome);
 }
 
-export function getAntigravityCliCommandAndArgs(prompt: string): { command: string; commandArgs: string[] } {
+export function getAntigravityCliCommandAndArgs(prompt: string): {
+  command: string;
+  commandArgs: string[];
+} {
   const command = config.environment.antigravityCliBin;
   const model = process.env.ANTIGRAVITY_MODEL;
   const commandArgs = [
-    '-p', prompt,
-    '--dangerously-skip-permissions',
-    ...(model ? ['--model', model] : []),
-    ...resolveEffortCliArgs(Agents.ANTIGRAVITY_CLI, model)
+    "-p",
+    prompt,
+    "--dangerously-skip-permissions",
+    ...(model ? ["--model", model] : []),
+    ...resolveEffortCliArgs(Agents.ANTIGRAVITY_CLI, model),
   ];
   return { command, commandArgs };
 }
 
-function exportAntigravityTrajectories(workDir: string, targetDir: string): void {
-  const conversationsDir = path.join(path.dirname(workDir), AGY_APP_DATA_SUBDIR, 'conversations');
-  exportTrajectories(conversationsDir, '*.db', targetDir);
+function exportAntigravityTrajectories(
+  workDir: string,
+  targetDir: string,
+): void {
+  const conversationsDir = path.join(
+    path.dirname(workDir),
+    AGY_APP_DATA_SUBDIR,
+    "conversations",
+  );
+  exportTrajectories(conversationsDir, "*.db", targetDir);
 }
 
-export async function parseAntigravityTrajectory(dirPath: string): Promise<TrajectorySummary> {
-  return finalizeTrajectorySummary({ ...parseJetskiCliSession(dirPath), agent: Agents.ANTIGRAVITY_CLI });
+export async function parseAntigravityTrajectory(
+  dirPath: string,
+): Promise<TrajectorySummary> {
+  return finalizeTrajectorySummary({
+    ...parseJetskiCliSession(dirPath),
+    agent: Agents.ANTIGRAVITY_CLI,
+  });
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('antigravity-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.ANTIGRAVITY_CLI, templateDir, runType);
+  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs(
+    "antigravity-cli-agent.ts",
+  );
+  const workDir = setupIsolatedWorkDir(
+    Agents.ANTIGRAVITY_CLI,
+    templateDir,
+    runType,
+  );
 
   if (!workDir) {
-    throw new Error('Failed to initialize working directory');
+    throw new Error("Failed to initialize working directory");
   }
 
   try {
     console.log(`Starting Antigravity CLI agent in: ${workDir}`);
 
-    const { command, commandArgs } = getAntigravityCliCommandAndArgs(userPrompt);
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
+    const { command, commandArgs } =
+      getAntigravityCliCommandAndArgs(userPrompt);
+    console.log(`Executing: ${command} ${commandArgs.join(" ")}`);
 
     try {
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI', runType);
+      await runCliAgentCommand(
+        command,
+        commandArgs,
+        workDir,
+        targetDir,
+        "Antigravity CLI",
+        runType,
+      );
     } finally {
       exportAntigravityTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.ANTIGRAVITY_CLI, userPrompt);
+      await generateNormalizedTrajectory(
+        targetDir,
+        Agents.ANTIGRAVITY_CLI,
+        userPrompt,
+      );
     }
 
-    console.log('Antigravity CLI agent finished successfully.');
+    console.log("Antigravity CLI agent finished successfully.");
   } catch (err) {
-    console.error('Error during Antigravity CLI execution:', err);
+    console.error("Error during Antigravity CLI execution:", err);
     process.exitCode = 1;
   } finally {
     cleanupIsolatedHome(path.dirname(workDir));

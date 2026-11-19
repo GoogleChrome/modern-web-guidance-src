@@ -36,7 +36,7 @@ Use the **Interest Invokers** API to trigger the hovercard. This ensures the car
   <h2>The buzz on hummingbirds</h2>
   <p class="byline">By Delphi Aguilar</p>
   <div>
-    <img src="bird.jpg" alt="A vibrant hummingbird">
+    <img src="bird.jpg" alt="A vibrant hummingbird" />
     <p>Brief summary of the article...</p>
   </div>
 </div>
@@ -60,7 +60,10 @@ Position the hovercard relative to its trigger using **CSS Anchor Positioning**.
   /* Position the card below the trigger, aligned with its inline-start edge
      and spanning toward the inline-end, flipping if it overflows the viewport. */
   position-area: block-end span-inline-end;
-  position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+  position-try-fallbacks:
+    flip-block,
+    flip-inline,
+    flip-block flip-inline;
 }
 ```
 
@@ -91,11 +94,7 @@ Use `@starting-style` to define the entry animation and `transition-behavior: al
 /* MANDATORY: Respect user preference for reduced motion by selectively applying transitions. */
 @media (prefers-reduced-motion: no-preference) {
   [popover].hovercard {
-    transition:
-      opacity,
-      transform,
-      display,
-      overlay;
+    transition: opacity, transform, display, overlay;
     transition-duration: 0.4s;
     /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
     transition-behavior: allow-discrete;
@@ -144,12 +143,12 @@ By assigning matching `view-transition-name` values to elements in the hovercard
 <head>
   <!-- Block rendering until the hero image and title are parsed,
        ensuring the view transition snapshot is taken at the right time. -->
-  <link rel="expect" href="#main-content" blocking="render">
+  <link rel="expect" href="#main-content" blocking="render" />
 </head>
 <body>
   <main id="main-content">
     <h1>The buzz on hummingbirds</h1>
-    <img src="bird.jpg">
+    <img src="bird.jpg" />
   </main>
 </body>
 ```

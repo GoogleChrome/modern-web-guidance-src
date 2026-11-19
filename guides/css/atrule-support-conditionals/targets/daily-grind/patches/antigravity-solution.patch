@@ -4,7 +4,7 @@ index 66c9173..834733f 100644
 +++ b/index.html
 @@ -28,6 +28,18 @@
      }
- 
+
      /* Navigation */
 +    @property --nav-gradient-angle {
 +      syntax: "<angle>";
@@ -31,12 +31,12 @@ index 66c9173..834733f 100644
 +        animation: shift-gradient 10s linear infinite;
 +      }
      }
- 
+
      .logo {
 @@ -93,6 +110,27 @@
        margin-bottom: 1rem;
      }
- 
+
 +    @supports at-rule(@starting-style) {
 +      .hero {
 +        transition: opacity 0.6s ease-out;
@@ -73,5 +73,5 @@ index 66c9173..834733f 100644
 +        justify-content: space-between;
 +      }
      }
- 
+
      .card h3 {

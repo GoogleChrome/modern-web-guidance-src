@@ -5,7 +5,7 @@ index 66c9173..75069ba 100644
 @@ -135,6 +135,43 @@
        background: #3e2723;
      }
- 
+
 +    /* Semantic context flag for descendant components */
 +    .seasonal {
 +      --surface: seasonal;
@@ -48,7 +48,7 @@ index 66c9173..75069ba 100644
        text-align: center;
 @@ -175,20 +212,23 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section class="seasonal">

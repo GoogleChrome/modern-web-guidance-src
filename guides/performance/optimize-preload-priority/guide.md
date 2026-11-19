@@ -2,8 +2,8 @@
 name: optimize-preload-priority
 description: Optimize the relative priority of preloaded content to reduce critical resource load delays.
 web-feature-ids:
-    - fetch-priority
-    - link-rel-preload
+  - fetch-priority
+  - link-rel-preload
 ---
 
 # Optimize preload priority
@@ -21,13 +21,30 @@ Preloading resources with `<link rel="preload">` signals to the browser that a r
 
 ```html
 <!-- Elevate priority for a video poster image that acts as the LCP candidate -->
-<link rel="preload" href="/images/video-poster.jpg" as="image" fetchpriority="high">
+<link
+  rel="preload"
+  href="/images/video-poster.jpg"
+  as="image"
+  fetchpriority="high"
+/>
 
 <!-- Elevate priority for a critical LCP image that is hidden in CSS -->
-<link rel="preload" href="/images/hero-background.jpg" as="image" fetchpriority="high">
+<link
+  rel="preload"
+  href="/images/hero-background.jpg"
+  as="image"
+  fetchpriority="high"
+/>
 
 <!-- Deprioritize a secondary font to avoid network contention -->
-<link rel="preload" href="/fonts/secondary-font.woff2" as="font" type="font/woff2" fetchpriority="low" crossorigin>
+<link
+  rel="preload"
+  href="/fonts/secondary-font.woff2"
+  as="font"
+  type="font/woff2"
+  fetchpriority="low"
+  crossorigin
+/>
 ```
 
 ## Best Practices

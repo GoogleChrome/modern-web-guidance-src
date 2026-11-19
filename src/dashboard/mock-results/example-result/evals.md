@@ -1,10 +1,9 @@
 # Evaluation Results
 
-
-| Group | Pass Rate | Test Runs |
-|---|---|---|
-| **Unguided** | 80% (8/10) | 1 |
-| **Guided** | 80% (8/10) | 1 |
+| Group        | Pass Rate  | Test Runs |
+| ------------ | ---------- | --------- |
+| **Unguided** | 80% (8/10) | 1         |
+| **Guided**   | 80% (8/10) | 1         |
 
 ## CARDS-APP - CONTENT-VIS - UNGUIDED (Median: 100%)
 
@@ -12,15 +11,15 @@
 
 ### Run 1 Details (7/7)
 
-| Status | Expectation |
-|---|---|
-| ✅ | Should contain content-visibility: auto |
-| ✅ | Should contain contain-intrinsic-size |
-| ✅ | Cards below the fold should have content-visibility: auto |
-| ✅ | Cards should have contain-intrinsic-size set |
-| ✅ | Initial render should be FAST (&lt;150ms) |
-| ✅ | Off-screen content remains in A11y tree |
-| ✅ | No console warnings for forced layout |
+| Status | Expectation                                               |
+| ------ | --------------------------------------------------------- |
+| ✅     | Should contain content-visibility: auto                   |
+| ✅     | Should contain contain-intrinsic-size                     |
+| ✅     | Cards below the fold should have content-visibility: auto |
+| ✅     | Cards should have contain-intrinsic-size set              |
+| ✅     | Initial render should be FAST (&lt;150ms)                 |
+| ✅     | Off-screen content remains in A11y tree                   |
+| ✅     | No console warnings for forced layout                     |
 
 ## CARDS-APP - CONTENT-VIS - GUIDED (Median: 100%)
 
@@ -28,15 +27,15 @@
 
 ### Run 1 Details (7/7)
 
-| Status | Expectation |
-|---|---|
-| ✅ | Should contain content-visibility: auto |
-| ✅ | Should contain contain-intrinsic-size |
-| ✅ | Cards below the fold should have content-visibility: auto |
-| ✅ | Cards should have contain-intrinsic-size set |
-| ✅ | Initial render should be FAST (&lt;150ms) |
-| ✅ | Off-screen content remains in A11y tree |
-| ✅ | No console warnings for forced layout |
+| Status | Expectation                                               |
+| ------ | --------------------------------------------------------- |
+| ✅     | Should contain content-visibility: auto                   |
+| ✅     | Should contain contain-intrinsic-size                     |
+| ✅     | Cards below the fold should have content-visibility: auto |
+| ✅     | Cards should have contain-intrinsic-size set              |
+| ✅     | Initial render should be FAST (&lt;150ms)                 |
+| ✅     | Off-screen content remains in A11y tree                   |
+| ✅     | No console warnings for forced layout                     |
 
 ## CARDS-APP - PRELOAD-PRERENDER - UNGUIDED (Median: 33%)
 
@@ -44,11 +43,11 @@
 
 ### Run 1 Details (1/3)
 
-| Status | Expectation |
-|---|---|
-| ❌ | Should have &lt;script type=&quot;speculationrules&quot;&gt; |
-| ❌ | Speculation rules should exclude /logout |
-| ✅ | Should NOT have deprecated &lt;link rel=&quot;prerender&quot;&gt; tag |
+| Status | Expectation                                                           |
+| ------ | --------------------------------------------------------------------- |
+| ❌     | Should have &lt;script type=&quot;speculationrules&quot;&gt;          |
+| ❌     | Speculation rules should exclude /logout                              |
+| ✅     | Should NOT have deprecated &lt;link rel=&quot;prerender&quot;&gt; tag |
 
 ## CARDS-APP - PRELOAD-PRERENDER - GUIDED (Median: 33%)
 
@@ -56,9 +55,8 @@
 
 ### Run 1 Details (1/3)
 
-| Status | Expectation |
-|---|---|
-| ❌ | Should have &lt;script type=&quot;speculationrules&quot;&gt; |
-| ❌ | Speculation rules should exclude /logout |
-| ✅ | Should NOT have deprecated &lt;link rel=&quot;prerender&quot;&gt; tag |
-
+| Status | Expectation                                                           |
+| ------ | --------------------------------------------------------------------- |
+| ❌     | Should have &lt;script type=&quot;speculationrules&quot;&gt;          |
+| ❌     | Speculation rules should exclude /logout                              |
+| ✅     | Should NOT have deprecated &lt;link rel=&quot;prerender&quot;&gt; tag |

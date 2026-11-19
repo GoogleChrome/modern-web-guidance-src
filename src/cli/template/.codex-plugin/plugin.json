@@ -9,13 +9,7 @@
   "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
   "repository": "https://github.com/GoogleChrome/modern-web-guidance",
   "license": "Apache-2.0",
-  "keywords": [
-    "web",
-    "html",
-    "css",
-    "javascript",
-    "best-practices"
-  ],
+  "keywords": ["web", "html", "css", "javascript", "best-practices"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Modern Web Guidance",
@@ -25,9 +19,7 @@
     "category": "Developer Tools",
     "composerIcon": "./assets/logo.png",
     "logo": "./assets/logo.png",
-    "capabilities": [
-      "Read"
-    ],
+    "capabilities": ["Read"],
     "websiteURL": "https://developer.chrome.com/docs/modern-web-guidance",
     "supportURL": "https://github.com/GoogleChrome/modern-web-guidance-src/issues",
     "privacyPolicyURL": "https://policies.google.com/privacy",

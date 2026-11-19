@@ -5,7 +5,7 @@ index 66c9173..4737a55 100644
 @@ -135,6 +135,12 @@
        background: #3e2723;
      }
- 
+
 +    :where(a, button):focus,
 +    :where(a, button):focus-visible {
 +      outline: none;

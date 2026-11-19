@@ -36,9 +36,9 @@ index 66c9173..f484c3d 100644
        --primary: #4e342e;
        --secondary: #d7ccc8;
 @@ -157,6 +171,12 @@
- 
+
  <body>
- 
+
 +  <div class="migration-banner" role="region" aria-label="App migration notice">
 +    We've moved! Install the new Daily Grind app at
 +    <a href="https://new-app.example.com/demo.html">new-app.example.com</a>.

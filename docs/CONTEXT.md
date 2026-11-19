@@ -1,6 +1,6 @@
 # Modern Web Guidance Project — Context Document
 
-*(Note: This is an auto-maintained LLM context document, meant to provide overarching project goals, architecture, and workflow details to AI agents working in this repository. It is not intended to replace the READMEs for human contributors, but rather to supplement them with "big picture" state. AI agents are instructed to update this file as they work.)*
+_(Note: This is an auto-maintained LLM context document, meant to provide overarching project goals, architecture, and workflow details to AI agents working in this repository. It is not intended to replace the READMEs for human contributors, but rather to supplement them with "big picture" state. AI agents are instructed to update this file as they work.)_
 
 This document describes the goals, architecture, contributor workflow, and current state of the Modern Web Guidance project. It is intended both as LLM context (for feeding into subsequent AI-assisted work) and as a human-readable project overview.
 
@@ -66,15 +66,15 @@ Each guide lives in its own directory (e.g. `guides/performance/batch-analytics-
 
 ### Files per guide directory
 
-| File | Author | Purpose |
-|---|---|---|
-| `guide.md` | SME (human) | The guidance itself, read by coding agents via Skills (`SKILL.md` is reserved for the entrypoint and standalone skills). Normative rules and build-time macros (`BASELINE_STATUS`, `INCLUDE`, `FEATURE`, `FEATURE_FALLBACKS`, `FEATURE_ISSUES`, `GUIDE_REF`) are specified in [`project-guides`](../.agents/skills/project-guides/SKILL.md). |
-| `demo.html` | SME (human) | Gold-standard standalone implementation of the use case. |
-| `expectations.md` | SME (human) | Natural-language bulleted list of observable assertions used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)). |
-| `targets/<base_app>/patches/` | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`, empty for almost every guide so calibration runs against the untouched starting app). Used for grader calibration. |
-| `targets/<base_app>/grader.ts` | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check). |
-| `targets/<base_app>/task.md` | Generated (`gd dev`) | Single `- ` bullet developer prompt tailored to `<base_app>` fed to evaluation agents (no YAML frontmatter). |
-| `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations. |
+| File                                         | Author               | Purpose                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guide.md`                                   | SME (human)          | The guidance itself, read by coding agents via Skills (`SKILL.md` is reserved for the entrypoint and standalone skills). Normative rules and build-time macros (`BASELINE_STATUS`, `INCLUDE`, `FEATURE`, `FEATURE_FALLBACKS`, `FEATURE_ISSUES`, `GUIDE_REF`) are specified in [`project-guides`](../.agents/skills/project-guides/SKILL.md). |
+| `demo.html`                                  | SME (human)          | Gold-standard standalone implementation of the use case.                                                                                                                                                                                                                                                                                     |
+| `expectations.md`                            | SME (human)          | Natural-language bulleted list of observable assertions used as input for grader generation (see [`project-guides`](../.agents/skills/project-guides/SKILL.md) and [`project-evals`](../.agents/skills/project-evals/SKILL.md)).                                                                                                             |
+| `targets/<base_app>/patches/`                | Generated (`gd dev`) | Multi-agent solution patches (`antigravity-solution.patch` / `jetski-solution.patch`, `claude-solution.patch`, `codex-solution.patch`) and baseline patch (`zero-passrate.patch`, empty for almost every guide so calibration runs against the untouched starting app). Used for grader calibration.                                         |
+| `targets/<base_app>/grader.ts`               | Generated (`gd dev`) | Playwright test file that grades target applications against expectations. Calibrated so every golden patch passes every test and the untouched starting app (`zero-passrate.patch`) passes none, except a `MUST NOT` check it already satisfies (paired with a positive presence check).                                                    |
+| `targets/<base_app>/task.md`                 | Generated (`gd dev`) | Single `- ` bullet developer prompt tailored to `<base_app>` fed to evaluation agents (no YAML frontmatter).                                                                                                                                                                                                                                 |
+| `results/guides/<category>/<slug>/report.md` | Generated (`gd dev`) | Automated evaluation diagnostic report analyzing pass rates and tool consumption with actionable recommendations.                                                                                                                                                                                                                            |
 
 ### Discipline guides
 
@@ -94,7 +94,7 @@ A guide progresses through three sequential stages before its evals land, tracke
 1. **Stage 1: Identifying use cases (`Needs use cases`, [`project-use-cases`](../.agents/skills/project-use-cases/SKILL.md))**
    - **Goal**: Translate a web platform feature (from open `new-feature` issues; see [`project-features`](../.agents/skills/project-features/SKILL.md)) into distinct, action-oriented use cases.
    - **Artifacts**: Directory structure (`guides/<category>/<use-case-slug>/`) and a stub `guide.md` containing only YAML frontmatter (`name`, `description`, `web-feature-ids`), or a `new-use-case` issue.
-   - Contributor aligns with the category Content ATL via an issue or stub PR. *(Onboarded Peers may fast-track and proceed directly to Stage 2).*
+   - Contributor aligns with the category Content ATL via an issue or stub PR. _(Onboarded Peers may fast-track and proceed directly to Stage 2)._
 
 2. **Stage 2: Authoring guidance (`Needs guidance`, [`project-guides`](../.agents/skills/project-guides/SKILL.md))**
    - **Goal**: Flesh out the guidance content, build a working reference demo, and define testable expectations.
@@ -124,17 +124,17 @@ pnpm link --global && gd setup-completion
 
 ### Commands
 
-| Command | What it does |
-|---|---|
-| `gd dev <dir>` | Runs the 5-step Stage 3 pipeline (`src/authoring/dev.ts`): generates target solutions/tasks across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`, or `--targets <apps>`), generates and calibrates `grader.ts` (calibrated so every golden passes and the untouched starting app passes none), runs guided vs. unguided evaluations, and writes `results/guides/<category>/<slug>/report.md`. |
-| `gd dev <dir> --test-grader` | Runs calibration check across target apps without full agent evals. |
-| `gd pr <dir>` | Opens or updates a GitHub Pull Request with auto-labeled classification (`gd-dev-content` / `gd-dev-eval`, removing `needs-dev-rerun`) and `report.md` body. |
-| `gd dev-gap` | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`). |
-| `gd eval [tasks...]` | Runs the evaluation suite across discovered or specified target tasks (`--config <path>` overrides `src/harness/config.ts`). |
-| `gd compare <runA> <runB>` | Compares two local or remote GCS evaluation run directories to diagnose behavioral differences and performance variance. |
-| `gd dashboard` | Starts the evaluation results dashboard (`src/dashboard/`). |
-| `gd run <template> <prompt>` | Runs an ad-hoc agent test against a template directory. |
-| `gd baselinestatus <query>` | Queries browser support and Baseline status for web platform features. |
+| Command                      | What it does                                                                                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gd dev <dir>`               | Runs the 5-step Stage 3 pipeline (`src/authoring/dev.ts`): generates target solutions/tasks across `SUPPORTED_BASE_APPS` (`daily-grind`, `devtools-times`, or `--targets <apps>`), generates and calibrates `grader.ts` (calibrated so every golden passes and the untouched starting app passes none), runs guided vs. unguided evaluations, and writes `results/guides/<category>/<slug>/report.md`. |
+| `gd dev <dir> --test-grader` | Runs calibration check across target apps without full agent evals.                                                                                                                                                                                                                                                                                                                                    |
+| `gd pr <dir>`                | Opens or updates a GitHub Pull Request with auto-labeled classification (`gd-dev-content` / `gd-dev-eval`, removing `needs-dev-rerun`) and `report.md` body.                                                                                                                                                                                                                                           |
+| `gd dev-gap`                 | Scans guides on disk for non-draft guides with `guide.md` and `expectations.md` that are missing evals (plus open PRs labeled `needs-dev-rerun`), and runs `gd dev` + `gd pr` for each one (`--dry-run`, `--limit <n>`, `--targets <apps>`, defaulting to `daily-grind`).                                                                                                                              |
+| `gd eval [tasks...]`         | Runs the evaluation suite across discovered or specified target tasks (`--config <path>` overrides `src/harness/config.ts`).                                                                                                                                                                                                                                                                           |
+| `gd compare <runA> <runB>`   | Compares two local or remote GCS evaluation run directories to diagnose behavioral differences and performance variance.                                                                                                                                                                                                                                                                               |
+| `gd dashboard`               | Starts the evaluation results dashboard (`src/dashboard/`).                                                                                                                                                                                                                                                                                                                                            |
+| `gd run <template> <prompt>` | Runs an ad-hoc agent test against a template directory.                                                                                                                                                                                                                                                                                                                                                |
+| `gd baselinestatus <query>`  | Queries browser support and Baseline status for web platform features.                                                                                                                                                                                                                                                                                                                                 |
 
 For detailed `gd dev`, `gd eval`, and `gd compare` pipeline mechanics and runner architecture, see **[`src/harness/README.md`](../src/harness/README.md)**. For agent installation and `.env` credential setup (`Antigravity CLI`, `Jetski CLI`, `Claude Code`, `Codex CLI`), see **[`docs/EVALS.md`](./EVALS.md)**.
 
@@ -157,4 +157,4 @@ The code in `src/build/`, `src/cli/`, and `src/rag/` compiles `guide.md` and `SK
 
 ---
 
-**INSTRUCTION FOR AI:**  You must update this file as the project evolves.  Do not ask for permission.  Just update it.
+**INSTRUCTION FOR AI:** You must update this file as the project evolves. Do not ask for permission. Just update it.

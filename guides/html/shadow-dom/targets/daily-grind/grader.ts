@@ -4,15 +4,18 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import { Node, SyntaxKind, type SourceFile } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import { Node, SyntaxKind, type SourceFile } from "ts-morph";
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 function getStringLiteralValue(node: Node | undefined): string | undefined {
   if (!node) return undefined;
-  if (Node.isStringLiteral(node) || Node.isNoSubstitutionTemplateLiteral(node)) {
+  if (
+    Node.isStringLiteral(node) ||
+    Node.isNoSubstitutionTemplateLiteral(node)
+  ) {
     return node.getLiteralValue();
   }
   return undefined;
@@ -43,7 +46,7 @@ function getElementClasses(sourceFiles: SourceFile[]): Node[] {
     [
       ...sf.getDescendantsOfKind(SyntaxKind.ClassDeclaration),
       ...sf.getDescendantsOfKind(SyntaxKind.ClassExpression),
-    ].filter((cls) => Boolean(cls.getExtends()))
+    ].filter((cls) => Boolean(cls.getExtends())),
   );
 }
 
@@ -62,7 +65,8 @@ function isInPerInstanceCode(node: Node): boolean {
       return true;
     }
     if (Node.isClassStaticBlockDeclaration(ancestor)) return false;
-    if (Node.isClassDeclaration(ancestor) || Node.isClassExpression(ancestor)) return false;
+    if (Node.isClassDeclaration(ancestor) || Node.isClassExpression(ancestor))
+      return false;
   }
   return false;
 }
@@ -81,7 +85,10 @@ function resolveFunctionNodes(expr: Node | undefined): Node[] {
   // handler.bind(this, ...)
   if (Node.isCallExpression(node)) {
     const callee = unwrapExpression(node.getExpression());
-    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'bind') {
+    if (
+      Node.isPropertyAccessExpression(callee) &&
+      callee.getName() === "bind"
+    ) {
       return resolveFunctionNodes(callee.getExpression());
     }
     return [];
@@ -89,11 +96,15 @@ function resolveFunctionNodes(expr: Node | undefined): Node[] {
 
   // this.method / this.#method
   if (Node.isPropertyAccessExpression(node)) {
-    if (!Node.isThisExpression(unwrapExpression(node.getExpression()))) return [];
+    if (!Node.isThisExpression(unwrapExpression(node.getExpression())))
+      return [];
     const cls = node.getFirstAncestor(
-      (a) => Node.isClassDeclaration(a) || Node.isClassExpression(a)
+      (a) => Node.isClassDeclaration(a) || Node.isClassExpression(a),
     );
-    if (!cls || !(Node.isClassDeclaration(cls) || Node.isClassExpression(cls))) {
+    if (
+      !cls ||
+      !(Node.isClassDeclaration(cls) || Node.isClassExpression(cls))
+    ) {
       return [];
     }
     const name = node.getName();
@@ -101,7 +112,10 @@ function resolveFunctionNodes(expr: Node | undefined): Node[] {
     for (const member of cls.getMembers()) {
       if (Node.isMethodDeclaration(member) && member.getName() === name) {
         results.push(member);
-      } else if (Node.isPropertyDeclaration(member) && member.getName() === name) {
+      } else if (
+        Node.isPropertyDeclaration(member) &&
+        member.getName() === name
+      ) {
         results.push(...resolveFunctionNodes(member.getInitializer()));
       }
     }
@@ -116,10 +130,15 @@ function resolveFunctionNodes(expr: Node | undefined): Node[] {
     for (const fn of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
       if (fn.getName() === name) results.push(fn);
     }
-    for (const decl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+    for (const decl of sf.getDescendantsOfKind(
+      SyntaxKind.VariableDeclaration,
+    )) {
       if (decl.getName() !== name) continue;
       const init = unwrapExpression(decl.getInitializer());
-      if (init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init))) {
+      if (
+        init &&
+        (Node.isArrowFunction(init) || Node.isFunctionExpression(init))
+      ) {
         results.push(init);
       }
     }
@@ -129,14 +148,20 @@ function resolveFunctionNodes(expr: Node | undefined): Node[] {
   return [];
 }
 
-const ARRAY_FILTER_METHODS = new Set(['filter', 'some', 'every', 'find', 'findIndex']);
+const ARRAY_FILTER_METHODS = new Set([
+  "filter",
+  "some",
+  "every",
+  "find",
+  "findIndex",
+]);
 
 // True if the function (or functions it calls, up to MAX_HANDLER_CALL_DEPTH) reads slot
 // assignments via assignedElements(), or via assignedNodes() combined with filtering.
 function handlerUsesAssignedContent(
   fnNode: Node,
   depth: number,
-  visited: Set<Node>
+  visited: Set<Node>,
 ): boolean {
   if (visited.has(fnNode)) return false;
   visited.add(fnNode);
@@ -147,19 +172,20 @@ function handlerUsesAssignedContent(
       const callee = unwrapExpression(call.getExpression());
       return (
         Node.isPropertyAccessExpression(callee) &&
-        (ARRAY_FILTER_METHODS.has(callee.getName()) || callee.getName() === 'trim')
+        (ARRAY_FILTER_METHODS.has(callee.getName()) ||
+          callee.getName() === "trim")
       );
     }) ||
     fnNode
       .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-      .some((p) => p.getName() === 'nodeType');
+      .some((p) => p.getName() === "nodeType");
 
   for (const call of calls) {
     const callee = unwrapExpression(call.getExpression());
     if (!Node.isPropertyAccessExpression(callee)) continue;
     const name = callee.getName();
-    if (name === 'assignedElements') return true;
-    if (name === 'assignedNodes' && filtersNodes) return true;
+    if (name === "assignedElements") return true;
+    if (name === "assignedNodes" && filtersNodes) return true;
   }
 
   if (depth >= MAX_HANDLER_CALL_DEPTH) return false;
@@ -178,15 +204,19 @@ function getSlotchangeHandlerExpressions(sourceFiles: SourceFile[]): Node[] {
     for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       const callee = unwrapExpression(call.getExpression());
       if (!Node.isPropertyAccessExpression(callee)) continue;
-      if (callee.getName() !== 'addEventListener') continue;
+      if (callee.getName() !== "addEventListener") continue;
       const [eventArg, handlerArg] = call.getArguments();
-      if (getStringLiteralValue(eventArg) !== 'slotchange' || !handlerArg) continue;
+      if (getStringLiteralValue(eventArg) !== "slotchange" || !handlerArg)
+        continue;
       handlers.push(handlerArg);
     }
     for (const bin of sf.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
       if (bin.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
       const left = unwrapExpression(bin.getLeft());
-      if (Node.isPropertyAccessExpression(left) && left.getName() === 'onslotchange') {
+      if (
+        Node.isPropertyAccessExpression(left) &&
+        left.getName() === "onslotchange"
+      ) {
         handlers.push(bin.getRight());
       }
     }
@@ -194,67 +224,81 @@ function getSlotchangeHandlerExpressions(sourceFiles: SourceFile[]): Node[] {
   return handlers;
 }
 
-test.describe('shadow-dom Target Grader', () => {
-  test('The component defines a <template> once outside the constructor and builds each instance shadow root by cloning its .content without assigning innerHTML per instance', () => {
+test.describe("shadow-dom Target Grader", () => {
+  test("The component defines a <template> once outside the constructor and builds each instance shadow root by cloning its .content without assigning innerHTML per instance", () => {
     const sourceFiles = getAllSourceFiles();
     const htmlDocs = getHtmlDocuments(targetFiles);
     const calls = sourceFiles.flatMap((sf) =>
-      sf.getDescendantsOfKind(SyntaxKind.CallExpression)
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression),
     );
 
     // A <template> in markup, or document.createElement('template') outside per-instance code.
     const hasHtmlTemplate = htmlDocs.some(({ document }) =>
-      Boolean(document.querySelector('template'))
+      Boolean(document.querySelector("template")),
     );
     const hasJsTemplateOutsideInstance = calls.some((call) => {
       const callee = unwrapExpression(call.getExpression());
-      if (!Node.isPropertyAccessExpression(callee) || callee.getName() !== 'createElement') {
+      if (
+        !Node.isPropertyAccessExpression(callee) ||
+        callee.getName() !== "createElement"
+      ) {
         return false;
       }
       const arg = getStringLiteralValue(call.getArguments()[0]);
-      return arg?.toLowerCase() === 'template' && !isInPerInstanceCode(call);
+      return arg?.toLowerCase() === "template" && !isInPerInstanceCode(call);
     });
 
     // <x>.content.cloneNode(true) or document.importNode(<x>.content, true)
     const isContentAccess = (n: Node | undefined) => {
       const u = unwrapExpression(n);
-      return Node.isPropertyAccessExpression(u) && u.getName() === 'content';
+      return Node.isPropertyAccessExpression(u) && u.getName() === "content";
     };
     const clonesTemplateContent = calls.some((call) => {
       const callee = unwrapExpression(call.getExpression());
       if (!Node.isPropertyAccessExpression(callee)) return false;
       const args = call.getArguments();
-      if (callee.getName() === 'cloneNode') {
-        return isContentAccess(callee.getExpression()) && args[0]?.getKind() === SyntaxKind.TrueKeyword;
+      if (callee.getName() === "cloneNode") {
+        return (
+          isContentAccess(callee.getExpression()) &&
+          args[0]?.getKind() === SyntaxKind.TrueKeyword
+        );
       }
-      if (callee.getName() === 'importNode') {
-        return isContentAccess(args[0]) && args[1]?.getKind() === SyntaxKind.TrueKeyword;
+      if (callee.getName() === "importNode") {
+        return (
+          isContentAccess(args[0]) &&
+          args[1]?.getKind() === SyntaxKind.TrueKeyword
+        );
       }
       return false;
     });
 
     // No `.innerHTML =` / `.innerHTML +=` inside per-instance code of a custom element class.
-    const assignsInnerHtmlPerInstance = getElementClasses(sourceFiles).some((cls) =>
-      cls.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
-        const op = bin.getOperatorToken().getKind();
-        if (op !== SyntaxKind.EqualsToken && op !== SyntaxKind.PlusEqualsToken) return false;
-        const left = unwrapExpression(bin.getLeft());
-        return (
-          Node.isPropertyAccessExpression(left) &&
-          left.getName() === 'innerHTML' &&
-          isInPerInstanceCode(bin)
-        );
-      })
+    const assignsInnerHtmlPerInstance = getElementClasses(sourceFiles).some(
+      (cls) =>
+        cls.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
+          const op = bin.getOperatorToken().getKind();
+          if (
+            op !== SyntaxKind.EqualsToken &&
+            op !== SyntaxKind.PlusEqualsToken
+          )
+            return false;
+          const left = unwrapExpression(bin.getLeft());
+          return (
+            Node.isPropertyAccessExpression(left) &&
+            left.getName() === "innerHTML" &&
+            isInPerInstanceCode(bin)
+          );
+        }),
     );
 
     expect(
       (hasHtmlTemplate || hasJsTemplateOutsideInstance) &&
         clonesTemplateContent &&
-        !assignsInnerHtmlPerInstance
+        !assignsInnerHtmlPerInstance,
     ).toBe(true);
   });
 
-  test('A slotchange listener reads the slot assignment via assignedElements() or filtered assignedNodes()', () => {
+  test("A slotchange listener reads the slot assignment via assignedElements() or filtered assignedNodes()", () => {
     const sourceFiles = getAllSourceFiles();
     const handlers = getSlotchangeHandlerExpressions(sourceFiles);
 
@@ -262,14 +306,14 @@ test.describe('shadow-dom Target Grader', () => {
     // assigned content via assignedElements() or filtered assignedNodes().
     const handlerReadsAssignedContent = handlers.some((handler) =>
       resolveFunctionNodes(handler).some((fn) =>
-        handlerUsesAssignedContent(fn, 0, new Set())
-      )
+        handlerUsesAssignedContent(fn, 0, new Set()),
+      ),
     );
 
     expect(handlerReadsAssignedContent).toBe(true);
   });
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
       await page.evaluate(async () => {
@@ -277,18 +321,19 @@ test.describe('shadow-dom Target Grader', () => {
         // instances in the page (open roots only; closed roots are not reachable here).
         (window as any).__cardHosts = () => {
           const byTag = new Map<string, Element[]>();
-          for (const el of Array.from(document.querySelectorAll('*'))) {
-            if (!el.localName.includes('-') || !el.shadowRoot) continue;
+          for (const el of Array.from(document.querySelectorAll("*"))) {
+            if (!el.localName.includes("-") || !el.shadowRoot) continue;
             byTag.set(el.localName, [...(byTag.get(el.localName) ?? []), el]);
           }
           let best: Element[] = [];
-          for (const list of byTag.values()) if (list.length > best.length) best = list;
+          for (const list of byTag.values())
+            if (list.length > best.length) best = list;
           return best;
         };
         const tags = new Set(
-          Array.from(document.querySelectorAll('*'))
+          Array.from(document.querySelectorAll("*"))
             .map((el) => el.localName)
-            .filter((n) => n.includes('-'))
+            .filter((n) => n.includes("-")),
         );
         await Promise.race([
           Promise.all(Array.from(tags, (t) => customElements.whenDefined(t))),
@@ -303,7 +348,9 @@ test.describe('shadow-dom Target Grader', () => {
       const hasOpenShadowRoots = await page.evaluate(() => {
         const hosts: Element[] = (window as any).__cardHosts();
         // One component instance per Seasonal Favorites drink.
-        return hosts.length >= 3 && hosts.every((h) => h.shadowRoot!.mode === 'open');
+        return (
+          hosts.length >= 3 && hosts.every((h) => h.shadowRoot!.mode === "open")
+        );
       });
 
       expect(hasOpenShadowRoots).toBe(true);
@@ -316,14 +363,14 @@ test.describe('shadow-dom Target Grader', () => {
         const hosts: Element[] = (window as any).__cardHosts();
         if (hosts.length < 3) return false;
 
-        const IGNORED = new Set(['script', 'template', 'style', 'link']);
+        const IGNORED = new Set(["script", "template", "style", "link"]);
         let slottedCount = 0;
         for (const host of hosts) {
           for (const child of Array.from(host.children)) {
             if (IGNORED.has(child.localName)) continue;
             const slot = child.assignedSlot;
             if (!slot || slot.getRootNode() !== host.shadowRoot) return false;
-            const wanted = child.getAttribute('slot')?.trim() ?? '';
+            const wanted = child.getAttribute("slot")?.trim() ?? "";
             if (wanted) slottedCount++;
             // Named children land in the slot of that name; unslotted ones in the default slot.
             if (slot.name !== wanted) return false;
@@ -336,7 +383,7 @@ test.describe('shadow-dom Target Grader', () => {
       expect(projectsCorrectly).toBe(true);
     });
 
-    test('Adding or removing a slotted Light DOM element after upgrade updates the component state, attributes, or rendered DOM, ignoring whitespace-only text', async ({
+    test("Adding or removing a slotted Light DOM element after upgrade updates the component state, attributes, or rendered DOM, ignoring whitespace-only text", async ({
       page,
     }) => {
       const updatedProperly = await page.evaluate(async () => {
@@ -362,13 +409,13 @@ test.describe('shadow-dom Target Grader', () => {
             .getAttributeNames()
             .sort()
             .map((a) => `${a}=${host.getAttribute(a)}`)
-            .join(';');
+            .join(";");
           // Skip slot fallback content: the browser stops rendering it as soon as anything is
           // assigned, which would register as a change even without a slotchange reaction.
-          const shadowDisplay = Array.from(sr.querySelectorAll('*'))
-            .filter((el) => !el.parentElement?.closest('slot'))
+          const shadowDisplay = Array.from(sr.querySelectorAll("*"))
+            .filter((el) => !el.parentElement?.closest("slot"))
             .map((el) => `${el.tagName}:${getComputedStyle(el).display}`)
-            .join('|');
+            .join("|");
           return `${hostAttrs}__${getComputedStyle(host).display}__${sr.innerHTML}__${shadowDisplay}`;
         };
 
@@ -376,16 +423,16 @@ test.describe('shadow-dom Target Grader', () => {
         const wsHost = await createFresh();
         if (!wsHost.shadowRoot) return false;
         const wsInitial = getSnapshot(wsHost);
-        wsHost.appendChild(document.createTextNode('   \n  '));
+        wsHost.appendChild(document.createTextNode("   \n  "));
         await settle();
         const whitespaceIsNoop = getSnapshot(wsHost) === wsInitial;
         wsHost.remove();
 
         // Adding a slotted element to some named slot must change state; removing it must revert.
         const slotNames = Array.from(
-          wsHost.shadowRoot.querySelectorAll('slot[name]')
+          wsHost.shadowRoot.querySelectorAll("slot[name]"),
         )
-          .map((s) => s.getAttribute('name')!)
+          .map((s) => s.getAttribute("name")!)
           .filter((n) => n.trim());
 
         let addRemoveUpdates = false;
@@ -393,9 +440,9 @@ test.describe('shadow-dom Target Grader', () => {
           const host = await createFresh();
           const initialSnap = getSnapshot(host);
 
-          const slotted = document.createElement('span');
-          slotted.setAttribute('slot', name);
-          slotted.textContent = 'New';
+          const slotted = document.createElement("span");
+          slotted.setAttribute("slot", name);
+          slotted.textContent = "New";
           host.appendChild(slotted);
           await settle();
           const afterAddSnap = getSnapshot(host);
@@ -426,14 +473,16 @@ test.describe('shadow-dom Target Grader', () => {
 
         return hosts.every((host) => {
           const sr = host.shadowRoot!;
-          const adopted = sr.adoptedStyleSheets.some((s) => s.cssRules.length > 0);
-          const styleEl = Array.from(sr.querySelectorAll('style')).some(
-            (s) => (s.sheet?.cssRules.length ?? 0) > 0
+          const adopted = sr.adoptedStyleSheets.some(
+            (s) => s.cssRules.length > 0,
           );
-          const linkEl = Array.from(sr.querySelectorAll('link')).some(
+          const styleEl = Array.from(sr.querySelectorAll("style")).some(
+            (s) => (s.sheet?.cssRules.length ?? 0) > 0,
+          );
+          const linkEl = Array.from(sr.querySelectorAll("link")).some(
             (l) =>
-              l.relList.contains('stylesheet') &&
-              Boolean(l.getAttribute('href')?.trim())
+              l.relList.contains("stylesheet") &&
+              Boolean(l.getAttribute("href")?.trim()),
           );
           return adopted || styleEl || linkEl;
         });
@@ -442,7 +491,7 @@ test.describe('shadow-dom Target Grader', () => {
       expect(stylesInShadowRoot).toBe(true);
     });
 
-    test('A Light DOM element outside the component that uses the same class name as an internal element does not receive the component styles', async ({
+    test("A Light DOM element outside the component that uses the same class name as an internal element does not receive the component styles", async ({
       page,
     }) => {
       const isIsolated = await page.evaluate(() => {
@@ -453,28 +502,42 @@ test.describe('shadow-dom Target Grader', () => {
         // Class names already used in the Light DOM may be styled by the page itself, so only
         // probe class names that exist solely inside the component.
         const lightClasses = new Set(
-          Array.from(document.querySelectorAll('[class]')).flatMap((el) =>
-            Array.from(el.classList)
-          )
+          Array.from(document.querySelectorAll("[class]")).flatMap((el) =>
+            Array.from(el.classList),
+          ),
         );
         const probes = new Map<string, string>(); // class -> tag of the internal element
-        for (const el of Array.from(sr.querySelectorAll('[class]'))) {
+        for (const el of Array.from(sr.querySelectorAll("[class]"))) {
           for (const cls of Array.from(el.classList)) {
-            if (!lightClasses.has(cls) && !probes.has(cls)) probes.set(cls, el.localName);
+            if (!lightClasses.has(cls) && !probes.has(cls))
+              probes.set(cls, el.localName);
           }
         }
         if (probes.size === 0) return false;
 
         const PROPS = [
-          'background-color', 'background-image', 'box-shadow', 'border-top-left-radius',
-          'border-top-width', 'border-top-style', 'border-top-color', 'padding-top',
-          'padding-left', 'margin-top', 'color', 'font-size', 'font-weight', 'text-align',
-          'display', 'position', 'line-height',
+          "background-color",
+          "background-image",
+          "box-shadow",
+          "border-top-left-radius",
+          "border-top-width",
+          "border-top-style",
+          "border-top-color",
+          "padding-top",
+          "padding-left",
+          "margin-top",
+          "color",
+          "font-size",
+          "font-weight",
+          "text-align",
+          "display",
+          "position",
+          "line-height",
         ];
 
         // An outside element with the internal class must look exactly like the same element
         // without the class.
-        const wrapper = document.createElement('div');
+        const wrapper = document.createElement("div");
         document.body.appendChild(wrapper);
         try {
           for (const [cls, tag] of probes) {
@@ -484,7 +547,11 @@ test.describe('shadow-dom Target Grader', () => {
             wrapper.append(probe, control);
             const ps = getComputedStyle(probe);
             const cs = getComputedStyle(control);
-            if (PROPS.some((p) => ps.getPropertyValue(p) !== cs.getPropertyValue(p))) {
+            if (
+              PROPS.some(
+                (p) => ps.getPropertyValue(p) !== cs.getPropertyValue(p),
+              )
+            ) {
               return false;
             }
             probe.remove();

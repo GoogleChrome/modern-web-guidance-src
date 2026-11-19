@@ -41,7 +41,7 @@ index 22f7b64..8012f11 100644
 +    tooldescription?: string;
    }
  }
- 
+
 -export {};
 \ No newline at end of file
 +export {};
@@ -61,7 +61,7 @@ index a7c52b6..6c64f11 100644
 @@ -55,7 +55,7 @@ export default function SignInForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form onSubmit={handleSubmit} className="space-y-4" toolname="sign-in" tooldescription="Sign in to The DevTools Times with a username and password">
          <div>
@@ -74,7 +74,7 @@ index 589fe62..37d1f11 100644
 @@ -56,7 +56,7 @@ export default function SignUpForm() {
          </div>
        )}
- 
+
 -      <form onSubmit={handleSubmit} className="space-y-4">
 +      <form onSubmit={handleSubmit} className="space-y-4" toolname="sign-up" tooldescription="Create a new account on The DevTools Times with a username and password">
          <div>
@@ -254,7 +254,7 @@ index dcf9696..6e28be9 100644
  import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
 +import WebMCPTools from "../components/WebMCPTools.tsx";
  import "../styles/global.css";
- 
+
  import { ClientRouter } from "astro:transitions";
 @@ -37,6 +38,7 @@ const baseUrl = import.meta.env.BASE_URL;
      <ClientRouter />

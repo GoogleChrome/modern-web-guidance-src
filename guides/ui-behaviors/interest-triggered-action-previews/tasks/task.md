@@ -1,6 +1,7 @@
 ---
 base_app: daily-grind
 ---
+
 - Add a live preview box with id="seasonal-preview" below the Seasonal Favorites section on the homepage that previews a "View Details" button's drink (such as "Maple Oat Latte" or "Cold Brew") or accent color when a user hovers, focuses, or long-presses the button before clicking, and resets back to "Select a drink to preview" when they move away, using declarative HTML rather than attaching hover and focus listeners to each button.
 - add a subtle preview feature to the seasonal favorites cards. when someone hovers or focuses on the details buttons, it should display a quick preview of that item in a dedicated preview container with id="seasonal-preview" below the grid. make sure it reverts back when they move away or lose focus, and make sure it doesn't cause any accessibility noise with live regions.
 - can you implement a live preview section with id="seasonal-preview" below the seasonal favorites? when a visitor hovers or tabs onto the 'view details' buttons, show the drink details in that box, and revert it to 'choose a seasonal drink' when they move away. do it with the declarative interest-triggered previews platform feature, and please ensure there's no live region speech announcements for these hover actions.

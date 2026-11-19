@@ -19,56 +19,56 @@
  * Breaking either one silently re-enables telemetry for all eval runs.
  */
 
-import test from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
-import { rootDir } from '../core/paths.ts';
+import test from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
+import { rootDir } from "../core/paths.ts";
 
 const ROOT_DIR = rootDir;
-const HARNESS_DIR = path.join(rootDir, 'src/harness');
+const HARNESS_DIR = path.join(rootDir, "src/harness");
 
-test('importing harness/config.ts disables telemetry', () => {
+test("importing harness/config.ts disables telemetry", () => {
   // This must run in a child process with DISABLE_TELEMETRY explicitly
   // removed. Asserting in-process would be a false positive: CI sets the var
   // globally, so the assertion would pass even if config.ts stopped setting it.
   const childEnv = { ...process.env };
   delete childEnv.DISABLE_TELEMETRY;
 
-  const configUrl = pathToFileURL(path.join(HARNESS_DIR, 'config.ts')).href;
+  const configUrl = pathToFileURL(path.join(HARNESS_DIR, "config.ts")).href;
   const result = spawnSync(
     process.execPath,
     [
-      '--input-type=module',
-      '-e',
+      "--input-type=module",
+      "-e",
       `await import(${JSON.stringify(configUrl)});` +
         `process.stdout.write(String(process.env.DISABLE_TELEMETRY));`,
     ],
-    { env: childEnv, encoding: 'utf8' }
+    { env: childEnv, encoding: "utf8" },
   );
 
   assert.strictEqual(
     result.status,
     0,
-    `Failed to import harness/config.ts: ${result.stderr}`
+    `Failed to import harness/config.ts: ${result.stderr}`,
   );
   assert.strictEqual(
     result.stdout.trim(),
-    '1',
-    'Importing harness/config.ts must set DISABLE_TELEMETRY=1. Every eval ' +
-      'run relies on this side effect to keep the modern-web CLI from ' +
-      'emitting telemetry.'
+    "1",
+    "Importing harness/config.ts must set DISABLE_TELEMETRY=1. Every eval " +
+      "run relies on this side effect to keep the modern-web CLI from " +
+      "emitting telemetry.",
   );
 });
 
-test('gd entry point imports harness/config.ts', () => {
-  const source = fs.readFileSync(path.join(ROOT_DIR, 'bin/gd.ts'), 'utf8');
+test("gd entry point imports harness/config.ts", () => {
+  const source = fs.readFileSync(path.join(ROOT_DIR, "bin/gd.ts"), "utf8");
   assert.match(
     source,
     /import\s+.*\bfrom\s+'\.\.\/src\/harness\/config\.ts'/,
     "bin/gd.ts must import harness/config.ts so its telemetry opt-out side " +
-      'effect runs before any eval work begins.'
+      "effect runs before any eval work begins.",
   );
 });

@@ -1,6 +1,3 @@
 {
-  "recommendations": [
-    "rviscomi.baseline-vscode"
-  ]
+  "recommendations": ["rviscomi.baseline-vscode"]
 }
-

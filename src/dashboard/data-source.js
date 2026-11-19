@@ -1,4 +1,4 @@
-import { getAccessToken } from './utils.js';
+import { getAccessToken } from "./utils.js";
 
 /**
  * Where the dashboard reads eval data from.
@@ -16,9 +16,9 @@ import { getAccessToken } from './utils.js';
  */
 
 /** Path, relative to the dashboard, where the builder publishes sanitized suites. */
-export const PUBLIC_EVALS_BASE = 'public-evals';
+export const PUBLIC_EVALS_BASE = "public-evals";
 
-const VALID_SOURCES = new Set(['local', 'remote', 'static', 'public']);
+const VALID_SOURCES = new Set(["local", "remote", "static", "public"]);
 
 /**
  * Picks the data source for this page load. An explicit `?source=` wins, except
@@ -29,21 +29,26 @@ const VALID_SOURCES = new Set(['local', 'remote', 'static', 'public']);
  * @param {URLSearchParams} [params]
  * @returns {DataSource}
  */
-export function resolveDataSource(params = new URLSearchParams(window.location.search)) {
-    const requested = params.get('source');
-    if (requested && VALID_SOURCES.has(requested)) {
-        if (requested === 'remote' && !getAccessToken()) return 'public';
-        return /** @type {DataSource} */ (requested);
-    }
-    if (isLocalServer()) {
-        return 'local';
-    }
-    return getAccessToken() ? 'remote' : 'public';
+export function resolveDataSource(
+  params = new URLSearchParams(window.location.search),
+) {
+  const requested = params.get("source");
+  if (requested && VALID_SOURCES.has(requested)) {
+    if (requested === "remote" && !getAccessToken()) return "public";
+    return /** @type {DataSource} */ (requested);
+  }
+  if (isLocalServer()) {
+    return "local";
+  }
+  return getAccessToken() ? "remote" : "public";
 }
 
 /** @returns {boolean} */
 export function isLocalServer() {
-    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  return (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  );
 }
 
 /**
@@ -54,12 +59,12 @@ export function isLocalServer() {
  * server, where no param means local, it has to be set explicitly.
  */
 export function reloadAsRemote() {
-    const url = new URL(window.location.href);
-    if (isLocalServer()) {
-        url.searchParams.set('source', 'remote');
-    } else {
-        url.searchParams.delete('source');
-    }
-    url.searchParams.delete('show_login');
-    window.location.href = url.toString();
+  const url = new URL(window.location.href);
+  if (isLocalServer()) {
+    url.searchParams.set("source", "remote");
+  } else {
+    url.searchParams.delete("source");
+  }
+  url.searchParams.delete("show_login");
+  window.location.href = url.toString();
 }

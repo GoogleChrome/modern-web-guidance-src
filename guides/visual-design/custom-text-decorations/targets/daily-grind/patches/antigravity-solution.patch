@@ -3,19 +3,19 @@ index 66c9173..81067cd 100644
 --- a/index.html
 +++ b/index.html
 @@ -57,19 +57,61 @@
- 
+
      nav a {
        color: white;
 -      text-decoration: none;
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    nav a:is(:hover, :focus-visible) {
        color: var(--accent);
      }
- 
+
 +    :where(.decorated, nav a:not(.logout-link), .footer-links a, .section-heading, .card h3) {
 +      text-decoration: underline solid currentColor max(1px, 0.08em);
 +      text-underline-offset: 0.2em;
@@ -64,12 +64,12 @@ index 66c9173..81067cd 100644
        border-radius: 4px;
 +      text-decoration: none;
      }
- 
+
      /* Hero Section */
 @@ -100,6 +142,14 @@
        padding: 0 20px;
      }
- 
+
 +    .section-heading {
 +      text-align: center;
 +      color: var(--primary);
@@ -89,7 +89,7 @@ index 66c9173..81067cd 100644
 +      text-underline-offset: 0.22em;
 +      text-decoration-inset: 0.1em;
      }
- 
+
      .btn {
 @@ -149,7 +202,6 @@
      .footer-links a {
@@ -115,7 +115,7 @@ index 66c9173..81067cd 100644
      </ul>
    </nav>
 @@ -176,20 +228,20 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -140,7 +140,7 @@ index 66c9173..81067cd 100644
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
 @@ -199,10 +251,10 @@
- 
+
    <footer>
      <div class="footer-links">
 -      <a href="/about">Our Story</a> |

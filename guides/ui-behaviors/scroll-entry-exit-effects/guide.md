@@ -17,17 +17,21 @@ To add entry and exit effects to an element, you need to combine a few CSS prope
 
     ```css
     @keyframes slide-in {
-      from { transform: translateX(-100%); }
+      from {
+        transform: translateX(-100%);
+      }
     }
     @keyframes slide-out {
-      to { transform: translateX(100%); }
+      to {
+        transform: translateX(100%);
+      }
     }
     ```
 
 2.  **Attach the entry and exit keyframes to the element.** You can do this by defining multiple animations in the `animation` property.
 
-    -   Give the entry animation an `animation-fill-mode` of `backwards` so that it applies its initial state before the animation starts.
-    -   Give the exit animation an `animation-fill-mode` of `forwards` so that it maintains its final state after the animation is complete.
+    - Give the entry animation an `animation-fill-mode` of `backwards` so that it applies its initial state before the animation starts.
+    - Give the exit animation an `animation-fill-mode` of `forwards` so that it maintains its final state after the animation is complete.
 
     ```css
     .animated-element {
@@ -49,8 +53,8 @@ To add entry and exit effects to an element, you need to combine a few CSS prope
 
 4.  **Limit the animations to the `entry` and `exit` ranges.** The `animation-range` property allows you to specify which part of the timeline an animation should run on.
 
-    -   The `entry` range covers the time from when the element first enters the viewport until it is fully visible.
-    -   The `exit` range covers the time from when the element starts to leave the viewport until it is completely hidden.
+    - The `entry` range covers the time from when the element first enters the viewport until it is fully visible.
+    - The `exit` range covers the time from when the element starts to leave the viewport until it is completely hidden.
 
     ```css
     .animated-element {
@@ -156,7 +160,7 @@ When using scroll-driven animations, it's important to follow a few best practic
   - If the animation is only considered to be decorative, opt for Progressive Enhancement and **DO NOT** provide a fallback.
 - **DO** respect user preferences: Some users prefer to have less motion on the web. Use the `prefers-reduced-motion` media query to disable or reduce your animations for these users.
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
-- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` *after* it to prevent the shorthand from resetting them.
+- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` and `animation-range` _after_ it to prevent the shorthand from resetting them.
 
 Use an anonymous `view()` timeline by default when the animated element is the same element being tracked, so you do not have to name every individual timeline. Use a named `view-timeline` instead when multiple elements reuse a single timeline (avoiding duplicate timelines) or when reaching across the DOM (such as animating descendants or non-ancestors via `timeline-scope` when `view()` or `scroll(nearest)` does not suffice).
 
@@ -187,8 +191,12 @@ For this use-case specifically, the following script applies the fallback for br
 ```html
 <script>
   // Like the CSS, the fallback only runs when the user has no reduced-motion preference.
-  if (!CSS.supports('(animation-timeline: view()) and (animation-range: entry)') &&
-      matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+  if (
+    !CSS.supports(
+      "(animation-timeline: view()) and (animation-range: entry)",
+    ) &&
+    matchMedia("(prefers-reduced-motion: no-preference)").matches
+  ) {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -199,10 +207,10 @@ For this use-case specifically, the following script applies the fallback for br
       },
       {
         threshold: Array.from({ length: 101 }, (_, i) => i / 100),
-      }
+      },
     );
 
-    document.querySelectorAll('.scroller > *').forEach((el) => {
+    document.querySelectorAll(".scroller > *").forEach((el) => {
       observer.observe(el);
     });
   }

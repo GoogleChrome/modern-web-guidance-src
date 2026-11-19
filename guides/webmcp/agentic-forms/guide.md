@@ -13,25 +13,33 @@ The Declarative API transforms standard HTML `<form>` elements into WebMCP tools
 
 ## Form Attributes
 
-*   `toolname`: Unique name for the tool.
-*   `tooldescription`: What the tool does and when an agent should use it. Do not list the form's fields, options, or limits: the browser already includes them in the schema it builds from the form controls.
-*   `toolautosubmit`: (Optional) If present, the agent can submit the form without waiting for user interaction. 
-*   `toolparamdescription`: (Optional) Provides a way to define a property description within the JSON Schema. Use it to explain what the value means (for example, with sample values), not to repeat the control's options or limits.
-    *   **Resolution Order**: The browser uses `toolparamdescription` if present. In its absence, it uses the `textContent` of the associated `<label>` (skipping labelable descendants). If no label exists, it falls back to the `aria-description`.
-    *   **Grouping (Fieldsets)**: To attach a description to a group of related elements (like `<input type="radio">` buttons), place `toolparamdescription` on the nearest parent `<fieldset>` element so it applies to the parameter group as a whole.
+- `toolname`: Unique name for the tool.
+- `tooldescription`: What the tool does and when an agent should use it. Do not list the form's fields, options, or limits: the browser already includes them in the schema it builds from the form controls.
+- `toolautosubmit`: (Optional) If present, the agent can submit the form without waiting for user interaction.
+- `toolparamdescription`: (Optional) Provides a way to define a property description within the JSON Schema. Use it to explain what the value means (for example, with sample values), not to repeat the control's options or limits.
+  - **Resolution Order**: The browser uses `toolparamdescription` if present. In its absence, it uses the `textContent` of the associated `<label>` (skipping labelable descendants). If no label exists, it falls back to the `aria-description`.
+  - **Grouping (Fieldsets)**: To attach a description to a group of related elements (like `<input type="radio">` buttons), place `toolparamdescription` on the nearest parent `<fieldset>` element so it applies to the parameter group as a whole.
 
 ### Example
 
 ```html
-<form toolname="search-cars" 
-      tooldescription="Perform a car make/model search" 
-      toolautosubmit>
+<form
+  toolname="search-cars"
+  tooldescription="Perform a car make/model search"
+  toolautosubmit
+>
   <label for="make">Vehicle Make</label>
-  <input type="text" id="make" name="make" required>
-  
+  <input type="text" id="make" name="make" required />
+
   <label for="model">Vehicle Model</label>
-  <input type="text" id="model" name="model" toolparamdescription="e.g., 330i, F-150" required>
-  
+  <input
+    type="text"
+    id="model"
+    name="model"
+    toolparamdescription="e.g., 330i, F-150"
+    required
+  />
+
   <button type="submit">Search</button>
 </form>
 ```
@@ -41,7 +49,7 @@ The Declarative API transforms standard HTML `<form>` elements into WebMCP tools
 When an agent submits the form, the `SubmitEvent` includes `agentInvoked` (boolean) and `respondWith(promise)`.
 
 ```javascript
-document.querySelector('form').addEventListener('submit', (event) => {
+document.querySelector("form").addEventListener("submit", (event) => {
   event.preventDefault();
 
   // Validate the form
@@ -50,10 +58,10 @@ document.querySelector('form').addEventListener('submit', (event) => {
   if (formValidationErrors.length > 0) {
     if (event.agentInvoked) {
       const errorString =
-        'Validation failed: ' +
+        "Validation failed: " +
         formValidationErrors
           .map((err) => `${err.field} (${err.message})`)
-          .join(', ');
+          .join(", ");
 
       event.respondWith(Promise.resolve(errorString));
     }
@@ -78,14 +86,16 @@ document.querySelector('form').addEventListener('submit', (event) => {
 // Older versions dispatch them on `window`. Feature-detect the event handler
 // property to pick the right target for backward compatibility.
 const targetFor = (type, listener, options) =>
-  (`on${type}` in (document.modelContext ?? {}) ? document.modelContext : window)
-    .addEventListener(type, listener, options);
+  (`on${type}` in (document.modelContext ?? {})
+    ? document.modelContext
+    : window
+  ).addEventListener(type, listener, options);
 
-targetFor('toolactivated', ({ toolName }) => {
+targetFor("toolactivated", ({ toolName }) => {
   console.log(`Tool "${toolName}" started execution.`);
 });
 
-targetFor('toolcancel', ({ toolName }) => {
+targetFor("toolcancel", ({ toolName }) => {
   console.log(`Tool "${toolName}" execution is cancelled.`);
 });
 ```
@@ -94,8 +104,8 @@ targetFor('toolcancel', ({ toolName }) => {
 
 Use pseudo-classes to highlight forms when an agent interacts with them:
 
-*   `:tool-form-active`: Applied to the `<form>` element actively used by the agent.
-*   `:tool-submit-active`: Applied to the submit button when the browser pauses for user review (if `toolautosubmit` is omitted).
+- `:tool-form-active`: Applied to the `<form>` element actively used by the agent.
+- `:tool-submit-active`: Applied to the submit button when the browser pauses for user review (if `toolautosubmit` is omitted).
 
 ```css
 form:tool-form-active {
@@ -113,19 +123,21 @@ button:tool-submit-active {
 
 The Declarative API is best for self-contained, standard forms. It is a poor choice in these scenarios:
 
-* **Highly Dependent Fields**: Forms where inputs change options or visibility based on other inputs. The synthesized schema cannot express these dependencies well.
-* **Custom UI Components**: Forms relying on non-standard inputs (e.g., canvas, rich text editors) that don't auto-serialize values.
-* **Multi-Step Wizards**: Complex workflows requiring multiple form submissions. The Imperative API or standard DOM interaction is better suited here.
+- **Highly Dependent Fields**: Forms where inputs change options or visibility based on other inputs. The synthesized schema cannot express these dependencies well.
+- **Custom UI Components**: Forms relying on non-standard inputs (e.g., canvas, rich text editors) that don't auto-serialize values.
+- **Multi-Step Wizards**: Complex workflows requiring multiple form submissions. The Imperative API or standard DOM interaction is better suited here.
 
 ## When to use toolautosubmit
-* **Read-Only Operations & Queries**: Searches, filters, fetching details, or checking status (e.g., a car model search, searching a directory, checking stock availability).
-* **Low-Risk, Reversible Actions**: Form actions that can easily be undone or refined by the user manually (e.g., adding items to a cart, applying a coupon code, saving a draft, or setting temporary layout options).
+
+- **Read-Only Operations & Queries**: Searches, filters, fetching details, or checking status (e.g., a car model search, searching a directory, checking stock availability).
+- **Low-Risk, Reversible Actions**: Form actions that can easily be undone or refined by the user manually (e.g., adding items to a cart, applying a coupon code, saving a draft, or setting temporary layout options).
 
 ## When to omit toolautosubmit
-* **Destructive or Irreversible Actions**: Deleting records, resetting system configurations, or clearing databases.
-* **Financial & Transactional Actions**: Submitting a checkout form, transferring funds, authorizing subscription payments, or final order placements.
-* **High-Impact User Communication**: Submitting a final job application, sending emails/messages to other real users, or publishing public-facing content.
-* **Sensitive Account Settings**: Changing passwords, modifying user roles/permissions, or updating billing/profile info.
+
+- **Destructive or Irreversible Actions**: Deleting records, resetting system configurations, or clearing databases.
+- **Financial & Transactional Actions**: Submitting a checkout form, transferring funds, authorizing subscription payments, or final order placements.
+- **High-Impact User Communication**: Submitting a final job application, sending emails/messages to other real users, or publishing public-facing content.
+- **Sensitive Account Settings**: Changing passwords, modifying user roles/permissions, or updating billing/profile info.
 
 ## Fallback strategies
 

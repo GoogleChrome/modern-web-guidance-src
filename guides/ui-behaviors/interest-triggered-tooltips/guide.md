@@ -53,6 +53,7 @@ The trigger must have a visual indicator to indicate that there is additional in
 ### Accessibility Constraints (WCAG 1.4.13)
 
 Even with `interestfor` handling the semantics above, your implementation MUST still satisfy WCAG 1.4.13 (Content on Hover or Focus):
+
 - **Dismissible:** Users must be able to dismiss the tooltip without moving pointer hover or keyboard focus (e.g., by pressing the `Escape` key). The native `popover` attribute manages this binding automatically.
 - **Hoverable:** The pointer must be able to move over the tooltip content itself without the tooltip disappearing. This allows users with magnification tools to read the tooltip text safely.
 - **Persistent:** The tooltip must remain visible until the hover or focus trigger is removed, the user explicitly dismisses it, or its content is no longer valid.
@@ -79,11 +80,22 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 Give a toggletip both triggers: `interestfor` opens it on hover, focus, and long-press; `popovertarget` opens it on click, tap, and `Enter`.
 
 ```html
-<label>Shipping <input name="shipping"></label>
+<label>Shipping <input name="shipping" /></label>
 <!-- The name says what the button reveals; the "?" alone is not a name. -->
-<button type="button" interestfor="shipping-help" popovertarget="shipping-help" popovertargetaction="show" aria-label="More about shipping">?</button>
+<button
+  type="button"
+  interestfor="shipping-help"
+  popovertarget="shipping-help"
+  popovertargetaction="show"
+  aria-label="More about shipping"
+>
+  ?
+</button>
 <!-- Right after the trigger, so it reads in sequence. -->
-<div id="shipping-help" popover="hint">Free shipping applies to orders over $50. Orders placed before 2pm ship the same day.</div>
+<div id="shipping-help" popover="hint">
+  Free shipping applies to orders over $50. Orders placed before 2pm ship the
+  same day.
+</div>
 ```
 
 - Use `popovertargetaction="show"`, not the default `toggle`: hover has usually opened the popover already, and a toggle would close it on the click that follows. `Escape`, light dismiss, and losing interest close it.
@@ -109,13 +121,18 @@ A toggletip can also be opened by click, with no interest to lose, so a `manual`
 const probe = document.createElement("div");
 probe.popover = "hint";
 if (probe.popover !== "hint") {
-  document.addEventListener("beforetoggle", ({ target, newState }) => {
-    const toggletip = target.getAttribute("popover") === "hint"
-      && document.querySelector(`[popovertarget="${CSS.escape(target.id)}"]`);
-    if (newState === "open" && toggletip) {
-      target.popover = "auto";
-    }
-  }, true);
+  document.addEventListener(
+    "beforetoggle",
+    ({ target, newState }) => {
+      const toggletip =
+        target.getAttribute("popover") === "hint" &&
+        document.querySelector(`[popovertarget="${CSS.escape(target.id)}"]`);
+      if (newState === "open" && toggletip) {
+        target.popover = "auto";
+      }
+    },
+    true,
+  );
 }
 ```
 

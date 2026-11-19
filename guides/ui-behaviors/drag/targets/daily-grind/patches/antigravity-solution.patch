@@ -270,11 +270,11 @@ index 66c9173..c539c94 100644
 +    }
    </style>
  </head>
- 
+
 @@ -207,6 +469,375 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <aside id="quick-order-panel" class="quick-order-panel" aria-labelledby="quick-order-title">
 +    <header id="quick-order-handle" class="quick-order-header">
 +      <div class="quick-order-header-title">
@@ -645,5 +645,5 @@ index 66c9173..c539c94 100644
 +  </script>
 +
  </body>
- 
+
  </html>

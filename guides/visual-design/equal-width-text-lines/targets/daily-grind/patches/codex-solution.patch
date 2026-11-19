@@ -11,7 +11,7 @@ index 66c9173..d66dca6 100644
 --- a/index.html
 +++ b/index.html
 @@ -74,7 +74,7 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -26,7 +26,7 @@ index 66c9173..d66dca6 100644
 -      padding: 0 20px;
 +      padding: 40px 20px;
      }
- 
+
 -    .hero h1 {
 -      font-size: 3rem;
 +    .lockup {
@@ -40,7 +40,7 @@ index 66c9173..d66dca6 100644
 +      gap: 0.75rem;
        margin-bottom: 1rem;
      }
- 
+
 +    .lockup > span {
 +      display: block;
 +      white-space: nowrap;
@@ -60,7 +60,7 @@ index 66c9173..d66dca6 100644
        max-width: 1100px;
 @@ -169,7 +190,7 @@
    </nav>
- 
+
    <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 +    <h1 class="lockup"><span>Wake Up</span> <span>Your Senses</span></h1>
@@ -70,10 +70,10 @@ index 66c9173..d66dca6 100644
 @@ -207,6 +228,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/text-fit.js"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..039c47f 100644

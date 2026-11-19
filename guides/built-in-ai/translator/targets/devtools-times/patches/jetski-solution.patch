@@ -55,7 +55,7 @@ index 22f7b64..c2cda8d 100644
 +
 +  var Translator: TranslatorFactory | undefined;
  }
- 
+
  export {};
 \ No newline at end of file
 diff --git a/src/components/ArticleTranslator.tsx b/src/components/ArticleTranslator.tsx
@@ -416,28 +416,28 @@ index 24fea39..00207f4 100644
  import BookmarkButton from '../../components/BookmarkButton.tsx';
  import ArticleTeaser from '../../components/ArticleTeaser.astro';
 +import ArticleTranslator from '../../components/ArticleTranslator.tsx';
- 
+
  export const getStaticPaths = (async () => {
    const articles = await getCollection('articles');
 @@ -43,12 +44,12 @@ const isBookmarked = readingList.includes(article.slug);
          </div>
- 
+
          <!-- Headline -->
 -        <h1 class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
 +        <h1 id="article-headline" class="text-3xl md:text-5xl font-brand text-gray-900 mb-4 leading-tight">
              {article.data.title}
          </h1>
-         
+
          <!-- Sub-headline / Lead Paragraph -->
 -        <p class="text-lg md:text-xl text-gray-700 font-light mb-5">
 +        <p id="article-summary" class="text-lg md:text-xl text-gray-700 font-light mb-5">
              {article.data.summary}
          </p>
- 
+
 @@ -86,7 +87,7 @@ const isBookmarked = readingList.includes(article.slug);
              )}
          </figure>
- 
+
 -        <!-- Share Buttons & Comments -->
 +        <!-- Share Buttons & Translator -->
          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
@@ -446,17 +446,17 @@ index 24fea39..00207f4 100644
 @@ -102,10 +103,12 @@ const isBookmarked = readingList.includes(article.slug);
                  <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
              </div>
- 
+
 +            <!-- Translator Control -->
 +            <ArticleTranslator client:load />
          </div>
- 
+
          <!-- Article Body Content -->
 -        <div class="prose max-w-none">
 +        <div id="article-body" class="prose max-w-none">
              <Content />
          </div>
- 
+
 diff --git a/src/utils/translator.ts b/src/utils/translator.ts
 new file mode 100644
 index 0000000..11d2705

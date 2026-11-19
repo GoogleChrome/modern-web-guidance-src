@@ -14,7 +14,7 @@ index cc5869a..1512050 100644
 +      sameSite: "lax",
 +    },
 +  },
- 
+
    image: {
      service: {
 @@ -44,4 +52,4 @@ export default defineConfig({
@@ -39,7 +39,7 @@ index 3f57913..6728d42 100644
 +++ b/src/components/SearchButton.tsx
 @@ -14,14 +14,9 @@ export default function SearchButton() {
      const [isLoading, setIsLoading] = useState(false);
- 
+
      const openSearch = async () => {
 -        try {
 -            setArticles([]);
@@ -53,7 +53,7 @@ index 3f57913..6728d42 100644
 +        setIsFlyoutOpen(true);
 +        setIsLoading(false);
      };
- 
+
      const closeSearch = () => {
 diff --git a/src/components/SearchFlyout.tsx b/src/components/SearchFlyout.tsx
 index 9dabc6e..1c79234 100644
@@ -69,7 +69,7 @@ index 9dabc6e..1c79234 100644
 +                setSuggestions([]);
              }
          };
- 
+
 diff --git a/src/components/SignInForm.tsx b/src/components/SignInForm.tsx
 index a7c52b6..c728c13 100644
 --- a/src/components/SignInForm.tsx
@@ -98,7 +98,7 @@ index a7c52b6..c728c13 100644
 +            Used only to look up your account for this sign-in request.
 +          </p>
          </div>
-         
+
          <div>
 @@ -77,11 +82,17 @@ export default function SignInForm() {
            <input
@@ -116,7 +116,7 @@ index a7c52b6..c728c13 100644
 +            Sent securely for authentication and never stored in this browser.
 +          </p>
          </div>
- 
+
          <button
 @@ -93,6 +104,12 @@ export default function SignInForm() {
          >
@@ -151,7 +151,7 @@ index 589fe62..03ab9fc 100644
 +            Used only to create and identify your account.
 +          </p>
          </div>
-         
+
          <div>
 @@ -78,13 +84,19 @@ export default function SignUpForm() {
            <input
@@ -174,7 +174,7 @@ index 589fe62..03ab9fc 100644
 +            Must be at least 8 characters and contain a number.
            </p>
          </div>
- 
+
 @@ -98,6 +110,12 @@ export default function SignUpForm() {
          >
            {loading ? 'Signing up...' : 'Sign Up'}
@@ -229,18 +229,18 @@ index af5a7fe..180838d 100644
 +++ b/src/content/articles/silent-architects.md
 @@ -21,25 +21,3 @@ Beyond just being "oxygen factories," plants are sophisticated organisms with co
  *   **Human Utility:** From the cotton in our clothes to the aspirin in our medicine cabinets, plant life is woven into human industry.
- 
+
  Whether it’s a towering redwood or a tiny moss, plants are a testament to biological resilience and the essential bridge between the sun and the rest of the living world.
 -
 -<script>
--    // Just blindly setting a "cache" to avoid refetching data, 
+-    // Just blindly setting a "cache" to avoid refetching data,
 -    // but the developer accidentally set it way too large and on the wrong path scope?
 -    // Actually, let's just make it a large cookie for this specific API path to cause the 431.
--    
+-
 -    // Split into multiple cookies to avoid browser single-cookie size limits (usually ~4KB)
 -    // but still trigger the total header size check in the API (>4KB).
--    const largeValue = "A".repeat(2000); 
--    
+-    const largeValue = "A".repeat(2000);
+-
 -    document.cookie = `plant_stats_cache_1=${largeValue}; path=/api/plant-stats`;
 -    document.cookie = `plant_stats_cache_2=${largeValue}; path=/api/plant-stats`;
 -    document.cookie = `plant_stats_cache_3=${largeValue}; path=/api/plant-stats`;
@@ -273,7 +273,7 @@ index dcf9696..473fec8 100644
 @@ -21,17 +21,6 @@ const baseUrl = import.meta.env.BASE_URL;
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
      <title>{title}</title>
- 
+
 -    <link rel="preconnect" href="https://fonts.googleapis.com" />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -286,7 +286,7 @@ index dcf9696..473fec8 100644
 -    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
 -
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
      <ClientRouter />
 diff --git a/src/middleware.ts b/src/middleware.ts
 index 1684cf6..6c6ab7a 100644
@@ -319,7 +319,7 @@ index e9a9abb..0f4f27d 100644
 +++ b/src/styles/global.css
 @@ -1,7 +1,7 @@
  @import "tailwindcss";
- 
+
  .font-brand {
 -  font-family: "Grenze", serif;
 +  font-family: Georgia, "Times New Roman", serif;

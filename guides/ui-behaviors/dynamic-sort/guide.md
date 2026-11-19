@@ -76,18 +76,18 @@ function reorderWithTransition(list, orderedNodes) {
 }
 ```
 
-* **Rapid changes:** starting a new view transition skips the one in flight, which is the desired behavior when the user flips through options quickly. Always apply the final state in the update callback so the DOM ends in the correct order even if the animation is skipped.
-* **Large lists:** every named element is captured as an image, so naming hundreds of items is expensive. `match-element` names every matching element too, so it is no cheaper than explicit names. Skip the transition when the list is larger than a few hundred items.
-* **Interactivity:** a document-level view transition blocks pointer events on the whole page while it runs, whereas `list.startViewTransition()` only affects the list's subtree. Prefer the scoped form, and keep the animation brief either way. Names only need to be unique within the scope. For table rows, scope the `<table>` (or a wrapper around it). See {{ GUIDE_REF("scoped-component-transitions") }} for scoped transition details.
+- **Rapid changes:** starting a new view transition skips the one in flight, which is the desired behavior when the user flips through options quickly. Always apply the final state in the update callback so the DOM ends in the correct order even if the animation is skipped.
+- **Large lists:** every named element is captured as an image, so naming hundreds of items is expensive. `match-element` names every matching element too, so it is no cheaper than explicit names. Skip the transition when the list is larger than a few hundred items.
+- **Interactivity:** a document-level view transition blocks pointer events on the whole page while it runs, whereas `list.startViewTransition()` only affects the list's subtree. Prefer the scoped form, and keep the animation brief either way. Names only need to be unique within the scope. For table rows, scope the `<table>` (or a wrapper around it). See {{ GUIDE_REF("scoped-component-transitions") }} for scoped transition details.
 
 ## Announce the change once
 
 Reordering moves many nodes, but the user performed one action. **DO NOT** put `aria-live` on the list, which would announce every moved item. Instead:
 
-* Add one visually hidden `role="status"` element and set its text once per reorder, after starting the update. It must already be in the DOM before its text changes.
-* Name the result, not the mechanism: "Sorted by price, low to high, 24 items".
-* Keep focus on the control that triggered the change. Do not move focus into the list.
-* Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, radios) do this already; for toggle buttons use `aria-pressed` and label the current state, not the action.
+- Add one visually hidden `role="status"` element and set its text once per reorder, after starting the update. It must already be in the DOM before its text changes.
+- Name the result, not the mechanism: "Sorted by price, low to high, 24 items".
+- Keep focus on the control that triggered the change. Do not move focus into the list.
+- Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, radios) do this already; for toggle buttons use `aria-pressed` and label the current state, not the action.
 
 ```html
 <p id="reorder-status" role="status" class="visually-hidden"></p>
@@ -113,10 +113,10 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 
 ## Performance on large lists
 
-* Layout and rendering are the cost, not computing the order. Reorder nodes in a single pass with no layout reads (`offsetTop`, `getBoundingClientRect()`) in the loop.
-* Add `content-visibility: auto` with `contain-intrinsic-size` to items in long lists so off-screen items skip rendering work.
-* Above roughly a thousand items, virtualize the list instead of keeping every node in the DOM. Skip the view transition when virtualizing.
-* For expensive reorders (very large lists, or an order set through several inputs), apply the new order only when the user confirms it, for example with an Apply button, instead of on every input change.
+- Layout and rendering are the cost, not computing the order. Reorder nodes in a single pass with no layout reads (`offsetTop`, `getBoundingClientRect()`) in the loop.
+- Add `content-visibility: auto` with `contain-intrinsic-size` to items in long lists so off-screen items skip rendering work.
+- Above roughly a thousand items, virtualize the list instead of keeping every node in the DOM. Skip the view transition when virtualizing.
+- For expensive reorders (very large lists, or an order set through several inputs), apply the new order only when the user confirms it, for example with an Apply button, instead of on every input change.
 
 ## Fallbacks
 
@@ -130,7 +130,7 @@ If your Baseline target does not support `moveBefore()`, use `append()`. DOM ord
 
 ```javascript
 function reorder(container, orderedNodes) {
-  const move = Object.hasOwn(Element.prototype, 'moveBefore')
+  const move = Object.hasOwn(Element.prototype, "moveBefore")
     ? (node) => container.moveBefore(node, null)
     : (node) => container.append(node);
 

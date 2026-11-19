@@ -11,20 +11,25 @@
  * Usage: gd dev-gap [--dry-run] [--limit <n>] [--targets <apps>]
  */
 
-import child_process from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
+import child_process from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
-import { cBold, cCyan, cDim, cGreen, cRed } from '../core/colors.ts';
+import { cBold, cCyan, cDim, cGreen, cRed } from "../core/colors.ts";
 import {
   classifyGuide,
   scanAllGuides,
   REPORT_FILE,
   type GuideInventory,
-} from '../core/guide-validation.ts';
-import { rootDir, getGuideResultsDir } from '../core/paths.ts';
-import type { SuiteConfig } from '../harness/config.ts';
-import { devPrBranch, devPrTitle, runDevPr, type DevPrRerunLabel } from './pr.ts';
+} from "../core/guide-validation.ts";
+import { rootDir, getGuideResultsDir } from "../core/paths.ts";
+import type { SuiteConfig } from "../harness/config.ts";
+import {
+  devPrBranch,
+  devPrTitle,
+  runDevPr,
+  type DevPrRerunLabel,
+} from "./pr.ts";
 
 export interface OpenPr {
   number: number;
@@ -64,14 +69,16 @@ export interface FixEvalGapsOptions {
 }
 
 function getRerunMode(pr: OpenPr): DevPrRerunLabel | undefined {
-  return (pr.labels ?? []).some(l => l.name === 'needs-dev-rerun') ? 'needs-dev-rerun' : undefined;
+  return (pr.labels ?? []).some((l) => l.name === "needs-dev-rerun")
+    ? "needs-dev-rerun"
+    : undefined;
 }
 
 /** Decides which guides missing evals (or labeled PRs) to work on, and why any are skipped. */
 export function planFixes(
   guides: GuideInventory[],
   openPrs: OpenPr[],
-  existingBranches: Set<string>
+  existingBranches: Set<string>,
 ): { toFix: GapToFix[]; skipped: SkippedGap[] } {
   const toFix: GapToFix[] = [];
   const skipped: SkippedGap[] = [];
@@ -79,11 +86,15 @@ export function planFixes(
 
   for (const inv of guides) {
     const status = classifyGuide(inv);
-    if (status !== 'needs-calibration' && status !== 'needs-test') continue;
+    if (status !== "needs-calibration" && status !== "needs-test") continue;
     const guidePath = `guides/${inv.category}/${inv.name}`;
 
     // `gd pr` titles its PR the same way whichever branch it runs from.
-    const pr = openPrs.find(p => p.title === devPrTitle(inv.name) || p.headRefName === devPrBranch(inv.name));
+    const pr = openPrs.find(
+      (p) =>
+        p.title === devPrTitle(inv.name) ||
+        p.headRefName === devPrBranch(inv.name),
+    );
     if (pr) {
       handledPrs.add(pr.number);
       const rerunMode = getRerunMode(pr);
@@ -105,7 +116,10 @@ export function planFixes(
     // push fail after a full `gd dev` run, so skip until someone deletes it.
     const branch = devPrBranch(inv.name);
     if (existingBranches.has(branch)) {
-      skipped.push({ guidePath, reason: `branch ${branch} already exists (delete it to retry)` });
+      skipped.push({
+        guidePath,
+        reason: `branch ${branch} already exists (delete it to retry)`,
+      });
       continue;
     }
 
@@ -118,7 +132,11 @@ export function planFixes(
     if (handledPrs.has(pr.number)) continue;
     const rerunMode = getRerunMode(pr);
     if (!rerunMode) continue;
-    const inv = guides.find(g => pr.title === devPrTitle(g.name) || pr.headRefName === devPrBranch(g.name));
+    const inv = guides.find(
+      (g) =>
+        pr.title === devPrTitle(g.name) ||
+        pr.headRefName === devPrBranch(g.name),
+    );
     if (!inv) continue;
     toFix.push({
       guidePath: `guides/${inv.category}/${inv.name}`,
@@ -133,48 +151,86 @@ export function planFixes(
 }
 
 function git(args: string[]): string {
-  return child_process.execFileSync('git', args, { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+  return child_process
+    .execFileSync("git", args, {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    .trim();
 }
 
 /** Side effects, grouped so tests can stub them. */
 export const evalGapFixCli = {
-  currentBranch: () => git(['branch', '--show-current']),
+  currentBranch: () => git(["branch", "--show-current"]),
   /** Empty when the working tree is clean. */
-  treeStatus: () => git(['status', '--porcelain']),
-  pullMain: () => { git(['pull', '--ff-only']); },
-  createBranch: (branch: string) => { git(['checkout', '-b', branch]); },
+  treeStatus: () => git(["status", "--porcelain"]),
+  pullMain: () => {
+    git(["pull", "--ff-only"]);
+  },
+  createBranch: (branch: string) => {
+    git(["checkout", "-b", branch]);
+  },
   /** Fetches latest `main` and the remote PR branch, checks out the PR branch, and merges `origin/main`. */
   checkoutPrBranch: (branch: string) => {
-    git(['fetch', 'origin', 'main', branch]);
-    git(['checkout', '-B', branch, `origin/${branch}`]);
-    git(['merge', 'origin/main', '--no-edit']);
+    git(["fetch", "origin", "main", branch]);
+    git(["checkout", "-B", branch, `origin/${branch}`]);
+    git(["merge", "origin/main", "--no-edit"]);
   },
   /** Switches to `main`, dropping tracked edits anywhere and untracked (non-ignored) files in `dir`. */
   resetToMain: (dir: string) => {
-    git(['reset', '--hard']);
-    git(['checkout', '-f', 'main']);
-    git(['clean', '-fd', '--', dir]);
+    git(["reset", "--hard"]);
+    git(["checkout", "-f", "main"]);
+    git(["clean", "-fd", "--", dir]);
   },
   deleteLocalBranch: (branch: string) => {
-    if (git(['for-each-ref', '--format=%(refname:lstrip=2)', `refs/heads/${branch}`])) {
-      git(['branch', '-D', branch]);
+    if (
+      git([
+        "for-each-ref",
+        "--format=%(refname:lstrip=2)",
+        `refs/heads/${branch}`,
+      ])
+    ) {
+      git(["branch", "-D", branch]);
     }
   },
   /** `gd-dev/*` branch names that exist locally or on origin. */
   listDevBranches: (): Set<string> => {
-    const local = git(['for-each-ref', '--format=%(refname:lstrip=2)', 'refs/heads/gd-dev/']).split('\n');
-    const remote = git(['ls-remote', '--heads', 'origin', 'refs/heads/gd-dev/*']).split('\n')
-      .map(line => line.split('\trefs/heads/')[1]);
+    const local = git([
+      "for-each-ref",
+      "--format=%(refname:lstrip=2)",
+      "refs/heads/gd-dev/",
+    ]).split("\n");
+    const remote = git([
+      "ls-remote",
+      "--heads",
+      "origin",
+      "refs/heads/gd-dev/*",
+    ])
+      .split("\n")
+      .map((line) => line.split("\trefs/heads/")[1]);
     return new Set([...local, ...remote].filter(Boolean));
   },
-  listOpenPrs: (): OpenPr[] => JSON.parse(child_process.execFileSync(
-    'gh',
-    ['pr', 'list', '--state', 'open', '--limit', '500', '--json', 'number,title,headRefName,labels'],
-    { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }
-  )),
+  listOpenPrs: (): OpenPr[] =>
+    JSON.parse(
+      child_process.execFileSync(
+        "gh",
+        [
+          "pr",
+          "list",
+          "--state",
+          "open",
+          "--limit",
+          "500",
+          "--json",
+          "number,title,headRefName,labels",
+        ],
+        { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
+      ),
+    ),
   scanGuides: (): GuideInventory[] => scanAllGuides(),
   getHeadCommitSha: (): string => {
-    return git(['rev-parse', '--short', 'HEAD']);
+    return git(["rev-parse", "--short", "HEAD"]);
   },
   replyToReviewThread: (threadId: string, message: string): void => {
     const query = `
@@ -184,37 +240,51 @@ mutation($threadId: ID!, $body: String!) {
   }
 }`;
     child_process.execFileSync(
-      'gh',
-      ['api', 'graphql', '-F', `threadId=${threadId}`, '-F', `body=${message}`, '-f', `query=${query}`],
-      { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
+      "gh",
+      [
+        "api",
+        "graphql",
+        "-F",
+        `threadId=${threadId}`,
+        "-F",
+        `body=${message}`,
+        "-f",
+        `query=${query}`,
+      ],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
     );
   },
-  fetchPrReviewContext: (prNumber: number, _branch?: string): PrReviewContext => {
-    let branchCommits = '';
-    let branchDiff = '';
-    let comments = '';
+  fetchPrReviewContext: (
+    prNumber: number,
+    _branch?: string,
+  ): PrReviewContext => {
+    let branchCommits = "";
+    let branchDiff = "";
+    let comments = "";
     const threadIds: string[] = [];
 
     try {
-      branchCommits = git(['log', '--oneline', 'origin/main..HEAD']);
+      branchCommits = git(["log", "--oneline", "origin/main..HEAD"]);
     } catch {}
 
     try {
-      branchDiff = git(['diff', 'origin/main..HEAD']);
+      branchDiff = git(["diff", "origin/main..HEAD"]);
     } catch {}
 
     try {
-      const viewJson = JSON.parse(child_process.execFileSync(
-        'gh',
-        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
-        { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
-      ));
+      const viewJson = JSON.parse(
+        child_process.execFileSync(
+          "gh",
+          ["pr", "view", String(prNumber), "--json", "comments,reviews"],
+          { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+        ),
+      );
 
       const commentLines: string[] = [];
       if (Array.isArray(viewJson.comments)) {
         for (const c of viewJson.comments) {
-          const author = c.author?.login || 'unknown';
-          const body = (c.body || '').trim();
+          const author = c.author?.login || "unknown";
+          const body = (c.body || "").trim();
           if (body) {
             commentLines.push(`- **@${author}** commented:\n${body}`);
           }
@@ -222,9 +292,9 @@ mutation($threadId: ID!, $body: String!) {
       }
       if (Array.isArray(viewJson.reviews)) {
         for (const r of viewJson.reviews) {
-          const author = r.author?.login || 'unknown';
-          const body = (r.body || '').trim();
-          const state = r.state || 'REVIEW';
+          const author = r.author?.login || "unknown";
+          const body = (r.body || "").trim();
+          const state = r.state || "REVIEW";
           if (body) {
             commentLines.push(`- **@${author}** (${state}):\n${body}`);
           }
@@ -254,49 +324,69 @@ query($owner: String!, $repo: String!, $pr: Int!) {
     }
   }
 }`;
-        const threadData = JSON.parse(child_process.execFileSync(
-          'gh',
-          ['api', 'graphql', '-F', 'owner={owner}', '-F', 'repo={repo}', '-F', `pr=${prNumber}`, '-f', `query=${query}`],
-          { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
-        ));
-        const threads = threadData.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
+        const threadData = JSON.parse(
+          child_process.execFileSync(
+            "gh",
+            [
+              "api",
+              "graphql",
+              "-F",
+              "owner={owner}",
+              "-F",
+              "repo={repo}",
+              "-F",
+              `pr=${prNumber}`,
+              "-f",
+              `query=${query}`,
+            ],
+            { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+          ),
+        );
+        const threads =
+          threadData.data?.repository?.pullRequest?.reviewThreads?.nodes || [];
         for (const t of threads) {
           if (t.isResolved) continue;
           if (t.id) threadIds.push(t.id);
-          const file = t.path || 'unknown';
-          const line = t.line || '';
+          const file = t.path || "unknown";
+          const line = t.line || "";
           const comments = t.comments?.nodes || [];
           for (const c of comments) {
-            const author = c.author?.login || 'unknown';
-            const body = (c.body || '').trim();
+            const author = c.author?.login || "unknown";
+            const body = (c.body || "").trim();
             if (body) {
-              commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+              commentLines.push(
+                `- **@${author}** on \`${file}${line ? `:${line}` : ""}\`:\n${body}`,
+              );
             }
           }
         }
       } catch {
         // Fallback to REST API if GraphQL query fails
         try {
-          const reviewCommentsJson = JSON.parse(child_process.execFileSync(
-            'gh',
-            ['api', `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
-            { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
-          ));
+          const reviewCommentsJson = JSON.parse(
+            child_process.execFileSync(
+              "gh",
+              ["api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`],
+              { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+            ),
+          );
           if (Array.isArray(reviewCommentsJson)) {
             for (const rc of reviewCommentsJson) {
-              const author = rc.user?.login || 'unknown';
-              const file = rc.path || 'unknown';
-              const line = rc.line || rc.original_line || '';
-              const body = (rc.body || '').trim();
+              const author = rc.user?.login || "unknown";
+              const file = rc.path || "unknown";
+              const line = rc.line || rc.original_line || "";
+              const body = (rc.body || "").trim();
               if (body) {
-                commentLines.push(`- **@${author}** on \`${file}${line ? `:${line}` : ''}\`:\n${body}`);
+                commentLines.push(
+                  `- **@${author}** on \`${file}${line ? `:${line}` : ""}\`:\n${body}`,
+                );
               }
             }
           }
         } catch {}
       }
 
-      comments = commentLines.join('\n\n');
+      comments = commentLines.join("\n\n");
     } catch {}
 
     return {
@@ -306,13 +396,16 @@ query($owner: String!, $repo: String!, $pr: Int!) {
       threadIds: threadIds.length > 0 ? threadIds : undefined,
     };
   },
-  runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {
-    const { devGuide } = await import('./dev.ts');
+  runDevGuide: async (
+    inv: GuideInventory,
+    options: FixEvalGapsOptions,
+  ): Promise<boolean> => {
+    const { devGuide } = await import("./dev.ts");
     return devGuide(inv.dir, {
       test: true,
       verbose: options.verbose,
       suiteConfig: options.suiteConfig,
-      targets: options.targets ?? ['daily-grind'],
+      targets: options.targets ?? ["daily-grind"],
       prContext: options.prContext,
     });
   },
@@ -321,7 +414,7 @@ query($owner: String!, $repo: String!, $pr: Int!) {
 
 interface Outcome {
   gap: GapToFix;
-  status: 'pr-opened' | 'pr-updated' | 'dev-failed' | 'pr-failed' | 'error';
+  status: "pr-opened" | "pr-updated" | "dev-failed" | "pr-failed" | "error";
   detail: string;
 }
 
@@ -330,10 +423,13 @@ interface Outcome {
  * dropping whatever didn't make it into a PR. Never throws; cleanup failures
  * are noted on the outcome and the caller checks the tree.
  */
-async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outcome> {
+async function fixOne(
+  gap: GapToFix,
+  options: FixEvalGapsOptions,
+): Promise<Outcome> {
   const { inv } = gap;
   const branch = gap.branch ?? devPrBranch(inv.name);
-  const targets = options.targets ?? ['daily-grind'];
+  const targets = options.targets ?? ["daily-grind"];
   let createdBranch = false;
 
   let outcome: Outcome;
@@ -356,33 +452,61 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     const resultsDir = getGuideResultsDir(inv);
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
-    const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets, prContext });
+    const devOk = await evalGapFixCli.runDevGuide(inv, {
+      ...options,
+      targets,
+      prContext,
+    });
     // A failed run that still wrote a report (e.g. CALIBRATION_FAILED) is pushed so the PR shows its diagnosis.
     if (!fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
-      outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
+      outcome = {
+        gap,
+        status: "dev-failed",
+        detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : "gd dev failed",
+      };
     } else {
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
       outcome = prUrl
-        ? { gap, status: gap.rerunMode ? 'pr-updated' : 'pr-opened', detail: prUrl }
-        : { gap, status: 'pr-failed', detail: 'gd pr failed (branch may be on origin; delete it to retry)' };
+        ? {
+            gap,
+            status: gap.rerunMode ? "pr-updated" : "pr-opened",
+            detail: prUrl,
+          }
+        : {
+            gap,
+            status: "pr-failed",
+            detail:
+              "gd pr failed (branch may be on origin; delete it to retry)",
+          };
 
       if (prUrl && prContext?.threadIds?.length) {
         try {
           const sha = evalGapFixCli.getHeadCommitSha();
           for (const threadId of prContext.threadIds) {
             try {
-              evalGapFixCli.replyToReviewThread(threadId, `🤖 *[gd dev]* Addressed in ${sha}`);
+              evalGapFixCli.replyToReviewThread(
+                threadId,
+                `🤖 *[gd dev]* Addressed in ${sha}`,
+              );
             } catch (err) {
-              console.warn(cDim(`Could not reply to review thread ${threadId}: ${(err as Error).message}`));
+              console.warn(
+                cDim(
+                  `Could not reply to review thread ${threadId}: ${(err as Error).message}`,
+                ),
+              );
             }
           }
         } catch (err) {
-          console.warn(cDim(`Could not reply to review threads: ${(err as Error).message}`));
+          console.warn(
+            cDim(
+              `Could not reply to review threads: ${(err as Error).message}`,
+            ),
+          );
         }
       }
     }
   } catch (err) {
-    outcome = { gap, status: 'error', detail: (err as Error).message };
+    outcome = { gap, status: "error", detail: (err as Error).message };
   }
 
   try {
@@ -394,16 +518,23 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
   return outcome;
 }
 
-export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boolean> {
+export async function fixEvalGaps(
+  options: FixEvalGapsOptions = {},
+): Promise<boolean> {
   if (!options.dryRun) {
-    if (evalGapFixCli.currentBranch() !== 'main' || evalGapFixCli.treeStatus() !== '') {
-      console.error(cRed('❌ Run this from a clean `main` branch.'));
+    if (
+      evalGapFixCli.currentBranch() !== "main" ||
+      evalGapFixCli.treeStatus() !== ""
+    ) {
+      console.error(cRed("❌ Run this from a clean `main` branch."));
       return false;
     }
     try {
       evalGapFixCli.pullMain();
     } catch (err) {
-      console.error(cRed(`❌ Could not update main: ${(err as Error).message}`));
+      console.error(
+        cRed(`❌ Could not update main: ${(err as Error).message}`),
+      );
       return false;
     }
   }
@@ -411,47 +542,66 @@ export async function fixEvalGaps(options: FixEvalGapsOptions = {}): Promise<boo
   const { toFix, skipped } = planFixes(
     evalGapFixCli.scanGuides(),
     evalGapFixCli.listOpenPrs(),
-    evalGapFixCli.listDevBranches()
+    evalGapFixCli.listDevBranches(),
   );
   const queue = toFix.slice(0, options.limit);
 
-  console.log(cBold(`\nGuides missing evals & PRs: ${toFix.length} to fix, ${skipped.length} skipped\n`));
-  for (const s of skipped) console.log(cDim(`  skip ${s.guidePath} — ${s.reason}`));
+  console.log(
+    cBold(
+      `\nGuides missing evals & PRs: ${toFix.length} to fix, ${skipped.length} skipped\n`,
+    ),
+  );
+  for (const s of skipped)
+    console.log(cDim(`  skip ${s.guidePath} — ${s.reason}`));
   for (const g of queue) {
-    const suffix = g.rerunMode ? ` (PR #${g.prNumber}: ${g.rerunMode})` : '';
-    console.log(`  ${cCyan('fix')}  ${g.guidePath}${cDim(suffix)}`);
+    const suffix = g.rerunMode ? ` (PR #${g.prNumber}: ${g.rerunMode})` : "";
+    console.log(`  ${cCyan("fix")}  ${g.guidePath}${cDim(suffix)}`);
   }
-  if (queue.length < toFix.length) console.log(cDim(`  (limited to ${queue.length} of ${toFix.length})`));
-  console.log('');
+  if (queue.length < toFix.length)
+    console.log(cDim(`  (limited to ${queue.length} of ${toFix.length})`));
+  console.log("");
 
   if (options.dryRun) {
-    console.log('🧪 Dry run — nothing was run. Planned from your local checkout; pull main first for an up-to-date plan.');
+    console.log(
+      "🧪 Dry run — nothing was run. Planned from your local checkout; pull main first for an up-to-date plan.",
+    );
     return true;
   }
 
   const outcomes: Outcome[] = [];
   for (const [i, gap] of queue.entries()) {
-    const suffix = gap.rerunMode ? ` (PR #${gap.prNumber}: ${gap.rerunMode})` : '';
-    console.log(cBold(`\n[${i + 1}/${queue.length}] ${gap.guidePath}${suffix}`));
+    const suffix = gap.rerunMode
+      ? ` (PR #${gap.prNumber}: ${gap.rerunMode})`
+      : "";
+    console.log(
+      cBold(`\n[${i + 1}/${queue.length}] ${gap.guidePath}${suffix}`),
+    );
     outcomes.push(await fixOne(gap, options));
 
     // Stop if cleanup left something behind; it would leak into the next guide's PR.
     const status = evalGapFixCli.treeStatus();
-    if (evalGapFixCli.currentBranch() !== 'main' || status !== '') {
-      console.error(cRed('\n❌ Could not get back to a clean `main`; stopping the batch.'));
+    if (evalGapFixCli.currentBranch() !== "main" || status !== "") {
+      console.error(
+        cRed("\n❌ Could not get back to a clean `main`; stopping the batch."),
+      );
       if (status) console.error(cDim(status));
       break;
     }
   }
 
-  console.log(cBold('\nSummary'));
+  console.log(cBold("\nSummary"));
   for (const o of outcomes) {
-    const isSuccess = o.status === 'pr-opened' || o.status === 'pr-updated';
+    const isSuccess = o.status === "pr-opened" || o.status === "pr-updated";
     const color = isSuccess ? cGreen : cRed;
-    console.log(`  ${color(o.status.padEnd(10))} ${o.gap.guidePath} ${cDim(`— ${o.detail}`)}`);
+    console.log(
+      `  ${color(o.status.padEnd(10))} ${o.gap.guidePath} ${cDim(`— ${o.detail}`)}`,
+    );
   }
   const notRun = queue.length - outcomes.length;
   if (notRun > 0) console.log(cDim(`  ${notRun} guide(s) not attempted`));
 
-  return notRun === 0 && outcomes.every(o => o.status === 'pr-opened' || o.status === 'pr-updated');
+  return (
+    notRun === 0 &&
+    outcomes.every((o) => o.status === "pr-opened" || o.status === "pr-updated")
+  );
 }

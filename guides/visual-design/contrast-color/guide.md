@@ -58,13 +58,13 @@ DO NOT: Hard-code a separate text color for each interaction state when the back
 
 To support browsers without `contrast-color()`, you must provide a fallback. If the background color is known and fixed, use a hard-coded contrasting color. For variable background colors (such as theme custom properties where the runtime color is unknown), choose one of the five fallback strategies from the table below based on your UI requirements and browser support targets.
 
-| Strategy | Best For... | Considerations |
-| :--- | :--- | :--- |
-| **Calculate contrast with `color(xyz)`** | Automated, CSS-only contrast calculation, ensures compliance with WCAG 1.4.3 Contrast (Minimum). | Highest quality CSS-only fallback. |
-| **Text Shadow** | Quick readability boost on any background. | Can look "dirty" or "glowy"; may not fit all designs. |
-| **Text Stroke** | Preserving font weight while ensuring edge contrast. | Use `paint-order` to avoid thinning letterforms, if available. |
-| **Translucent Overlay** | Ensuring a minimum contrast area behind the text. | Changes the look of the background color under the text, requires a separate text element. |
-| **SVG Filters** | Reactive contrast that updates as the background changes. | Requires a separate text element; hacky implementation. |
+| Strategy                                 | Best For...                                                                                      | Considerations                                                                             |
+| :--------------------------------------- | :----------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- |
+| **Calculate contrast with `color(xyz)`** | Automated, CSS-only contrast calculation, ensures compliance with WCAG 1.4.3 Contrast (Minimum). | Highest quality CSS-only fallback.                                                         |
+| **Text Shadow**                          | Quick readability boost on any background.                                                       | Can look "dirty" or "glowy"; may not fit all designs.                                      |
+| **Text Stroke**                          | Preserving font weight while ensuring edge contrast.                                             | Use `paint-order` to avoid thinning letterforms, if available.                             |
+| **Translucent Overlay**                  | Ensuring a minimum contrast area behind the text.                                                | Changes the look of the background color under the text, requires a separate text element. |
+| **SVG Filters**                          | Reactive contrast that updates as the background changes.                                        | Requires a separate text element; hacky implementation.                                    |
 
 ### Recommended: Calculate contrast with `color(xyz)`
 
@@ -77,7 +77,10 @@ In order to adhere to WCAG's 1.4.3 Contrast (Minimum) guideline, calculate the c
 ```css
 --wcag-y-threshold: 0.17913;
 --y: max(0, sign(var(--wcag-y-threshold) - y));
-color: color(from var(--color) xyz-d65 calc(var(--y) * 0.9505) var(--y) calc(var(--y) * 1.089));
+color: color(
+  from var(--color) xyz-d65 calc(var(--y) * 0.9505) var(--y)
+    calc(var(--y) * 1.089)
+);
 ```
 
 ### Alternative CSS Fallbacks
@@ -93,7 +96,7 @@ DO: Select the fallback that best matches your design constraints if RCS is not 
   -webkit-text-stroke: 4px black;
 }
 ```
-  
+
 #### Option 2: Text Stroke with `paint-order` to preserve letterforms
 
 {{ BASELINE_STATUS("paint-order") }}
@@ -142,21 +145,28 @@ DO: Select the fallback that best matches your design constraints if RCS is not 
 
 ```html
 <!-- Technique from https://miunau.com/posts/dynamic-text-contrast-in-css/ -->
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" height="0" style="display: none;">
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  version="1.1"
+  height="0"
+  style="display: none;"
+>
   <defs>
     <filter id="contrast-filter" color-interpolation-filters="sRGB">
-      <feColorMatrix type="matrix"
+      <feColorMatrix
+        type="matrix"
         values="0.2126 0.7152 0.0722 0 0
           0.2126 0.7152 0.0722 0 0
           0.2126 0.7152 0.0722 0 0
-          0 0 0 1 0"/>
-      <feMorphology operator="dilate" radius="2"/>
+          0 0 0 1 0"
+      />
+      <feMorphology operator="dilate" radius="2" />
       <feComponentTransfer>
-        <feFuncR type="linear" slope="-255" intercept="128"/>
-        <feFuncG type="linear" slope="-255" intercept="128"/>
-        <feFuncB type="linear" slope="-255" intercept="128"/>
+        <feFuncR type="linear" slope="-255" intercept="128" />
+        <feFuncG type="linear" slope="-255" intercept="128" />
+        <feFuncB type="linear" slope="-255" intercept="128" />
       </feComponentTransfer>
-      <feComposite operator="in" in2="SourceGraphic"/>
+      <feComposite operator="in" in2="SourceGraphic" />
     </filter>
   </defs>
 </svg>
@@ -173,7 +183,7 @@ DO: Select the fallback that best matches your design constraints if RCS is not 
 3. Apply the filter to the `<span>`.
 
 ```css
-.badge--svg span{
+.badge--svg span {
   color: var(--badge-bg);
   filter: url(#contrast-filter);
 }

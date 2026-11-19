@@ -51,12 +51,12 @@
     function processData() {
       const output = document.getElementById('output');
       const btn = document.getElementById('start-btn');
-      
+
       output.textContent = 'Processing...';
       btn.disabled = true;
 
       const totalItems = 1000;
-      
+
       for (let i = 0; i < totalItems; i++) {
         processItem();
         output.textContent = `Processed ${i} of ${totalItems}...`;

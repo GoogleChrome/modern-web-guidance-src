@@ -5,7 +5,7 @@ index 66c9173..eae3f75 100644
 @@ -135,6 +135,135 @@
        background: #3e2723;
      }
- 
+
 +    /* Sortable seasonal drinks table */
 +    .table-scroll {
 +      overflow-x: auto;
@@ -227,11 +227,11 @@ index 66c9173..eae3f75 100644
 +      <p id="seasonal-drinks-status" class="visually-hidden" role="status"></p>
      </section>
    </main>
- 
+
 @@ -207,6 +419,107 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      const table = document.getElementById('seasonal-drinks');
@@ -334,5 +334,5 @@ index 66c9173..eae3f75 100644
 +  </script>
 +
  </body>
- 
+
  </html>

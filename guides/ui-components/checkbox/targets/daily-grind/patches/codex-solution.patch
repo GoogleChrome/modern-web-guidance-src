@@ -22,7 +22,7 @@ index 66c9173..15f640b 100644
 @@ -120,6 +120,122 @@
        color: var(--primary);
      }
- 
+
 +    .customizations {
 +      min-inline-size: 0;
 +      margin-top: 20px;

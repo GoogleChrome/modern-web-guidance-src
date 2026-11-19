@@ -1,36 +1,41 @@
-import {
-  Node,
-  type CallExpression,
-} from 'ts-morph';
+import { Node, type CallExpression } from "ts-morph";
 import {
   resolveLocalExpression,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
-import { createJsCallMatcher } from '../scanners/js-scanner.ts';
-import type {
-  AnalyzerRule,
-  JsRuleMatcher,
-} from '../schema.ts';
+} from "../scanners/ast-helpers.ts";
+import { createJsCallMatcher } from "../scanners/js-scanner.ts";
+import type { AnalyzerRule, JsRuleMatcher } from "../schema.ts";
 
-const FORM_EVENT_NAMES = new Set(['focus', 'blur', 'focusin', 'focusout', 'change', 'input']);
+const FORM_EVENT_NAMES = new Set([
+  "focus",
+  "blur",
+  "focusin",
+  "focusout",
+  "change",
+  "input",
+]);
 const PURE_STYLING_STATE_CLASS_REGEX =
   /^(?:is-|has-)?(?:focus|focused|active|checked|valid|invalid|empty|filled|value)$/i;
 const JQUERY_FOCUS_EVENT_NAMES = new Set([
-  'focus',
-  'blur',
-  'focusin',
-  'focusout',
-  'focus blur',
-  'blur focus',
-  'focusin focusout',
-  'focusout focusin',
+  "focus",
+  "blur",
+  "focusin",
+  "focusout",
+  "focus blur",
+  "blur focus",
+  "focusin focusout",
+  "focusout focusin",
 ]);
-const JQUERY_VALIDITY_EVENT_NAMES = new Set(['blur input', 'input blur', 'input']);
+const JQUERY_VALIDITY_EVENT_NAMES = new Set([
+  "blur input",
+  "input blur",
+  "input",
+]);
 const ALLOWED_HANDLER_METHODS = new Set([
-  'closest',
-  'checkValidity',
-  'preventDefault',
-  'stopPropagation',
+  "closest",
+  "checkValidity",
+  "preventDefault",
+  "stopPropagation",
 ]);
 
 function isAllowedCallInsideNativeHandler(call: CallExpression): boolean {
@@ -38,9 +43,12 @@ function isAllowedCallInsideNativeHandler(call: CallExpression): boolean {
   if (!Node.isPropertyAccessExpression(callee)) return false;
   const name = callee.getName();
   if (ALLOWED_HANDLER_METHODS.has(name)) return true;
-  if (name === 'add' || name === 'remove' || name === 'toggle') {
+  if (name === "add" || name === "remove" || name === "toggle") {
     const target = unwrapExpression(callee.getExpression());
-    return Node.isPropertyAccessExpression(target) && target.getName() === 'classList';
+    return (
+      Node.isPropertyAccessExpression(target) &&
+      target.getName() === "classList"
+    );
   }
   return false;
 }
@@ -56,7 +64,10 @@ function hasDisallowedHandlerCalls(node: Node): boolean {
     ) {
       let hasDisallowed = false;
       current.forEachDescendant((desc) => {
-        if (Node.isCallExpression(desc) && !isAllowedCallInsideNativeHandler(desc)) {
+        if (
+          Node.isCallExpression(desc) &&
+          !isAllowedCallInsideNativeHandler(desc)
+        ) {
           hasDisallowed = true;
         }
       });
@@ -71,11 +82,14 @@ function refersToParentNavigation(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
   if (Node.isPropertyAccessExpression(unwrapped)) {
     const propName = unwrapped.getName();
-    return propName === 'parentElement' || propName === 'parentNode';
+    return propName === "parentElement" || propName === "parentNode";
   }
   if (Node.isCallExpression(unwrapped)) {
     const callExpr = unwrapExpression(unwrapped.getExpression());
-    return Node.isPropertyAccessExpression(callExpr) && callExpr.getName() === 'closest';
+    return (
+      Node.isPropertyAccessExpression(callExpr) &&
+      callExpr.getName() === "closest"
+    );
   }
   if (Node.isIdentifier(unwrapped)) {
     const resolved = resolveLocalExpression(unwrapped);
@@ -89,7 +103,8 @@ function isFormEventCall(call: CallExpression): boolean {
   if (!Node.isPropertyAccessExpression(callExpr)) return false;
   const method = callExpr.getName();
   if (FORM_EVENT_NAMES.has(method)) return true;
-  if (method !== 'addEventListener' && method !== 'on' && method !== 'bind') return false;
+  if (method !== "addEventListener" && method !== "on" && method !== "bind")
+    return false;
   const firstArgNode = call.getArguments()[0];
   if (!firstArgNode) return false;
   const firstArg = unwrapExpression(firstArgNode);
@@ -111,8 +126,12 @@ function isEnclosedInFormEventHandler(node: Node): boolean {
       ) {
         return true;
       }
-    } else if (Node.isFunctionDeclaration(current) || Node.isMethodDeclaration(current)) {
-      if (/(?:focus|blur|change|input)/i.test(current.getName() ?? '')) return true;
+    } else if (
+      Node.isFunctionDeclaration(current) ||
+      Node.isMethodDeclaration(current)
+    ) {
+      if (/(?:focus|blur|change|input)/i.test(current.getName() ?? ""))
+        return true;
     }
     current = current.getParent();
   }
@@ -123,8 +142,11 @@ function isJQuerySelfOrInputWrapper(node: Node): boolean {
   const unwrapped = unwrapExpression(node);
   if (Node.isCallExpression(unwrapped)) {
     const callee = unwrapExpression(unwrapped.getExpression());
-    if (Node.isIdentifier(callee) && (callee.getText() === '$' || callee.getText() === 'jQuery')) {
-      const argText = unwrapped.getArguments()[0]?.getText().trim() ?? '';
+    if (
+      Node.isIdentifier(callee) &&
+      (callee.getText() === "$" || callee.getText() === "jQuery")
+    ) {
+      const argText = unwrapped.getArguments()[0]?.getText().trim() ?? "";
       return /^(?:this|(?:e|event)\.(?:target|currentTarget))$/.test(argText);
     }
   }
@@ -135,7 +157,10 @@ function isJQuerySelfOrInputWrapper(node: Node): boolean {
   return false;
 }
 
-function inspectToggleConditionAst(condNode: Node): { allowed: boolean; usesValidity: boolean } {
+function inspectToggleConditionAst(condNode: Node): {
+  allowed: boolean;
+  usesValidity: boolean;
+} {
   let hasDisallowedNode = false;
   let usesValidity = false;
   let usesEventType = false;
@@ -143,22 +168,28 @@ function inspectToggleConditionAst(condNode: Node): { allowed: boolean; usesVali
   const checkNode = (n: Node) => {
     if (Node.isCallExpression(n)) {
       const callee = unwrapExpression(n.getExpression());
-      if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'checkValidity') {
+      if (
+        Node.isPropertyAccessExpression(callee) &&
+        callee.getName() === "checkValidity"
+      ) {
         usesValidity = true;
       } else {
         hasDisallowedNode = true;
       }
     } else if (Node.isPropertyAccessExpression(n)) {
       const prop = n.getName();
-      if (prop === 'value' || prop === 'length') hasDisallowedNode = true;
-      else if (prop === 'validity' || prop === 'valid') usesValidity = true;
-      else if (prop === 'type') usesEventType = true;
+      if (prop === "value" || prop === "length") hasDisallowedNode = true;
+      else if (prop === "validity" || prop === "valid") usesValidity = true;
+      else if (prop === "type") usesEventType = true;
     }
   };
 
   checkNode(condNode);
   condNode.forEachDescendant(checkNode);
-  return { allowed: !hasDisallowedNode && (usesValidity || usesEventType), usesValidity };
+  return {
+    allowed: !hasDisallowedNode && (usesValidity || usesEventType),
+    usesValidity,
+  };
 }
 
 function isJQueryParentClassToggle(node: CallExpression): boolean {
@@ -166,7 +197,12 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   if (!Node.isPropertyAccessExpression(callExpr)) return false;
 
   const method = callExpr.getName();
-  if (method !== 'addClass' && method !== 'removeClass' && method !== 'toggleClass') return false;
+  if (
+    method !== "addClass" &&
+    method !== "removeClass" &&
+    method !== "toggleClass"
+  )
+    return false;
 
   const args = node.getArguments();
   const firstArgNode = args[0];
@@ -183,7 +219,7 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   let usesValidityCheck = false;
   const secondArgNode = args[1];
   if (secondArgNode) {
-    if (method !== 'toggleClass') return false;
+    if (method !== "toggleClass") return false;
     const condInfo = inspectToggleConditionAst(secondArgNode);
     if (!condInfo.allowed) return false;
     usesValidityCheck = condInfo.usesValidity;
@@ -195,17 +231,29 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   if (!Node.isPropertyAccessExpression(parentCallExpr)) return false;
 
   const parentMethod = parentCallExpr.getName();
-  if (parentMethod !== 'parent' && parentMethod !== 'parents' && parentMethod !== 'closest') {
+  if (
+    parentMethod !== "parent" &&
+    parentMethod !== "parents" &&
+    parentMethod !== "closest"
+  ) {
     return false;
   }
 
   const parentArgs = parentCall.getArguments();
   const firstParentArg = parentArgs[0];
   if (parentArgs.length > 1) return false;
-  if (parentMethod === 'parents' || parentMethod === 'closest' || firstParentArg) {
+  if (
+    parentMethod === "parents" ||
+    parentMethod === "closest" ||
+    firstParentArg
+  ) {
     if (!firstParentArg) return false;
     const selArg = unwrapExpression(firstParentArg);
-    if (!Node.isStringLiteral(selArg) || selArg.getLiteralText().trim().length === 0) return false;
+    if (
+      !Node.isStringLiteral(selArg) ||
+      selArg.getLiteralText().trim().length === 0
+    )
+      return false;
   }
 
   if (!isJQuerySelfOrInputWrapper(parentCallExpr.getExpression())) return false;
@@ -222,7 +270,8 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
   }
   if (
     !enclosingFn ||
-    (!Node.isFunctionExpression(enclosingFn) && !Node.isArrowFunction(enclosingFn))
+    (!Node.isFunctionExpression(enclosingFn) &&
+      !Node.isArrowFunction(enclosingFn))
   ) {
     return false;
   }
@@ -240,10 +289,11 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
     return bindCall.getArguments().length === 1 && !usesValidityCheck;
   }
 
-  if (bindMethod === 'on' || bindMethod === 'bind') {
+  if (bindMethod === "on" || bindMethod === "bind") {
     const bindArgs = bindCall.getArguments();
     const firstBindArg = bindArgs[0];
-    if (!firstBindArg || (bindArgs.length !== 2 && bindArgs.length !== 3)) return false;
+    if (!firstBindArg || (bindArgs.length !== 2 && bindArgs.length !== 3))
+      return false;
     const evArg = unwrapExpression(firstBindArg);
     if (!Node.isStringLiteral(evArg)) return false;
     if (bindArgs.length === 3 && bindArgs[1]) {
@@ -255,7 +305,11 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
         return false;
       }
     }
-    const evName = evArg.getLiteralText().toLowerCase().trim().replace(/\s+/g, ' ');
+    const evName = evArg
+      .getLiteralText()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, " ");
     return (
       JQUERY_FOCUS_EVENT_NAMES.has(evName) ||
       (usesValidityCheck && JQUERY_VALIDITY_EVENT_NAMES.has(evName))
@@ -266,17 +320,21 @@ function isJQueryParentClassToggle(node: CallExpression): boolean {
 }
 
 const MATCH_MESSAGE =
-  'JavaScript event listener toggles state class on parent element to coordinate container styling; replace with CSS :has() selector on the container.';
+  "JavaScript event listener toggles state class on parent element to coordinate container styling; replace with CSS :has() selector on the container.";
 
 function isNativeParentClassListToggle(node: CallExpression): boolean {
   const callExpr = unwrapExpression(node.getExpression());
   if (!Node.isPropertyAccessExpression(callExpr)) return false;
 
   const method = callExpr.getName();
-  if (method !== 'add' && method !== 'remove' && method !== 'toggle') return false;
+  if (method !== "add" && method !== "remove" && method !== "toggle")
+    return false;
 
   const classListObj = unwrapExpression(callExpr.getExpression());
-  if (!Node.isPropertyAccessExpression(classListObj) || classListObj.getName() !== 'classList') {
+  if (
+    !Node.isPropertyAccessExpression(classListObj) ||
+    classListObj.getName() !== "classList"
+  ) {
     return false;
   }
 
@@ -290,50 +348,55 @@ function isNativeParentClassListToggle(node: CallExpression): boolean {
     );
   });
 
-  return hasStateClass && isEnclosedInFormEventHandler(node) && !hasDisallowedHandlerCalls(node);
+  return (
+    hasStateClass &&
+    isEnclosedInFormEventHandler(node) &&
+    !hasDisallowedHandlerCalls(node)
+  );
 }
 
-export const childStateBasedStylingJsMatcher: JsRuleMatcher = createJsCallMatcher({
-  fastTokens: [
-    ['classList', 'addClass', 'removeClass', 'toggleClass'],
-    ['parentElement', 'parentNode', 'closest', 'parent', 'parents'],
-    [
-      'focus',
-      'Focus',
-      'blur',
-      'Blur',
-      'focusin',
-      'focusout',
-      'change',
-      'Change',
-      'input',
-      'Input',
+export const childStateBasedStylingJsMatcher: JsRuleMatcher =
+  createJsCallMatcher({
+    fastTokens: [
+      ["classList", "addClass", "removeClass", "toggleClass"],
+      ["parentElement", "parentNode", "closest", "parent", "parents"],
+      [
+        "focus",
+        "Focus",
+        "blur",
+        "Blur",
+        "focusin",
+        "focusout",
+        "change",
+        "Change",
+        "input",
+        "Input",
+      ],
     ],
-  ],
-  featureGuardTokens: [':has', 'has('],
-  dedupeLines: true,
-  matchCall: (node) =>
-    isJQueryParentClassToggle(node) || isNativeParentClassListToggle(node)
-      ? MATCH_MESSAGE
-      : null,
-});
+    featureGuardTokens: [":has", "has("],
+    dedupeLines: true,
+    matchCall: (node) =>
+      isJQueryParentClassToggle(node) || isNativeParentClassListToggle(node)
+        ? MATCH_MESSAGE
+        : null,
+  });
 
 export const childStateBasedStylingJsParentClassRule: AnalyzerRule = {
-  id: 'child-state-based-styling/js-parent-class',
-  guideId: 'child-state-based-styling',
-  guideHash: '938e4db9a7d7',
+  id: "child-state-based-styling/js-parent-class",
+  guideId: "child-state-based-styling",
+  guideHash: "938e4db9a7d7",
   summary:
-    'JavaScript form control event listeners toggle classes on parent/closest containers to simulate container state styling; replace with CSS container :has() selectors.',
+    "JavaScript form control event listeners toggle classes on parent/closest containers to simulate container state styling; replace with CSS container :has() selectors.",
   matcher: childStateBasedStylingJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A JavaScript or jQuery event listener on a form control (focus, blur, focusin, focusout, change, or input) toggles state classes (focus, focused, active, checked, valid, invalid, empty, filled, has-value) on parentElement, parentNode, closest(...), $(this).parent(...), or $(this).parents(...) to visually style the parent container.',
-      'The parent state synchronization can be replaced by the native CSS :has() selector on the container (e.g. .field:has(:focus) or .field:has(:invalid)).',
+      "A JavaScript or jQuery event listener on a form control (focus, blur, focusin, focusout, change, or input) toggles state classes (focus, focused, active, checked, valid, invalid, empty, filled, has-value) on parentElement, parentNode, closest(...), $(this).parent(...), or $(this).parents(...) to visually style the parent container.",
+      "The parent state synchronization can be replaced by the native CSS :has() selector on the container (e.g. .field:has(:focus) or .field:has(:invalid)).",
     ],
     dropWhen: [
-      'The listener also triggers imperative JavaScript animations, non-styling application state changes, form wizard navigation, or analytics.',
-      'The listener manages modal dialog or dropdown overlay opening/closing rather than form input container state styling.',
-      'The code is guarded by a feature query checking support for CSS :has().',
+      "The listener also triggers imperative JavaScript animations, non-styling application state changes, form wizard navigation, or analytics.",
+      "The listener manages modal dialog or dropdown overlay opening/closing rather than form input container state styling.",
+      "The code is guarded by a feature query checking support for CSS :has().",
     ],
   },
 };

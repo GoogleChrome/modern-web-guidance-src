@@ -3,17 +3,16 @@ import type {
   CssMatcherContext,
   CssRuleMatcher,
   CssRuleView,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const FLICKER_FREE_CLIENT_SIDE_AB_TESTING_GUIDE_HASH = '514db845f27b';
+export const FLICKER_FREE_CLIENT_SIDE_AB_TESTING_GUIDE_HASH = "514db845f27b";
 
-const ANTI_FLICKER_SELECTOR_REGEX =
-  /\.(?:async-hide|ab-loading)(?![\w-])/i;
+const ANTI_FLICKER_SELECTOR_REGEX = /\.(?:async-hide|ab-loading)(?![\w-])/i;
 const ZERO_OPACITY_VALUE_REGEX = /^0(?:\.0+)?(?:\s*!important)?$/i;
 
 export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
-  kind: 'css',
-  fastTokens: ['async-hide', 'ab-loading'],
+  kind: "css",
+  fastTokens: ["async-hide", "ab-loading"],
   matchRule: (styleRule: CssRuleView, ctx: CssMatcherContext) => {
     const sourceText = ctx.rawFileText ?? ctx.stylesheetText;
     if (
@@ -29,7 +28,7 @@ export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
       return null;
     }
 
-    const opacityValue = (styleRule.getPropertyValue('opacity') ?? '').trim();
+    const opacityValue = (styleRule.getPropertyValue("opacity") ?? "").trim();
     if (!ZERO_OPACITY_VALUE_REGEX.test(opacityValue)) {
       return null;
     }
@@ -42,8 +41,8 @@ export const flickerFreeClientSideAbTestingMatcher: CssRuleMatcher = {
 };
 
 export const flickerFreeClientSideAbTestingRule: AnalyzerRule = {
-  id: 'flicker-free-client-side-ab-testing',
-  guideId: 'flicker-free-client-side-ab-testing',
+  id: "flicker-free-client-side-ab-testing",
+  guideId: "flicker-free-client-side-ab-testing",
   guideHash: FLICKER_FREE_CLIENT_SIDE_AB_TESTING_GUIDE_HASH,
   summary:
     'Replace legacy .async-hide { opacity: 0 !important } anti-flicker snippets with <script async blocking="render"> in <head>.',
@@ -54,7 +53,7 @@ export const flickerFreeClientSideAbTestingRule: AnalyzerRule = {
     ],
     dropWhen: [
       'The anti-flicker class is guarded as a fallback behind !Object.hasOwn(HTMLScriptElement.prototype, "blocking") alongside <script blocking="render">.',
-      'Standard CSS opacity transitions, animations, or component-level loading states unrelated to full-page A/B test anti-flicker snippets.',
+      "Standard CSS opacity transitions, animations, or component-level loading states unrelated to full-page A/B test anti-flicker snippets.",
     ],
   },
 };

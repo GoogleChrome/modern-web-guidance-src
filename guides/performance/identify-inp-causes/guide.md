@@ -35,7 +35,7 @@ The `web-vitals` library is a tiny library used to measure Core Web Vitals and o
 ```javascript
 // Use the attribution build to get Long Animation Frame data
 // alongside the INP metric value.
-import { onINP } from 'web-vitals/attribution';
+import { onINP } from "web-vitals/attribution";
 
 onINP((metric) => {
   const { attribution } = metric;
@@ -53,9 +53,9 @@ onINP((metric) => {
   // Beacon script, style, and layout attribution for the INP interaction,
   // so you can identify the root cause in production.
   navigator.sendBeacon(
-    '/analytics',
+    "/analytics",
     JSON.stringify({
-      name: 'INP',
+      name: "INP",
       value: metric.value,
       // These fields give the INP subparts:
       inputDelay: attribution.inputDelay,
@@ -76,13 +76,14 @@ onINP((metric) => {
       // (with forcedStyleAndLayoutDuration as a combined fallback):
       forcedStyleDuration: longestScript?.entry?.forcedStyleDuration,
       forcedLayoutDuration: longestScript?.entry?.forcedLayoutDuration,
-      forcedStyleAndLayoutDuration: longestScript?.entry?.forcedStyleAndLayoutDuration,
+      forcedStyleAndLayoutDuration:
+        longestScript?.entry?.forcedStyleAndLayoutDuration,
       // Rendering-phase style and layout work across the interaction's frames
       // (with totalStyleAndLayoutDuration as a combined fallback):
       renderStyleDuration,
       renderLayoutDuration,
-      totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration
-    })
+      totalStyleAndLayoutDuration: attribution.totalStyleAndLayoutDuration,
+    }),
   );
 });
 ```
@@ -109,5 +110,6 @@ The Long Animation Frames API provides optional, additional details. It can be s
 {# {{ BASELINE_STATUS("tmp-long-animation-frames-style-layout") }} #}
 
 If your Baseline target supports the Long Animation Frames API (`long-animation-frames`) but does not support separate style and layout duration properties (`styleDuration` and `layoutDuration` on `PerformanceLongAnimationFrameTiming`, or `forcedStyleDuration` and `forcedLayoutDuration` on `PerformanceScriptTiming`), fall back to the combined style-and-layout timings:
+
 - Use `script.forcedStyleAndLayoutDuration` on `PerformanceScriptTiming` for synchronous forced style and layout work inside scripts.
 - Use `metric.attribution.totalStyleAndLayoutDuration` in `web-vitals/attribution` (or compute `(entry.paintTime || entry.startTime + entry.duration) - entry.styleAndLayoutStart` on each `PerformanceLongAnimationFrameTiming` entry) for combined style and layout work.

@@ -118,7 +118,7 @@ index 92f6399..82bd02b 100644
  import TopStoryTeaserGrid from '../components/TopStoryTeaserGrid.astro';
  import Ad from '../components/AdSlotBanner';
 @@ -39,20 +40,7 @@ politicsArticles[2] = {
- 
+
  <Layout title="The DevTools Times">
      <!-- Top Stories Bar -->
 -    <div class="bg-white border-b border-gray-300">
@@ -136,12 +136,12 @@ index 92f6399..82bd02b 100644
 -        </div>
 -    </div>
 +    <TopStoriesCarousel articles={topStories} />
- 
+
      <!-- Main Content Area -->
      <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 @@ -81,4 +69,4 @@ politicsArticles[2] = {
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-         
+
      </div>
 -</Layout>
 \ No newline at end of file

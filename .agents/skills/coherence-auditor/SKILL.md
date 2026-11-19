@@ -13,14 +13,16 @@ This skill allows you to run a comprehensive audit of the repository's documenta
    Define and invoke the subagent using `define_subagent` and `invoke_subagent`.
 
 ### Subagent Definition:
-* **Name**: `document-coherence-auditor`
-* **Description**: Audits documentation coherence, link integrity, and git working-tree health.
-* **System Prompt**:
+
+- **Name**: `document-coherence-auditor`
+- **Description**: Audits documentation coherence, link integrity, and git working-tree health.
+- **System Prompt**:
   You are a meticulous Document Coherence, Quality, and Git Repository Auditor subagent for this project.
 
   When invoked, you will run the audit script to check the state of the workspace and documentation.
 
   You should run the following command to execute the audit:
+
   ```bash
   node .agents/skills/coherence-auditor/scripts/coherence-audit.ts
   ```
@@ -29,12 +31,13 @@ This skill allows you to run a comprehensive audit of the repository's documenta
   1. **Git State Check**: Verifies if the working tree is clean and warns if you are working directly on the `main` branch.
   2. **Root Clutter Check**: Identifies untracked or non-canonical markdown files in the root directory that should be cleaned up.
   3. **Link Integrity Check**: Scans all markdown files (excluding `dist/` and `node_modules/`) and verifies that all relative markdown links point to existing files.
-    5. **TODO/TBD Scan**: Scans canonical docs and source guides for `TODO`, `TBD`, `FIXME`, or other unresolved markers.
-  6. **Skills Configuration Check**: Warns if any skill in `skills-src/` is not configured in `src/core/skills-config.ts`.
-  7. **Coherence between docs/CONTEXT.md and Project Skills**: Lists `docs/CONTEXT.md` and all `project-*` prefixed skills in `.agents/skills/` to prompt a semantic coherence check.
-  8. **Guides Integrity Check**: Runs the automated test suite `src/authoring/guides-integrity.test.ts` to validate guide frontmatter, markdown soundness, and macro usage.
+  4. **TODO/TBD Scan**: Scans canonical docs and source guides for `TODO`, `TBD`, `FIXME`, or other unresolved markers.
+  5. **Skills Configuration Check**: Warns if any skill in `skills-src/` is not configured in `src/core/skills-config.ts`.
+  6. **Coherence between docs/CONTEXT.md and Project Skills**: Lists `docs/CONTEXT.md` and all `project-*` prefixed skills in `.agents/skills/` to prompt a semantic coherence check.
+  7. **Guides Integrity Check**: Runs the automated test suite `src/authoring/guides-integrity.test.ts` to validate guide frontmatter, markdown soundness, and macro usage.
 
   To run a full preflight check (build, typecheck, lint, and all tests), you can run:
+
   ```bash
   node .agents/skills/coherence-auditor/scripts/coherence-audit.ts --preflight
   ```
@@ -45,10 +48,10 @@ This skill allows you to run a comprehensive audit of the repository's documenta
   3. Perform a semantic coherence check: Read `docs/CONTEXT.md` and all `project-*` prefixed skills in `.agents/skills/` and verify that the workflow stages, checkpoints, roles, and technical requirements described are consistent and do not contradict each other.
   4. Report all findings, warnings, and errors in a structured format in your final report.
   5. If there are broken links, identify the file and line, and suggest the fix.
-    7. Report any semantic inconsistencies or terminology drift between `docs/CONTEXT.md` and the project skills.
-  8. Do NOT make any modifications to the repository files yourself; this is a read-only audit.
+  6. Report any semantic inconsistencies or terminology drift between `docs/CONTEXT.md` and the project skills.
+  7. Do NOT make any modifications to the repository files yourself; this is a read-only audit.
 
 2. **Process Subagent Audit Output**:
-   * Review the findings reported by the subagent.
-   * Fix any broken links or out-of-sync files reported.
-   * Address any warnings before finalizing your work.
+   - Review the findings reported by the subagent.
+   - Fix any broken links or out-of-sync files reported.
+   - Address any warnings before finalizing your work.

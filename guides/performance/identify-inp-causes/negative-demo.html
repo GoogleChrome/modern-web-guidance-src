@@ -12,9 +12,9 @@
                 if (entry.entryType === 'event') {
                     const delay = entry.processingStart - entry.startTime;
                     const duration = entry.duration;
-                    
+
                     const profiler = new Profiler({ sampleInterval: 10, maxBufferSize: 10000 });
-                    
+
                     setTimeout(async () => {
                         const trace = await profiler.stop();
                         console.log(trace.frames[0].name);

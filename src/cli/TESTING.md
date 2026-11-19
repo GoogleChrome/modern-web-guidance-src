@@ -52,5 +52,3 @@ Example one-liners to test integration:
 ```sh
 claude --plugin-dir ~/code/modern-web-guidance-src/dist/skills-cli --dangerously-skip-permissions -p "add an address form to the bottom of the page"
 ```
-
-

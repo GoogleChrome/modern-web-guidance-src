@@ -134,10 +134,10 @@ Utility classes must win over arbitrary component styles (hence `!important`) an
 There are two types of fallbacks, depending on how critical the branching is and what constitutes an acceptable fallback.
 
 1. For critical branching, where all states must work correctly even if style queries are not supported, you simply cannot use style queries.
-Instead, use the naive approach above, duplicating rules for each state.
-Utility classes can still be used, as long as they are also defined that way.
+   Instead, use the naive approach above, duplicating rules for each state.
+   Utility classes can still be used, as long as they are also defined that way.
 2. For non-critical branching, where a default state is acceptable, you can define the base styles outside of any `@container` rule, and only use style queries as overrides.
-This preserves most of the spirit of this approach, its main downside being the coupling of values that overrides introduce.
+   This preserves most of the spirit of this approach, its main downside being the coupling of values that overrides introduce.
 
 ```css
 #logo-dark {

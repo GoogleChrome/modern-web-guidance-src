@@ -20,9 +20,7 @@ Popovers can be toggled open and closed using a single button.
 ```html
 <!-- MANDATORY: The commandfor attribute links the invoker to the ID of the target element so the browser knows what to control. -->
 <!-- MANDATORY: The command attribute specifies the action to perform. Use 'toggle-popover' to handle both open and close states automatically. -->
-<button commandfor="my-popover" command="toggle-popover">
-  Toggle Popover
-</button>
+<button commandfor="my-popover" command="toggle-popover">Toggle Popover</button>
 
 <!-- MANDATORY: The target element must have the popover attribute to be controlled as a popover. -->
 <div id="my-popover" popover>
@@ -95,8 +93,8 @@ Install the polyfill via npm (`npm install invokers-polyfill`). This approach is
 ```javascript
 // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
 // Conditionally load the invokers-polyfill only in browsers lacking native support.
-if (!('commandForElement' in HTMLButtonElement.prototype)) {
-  import('invokers-polyfill');
+if (!("commandForElement" in HTMLButtonElement.prototype)) {
+  import("invokers-polyfill");
 }
 ```
 
@@ -107,8 +105,8 @@ For projects without a bundler, dynamically import the polyfill directly from a 
 <script type="module">
   // MANDATORY: Feature detect 'commandForElement' on HTMLButtonElement.prototype.
   // Conditionally load the invokers-polyfill from a CDN only in browsers lacking native support.
-  if (!('commandForElement' in HTMLButtonElement.prototype)) {
-    import('https://esm.run/invokers-polyfill');
+  if (!("commandForElement" in HTMLButtonElement.prototype)) {
+    import("https://esm.run/invokers-polyfill");
   }
 </script>
 ```

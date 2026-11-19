@@ -1,37 +1,46 @@
-import { test, expect } from '../../test-fixture.ts';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "../../test-fixture.ts";
+import * as fs from "fs";
+import * as path from "path";
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable is required');
+  throw new Error("TARGET_FILE environment variable is required");
 }
 
 const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 
-test.describe('Passkey Authentication Expectations', () => {
+test.describe("Passkey Authentication Expectations", () => {
   test.beforeEach(async ({ page, TARGET_URL }) => {
     // Intercept external polyfill CDNs so offline sandboxes do not stall or hang
-    await page.route(/https?:\/\/(esm\.sh|cdn\.jsdelivr\.net|unpkg\.com)\/.*/, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/javascript',
-        body: 'export default {}; export const parseRequestOptionsFromJSON = (x) => x;',
-      });
-    });
+    await page.route(
+      /https?:\/\/(esm\.sh|cdn\.jsdelivr\.net|unpkg\.com)\/.*/,
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/javascript",
+          body: "export default {}; export const parseRequestOptionsFromJSON = (x) => x;",
+        });
+      },
+    );
 
-    if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
-      await page.route('http://localhost/**', async (route) => {
+    if (
+      TARGET_URL.startsWith("http://localhost/") ||
+      TARGET_URL === `http://localhost/${demoName}`
+    ) {
+      await page.route("http://localhost/**", async (route) => {
         const requestPath = new URL(route.request().url()).pathname;
-        const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
+        const localFilePath = path.join(
+          targetDir,
+          requestPath === "/" ? demoName : requestPath,
+        );
 
         if (fs.existsSync(localFilePath)) {
           const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
           await route.fulfill({
             path: localFilePath,
-            ...(isJs ? { contentType: 'application/javascript' } : {}),
+            ...(isJs ? { contentType: "application/javascript" } : {}),
           });
         } else {
           await route.continue();
@@ -53,30 +62,31 @@ test.describe('Passkey Authentication Expectations', () => {
       // Mock window.fetch relative endpoints
       const originalFetch = window.fetch;
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : (input as any).url || '';
-        if (url.includes('/api/login/options')) {
+        const url =
+          typeof input === "string" ? input : (input as any).url || "";
+        if (url.includes("/api/login/options")) {
           const payload = {
-            challenge: 'fake-reauth-challenge',
-            rpId: 'localhost',
+            challenge: "fake-reauth-challenge",
+            rpId: "localhost",
             allowCredentials: [],
-            userVerification: 'preferred'
+            userVerification: "preferred",
           };
           return {
             ok: true,
             status: 200,
-            headers: new Headers({ 'Content-Type': 'application/json' }),
+            headers: new Headers({ "Content-Type": "application/json" }),
             json: async () => payload,
-            text: async () => JSON.stringify(payload)
+            text: async () => JSON.stringify(payload),
           } as any;
         }
-        if (url.includes('/api/login/verify')) {
-          const payload = { status: 'ok' };
+        if (url.includes("/api/login/verify")) {
+          const payload = { status: "ok" };
           return {
             ok: true,
             status: 200,
-            headers: new Headers({ 'Content-Type': 'application/json' }),
+            headers: new Headers({ "Content-Type": "application/json" }),
             json: async () => payload,
-            text: async () => JSON.stringify(payload)
+            text: async () => JSON.stringify(payload),
           } as any;
         }
         return originalFetch(input, init);
@@ -87,13 +97,14 @@ test.describe('Passkey Authentication Expectations', () => {
         OriginalPKC.getClientCapabilities = async () => {
           (window as any).__capabilitiesChecked = true;
           return {
-            passkeyPlatformAuthenticator: (window as any).__mockPasskeyPlatformAuthenticator,
-            conditionalGet: (window as any).__mockConditionalGet
+            passkeyPlatformAuthenticator: (window as any)
+              .__mockPasskeyPlatformAuthenticator,
+            conditionalGet: (window as any).__mockConditionalGet,
           };
         };
         OriginalPKC.parseRequestOptionsFromJSON = (opts: any) => {
           (window as any).__parseCalled = true;
-          return { ...opts, __magic: 'parsed' };
+          return { ...opts, __magic: "parsed" };
         };
         OriginalPKC.signalUnknownCredential = async (opts: any) => {
           (window as any).__signalCalled = true;
@@ -105,20 +116,28 @@ test.describe('Passkey Authentication Expectations', () => {
         navigator.credentials.get = async (options: any) => {
           (window as any).__getCalled = true;
           (window as any).__getOptions = options;
-          if (options?.mediation === 'conditional' && options?.signal) {
+          if (options?.mediation === "conditional" && options?.signal) {
             return await new Promise((_resolve, reject) => {
-              const onAbort = () => reject(new DOMException('Conditional UI request aborted', 'AbortError'));
+              const onAbort = () =>
+                reject(
+                  new DOMException(
+                    "Conditional UI request aborted",
+                    "AbortError",
+                  ),
+                );
               if (options.signal.aborted) {
                 onAbort();
               } else {
-                options.signal.addEventListener('abort', onAbort, { once: true });
+                options.signal.addEventListener("abort", onAbort, {
+                  once: true,
+                });
               }
             });
           }
           return {
-            id: 'fake-auth-id',
-            type: 'public-key',
-            toJSON: () => ({ id: 'fake-auth-id', type: 'public-key' })
+            id: "fake-auth-id",
+            type: "public-key",
+            toJSON: () => ({ id: "fake-auth-id", type: "public-key" }),
           } as any;
         };
       }
@@ -137,25 +156,33 @@ test.describe('Passkey Authentication Expectations', () => {
     });
   });
 
-  test('The HTML form annotates the username input element with autocomplete="username webauthn"', async ({ page, TARGET_URL }) => {
+  test('The HTML form annotates the username input element with autocomplete="username webauthn"', async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     const hasCorrectInput = await page.evaluate(() => {
-      const inputs = Array.from(document.querySelectorAll('input'));
-      return inputs.some(i => {
-         const autocomplete = i.getAttribute('autocomplete') || '';
-         const tokens = autocomplete.split(/\s+/);
-         const hasWebauthn = tokens.includes('webauthn');
-         const hasUsername = tokens.includes('username');
-         return hasWebauthn && hasUsername;
+      const inputs = Array.from(document.querySelectorAll("input"));
+      return inputs.some((i) => {
+        const autocomplete = i.getAttribute("autocomplete") || "";
+        const tokens = autocomplete.split(/\s+/);
+        const hasWebauthn = tokens.includes("webauthn");
+        const hasUsername = tokens.includes("username");
+        return hasWebauthn && hasUsername;
       });
     });
     expect(hasCorrectInput).toBe(true);
   });
 
-  test('The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available', async ({ page, TARGET_URL }) => {
+  test("The client feature detects capabilities using PublicKeyCredential.getClientCapabilities and skips initializing Conditional UI when conditionalGet is not available", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => (window as any).__capabilitiesChecked);
-    const capabilitiesChecked = await page.evaluate(() => (window as any).__capabilitiesChecked);
+    const capabilitiesChecked = await page.evaluate(
+      () => (window as any).__capabilitiesChecked,
+    );
     expect(capabilitiesChecked).toBe(true);
 
     await page.addInitScript(() => {
@@ -164,29 +191,45 @@ test.describe('Passkey Authentication Expectations', () => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => (window as any).__capabilitiesChecked);
     await page.evaluate(
-      () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
     );
     const conditionalGetCalledWhenUnsupported = await page.evaluate(
-      () => (window as any).__getCalled && (window as any).__getOptions?.mediation === 'conditional'
+      () =>
+        (window as any).__getCalled &&
+        (window as any).__getOptions?.mediation === "conditional",
     );
     expect(conditionalGetCalledWhenUnsupported).toBe(false);
   });
 
-  test('The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get', async ({ page, TARGET_URL }) => {
+  test("The client decodes fetched credential options via parseRequestOptionsFromJSON before invoking navigator.credentials.get", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => (window as any).__parseCalled);
-    const parseCalled = await page.evaluate(() => (window as any).__parseCalled);
+    const parseCalled = await page.evaluate(
+      () => (window as any).__parseCalled,
+    );
     expect(parseCalled).toBe(true);
   });
 
-  test('The application registers Conditional UI suggestions automatically on load with mediation="conditional"', async ({ page, TARGET_URL }) => {
+  test('The application registers Conditional UI suggestions automatically on load with mediation="conditional"', async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => (window as any).__getCalled);
     const getOptions = await page.evaluate(() => (window as any).__getOptions);
-    expect(getOptions?.mediation).toBe('conditional');
+    expect(getOptions?.mediation).toBe("conditional");
   });
 
-  test('The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users', async ({ page, TARGET_URL }) => {
+  test("The explicit passkey sign-in button click aborts pending Conditional UI autofill suggestions prior to prompting users", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     await page.waitForFunction(() => (window as any).__getCalled);
     await page.evaluate(() => {
@@ -194,26 +237,40 @@ test.describe('Passkey Authentication Expectations', () => {
     });
     const button = page.locator('[data-testid="auth-button"]');
     await button.click();
-    await page.waitForFunction(() => (window as any).__mockAbortControllerCalled && (window as any).__getCalled);
-    const abortCalled = await page.evaluate(() => (window as any).__mockAbortControllerCalled);
+    await page.waitForFunction(
+      () =>
+        (window as any).__mockAbortControllerCalled &&
+        (window as any).__getCalled,
+    );
+    const abortCalled = await page.evaluate(
+      () => (window as any).__mockAbortControllerCalled,
+    );
     expect(abortCalled).toBe(true);
     const getOptions = await page.evaluate(() => (window as any).__getOptions);
-    expect(getOptions?.mediation === 'optional' || getOptions?.mediation === 'required' || getOptions?.mediation === undefined).toBe(true);
+    expect(
+      getOptions?.mediation === "optional" ||
+        getOptions?.mediation === "required" ||
+        getOptions?.mediation === undefined,
+    ).toBe(true);
   });
 
-  test('If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID', async ({ page, TARGET_URL }) => {
+  test("If the server verification endpoint returns an explicit HTTP 404 status, PublicKeyCredential.signalUnknownCredential is invoked passing the Base64URL credential ID", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.addInitScript(() => {
       const verifyFetch = window.fetch;
       window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-        const url = typeof input === 'string' ? input : (input as any).url || '';
-        if (url.includes('/api/login/verify')) {
-          const payload = { error: 'unknown credential' };
+        const url =
+          typeof input === "string" ? input : (input as any).url || "";
+        if (url.includes("/api/login/verify")) {
+          const payload = { error: "unknown credential" };
           return {
             ok: false,
             status: 404,
-            headers: new Headers({ 'Content-Type': 'application/json' }),
+            headers: new Headers({ "Content-Type": "application/json" }),
             json: async () => payload,
-            text: async () => JSON.stringify(payload)
+            text: async () => JSON.stringify(payload),
           } as any;
         }
         return verifyFetch(input, init);
@@ -225,20 +282,27 @@ test.describe('Passkey Authentication Expectations', () => {
     await button.click();
     await page.waitForFunction(() => (window as any).__signalCalled);
 
-    const signalCalled = await page.evaluate(() => (window as any).__signalCalled);
+    const signalCalled = await page.evaluate(
+      () => (window as any).__signalCalled,
+    );
     expect(signalCalled).toBe(true);
-    const signalOptions = await page.evaluate(() => (window as any).__signalOptions);
-    expect(signalOptions?.credentialId).toBe('fake-auth-id');
+    const signalOptions = await page.evaluate(
+      () => (window as any).__signalOptions,
+    );
+    expect(signalOptions?.credentialId).toBe("fake-auth-id");
   });
 
-  test('A successful credential verification updates the UI status to indicate successful authentication and session establishment', async ({ page, TARGET_URL }) => {
+  test("A successful credential verification updates the UI status to indicate successful authentication and session establishment", async ({
+    page,
+    TARGET_URL,
+  }) => {
     await page.goto(TARGET_URL);
     const button = page.locator('[data-testid="auth-button"]');
     await button.click();
 
     const status = page.locator('[data-testid="auth-status"]');
     await expect(status).toContainText(
-      /^(?!.*(?:not\s+signed\s+in|not\s+authenticated|unauthenticated|failed|error|unable|cancelled|canceled|invalid|unknown)).*(?:success|authenticated|signed\s+in|logged\s+in|welcome|verified)/i
+      /^(?!.*(?:not\s+signed\s+in|not\s+authenticated|unauthenticated|failed|error|unable|cancelled|canceled|invalid|unknown)).*(?:success|authenticated|signed\s+in|logged\s+in|welcome|verified)/i,
     );
   });
 });

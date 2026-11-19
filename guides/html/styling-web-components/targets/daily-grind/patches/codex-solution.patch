@@ -176,7 +176,7 @@ index 66c9173..0c50882 100644
 @@ -107,17 +107,29 @@
        margin-top: 20px;
      }
- 
+
 -    .card {
 -      background: white;
 -      padding: 20px;
@@ -196,7 +196,7 @@ index 66c9173..0c50882 100644
 +    drink-card .seasonal-title {
 +      letter-spacing: 0.02em;
      }
- 
+
 -    .card h3 {
 -      margin-bottom: 10px;
 +    /* The component exposes its action without exposing its DOM structure. */
@@ -209,7 +209,7 @@ index 66c9173..0c50882 100644
 +    drink-card[variant="featured"]::part(action):hover {
 +      background: var(--secondary);
      }
- 
+
      .btn {
 @@ -153,6 +165,7 @@
        font-size: 0.85rem;
@@ -217,11 +217,11 @@ index 66c9173..0c50882 100644
    </style>
 +  <script type="module" src="./drink-card.js"></script>
  </head>
- 
+
  <body>
 @@ -175,24 +188,21 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section class="seasonal-favorites">

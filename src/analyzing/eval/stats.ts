@@ -1,4 +1,4 @@
-export { CARD_ID_HEX_LENGTH, computeCardId } from '../scanners/index.ts';
+export { CARD_ID_HEX_LENGTH, computeCardId } from "../scanners/index.ts";
 export const Z_95 = 1.96;
 export const Z_SEQUENTIAL_STOPPING = 2.39;
 
@@ -12,7 +12,7 @@ export interface BinomialInterval {
   n: number;
 }
 
-export type SequentialStopDecision = 'pass' | 'fail' | 'continue';
+export type SequentialStopDecision = "pass" | "fail" | "continue";
 
 export interface SensitivitySpecificityResult {
   tpr: number;
@@ -58,12 +58,16 @@ export function checkSequentialStop(
   targetLowerBound: number,
   maxGrades: number = MAX_SEQUENTIAL_GRADES,
 ): SequentialStopDecision {
-  if (total < MIN_SEQUENTIAL_GRADES) return 'continue';
+  if (total < MIN_SEQUENTIAL_GRADES) return "continue";
 
-  const { lower, upper } = wilsonInterval(successes, total, Z_SEQUENTIAL_STOPPING);
-  if (lower >= targetLowerBound) return 'pass';
-  if (upper < targetLowerBound || total >= maxGrades) return 'fail';
-  return 'continue';
+  const { lower, upper } = wilsonInterval(
+    successes,
+    total,
+    Z_SEQUENTIAL_STOPPING,
+  );
+  if (lower >= targetLowerBound) return "pass";
+  if (upper < targetLowerBound || total >= maxGrades) return "fail";
+  return "continue";
 }
 
 function tallyPairedRatings(pairs: ReadonlyArray<readonly [string, string]>) {
@@ -79,7 +83,8 @@ function tallyPairedRatings(pairs: ReadonlyArray<readonly [string, string]>) {
   for (const count of categoryCounts.values()) {
     sumSquaredCounts += count * count;
   }
-  const sumSquaredProps = totalValues > 0 ? sumSquaredCounts / (totalValues * totalValues) : 0;
+  const sumSquaredProps =
+    totalValues > 0 ? sumSquaredCounts / (totalValues * totalValues) : 0;
   return {
     agreementCount,
     numCategories: categoryCounts.size,
@@ -100,10 +105,12 @@ export function krippendorffAlphaNominal(
   if (nUnits === 0) return 1;
   if (nUnits === 1) return pairs[0][0] === pairs[0][1] ? 1 : 0;
 
-  const { agreementCount, totalValues, sumSquaredCounts } = tallyPairedRatings(pairs);
+  const { agreementCount, totalValues, sumSquaredCounts } =
+    tallyPairedRatings(pairs);
   const observedDisagreement = (nUnits - agreementCount) / nUnits;
   const expectedDisagreement =
-    (totalValues * totalValues - sumSquaredCounts) / (totalValues * (totalValues - 1));
+    (totalValues * totalValues - sumSquaredCounts) /
+    (totalValues * (totalValues - 1));
 
   if (expectedDisagreement === 0) {
     return observedDisagreement === 0 ? 1 : 0;
@@ -121,14 +128,18 @@ export function gwetAc1Nominal(
   const nUnits = pairs.length;
   if (nUnits === 0) return 1;
 
-  const { agreementCount, numCategories, sumSquaredProps } = tallyPairedRatings(pairs);
+  const { agreementCount, numCategories, sumSquaredProps } =
+    tallyPairedRatings(pairs);
   if (numCategories <= 1) return 1;
 
   const observedAgreement = agreementCount / nUnits;
   const expectedChanceAgreement = (1 - sumSquaredProps) / (numCategories - 1);
   if (expectedChanceAgreement >= 1) return observedAgreement;
 
-  return (observedAgreement - expectedChanceAgreement) / (1 - expectedChanceAgreement);
+  return (
+    (observedAgreement - expectedChanceAgreement) /
+    (1 - expectedChanceAgreement)
+  );
 }
 
 /**

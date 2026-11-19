@@ -23,9 +23,9 @@ The migration is a two-step verification process: the new site claims the old si
 
 MANDATORY: Both the new and old origins MUST be **"Same-Site"**. They must share the same **Registrable Domain (eTLD+1)**.
 
-*   **Allowed**: Migrating from `app.example.com` to `new.example.com` (both share `example.com`).
-*   **Allowed**: Migrating from `example.com/app1` to `example.com/app2`.
-*   **Prohibited**: Migrating from `example.com` to `example.org` (different registrable domains).
+- **Allowed**: Migrating from `app.example.com` to `new.example.com` (both share `example.com`).
+- **Allowed**: Migrating from `example.com/app1` to `example.com/app2`.
+- **Prohibited**: Migrating from `example.com` to `example.org` (different registrable domains).
 
 ### 2. Configure the new application
 

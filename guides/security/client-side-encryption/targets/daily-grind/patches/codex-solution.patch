@@ -27,7 +27,7 @@ index 66c9173..11863ad 100644
 +    @media (max-width: 600px) { nav { flex-wrap: wrap; gap: 12px; } nav ul { flex-wrap: wrap; gap: 10px; } nav ul li { margin-left: 0; } .hero h1 { font-size: 2rem; } }
    </style>
  </head>
- 
+
 @@ -195,6 +206,27 @@
          </div>
        </div>
@@ -54,15 +54,15 @@ index 66c9173..11863ad 100644
 +      <p id="crypto-status" role="status" aria-live="polite">Initializing encryption…</p>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +239,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module" src="/src/main.ts"></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..28b0457 100644

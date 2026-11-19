@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test';
-import type { Page } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 const targetFile = process.env.TARGET_FILE;
 if (!targetFile) {
-  throw new Error('TARGET_FILE environment variable not set.');
+  throw new Error("TARGET_FILE environment variable not set.");
 }
 
 const filePath = path.resolve(targetFile);
@@ -42,9 +42,12 @@ test.describe(`field-sizing Expectations: ${demoName}`, () => {
   };
 
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/*', async (route) => {
+    await page.route("http://localhost/*", async (route) => {
       const requestPath = new URL(route.request().url()).pathname;
-      const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath.substring(1));
+      const localFilePath = path.join(
+        targetDir,
+        requestPath === "/" ? demoName : requestPath.substring(1),
+      );
 
       if (fs.existsSync(localFilePath)) {
         await route.fulfill({ path: localFilePath });
@@ -57,68 +60,99 @@ test.describe(`field-sizing Expectations: ${demoName}`, () => {
   });
 
   // 1. The input element has `field-sizing: content` applied.
-  test(`The input element has field-sizing: content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
-    expect(styles['field-sizing']).toBe('content');
+  test(`The input element has field-sizing: content applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(
+      page,
+      'input:not([type="submit"]):not([type="button"])',
+    );
+    expect(styles["field-sizing"]).toBe("content");
   });
 
   // 4. The input element has a minimum inline size (`min-inline-size` or `min-width`) applied.
-  test(`The input element has a minimum inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
-    const hasMinSize = !!styles['min-inline-size'] || !!styles['min-width'];
+  test(`The input element has a minimum inline size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(
+      page,
+      'input:not([type="submit"]):not([type="button"])',
+    );
+    const hasMinSize = !!styles["min-inline-size"] || !!styles["min-width"];
     expect(hasMinSize).toBe(true);
   });
 
   // 5. The input element has a maximum inline size (`max-inline-size` or `max-width`) applied.
-  test(`The input element has a maximum inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'input:not([type="submit"]):not([type="button"])');
-    const hasMaxSize = !!styles['max-inline-size'] || !!styles['max-width'];
+  test(`The input element has a maximum inline size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(
+      page,
+      'input:not([type="submit"]):not([type="button"])',
+    );
+    const hasMaxSize = !!styles["max-inline-size"] || !!styles["max-width"];
     expect(hasMaxSize).toBe(true);
   });
 
   // 6. The textarea element has `field-sizing: content` applied.
-  test(`The textarea element has field-sizing: content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'textarea');
-    expect(styles['field-sizing']).toBe('content');
+  test(`The textarea element has field-sizing: content applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "textarea");
+    expect(styles["field-sizing"]).toBe("content");
   });
 
   // 7. The textarea element has an explicit `height` of `auto` or `fit-content` applied.
-  test(`The textarea element has an explicit height of auto or fit-content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'textarea');
-    expect(['auto', 'fit-content']).toContain(styles['height']);
+  test(`The textarea element has an explicit height of auto or fit-content applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "textarea");
+    expect(["auto", "fit-content"]).toContain(styles["height"]);
   });
 
   // 8. The textarea element has an explicit inline size (`width` or `inline-size`) applied.
-  test(`The textarea element has an explicit inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'textarea');
-    const hasInlineSize = !!styles['width'] || !!styles['inline-size'];
+  test(`The textarea element has an explicit inline size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "textarea");
+    const hasInlineSize = !!styles["width"] || !!styles["inline-size"];
     expect(hasInlineSize).toBe(true);
   });
 
   // 9. The textarea element has a minimum block size (`min-block-size` or `min-height`) applied.
-  test(`The textarea element has a minimum block size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'textarea');
-    const hasMinBlockSize = !!styles['min-block-size'] || !!styles['min-height'];
+  test(`The textarea element has a minimum block size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "textarea");
+    const hasMinBlockSize =
+      !!styles["min-block-size"] || !!styles["min-height"];
     expect(hasMinBlockSize).toBe(true);
   });
 
   // 10. The textarea element has a maximum block size (`max-block-size` or `max-height`) applied.
-  test(`The textarea element has a maximum block size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'textarea');
-    const hasMaxBlockSize = !!styles['max-block-size'] || !!styles['max-height'];
+  test(`The textarea element has a maximum block size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "textarea");
+    const hasMaxBlockSize =
+      !!styles["max-block-size"] || !!styles["max-height"];
     expect(hasMaxBlockSize).toBe(true);
   });
 
   // 11. The select element has `field-sizing: content` applied.
-  test(`The select element has field-sizing: content applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'select');
-    expect(styles['field-sizing']).toBe('content');
+  test(`The select element has field-sizing: content applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "select");
+    expect(styles["field-sizing"]).toBe("content");
   });
 
   // 14. The select element has a maximum inline size (`max-inline-size` or `max-width`) applied.
-  test(`The select element has a maximum inline size applied`, async ({ page }) => {
-    const styles = await getAppliedStyles(page, 'select');
-    const hasMaxSize = !!styles['max-inline-size'] || !!styles['max-width'];
+  test(`The select element has a maximum inline size applied`, async ({
+    page,
+  }) => {
+    const styles = await getAppliedStyles(page, "select");
+    const hasMaxSize = !!styles["max-inline-size"] || !!styles["max-width"];
     expect(hasMaxSize).toBe(true);
   });
 });

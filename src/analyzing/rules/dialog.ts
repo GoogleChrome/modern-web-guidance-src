@@ -1,48 +1,49 @@
-import {
-  Node,
-  SyntaxKind,
-  type SourceFile,
-} from 'ts-morph';
+import { Node, SyntaxKind, type SourceFile } from "ts-morph";
 import {
   isProtectedByFeatureGuard,
   matchEventListenerCall,
   resolveCallableNode,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
+} from "../scanners/ast-helpers.ts";
 import type {
   AnalyzerMatch,
   AnalyzerRule,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const DIALOG_GUIDE_HASH = '288ac95fa652';
+export const DIALOG_GUIDE_HASH = "288ac95fa652";
 
-const CLOSEDBY_FEATURE_TOKENS = ['closedBy', 'closedby'] as const;
+const CLOSEDBY_FEATURE_TOKENS = ["closedBy", "closedby"] as const;
 
 function isDialogTargetText(text: string, targetNode?: Node): boolean {
   return (
-    text === 'this' ||
+    text === "this" ||
     /\b(?:dialog|dlg|modal)\b/i.test(text) ||
     (targetNode !== undefined && text === targetNode.getText().trim())
   );
 }
 
-function handlerCallsCloseOnDialog(handlerNode: Node, targetNode?: Node): boolean {
+function handlerCallsCloseOnDialog(
+  handlerNode: Node,
+  targetNode?: Node,
+): boolean {
   let callsClose = false;
   handlerNode.forEachDescendant((child) => {
     if (callsClose || !Node.isCallExpression(child)) return;
     const expr = unwrapExpression(child.getExpression());
-    if (Node.isPropertyAccessExpression(expr) && expr.getName() === 'close') {
-      const receiverText = unwrapExpression(expr.getExpression()).getText().trim();
+    if (Node.isPropertyAccessExpression(expr) && expr.getName() === "close") {
+      const receiverText = unwrapExpression(expr.getExpression())
+        .getText()
+        .trim();
       if (
         isDialogTargetText(receiverText, targetNode) ||
-        receiverText.endsWith('.target') ||
-        receiverText.endsWith('.current')
+        receiverText.endsWith(".target") ||
+        receiverText.endsWith(".current")
       ) {
         callsClose = true;
       }
-    } else if (Node.isIdentifier(expr) && expr.getText() === 'close') {
+    } else if (Node.isIdentifier(expr) && expr.getText() === "close") {
       callsClose = true;
     }
   });
@@ -51,7 +52,10 @@ function handlerCallsCloseOnDialog(handlerNode: Node, targetNode?: Node): boolea
 
 function isEventTargetExpression(expr: Node): boolean {
   const unwrapped = unwrapExpression(expr);
-  return Node.isPropertyAccessExpression(unwrapped) && unwrapped.getName() === 'target';
+  return (
+    Node.isPropertyAccessExpression(unwrapped) &&
+    unwrapped.getName() === "target"
+  );
 }
 
 function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
@@ -70,9 +74,9 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
 
       // matches('dialog') is valid backdrop check
       if (
-        methodName === 'matches' &&
+        methodName === "matches" &&
         Node.isStringLiteral(firstArg) &&
-        firstArg.getLiteralText().toLowerCase() === 'dialog'
+        firstArg.getLiteralText().toLowerCase() === "dialog"
       ) {
         found = true;
         return;
@@ -80,9 +84,12 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
 
       // !dialog.contains(event.target) or !modal.contains(event.target) outside click check
       if (
-        methodName === 'contains' &&
+        methodName === "contains" &&
         isEventTargetExpression(firstArg) &&
-        isDialogTargetText(unwrapExpression(expr.getExpression()).getText().trim(), targetNode)
+        isDialogTargetText(
+          unwrapExpression(expr.getExpression()).getText().trim(),
+          targetNode,
+        )
       ) {
         const parent = child.getParent();
         if (
@@ -97,9 +104,9 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
 
       // !e.target.closest('dialog') outside click check
       if (
-        methodName === 'closest' &&
+        methodName === "closest" &&
         Node.isStringLiteral(firstArg) &&
-        firstArg.getLiteralText().toLowerCase() === 'dialog'
+        firstArg.getLiteralText().toLowerCase() === "dialog"
       ) {
         const parent = child.getParent();
         if (
@@ -108,8 +115,8 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
             parent.getOperatorToken() === SyntaxKind.ExclamationToken) ||
           (parent &&
             Node.isBinaryExpression(parent) &&
-            (parent.getRight().getText() === 'null' ||
-              parent.getLeft().getText() === 'null'))
+            (parent.getRight().getText() === "null" ||
+              parent.getLeft().getText() === "null"))
         ) {
           found = true;
         }
@@ -141,15 +148,19 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
       const otherText = (leftIsTarget ? right : left).getText();
       if (
         isDialogTargetText(otherText, targetNode) ||
-        otherText.endsWith('.currentTarget')
+        otherText.endsWith(".currentTarget")
       ) {
         found = true;
         return;
       }
     }
 
-    const strNode = Node.isStringLiteral(left) ? left : Node.isStringLiteral(right) ? right : null;
-    if (strNode && strNode.getLiteralText().toUpperCase() === 'DIALOG') {
+    const strNode = Node.isStringLiteral(left)
+      ? left
+      : Node.isStringLiteral(right)
+        ? right
+        : null;
+    if (strNode && strNode.getLiteralText().toUpperCase() === "DIALOG") {
       const otherExpr = strNode === left ? right : left;
       if (
         Node.isPropertyAccessExpression(otherExpr) &&
@@ -163,7 +174,10 @@ function isDialogOrTargetComparison(node: Node, targetNode?: Node): boolean {
   return found;
 }
 
-function hasBoundingRectCoordinateCheck(handlerNode: Node, targetNode?: Node): boolean {
+function hasBoundingRectCoordinateCheck(
+  handlerNode: Node,
+  targetNode?: Node,
+): boolean {
   let hasGetBoundingClientRect = false;
   let hasClientCoords = false;
 
@@ -172,8 +186,11 @@ function hasBoundingRectCoordinateCheck(handlerNode: Node, targetNode?: Node): b
       const expr = unwrapExpression(child.getExpression());
       if (
         Node.isPropertyAccessExpression(expr) &&
-        expr.getName() === 'getBoundingClientRect' &&
-        isDialogTargetText(unwrapExpression(expr.getExpression()).getText(), targetNode)
+        expr.getName() === "getBoundingClientRect" &&
+        isDialogTargetText(
+          unwrapExpression(expr.getExpression()).getText(),
+          targetNode,
+        )
       ) {
         hasGetBoundingClientRect = true;
       }
@@ -182,10 +199,10 @@ function hasBoundingRectCoordinateCheck(handlerNode: Node, targetNode?: Node): b
     if (Node.isIdentifier(child) || Node.isPropertyAccessExpression(child)) {
       const text = Node.isIdentifier(child) ? child.getText() : child.getName();
       if (
-        text === 'clientX' ||
-        text === 'clientY' ||
-        text === 'pageX' ||
-        text === 'pageY'
+        text === "clientX" ||
+        text === "clientY" ||
+        text === "pageX" ||
+        text === "pageY"
       ) {
         hasClientCoords = true;
       }
@@ -199,14 +216,14 @@ function matchClickRegistration(
   node: Node,
 ): { readonly handlerNode: Node; readonly targetNode?: Node } | null {
   if (Node.isCallExpression(node)) {
-    return matchEventListenerCall(node, ['click']);
+    return matchEventListenerCall(node, ["click"]);
   }
   if (
     Node.isBinaryExpression(node) &&
     node.getOperatorToken().getKind() === SyntaxKind.EqualsToken
   ) {
     const left = unwrapExpression(node.getLeft());
-    if (Node.isPropertyAccessExpression(left) && left.getName() === 'onclick') {
+    if (Node.isPropertyAccessExpression(left) && left.getName() === "onclick") {
       return {
         handlerNode: resolveCallableNode(node.getRight()),
         targetNode: left.getExpression(),
@@ -217,17 +234,23 @@ function matchClickRegistration(
 }
 
 export const dialogJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+  kind: "js",
   fastTokens: [
-    ['click', 'onclick'],
-    ['close'],
-    ['target', 'getBoundingClientRect'],
+    ["click", "onclick"],
+    ["close"],
+    ["target", "getBoundingClientRect"],
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (
+    sourceFile: SourceFile,
+    ctx: JsMatcherContext,
+  ): AnalyzerMatch[] => {
     // If guarded by closedBy in file or feature check, skip
     if (
-      (ctx.fileContent.includes('closedBy') || ctx.fileContent.includes('closedby')) &&
-      /('closedBy'|"closedBy"|'closedby'|"closedby")\s+in\b/i.test(ctx.fileContent)
+      (ctx.fileContent.includes("closedBy") ||
+        ctx.fileContent.includes("closedby")) &&
+      /('closedBy'|"closedBy"|'closedby'|"closedby")\s+in\b/i.test(
+        ctx.fileContent,
+      )
     ) {
       return [];
     }
@@ -239,9 +262,18 @@ export const dialogJsMatcher: JsRuleMatcher = {
       if (
         !candidate ||
         isProtectedByFeatureGuard(node, CLOSEDBY_FEATURE_TOKENS) ||
-        !handlerCallsCloseOnDialog(candidate.handlerNode, candidate.targetNode) ||
-        (!isDialogOrTargetComparison(candidate.handlerNode, candidate.targetNode) &&
-          !hasBoundingRectCoordinateCheck(candidate.handlerNode, candidate.targetNode))
+        !handlerCallsCloseOnDialog(
+          candidate.handlerNode,
+          candidate.targetNode,
+        ) ||
+        (!isDialogOrTargetComparison(
+          candidate.handlerNode,
+          candidate.targetNode,
+        ) &&
+          !hasBoundingRectCoordinateCheck(
+            candidate.handlerNode,
+            candidate.targetNode,
+          ))
       ) {
         return;
       }
@@ -258,26 +290,24 @@ export const dialogJsMatcher: JsRuleMatcher = {
 };
 
 export const dialogRule: AnalyzerRule = {
-  id: 'dialog',
-  guideId: 'dialog',
+  id: "dialog",
+  guideId: "dialog",
   guideHash: DIALOG_GUIDE_HASH,
   summary:
     'Manual backdrop click listeners dismissing <dialog> should be modernized with declarative <dialog closedby="any">.',
   matcher: dialogJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'A click event listener attached to a <dialog> or modal checks event.target === dialog, event.target === event.currentTarget, or bounding box coordinates to dismiss the dialog via .close().',
-      'A script implements manual light-dismiss for an HTML <dialog> element when clicking outside the content area on the backdrop.',
+      "A click event listener attached to a <dialog> or modal checks event.target === dialog, event.target === event.currentTarget, or bounding box coordinates to dismiss the dialog via .close().",
+      "A script implements manual light-dismiss for an HTML <dialog> element when clicking outside the content area on the backdrop.",
     ],
     dropWhen: [
       'The listener is guarded by "closedBy" in HTMLDialogElement.prototype for progressive enhancement.',
-      'The click handler is attached to a dedicated close button (.btn-close, [data-dismiss]) rather than the dialog backdrop.',
-      'The dialog is opened as a non-modal dialog with .show() rather than .showModal().',
-      'The listener handles custom menu or popover light dismiss covered by popover attribute.',
+      "The click handler is attached to a dedicated close button (.btn-close, [data-dismiss]) rather than the dialog backdrop.",
+      "The dialog is opened as a non-modal dialog with .show() rather than .showModal().",
+      "The listener handles custom menu or popover light dismiss covered by popover attribute.",
     ],
   },
 };
 
-export default [
-  dialogRule,
-] satisfies readonly AnalyzerRule[];
+export default [dialogRule] satisfies readonly AnalyzerRule[];

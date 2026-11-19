@@ -144,7 +144,7 @@ index 66c9173..090b20d 100644
 +    }
    </style>
  </head>
- 
+
 @@ -165,6 +254,7 @@
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
@@ -152,10 +152,10 @@ index 66c9173..090b20d 100644
 +      <li class="passkey-entry" data-passkey-entry><button id="signInPasskeyBtn" class="passkey-btn" onclick="authenticateWithPasskey()">Sign in with Passkey</button></li>
      </ul>
    </nav>
- 
+
 @@ -175,6 +265,36 @@
    </header>
- 
+
    <main class="container">
 +    <section class="passkey-section passkey-entry" data-passkey-entry id="passkey-management-section">
 +      <h2 style="text-align: center; color: var(--primary);">Passkey Security &amp; Credentials</h2>
@@ -193,7 +193,7 @@ index 66c9173..090b20d 100644
 @@ -207,6 +327,344 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    const currentRpId = typeof window !== 'undefined' && window.location && window.location.hostname
 +      ? window.location.hostname
@@ -533,7 +533,7 @@ index 66c9173..090b20d 100644
 +    });
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..01a6505 100644

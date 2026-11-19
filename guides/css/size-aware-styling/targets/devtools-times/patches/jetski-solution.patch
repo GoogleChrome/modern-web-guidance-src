@@ -17,9 +17,9 @@ index af1fa02..db1d2c1 100644
  ) : (
 -    <article class="flex flex-col h-full group">
 -        <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
--            <Image 
--                src={image} 
--                alt={article.data.title} 
+-            <Image
+-                src={image}
+-                alt={article.data.title}
 -                width={400}
 -                height={225}
 -                format="webp"
@@ -36,9 +36,9 @@ index af1fa02..db1d2c1 100644
 +    <div class="card-container">
 +        <article class="card group">
 +            <a href={`${import.meta.env.BASE_URL}articles/${article.id}`} class="card-image-wrapper">
-+                <Image 
-+                    src={image} 
-+                    alt={article.data.title} 
++                <Image
++                    src={image}
++                    alt={article.data.title}
 +                    width={400}
 +                    height={225}
 +                    format="webp"

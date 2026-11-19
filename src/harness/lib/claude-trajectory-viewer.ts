@@ -1,6 +1,12 @@
-export function generateClaudeTrajectoryHtml(logData: any[], subagentsMap: Record<string, any[]> = {}): string {
+export function generateClaudeTrajectoryHtml(
+  logData: any[],
+  subagentsMap: Record<string, any[]> = {},
+): string {
   // Escape '<' in the JSON representation to prevent XSS or broken script tags
-  const safeData = JSON.stringify({ logData, subagentsMap }).replace(/</g, '\\u003c');
+  const safeData = JSON.stringify({ logData, subagentsMap }).replace(
+    /</g,
+    "\\u003c",
+  );
 
   return `<!DOCTYPE html>
 <html>
@@ -40,7 +46,7 @@ export function generateClaudeTrajectoryHtml(logData: any[], subagentsMap: Recor
     const logsContainer = document.getElementById('logs');
     const thinkingRegex = new RegExp('&lt;thinking&gt;([\\\\s\\\\S]*?)&lt;/thinking&gt;', 'g');
     const agentIdRegex = new RegExp('agentId:\\\\s*([a-zA-Z0-9_-]+)');
-    
+
     function escapeHtml(str) {
       return (str || '').toString()
         .replace(/&/g, '&amp;')
@@ -57,7 +63,7 @@ export function generateClaudeTrajectoryHtml(logData: any[], subagentsMap: Recor
         html = html.replace(thinkingRegex, '<div class="thought"><b>Thought:</b><br/>$1</div>');
         return '<div class="text-content">' + html + '</div>';
       }
-      
+
       if (Array.isArray(content)) {
         return content.map(block => {
           if (block.type === 'text') {
@@ -161,25 +167,25 @@ export function generateClaudeTrajectoryHtml(logData: any[], subagentsMap: Recor
 
     logData.forEach((entry, i) => {
       const div = document.createElement('div');
-      
+
       let role = entry.role || entry.type || 'unknown';
       let mainContent = entry.message || entry.content || entry;
-      
+
       if (entry.message && entry.message.content) {
           mainContent = entry.message.content;
           role = entry.message.role || role;
       }
 
       div.className = 'log-entry role-' + escapeHtml(role);
-      
+
       let innerHTML = \`<div class="meta">\${escapeHtml(role).toUpperCase()} (Entry \${i + 1})</div>\`;
       innerHTML += \`<div class="content-block">\${formatContent(mainContent)}</div>\`;
-      
+
       innerHTML += \`
         <div class="toggle-raw" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block'">Toggle Raw JSON</div>
         <pre class="raw-json">\${escapeHtml(JSON.stringify(entry, null, 2))}</pre>
       \`;
-      
+
       div.innerHTML = innerHTML;
       logsContainer.appendChild(div);
     });

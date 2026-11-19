@@ -10,7 +10,7 @@ import { getArticleImage } from '../../utils/images';
 export const getStaticPaths = (async () => {
     const articles = await getCollection('articles');
     const categories = [...new Set(articles.map(article => article.data.category.toLowerCase()))];
-    
+
     return categories.map(category => ({
         params: { category },
     }));
@@ -27,7 +27,7 @@ allArticlesInCategory.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf
 const featuredArticle = allArticlesInCategory[0];
 const otherArticles = allArticlesInCategory.slice(1);
 
-const randomArticleForHero = allArticlesInCategory.length > 0 
+const randomArticleForHero = allArticlesInCategory.length > 0
     ? allArticlesInCategory[Math.floor(Math.random() * allArticlesInCategory.length)]
     : null;
 
@@ -42,9 +42,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
         <!-- Dynamic Category Header -->
         <header class="relative h-64 rounded-b-lg overflow-hidden m-6 mt-0 bg-gray-800">
             {heroImage && (
-                <Image 
-                    src={heroImage} 
-                    alt={`Background for ${capitalizedCategory}`} 
+                <Image
+                    src={heroImage}
+                    alt={`Background for ${capitalizedCategory}`}
                     width={1200}
                     height={400}
                     format="webp"
@@ -68,9 +68,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
             {featuredArticle && featuredArticleImage && (
                 <section class="mb-8 pb-8 border-b border-gray-200">
                     <a href={`${import.meta.env.BASE_URL}articles/${featuredArticle.id}`} class="block group">
-                        <Image 
-                            src={featuredArticleImage} 
-                            alt={featuredArticle.data.title} 
+                        <Image
+                            src={featuredArticleImage}
+                            alt={featuredArticle.data.title}
                             width={1200}
                             height={675}
                             format="webp"

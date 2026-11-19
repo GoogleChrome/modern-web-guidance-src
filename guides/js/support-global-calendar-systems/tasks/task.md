@@ -1,6 +1,7 @@
 ---
 base_app: daily-grind
 ---
+
 - Add a world calendar converter section below Seasonal Favorites on the homepage where visitors can pick a date and see it displayed in cards for the Islamic (inside an element with id="islamic-date"), Hebrew, and Japanese calendars, showing each calendar's localized date (including era names for Japanese), converted year, numeric month, and month code, total months in that calendar year, whether the selected date is in the past, today, or future ("Past", "Future", or "Today"), and a breakdown of the months in that calendar year with each month's code and day count.
 - add a features section to the homepage that shows the current date in different world calendars so our international customers feel at home when checking our seasonal roasting dates. let's show cards for the islamic and hebrew calendars, with the islamic date element having ID islamic-date.
 - can you build a global date conversion tool on our main page? let's place it at the bottom. it should let visitors choose a date and display how it maps to hebrew, chinese, and islamic calendars. for the islamic calendar, display the nicely formatted date in an element with ID islamic-date. for each calendar, let's list every month code in that specific year along with the number of days in that month, show the stable month code of the selected date, compare it chronologically to today to show if it is past or future, and show the total number of months in that year.

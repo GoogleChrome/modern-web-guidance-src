@@ -8,7 +8,7 @@ index 66c9173..6628002 100644
 @@ -66,6 +66,55 @@
        color: var(--accent);
      }
- 
+
 +    .nav-promo {
 +      position: relative;
 +    }
@@ -62,7 +62,7 @@ index 66c9173..6628002 100644
        border: 1px solid var(--accent);
        padding: 5px 12px;
 @@ -74,11 +123,10 @@
- 
+
      /* Hero Section */
      .hero {
 +      position: relative;
@@ -79,7 +79,7 @@ index 66c9173..6628002 100644
 @@ -88,6 +136,25 @@
        padding: 0 20px;
      }
- 
+
 +    .hero-image,
 +    .hero::after {
 +      position: absolute;
@@ -105,7 +105,7 @@ index 66c9173..6628002 100644
 @@ -120,6 +187,16 @@
        color: var(--primary);
      }
- 
+
 +    .card img {
 +      display: block;
 +      width: 100%;
@@ -137,7 +137,7 @@ index 66c9173..6628002 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
    <header class="hero">
 +    <img class="hero-image" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
 +      alt="" width="1350" height="900" fetchpriority="high">
@@ -174,7 +174,7 @@ index 66c9173..6628002 100644
 @@ -66,6 +66,55 @@
        color: var(--accent);
      }
- 
+
 +    .nav-promo {
 +      position: relative;
 +    }
@@ -228,7 +228,7 @@ index 66c9173..6628002 100644
        border: 1px solid var(--accent);
        padding: 5px 12px;
 @@ -74,11 +123,10 @@
- 
+
      /* Hero Section */
      .hero {
 +      position: relative;
@@ -245,7 +245,7 @@ index 66c9173..6628002 100644
 @@ -88,6 +136,25 @@
        padding: 0 20px;
      }
- 
+
 +    .hero-image,
 +    .hero::after {
 +      position: absolute;
@@ -271,7 +271,7 @@ index 66c9173..6628002 100644
 @@ -120,6 +187,16 @@
        color: var(--primary);
      }
- 
+
 +    .card img {
 +      display: block;
 +      width: 100%;
@@ -303,7 +303,7 @@ index 66c9173..6628002 100644
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>
- 
+
    <header class="hero">
 +    <img class="hero-image" src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
 +      alt="" width="1350" height="900" fetchpriority="high">

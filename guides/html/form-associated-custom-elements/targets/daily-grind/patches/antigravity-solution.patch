@@ -314,7 +314,7 @@ index 66c9173..f2df76e 100644
 +      </div>
 +    </section>
    </main>
- 
+
    <footer>
 diff --git a/index.js b/index.js
 new file mode 100644

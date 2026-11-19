@@ -5,7 +5,7 @@ index 66c9173..d224213 100644
 @@ -93,6 +93,30 @@
        margin-bottom: 1rem;
      }
- 
+
 +    .lockup {
 +      width: min(100%, 640px);
 +      display: flex;
@@ -35,7 +35,7 @@ index 66c9173..d224213 100644
        max-width: 1100px;
 @@ -169,7 +193,7 @@
    </nav>
- 
+
    <header class="hero">
 -    <h1>Wake Up Your Senses</h1>
 +    <h1 class="lockup"><span>Wake Up</span> <span>Your</span> <span>Senses</span></h1>
@@ -45,7 +45,7 @@ index 66c9173..d224213 100644
 @@ -207,6 +231,19 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    if (!CSS.supports('text-fit', 'grow per-line-all')) {
 +      const fit = lockup => {
@@ -60,5 +60,5 @@ index 66c9173..d224213 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>

@@ -106,7 +106,7 @@ index 66c9173..e2d0321 100644
 +    }
    </style>
  </head>
- 
+
 @@ -194,6 +292,44 @@
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
@@ -151,4 +151,4 @@ index 66c9173..e2d0321 100644
 +      </div>
      </section>
    </main>
- 
+

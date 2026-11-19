@@ -3,7 +3,7 @@ index fc50012..a9d90f6 100644
 --- a/src/components/AdSlotFireplace.tsx
 +++ b/src/components/AdSlotFireplace.tsx
 @@ -24,9 +24,9 @@ function AdSlotFireplace() {
- 
+
    return (
      <>
 -      <div ref={topSlotRef} className="sticky top-0 h-[100px] z-10 col-span-full order-1"></div>
@@ -39,8 +39,8 @@ index af1fa02..5dbab17 100644
                      <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
 @@ -41,16 +41,20 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                  <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
-                     <Image 
-                         src={image} 
+                     <Image
+                         src={image}
 -                        alt=""
 +                        alt={article.data.title}
                          width={800}
@@ -61,7 +61,7 @@ index af1fa02..5dbab17 100644
      <article class="flex flex-col h-full group">
          <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
 @@ -59,6 +63,9 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
-                 alt={article.data.title} 
+                 alt={article.data.title}
                  width={400}
                  height={225}
 +                widths={[320, 400, 640]}
@@ -85,7 +85,7 @@ index f089dc0..9813e74 100644
 +++ b/src/components/BookmarkButton.tsx
 @@ -23,8 +23,14 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
    };
- 
+
    return (
 -    <button onClick={handleClick} className="p-1">
 -      <BookmarkIcon className={`h-5 w-5 ${isBookmarked ? 'text-amber-400 fill-current' : 'text-gray-400'}`}></BookmarkIcon>
@@ -108,11 +108,11 @@ index 6d031f5..33925f1 100644
 -import React, { useState } from 'react';
 +import React from 'react';
  import FlyoutMenu from './FlyoutMenu';
- 
+
  interface BottomNavProps {
 @@ -9,8 +9,6 @@ interface BottomNavProps {
  }
- 
+
  const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, multimedia }) => {
 -    const [activeCategory, setActiveCategory] = useState<string | null>(null);
 -
@@ -122,7 +122,7 @@ index 6d031f5..33925f1 100644
 @@ -18,46 +16,50 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
          'Lifestyle & Sports': ['lifestyle', 'sports', 'Urban Development'],
      };
- 
+
 -    const handleMouseLeave = () => {
 -        setActiveCategory(null);
 -    };
@@ -132,7 +132,7 @@ index 6d031f5..33925f1 100644
 -    const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
 +    const getPopoverId = (groupName: string) =>
 +        `flyout-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
- 
+
      return (
 -        <div onMouseLeave={handleMouseLeave}>
 +        <div>
@@ -140,13 +140,13 @@ index 6d031f5..33925f1 100644
 -                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
 -                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
 -                        return (
--                            <div 
+-                            <div
 -                                key={groupName}
 -                                onMouseEnter={() => setActiveCategory(groupName)}
 -                                className="h-full flex items-center"
 -                            >
--                                <a 
--                                    href="#" 
+-                                <a
+-                                    href="#"
 -                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
 -                                >
 -                                    <span>{groupName}</span>
@@ -179,8 +179,8 @@ index 6d031f5..33925f1 100644
 +                    </ul>
                  </nav>
              </div>
--            <FlyoutMenu 
--                isOpen={activeCategory !== null} 
+-            <FlyoutMenu
+-                isOpen={activeCategory !== null}
 -                categories={activeSubCategories.filter(c => categories.includes(c))}
 -                articles={articles}
 -                reports={filteredReports}
@@ -212,26 +212,26 @@ index 847fef0..49589e0 100644
 @@ -1,4 +1,4 @@
 -import React, { useState } from 'react';
 +import React from 'react';
- 
+
  interface CategoryNavItemProps {
      groupName: string;
 @@ -7,40 +7,38 @@ interface CategoryNavItemProps {
  }
- 
+
  const CategoryNavItem: React.FC<CategoryNavItemProps> = ({ groupName, subCategories, currentPath }) => {
 -    const [isFlyoutOpen, setIsFlyoutOpen] = useState(false);
 -
      const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
 +    const popoverId = `category-nav-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
- 
+
      return (
--        <div 
+-        <div
 -            className="relative"
 -            onMouseEnter={() => setIsFlyoutOpen(true)}
 -            onMouseLeave={() => setIsFlyoutOpen(false)}
 -        >
--            <a 
--                href="#" 
+-            <a
+-                href="#"
 +        <div className="relative">
 +            <button
 +                type="button"
@@ -285,7 +285,7 @@ index 37cf4bf..171d786 100644
 +++ b/src/components/FlyoutMenu.tsx
 @@ -1,38 +1,36 @@
  import React from 'react';
- 
+
  interface FlyoutMenuProps {
 -  isOpen: boolean;
 +  id?: string;
@@ -299,7 +299,7 @@ index 37cf4bf..171d786 100644
 +  reports?: any[];
 +  multimedia?: any[];
  }
- 
+
 -const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
 -  if (!isOpen) {
 -    return null;
@@ -324,7 +324,7 @@ index 37cf4bf..171d786 100644
 +  multimedia = [],
 +}) => {
 +  const topStories = articles.slice(0, 3);
- 
+
    return (
 -    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
 +    <div
@@ -334,7 +334,7 @@ index 37cf4bf..171d786 100644
 +    >
        <div className="container mx-auto px-4 py-6">
          <div className="grid grid-cols-4 gap-x-8">
-           
+
            {/* Column 1: SECTIONS */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
@@ -343,7 +343,7 @@ index 37cf4bf..171d786 100644
                {categories.map(category => (
                  <li key={category}>
 @@ -46,7 +44,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 2: TOP STORIES */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
@@ -352,7 +352,7 @@ index 37cf4bf..171d786 100644
                  {topStories.map(article => (
                      <li key={article.id}>
 @@ -58,11 +56,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 3: REPORTS */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
@@ -367,7 +367,7 @@ index 37cf4bf..171d786 100644
                                    <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
                                </div>
 @@ -81,11 +79,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 4: MULTIMEDIA */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
@@ -400,11 +400,11 @@ index 5f2d281..36a7217 100644
              />
          </a>
      </div>
- 
+
      <!-- Middle section: Main navigation links -->
 -    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
 +    <nav aria-label="Footer navigation" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-y-6 gap-x-4">
-         
+
          <!-- Column 1: NEWS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
@@ -413,7 +413,7 @@ index 5f2d281..36a7217 100644
                  <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
                  <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
 @@ -29,7 +32,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 2: ARTS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
@@ -422,7 +422,7 @@ index 5f2d281..36a7217 100644
                  <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
                  <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
 @@ -38,7 +41,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 3: LIFESTYLE -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
@@ -431,7 +431,7 @@ index 5f2d281..36a7217 100644
                  <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
                  <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
 @@ -48,7 +51,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 4: SCIENCE & TECH -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
@@ -440,7 +440,7 @@ index 5f2d281..36a7217 100644
                  <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
              </ul>
 @@ -60,17 +63,17 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 7: ACCOUNT -->
          <div class="col-span-2 sm:col-span-1">
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
@@ -463,10 +463,10 @@ index 5f2d281..36a7217 100644
 @@ -82,7 +85,7 @@ const baseUrl = import.meta.env.BASE_URL;
              </ul>
          </div>
- 
+
 -    </div>
 +    </nav>
- 
+
      <!-- Bottom section: Legal, copyright, and privacy -->
      <div class="border-t border-gray-300 mt-8 pt-6 text-xs text-gray-500">
 diff --git a/src/components/Header.astro b/src/components/Header.astro
@@ -481,7 +481,7 @@ index 980b279..7a576a9 100644
 +          <img src={`${baseUrl}logo.svg`} alt="The DevTools Times" width="872" height="102" class="w-80 h-auto mx-auto" />
          </a>
        </div>
- 
+
 diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
 index 4e6592b..5e10628 100644
 --- a/src/components/MenuButton.tsx
@@ -490,11 +490,11 @@ index 4e6592b..5e10628 100644
 -import React, { useState } from 'react';
 +import React from 'react';
  import FlyoutMenu from './FlyoutMenu';
- 
+
  interface Props {
 @@ -6,24 +6,19 @@ interface Props {
  }
- 
+
  export default function MenuButton({ categories }: Props) {
 -  const [isOpen, setIsOpen] = useState(false);
 -
@@ -530,7 +530,7 @@ index 29642be..0c26396 100644
 --- a/src/components/ReadingListButton.tsx
 +++ b/src/components/ReadingListButton.tsx
 @@ -24,8 +24,14 @@ export default function ReadingListButton() {
- 
+
    return (
      <>
 -      <button onClick={() => setIsOpen(true)} className="p-1">
@@ -559,10 +559,10 @@ index 10bfbad..1690b4d 100644
 --- a/src/components/ReadingListFlyout.tsx
 +++ b/src/components/ReadingListFlyout.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState, useEffect } from 'react';
 +import React, { useState, useEffect, useRef } from 'react';
- 
+
  interface Article {
    slug: string;
 @@ -11,10 +11,12 @@ interface Article {
@@ -571,22 +571,22 @@ index 10bfbad..1690b4d 100644
    onClose: () => void;
 +  isOpen?: boolean;
  }
- 
+
 -export default function ReadingListFlyout({ articles, onClose }: Props) {
 +export default function ReadingListFlyout({ articles, onClose, isOpen = false }: Props) {
    const [readingList, setReadingList] = useState<string[]>([]);
 +  const dialogRef = useRef<HTMLDialogElement>(null);
- 
+
    const fetchReadingList = async () => {
      const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
 @@ -23,19 +25,18 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    };
- 
+
    useEffect(() => {
 -    fetchReadingList();
 +    const dialog = dialogRef.current;
 +    if (!dialog) return;
- 
+
 -    const handleKeyDown = (event: KeyboardEvent) => {
 -      if (event.key === 'Escape') {
 -        onClose();
@@ -606,12 +606,12 @@ index 10bfbad..1690b4d 100644
 +      dialog.close();
 +    }
 +  }, [isOpen]);
- 
+
    const handleRemove = async (slug: string) => {
      await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
 @@ -51,37 +52,54 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
- 
+
    return (
 -    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -702,7 +702,7 @@ index 3f57913..50f494b 100644
      summary: string;
 +    image?: string;
  }
- 
+
  export default function SearchButton() {
 @@ -31,6 +32,8 @@ export default function SearchButton() {
      return (
@@ -733,10 +733,10 @@ index 9dabc6e..7108f2d 100644
 --- a/src/components/SearchFlyout.tsx
 +++ b/src/components/SearchFlyout.tsx
 @@ -1,5 +1,5 @@
- 
+
 -import React, { useState, useMemo, useEffect } from 'react';
 +import React, { useState, useMemo, useEffect, useRef } from 'react';
- 
+
  interface Article {
      slug: string;
 @@ -11,6 +11,7 @@ interface Article {
@@ -745,19 +745,19 @@ index 9dabc6e..7108f2d 100644
      onClose: () => void;
 +    isOpen?: boolean;
  }
- 
+
  // Function to shuffle an array and get the first N items
 @@ -18,23 +19,33 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
      return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
  };
- 
+
 -export default function SearchFlyout({ articles, onClose }: Props) {
 +export default function SearchFlyout({ articles, onClose, isOpen = false }: Props) {
      const [searchTerm, setSearchTerm] = useState('');
      const [suggestions, setSuggestions] = useState<Article[]>([]);
 +    const [fetchedArticles, setFetchedArticles] = useState<Article[]>([]);
 +    const dialogRef = useRef<HTMLDialogElement>(null);
- 
+
      useEffect(() => {
 -        const handleKeyDown = (event: KeyboardEvent) => {
 -            if (event.key === 'Escape') {
@@ -771,7 +771,7 @@ index 9dabc6e..7108f2d 100644
              }
 -        };
 -        window.addEventListener('keydown', handleKeyDown);
--        
+-
 -        // Bug: Redundant fetch for suggestions
 +        } else if (dialog.open) {
 +            dialog.close();
@@ -791,16 +791,16 @@ index 9dabc6e..7108f2d 100644
                  console.error('Failed to fetch suggestions:', error);
 @@ -42,77 +53,100 @@ export default function SearchFlyout({ articles, onClose }: Props) {
          };
- 
+
          fetchSuggestions();
 +    }, [isOpen]);
- 
+
 -        return () => {
 -            window.removeEventListener('keydown', handleKeyDown);
 -        };
 -    }, [onClose]);
 +    const availableArticles = articles.length > 0 ? articles : fetchedArticles;
- 
+
      const filteredArticles = useMemo(() => {
          if (!searchTerm) {
              return [];
@@ -812,7 +812,7 @@ index 9dabc6e..7108f2d 100644
          );
 -    }, [articles, searchTerm]);
 +    }, [availableArticles, searchTerm]);
- 
+
      return (
 -        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -945,12 +945,12 @@ index a7c52b6..181dd96 100644
 --- a/src/components/SignInForm.tsx
 +++ b/src/components/SignInForm.tsx
 @@ -41,7 +41,7 @@ export default function SignInForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -63,6 +63,8 @@ export default function SignInForm() {
@@ -976,12 +976,12 @@ index 589fe62..b1b089c 100644
 --- a/src/components/SignUpForm.tsx
 +++ b/src/components/SignUpForm.tsx
 @@ -42,7 +42,7 @@ export default function SignUpForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -64,6 +64,8 @@ export default function SignUpForm() {
@@ -1016,7 +1016,7 @@ index e015eae..c252d20 100644
 +++ b/src/components/TopStoryTeaserGrid.astro
 @@ -32,9 +32,9 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
      </h2>
- 
+
      <!-- Top Section: Large Article -->
 -    <div class="shadow-sm overflow-hidden mb-6 lg:mb-8">
 +    <article class="shadow-sm overflow-hidden mb-6 lg:mb-8">
@@ -1057,7 +1057,7 @@ index e015eae..c252d20 100644
          </div>
 -    </div>
 +    </article>
- 
+
      <!-- Bottom Section: Three Smaller Articles -->
      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
 @@ -67,10 +77,20 @@ const capitalizedCategory = topArticle.data.category.charAt(0).toUpperCase() + t
@@ -1104,46 +1104,46 @@ index af5e892..af5329f 100644
 --- a/src/content/articles/coastal-pulse.md
 +++ b/src/content/articles/coastal-pulse.md
 @@ -13,14 +13,14 @@ Living by the seaside offers a sensory experience that shifts with the tides. It
- 
+
  The air at the coast is rich in negative ions, which are thought to improve oxygen absorption and balance serotonin levels. Furthermore, the "blue space" effect—the mental clarity gained from being near water—is a well-documented phenomenon that reduces cortisol and encourages mindfulness.
- 
+
 -### The Coastal Environment
 +## The Coastal Environment
  **Microclimates:** Large bodies of water act as heat sinks, often resulting in cooler summers and milder winters compared to inland areas.
- 
+
  **Salt Spray & Ecology:** The high salinity creates a unique ecosystem where only hardy, salt-tolerant plants (halophytes) thrive.
- 
+
  **Tidal Dynamics:** Understanding the Lunar cycle is essential, as the gravitational pull of the moon creates the high and low tides that reshape the landscape daily.
- 
+
 -### Explore
 +## Explore
  While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
- 
+
  <script>
 diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
 index cc7e252..94df1a7 100644
 --- a/src/content/articles/coffee-alchemy.md
 +++ b/src/content/articles/coffee-alchemy.md
 @@ -13,7 +13,7 @@ Coffee is more than a morning ritual; it is a complex beverage derived from the
- 
+
  The profile of a cup depends heavily on the roast profile and extraction method. During roasting, chemical reactions like the Maillard reaction transform green beans into aromatic brown ones, developing over 800 distinct flavor compounds.
- 
+
 -### Key Varieties
 +## Key Varieties
  **Arabica:** Known for its acidity, sweetness, and nuanced floral notes.
- 
+
  **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
 diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
 index ee5cdd8..c4b9be0 100644
 --- a/src/content/articles/silent-architects.md
 +++ b/src/content/articles/silent-architects.md
 @@ -13,7 +13,7 @@ Plants are the quiet powerhouses of our planet, serving as the literal foundatio
- 
+
  Beyond just being "oxygen factories," plants are sophisticated organisms with complex systems. Their roots anchor the soil and prevent erosion, while their vascular tissues—xylem and phloem—act like a biological highway, transporting water and nutrients against the pull of gravity.
- 
+
 -### Why They Matter
 +## Why They Matter
- 
+
  *   **Biodiversity:** They provide habitats and food for countless species.
  *   **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
 diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
@@ -1153,7 +1153,7 @@ index dcf9696..a81d0ea 100644
 @@ -14,25 +14,24 @@ const { title } = Astro.props;
  const baseUrl = import.meta.env.BASE_URL;
  ---
- 
+
 -<!doctype html>
 +<!DOCTYPE html>
  <html lang="en">
@@ -1162,7 +1162,7 @@ index dcf9696..a81d0ea 100644
 +    <meta charset="utf-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
      <title>{title}</title>
- 
+
      <link rel="preconnect" href="https://fonts.googleapis.com" />
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1170,14 +1170,14 @@ index dcf9696..a81d0ea 100644
        href="https://fonts.googleapis.com/css2?family=Grenze:wght@500&display=swap"
        rel="stylesheet"
      />
- 
+
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
 -    <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
 +    <script is:inline defer fetchpriority="low" src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
- 
+
 -    <link rel="icon" href=`${baseUrl}/favicon.svg` />
 +    <link rel="icon" href={`${baseUrl}/favicon.svg`} />
- 
+
      <ClientRouter />
    </head>
 @@ -42,9 +41,7 @@ const baseUrl = import.meta.env.BASE_URL;
@@ -1202,16 +1202,16 @@ index 24fea39..53e127e 100644
 -const isBookmarked = readingList.includes(article.slug);
 +const isBookmarked = readingList.includes(article.id);
  ---
- 
+
  <Layout title={article.data.title}>
 @@ -58,48 +58,81 @@ const isBookmarked = readingList.includes(article.slug);
          </div>
- 
+
          <!-- Main Article Image -->
 -        <figure class="mb-5">
 -            {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
 -            {article.data.prompt_comment ? (
--                <img 
+-                <img
 -                    src={article.data.image}
 -                    alt={article.data.title}
 -                    width="1200"
@@ -1220,9 +1220,9 @@ index 24fea39..53e127e 100644
 -                    crossorigin="use-credentials"
 -                />
 -            ) : (
--                <Image 
--                    src={articleImage} 
--                    alt={article.data.title} 
+-                <Image
+-                    src={articleImage}
+-                    alt={article.data.title}
 -                    width={1200}
 -                    height={675}
 -                    format="webp"
@@ -1234,7 +1234,7 @@ index 24fea39..53e127e 100644
 +            <figure class="mb-5">
 +                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
 +                {article.data.prompt_comment ? (
-+                    <img 
++                    <img
 +                        src={article.data.image}
 +                        alt={article.data.title}
 +                        width="1200"
@@ -1244,9 +1244,9 @@ index 24fea39..53e127e 100644
 +                        crossorigin="use-credentials"
 +                    />
 +                ) : (
-+                    <Image 
-+                        src={articleImage} 
-+                        alt={article.data.title} 
++                    <Image
++                        src={articleImage}
++                        alt={article.data.title}
 +                        width={1200}
 +                        height={675}
 +                        widths={[480, 800, 1200]}
@@ -1267,7 +1267,7 @@ index 24fea39..53e127e 100644
 +            <div class="mb-5">
 +                {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
 +                {article.data.prompt_comment ? (
-+                    <img 
++                    <img
 +                        src={article.data.image}
 +                        alt={article.data.title}
 +                        width="1200"
@@ -1277,9 +1277,9 @@ index 24fea39..53e127e 100644
 +                        crossorigin="use-credentials"
 +                    />
 +                ) : (
-+                    <Image 
-+                        src={articleImage} 
-+                        alt={article.data.title} 
++                    <Image
++                        src={articleImage}
++                        alt={article.data.title}
 +                        width={1200}
 +                        height={675}
 +                        widths={[480, 800, 1200]}
@@ -1292,7 +1292,7 @@ index 24fea39..53e127e 100644
 +                )}
 +            </div>
 +        )}
- 
+
          <!-- Share Buttons & Comments -->
          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 pb-6 mb-6">
              <!-- Social Share Icons (Placeholders) -->
@@ -1315,10 +1315,10 @@ index 24fea39..53e127e 100644
 -                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
 +                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
              </div>
- 
+
          </div>
 @@ -117,6 +150,7 @@ const isBookmarked = readingList.includes(article.slug);
- 
+
      <!-- RELATED ARTICLES SECTION -->
      <section class="max-w-6xl mx-auto p-4 md:p-6 border-t border-gray-200 mt-8">
 +        <h2 class="text-2xl font-bold border-b-2 border-gray-900 pb-2 mb-6">Related Articles</h2>
@@ -1331,10 +1331,10 @@ index 79bf126..84670bc 100644
 +++ b/src/pages/category/[category].astro
 @@ -44,9 +44,12 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
              {heroImage && (
-                 <Image 
-                     src={heroImage} 
--                    alt={`Background for ${capitalizedCategory}`} 
-+                    alt="" 
+                 <Image
+                     src={heroImage}
+-                    alt={`Background for ${capitalizedCategory}`}
++                    alt=""
                      width={1200}
                      height={400}
 +                    widths={[480, 800, 1200]}
@@ -1344,7 +1344,7 @@ index 79bf126..84670bc 100644
                      quality={80}
                      class="absolute w-full h-full object-cover filter blur-md scale-110 z-0"
 @@ -73,6 +76,10 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
-                             alt={featuredArticle.data.title} 
+                             alt={featuredArticle.data.title}
                              width={1200}
                              height={675}
 +                            widths={[480, 800, 1200]}
@@ -1359,7 +1359,7 @@ index 92f6399..b656b80 100644
 --- a/src/pages/index.astro
 +++ b/src/pages/index.astro
 @@ -39,25 +39,25 @@ politicsArticles[2] = {
- 
+
  <Layout title="The DevTools Times">
      <!-- Top Stories Bar -->
 -    <div class="bg-white border-b border-gray-300">
@@ -1385,14 +1385,14 @@ index 92f6399..b656b80 100644
          </div>
 -    </div>
 +    </section>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </section>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <section class="p-4 md:p-6 text-center">
 diff --git a/src/pages/multimedia.astro b/src/pages/multimedia.astro
@@ -1455,15 +1455,15 @@ index b8fe01e..2da7a5f 100644
 -        throw new Error(`Image path is missing for article: ${article.slug}`);
 +        throw new Error(`Image path is missing for article: ${article.id}`);
      }
- 
+
      if (imagePath.startsWith('http')) {
 @@ -17,7 +17,8 @@ export async function getArticleImage(article: CollectionEntry<'articles'>) {
      }
- 
+
      // Find the matching image module in the glob import
 -    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(imagePath.split('/').pop()));
 +    const filename = imagePath.split('/').pop() ?? '';
 +    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(filename));
- 
+
      if (!imageModuleKey) {
          throw new Error(`Could not find image module for path: ${imagePath}`);

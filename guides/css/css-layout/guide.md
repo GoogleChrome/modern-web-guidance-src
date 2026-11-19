@@ -55,14 +55,26 @@ Walk the decision tree top-to-bottom and stop at the first match. Note that layo
 - Use the `place-*` shorthands (`place-content`, `place-items`, `place-self`) to align across both axes in one declaration.
 - Reach for intrinsic sizing (`min-content`, `max-content`, `fit-content()`) and flexible tracks (`fr`, `minmax()`) before fixed `width`/`height` — fewer media queries, more resilient layouts.
 - Do NOT use `overflow: hidden` to mask layout issues — fix them at the source.
-For example certain replaced elements like `<canvas>`, `<img>`, `<svg>`, `<video>`, `<iframe>` use `display: inline` by default, which can add a gap in certain layouts. Instead of clipping the gap with `overflow`, remove it by applying a block display-outside value (e.g. `display: block`, `grid`, `flex` etc).
+  For example certain replaced elements like `<canvas>`, `<img>`, `<svg>`, `<video>`, `<iframe>` use `display: inline` by default, which can add a gap in certain layouts. Instead of clipping the gap with `overflow`, remove it by applying a block display-outside value (e.g. `display: block`, `grid`, `flex` etc).
 - Use `aspect-ratio` to reserve space for media and prevent layout shift before assets load.
 
 ```css
-.sidebar       { inline-size: max-content; }    /* Size to longest unbreakable token. */
-.main-content  { inline-size: fit-content; }    /* Grow to available space, no further. */
-.media         { aspect-ratio: 16 / 9; inline-size: 100%; block-size: auto; }
-body.centered  { display: grid; place-content: center; min-block-size: 100dvb; }
+.sidebar {
+  inline-size: max-content;
+} /* Size to longest unbreakable token. */
+.main-content {
+  inline-size: fit-content;
+} /* Grow to available space, no further. */
+.media {
+  aspect-ratio: 16 / 9;
+  inline-size: 100%;
+  block-size: auto;
+}
+body.centered {
+  display: grid;
+  place-content: center;
+  min-block-size: 100dvb;
+}
 ```
 
 > For `calc-size()` and constraint-aware intrinsic sizing, see {{ GUIDE_REF("calculate-with-intrinsic-sizes") }}.
@@ -96,11 +108,27 @@ One-dimensional layout — items flow along a single **main** axis with alignmen
 - Don't set both `flex-basis` and `width`/`inline-size` on the same item — `flex-basis` takes precedence in a flex context and `width` is ignored. Use `flex-basis` (or the `flex` shorthand) as the single source of truth for sizing flex items.
 
 ```css
-.card-grid        { display: flex; flex-flow: row wrap; gap: 1rem; }
-.card-item        { flex: 1 1 250px; }                  /* grow, shrink, basis */
-.card-item-action { margin-inline-start: auto; }        /* Push to main-axis end. */
-.toolbar          { display: flex; align-items: safe center; }
-.tag-list         { display: flex; flex-wrap: wrap; flex-wrap: balance; gap: 0.5rem; }
+.card-grid {
+  display: flex;
+  flex-flow: row wrap;
+  gap: 1rem;
+}
+.card-item {
+  flex: 1 1 250px;
+} /* grow, shrink, basis */
+.card-item-action {
+  margin-inline-start: auto;
+} /* Push to main-axis end. */
+.toolbar {
+  display: flex;
+  align-items: safe center;
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  flex-wrap: balance;
+  gap: 0.5rem;
+}
 ```
 
 ## 3 Grid and subgrid
@@ -142,7 +170,7 @@ Two-dimensional layout — define rows AND columns explicitly, or let the engine
 - Don't expect `auto-fit`/`auto-fill` track size to come from item content — it comes from the `repeat()` size argument.
 - Don't use `grid-auto-flow: dense` on interactive content. It packs items efficiently but reorders them visually, breaking DOM-order keyboard tab flow.
 - Don't apply subgrid to both axes when the child count is variable. Extras land in the last track; use `grid-auto-rows`/`grid-auto-columns` for the implicit axis instead.
-- Don't confuse `justify-items`/`align-items` (aligns item content *within its track*) with `justify-content`/`align-content` (aligns the grid tracks *within the container*). Using the wrong one silently has no effect.
+- Don't confuse `justify-items`/`align-items` (aligns item content _within its track_) with `justify-content`/`align-content` (aligns the grid tracks _within the container_). Using the wrong one silently has no effect.
 - Don't use `repeat(auto-fit/auto-fill, ...)` without a definite `inline-size` on the container — inside `display: inline-grid` or an unsized flex item, the container has no width to divide, making track counts unpredictable.
 
 ### 3.1 Code example: grid and subgrid
@@ -161,9 +189,15 @@ Page shell: `<main class="page-layout">` contains `<header>`, `<aside>`, a `<sec
   gap: 1.5rem;
 }
 
-header  { grid-area: header; }
-aside   { grid-area: sidebar; }
-footer  { grid-area: footer; }
+header {
+  grid-area: header;
+}
+aside {
+  grid-area: sidebar;
+}
+footer {
+  grid-area: footer;
+}
 
 .card-grid {
   grid-area: main;
@@ -269,15 +303,15 @@ Manage layout shifts, scrollbars, and clipping predictably.
 .scrollable-list {
   max-block-size: 400px;
   overflow-y: auto;
-  scrollbar-gutter: stable;       /* Reserve scrollbar space. */
-  overscroll-behavior: contain;   /* No scroll chaining into the page. */
+  scrollbar-gutter: stable; /* Reserve scrollbar space. */
+  overscroll-behavior: contain; /* No scroll chaining into the page. */
 }
 
 .snippet {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  line-clamp: 3;                  /* Ignored where unsupported. */
+  line-clamp: 3; /* Ignored where unsupported. */
   overflow: clip;
 }
 ```
@@ -310,8 +344,14 @@ The specification is in development under the name "grid lanes" (e.g., `display:
 - Don't ship `grid-template-rows: masonry` as a hard requirement until your Baseline target catches up.
 
 ```css
-.gallery       { columns: 3 200px; column-gap: 1rem; }
-.gallery > *   { break-inside: avoid; margin-block-end: 1rem; }
+.gallery {
+  columns: 3 200px;
+  column-gap: 1rem;
+}
+.gallery > * {
+  break-inside: avoid;
+  margin-block-end: 1rem;
+}
 
 @supports (grid-template-rows: masonry) {
   .gallery {

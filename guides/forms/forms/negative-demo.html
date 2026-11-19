@@ -65,13 +65,13 @@
 
   <div id="app">
     <div style="font-size: 24px;">Registration</div>
-    
+
     <div class="form-wrapper">
       <div class="input-row">
         <input type="text" class="input-field" placeholder="First Name" oninput="checkValid(this)">
         <span class="label-text">First Name</span>
       </div>
-      
+
       <div class="input-row">
         <input type="text" class="input-field" placeholder="Last Name" oninput="checkValid(this)">
         <span class="label-text">Last Name</span>
@@ -169,7 +169,7 @@
           allValid = false;
         }
       }
-      
+
       if (allValid) {
         document.getElementById('btn-submit').style.opacity = "1";
         document.getElementById('btn-submit').style.pointerEvents = "auto";

@@ -21,11 +21,11 @@ Apply `appearance: base-select` to both the `<select>` element and its internal 
 
 ```css
 select.grid-picker {
-  &, &::picker(select) {
+  &,
+  &::picker(select) {
     appearance: base-select;
   }
 }
-
 ```
 
 ### 2. Style the Picker Container
@@ -61,7 +61,7 @@ You can add images, SVGs, or complex layouts inside them.
 
 ### 4. Style the selected option
 
-To style the selected *option*, use `option:checked`. For example:
+To style the selected _option_, use `option:checked`. For example:
 
 ```css
 .grid-picker option:checked {
@@ -97,8 +97,8 @@ select.grid-picker {
 
     &::checkmark {
       position: absolute;
-      inset-block-start: -.4em;
-      inset-inline-end: -.5em;
+      inset-block-start: -0.4em;
+      inset-inline-end: -0.5em;
       display: flex;
       align-items: center;
       justify-content: center;

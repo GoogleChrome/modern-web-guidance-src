@@ -5,7 +5,7 @@ index 66c9173..22fc4a8 100644
 @@ -20,6 +20,18 @@
        padding: 0;
      }
- 
+
 +    html {
 +      /* Keep anchored sections clear of the sticky navigation bar */
 +      scroll-padding-top: 72px;
@@ -22,13 +22,13 @@ index 66c9173..22fc4a8 100644
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
        line-height: 1.6;
 @@ -48,9 +60,15 @@
- 
+
      nav ul {
        display: flex;
 +      align-items: center;
        list-style: none;
      }
- 
+
 +    /* Scrollspy: the container of the section links tracks their targets */
 +    .nav-sections {
 +      scroll-target-group: auto;
@@ -40,7 +40,7 @@ index 66c9173..22fc4a8 100644
 @@ -66,6 +84,23 @@
        color: var(--accent);
      }
- 
+
 +    .nav-sections a[href^="#"] {
 +      display: inline-block;
 +      padding-bottom: 2px;
@@ -64,7 +64,7 @@ index 66c9173..22fc4a8 100644
 @@ -135,6 +170,49 @@
        background: #3e2723;
      }
- 
+
 +    /* Page sections targeted by the navigation */
 +    .page-section {
 +      min-height: 80vh;
@@ -112,7 +112,7 @@ index 66c9173..22fc4a8 100644
        background: var(--secondary);
        text-align: center;
 @@ -159,11 +237,11 @@
- 
+
    <nav>
      <div class="logo">THE DAILY GRIND</div>
 -    <ul>
@@ -130,7 +130,7 @@ index 66c9173..22fc4a8 100644
    </nav>
 @@ -175,8 +253,11 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -240,11 +240,11 @@ index 66c9173..22fc4a8 100644
 +      </div>
      </section>
    </main>
- 
+
 @@ -207,6 +380,45 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script type="module">
 +    // Scrollspy: keep aria-current in sync with the highlighted section link.
 +    const sectionLinks = Array.from(
@@ -285,5 +285,5 @@ index 66c9173..22fc4a8 100644
 +  </script>
 +
  </body>
- 
+
  </html>

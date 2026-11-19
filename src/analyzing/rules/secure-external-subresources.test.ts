@@ -1,25 +1,32 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanHtml, scanJsx } from '../scanners/dom-scanner.ts';
-import { withVirtualSourceFile } from '../scanners/js-scanner.ts';
-import { secureExternalSubresourcesMatcher } from './secure-external-subresources.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanHtml, scanJsx } from "../scanners/dom-scanner.ts";
+import { withVirtualSourceFile } from "../scanners/js-scanner.ts";
+import { secureExternalSubresourcesMatcher } from "./secure-external-subresources.ts";
 
-void test('secure-external-subresources DOM matcher', async (t) => {
-  await t.test('flags versioned third-party CDN <script> and <link rel="stylesheet"> missing integrity and deduplicates to 1 finding per file', () => {
-    const html = `
+void test("secure-external-subresources DOM matcher", async (t) => {
+  await t.test(
+    'flags versioned third-party CDN <script> and <link rel="stylesheet"> missing integrity and deduplicates to 1 finding per file',
+    () => {
+      const html = `
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12/dist/htmx.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
       </head>
     `;
-    const matches = scanHtml('index.html', html, [secureExternalSubresourcesMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
-  });
+      const matches = scanHtml("index.html", html, [
+        secureExternalSubresourcesMatcher,
+      ]);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.line, 3);
+    },
+  );
 
-  await t.test('flags external cross-origin <script> or <link> with integrity="sha..." when crossorigin is missing', () => {
-    const html = `
+  await t.test(
+    'flags external cross-origin <script> or <link> with integrity="sha..." when crossorigin is missing',
+    () => {
+      const html = `
       <head>
         <script
           src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
@@ -27,25 +34,35 @@ void test('secure-external-subresources DOM matcher', async (t) => {
         ></script>
       </head>
     `;
-    const matches = scanHtml('missing-cors.html', html, [secureExternalSubresourcesMatcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 3);
-  });
+      const matches = scanHtml("missing-cors.html", html, [
+        secureExternalSubresourcesMatcher,
+      ]);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.line, 3);
+    },
+  );
 
-  await t.test('flags JSX CDN <script> missing integrity', () => {
+  await t.test("flags JSX CDN <script> missing integrity", () => {
     const code = `
       export function MathJaxScript() {
         return <script src="https://unpkg.com/katex@0.16.9/dist/katex.min.js" crossOrigin="anonymous" />;
       }
     `;
-    const matches = withVirtualSourceFile('MathJaxScript.tsx', code, (sourceFile) =>
-      scanJsx('MathJaxScript.tsx', sourceFile, [secureExternalSubresourcesMatcher]),
+    const matches = withVirtualSourceFile(
+      "MathJaxScript.tsx",
+      code,
+      (sourceFile) =>
+        scanJsx("MathJaxScript.tsx", sourceFile, [
+          secureExternalSubresourcesMatcher,
+        ]),
     );
     assert.equal(matches.length, 1);
   });
 
-  await t.test('exempts CDN resources that already have integrity+crossorigin, importance attributes, or unversioned/same-origin URLs', () => {
-    const html = `
+  await t.test(
+    "exempts CDN resources that already have integrity+crossorigin, importance attributes, or unversioned/same-origin URLs",
+    () => {
+      const html = `
       <head>
         <link
           rel="stylesheet"
@@ -61,7 +78,10 @@ void test('secure-external-subresources DOM matcher', async (t) => {
         <script src="/assets/app.bundle.js"></script>
       </head>
     `;
-    const matches = scanHtml('modern.html', html, [secureExternalSubresourcesMatcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanHtml("modern.html", html, [
+        secureExternalSubresourcesMatcher,
+      ]);
+      assert.equal(matches.length, 0);
+    },
+  );
 });

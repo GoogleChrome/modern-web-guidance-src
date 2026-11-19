@@ -11,9 +11,9 @@ index 66c9173..43037f0 100644
 --- a/index.html
 +++ b/index.html
 @@ -209,4 +209,6 @@
- 
+
  </body>
- 
+
 +<script type="module" src="/src/main.ts"></script>
 +
  </html>

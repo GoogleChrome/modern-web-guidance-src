@@ -12,7 +12,7 @@ index 66c9173..ec41905 100644
 @@ -107,14 +107,32 @@
        margin-top: 20px;
      }
- 
+
 +    /* Sections publish context without knowing which components consume it. */
 +    [data-coffee-category="seasonal"] {
 +      --coffee-category: seasonal;
@@ -26,7 +26,7 @@ index 66c9173..ec41905 100644
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
      }
- 
+
 +    .card-badge {
 +      display: none;
 +      width: fit-content;
@@ -45,7 +45,7 @@ index 66c9173..ec41905 100644
 @@ -135,6 +153,30 @@
        background: #3e2723;
      }
- 
+
 +    /* The neutral card above remains usable without style-query support.
 +       Inherited context also works through wrappers or from another parent. */
 +    @container style(--coffee-category: seasonal) {
@@ -75,7 +75,7 @@ index 66c9173..ec41905 100644
        text-align: center;
 @@ -175,20 +217,23 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 +    <section data-coffee-category="seasonal">

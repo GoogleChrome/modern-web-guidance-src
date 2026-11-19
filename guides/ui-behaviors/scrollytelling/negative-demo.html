@@ -10,7 +10,7 @@
       padding: 0;
       box-sizing: border-box;
     }
-    
+
     #tracked section {
       height: 100vh;
       display: flex;
@@ -65,10 +65,10 @@
       var trackedSections = document.querySelectorAll('#tracked section');
       var animatedSections = document.querySelectorAll('#animated section');
       var windowHeight = window.innerHeight;
-      
+
       for (var i = 0; i < trackedSections.length; i++) {
         var rect = trackedSections[i].getBoundingClientRect();
-        
+
         if (rect.top <= windowHeight && rect.bottom >= 0) {
           var ratio = 1 - (rect.top / windowHeight);
           animatedSections[i].style.opacity = 1;

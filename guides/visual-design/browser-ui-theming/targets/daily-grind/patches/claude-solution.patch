@@ -5,7 +5,7 @@ index 66c9173..b534a4e 100644
 @@ -135,6 +135,215 @@
        background: #3e2723;
      }
- 
+
 +    /* Browser UI theming */
 +    :root {
 +      color-scheme: light;
@@ -295,5 +295,5 @@ index 66c9173..b534a4e 100644
 +      </form>
 +    </section>
    </main>
- 
+
    <footer>

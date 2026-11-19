@@ -5,23 +5,23 @@ import {
   getJsProject,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule } from 'cssomnom';
-import { SyntaxKind, type Project } from 'ts-morph';
+} from "../../../../../src/grading/test-fixture.ts";
+import { CSSStyleRule } from "cssomnom";
+import { SyntaxKind, type Project } from "ts-morph";
 
 // @ts-ignore - import.meta.url is supported at runtime by Playwright's ESM loader
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('swipe-to-reveal Target Grader', () => {
-  test('Horizontal swipe-to-reveal container is a horizontal scroll container configured with mandatory CSS Scroll Snap and no manual JS gesture listeners', () => {
+test.describe("swipe-to-reveal Target Grader", () => {
+  test("Horizontal swipe-to-reveal container is a horizontal scroll container configured with mandatory CSS Scroll Snap and no manual JS gesture listeners", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs = getHtmlDocuments(targetFiles);
 
     const hasOverflowX =
       styleRules.some((r) => {
-        const ox = r.style.getPropertyValue('overflow-x').trim();
-        const oInline = r.style.getPropertyValue('overflow-inline').trim();
-        const o = r.style.getPropertyValue('overflow').trim();
+        const ox = r.style.getPropertyValue("overflow-x").trim();
+        const oInline = r.style.getPropertyValue("overflow-inline").trim();
+        const o = r.style.getPropertyValue("overflow").trim();
         return (
           /\b(auto|scroll)\b/.test(ox) ||
           /\b(auto|scroll)\b/.test(oInline) ||
@@ -29,12 +29,16 @@ test.describe('swipe-to-reveal Target Grader', () => {
         );
       }) ||
       docs.some((d) =>
-        Boolean(d.document.querySelector('[class*="overflow-x-auto"], [class*="overflow-x-scroll"]')),
+        Boolean(
+          d.document.querySelector(
+            '[class*="overflow-x-auto"], [class*="overflow-x-scroll"]',
+          ),
+        ),
       );
 
     const hasMandatorySnap =
       styleRules.some((r) => {
-        const snapType = r.style.getPropertyValue('scroll-snap-type').trim();
+        const snapType = r.style.getPropertyValue("scroll-snap-type").trim();
         return /\b(x|inline|both)\s+mandatory\b/.test(snapType);
       }) ||
       docs.some((d) =>
@@ -54,51 +58,68 @@ test.describe('swipe-to-reveal Target Grader', () => {
       const expr = call.getExpression();
       if (
         expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() === 'addEventListener'
+        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() ===
+          "addEventListener"
       ) {
         const firstArg = call.getArguments()[0];
         if (firstArg) {
-          const text = firstArg.getText().replace(/^['"`]|['"`]$/g, '');
+          const text = firstArg.getText().replace(/^['"`]|['"`]$/g, "");
           return /^(wheel|touchmove|pointermove)$/.test(text);
         }
       }
       return false;
     });
 
-    expect(hasOverflowX && hasMandatorySnap && !hasManualGestureListener).toBe(true);
+    expect(hasOverflowX && hasMandatorySnap && !hasManualGestureListener).toBe(
+      true,
+    );
   });
 
-  test('Foreground content element sets scroll-snap-align: start, scroll-initial-target: nearest, and an opaque background, while trailing panels snap to end', () => {
+  test("Foreground content element sets scroll-snap-align: start, scroll-initial-target: nearest, and an opaque background, while trailing panels snap to end", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
     const docs = getHtmlDocuments(targetFiles);
 
     const hasContentSnapAndInitialTarget = styleRules.some((r) => {
-      const snapAlign = r.style.getPropertyValue('scroll-snap-align').trim();
-      const initialTarget = r.style.getPropertyValue('scroll-initial-target').trim();
+      const snapAlign = r.style.getPropertyValue("scroll-snap-align").trim();
+      const initialTarget = r.style
+        .getPropertyValue("scroll-initial-target")
+        .trim();
       const bg =
-        r.style.getPropertyValue('background').trim() ||
-        r.style.getPropertyValue('background-color').trim();
-      const hasOpaqueBg = Boolean(bg) && bg !== 'transparent' && bg !== 'none';
-      return /\bstart\b/.test(snapAlign) && /\bnearest\b/.test(initialTarget) && hasOpaqueBg;
+        r.style.getPropertyValue("background").trim() ||
+        r.style.getPropertyValue("background-color").trim();
+      const hasOpaqueBg = Boolean(bg) && bg !== "transparent" && bg !== "none";
+      return (
+        /\bstart\b/.test(snapAlign) &&
+        /\bnearest\b/.test(initialTarget) &&
+        hasOpaqueBg
+      );
     });
 
     const hasPanelSnapEnd =
       styleRules.some((r) => {
-        const snapAlign = r.style.getPropertyValue('scroll-snap-align').trim();
+        const snapAlign = r.style.getPropertyValue("scroll-snap-align").trim();
         return /\bend\b/.test(snapAlign);
-      }) || docs.some((d) => Boolean(d.document.querySelector('[class*="snap-end"]')));
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="snap-end"]')),
+      );
 
     expect(hasContentSnapAndInitialTarget && hasPanelSnapEnd).toBe(true);
   });
 
-  test('Outer horizontal swipe-to-reveal container sets overscroll-behavior: chain in CSS without contain or none', () => {
+  test("Outer horizontal swipe-to-reveal container sets overscroll-behavior: chain in CSS without contain or none", () => {
     const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasChainOverscroll = styleRules.some((r) => {
-      const ob = r.style.getPropertyValue('overscroll-behavior').trim();
-      const obX = r.style.getPropertyValue('overscroll-behavior-x').trim();
-      const obInline = r.style.getPropertyValue('overscroll-behavior-inline').trim();
-      const usesChain = /\bchain\b/.test(ob) || /\bchain\b/.test(obX) || /\bchain\b/.test(obInline);
+      const ob = r.style.getPropertyValue("overscroll-behavior").trim();
+      const obX = r.style.getPropertyValue("overscroll-behavior-x").trim();
+      const obInline = r.style
+        .getPropertyValue("overscroll-behavior-inline")
+        .trim();
+      const usesChain =
+        /\bchain\b/.test(ob) ||
+        /\bchain\b/.test(obX) ||
+        /\bchain\b/.test(obInline);
       const usesContainOrNone =
         /\b(contain|none)\b/.test(ob) ||
         /\b(contain|none)\b/.test(obX) ||
@@ -109,19 +130,25 @@ test.describe('swipe-to-reveal Target Grader', () => {
     expect(hasChainOverscroll).toBe(true);
   });
 
-  test('Revealed action controls or side-menu items are focusable DOM elements inside the swipe-to-reveal container', () => {
+  test("Revealed action controls or side-menu items are focusable DOM elements inside the swipe-to-reveal container", () => {
     const docs = getHtmlDocuments(targetFiles);
 
     const hasSwipeStructureWithFocusableActions = docs.some(({ document }) => {
-      const candidates = Array.from(document.querySelectorAll('div, li, article, section')) as any[];
+      const candidates = Array.from(
+        document.querySelectorAll("div, li, article, section"),
+      ) as any[];
       return candidates.some((container) => {
         const children = Array.from(container.children || []) as any[];
         if (children.length < 2) return false;
         const contentEl = children[0];
         const panelEl = children[children.length - 1];
-        const hasCardHeading = Boolean(contentEl.querySelector('h2, h3, h4, strong'));
+        const hasCardHeading = Boolean(
+          contentEl.querySelector("h2, h3, h4, strong"),
+        );
         const panelControls = Array.from(
-          panelEl.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])'),
+          panelEl.querySelectorAll(
+            'button, a[href], [tabindex]:not([tabindex="-1"])',
+          ),
         );
         return hasCardHeading && panelControls.length >= 2;
       });
@@ -130,7 +157,7 @@ test.describe('swipe-to-reveal Target Grader', () => {
     expect(hasSwipeStructureWithFocusableActions).toBe(true);
   });
 
-  test('Keyboard focus (focusin paired with :focus-visible) scrolls the foreground content element back to inline start', () => {
+  test("Keyboard focus (focusin paired with :focus-visible) scrolls the foreground content element back to inline start", () => {
     const project: Project = getJsProject(targetFiles);
     const callExpressions = project
       .getSourceFiles()
@@ -140,10 +167,13 @@ test.describe('swipe-to-reveal Target Grader', () => {
       const expr = call.getExpression();
       if (
         expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() === 'addEventListener'
+        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() ===
+          "addEventListener"
       ) {
         const firstArg = call.getArguments()[0];
-        return Boolean(firstArg && /^['"`]focusin['"`]$/.test(firstArg.getText()));
+        return Boolean(
+          firstArg && /^['"`]focusin['"`]$/.test(firstArg.getText()),
+        );
       }
       return false;
     });
@@ -152,10 +182,13 @@ test.describe('swipe-to-reveal Target Grader', () => {
       const expr = call.getExpression();
       if (
         expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() === 'matches'
+        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() ===
+          "matches"
       ) {
         const firstArg = call.getArguments()[0];
-        return Boolean(firstArg && firstArg.getText().includes(':focus-visible'));
+        return Boolean(
+          firstArg && firstArg.getText().includes(":focus-visible"),
+        );
       }
       return false;
     });
@@ -164,21 +197,35 @@ test.describe('swipe-to-reveal Target Grader', () => {
       const expr = call.getExpression();
       if (
         expr.getKind() === SyntaxKind.PropertyAccessExpression &&
-        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() === 'scrollIntoView'
+        expr.asKindOrThrow(SyntaxKind.PropertyAccessExpression).getName() ===
+          "scrollIntoView"
       ) {
         const firstArg = call.getArguments()[0];
-        if (firstArg && firstArg.getKind() === SyntaxKind.ObjectLiteralExpression) {
-          const obj = firstArg.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-          const blockProp = obj.getProperty('block');
-          const inlineProp = obj.getProperty('inline');
-          const hasNearest = Boolean(blockProp && blockProp.getText().includes('nearest'));
-          const hasStart = Boolean(inlineProp && inlineProp.getText().includes('start'));
+        if (
+          firstArg &&
+          firstArg.getKind() === SyntaxKind.ObjectLiteralExpression
+        ) {
+          const obj = firstArg.asKindOrThrow(
+            SyntaxKind.ObjectLiteralExpression,
+          );
+          const blockProp = obj.getProperty("block");
+          const inlineProp = obj.getProperty("inline");
+          const hasNearest = Boolean(
+            blockProp && blockProp.getText().includes("nearest"),
+          );
+          const hasStart = Boolean(
+            inlineProp && inlineProp.getText().includes("start"),
+          );
           return hasNearest && hasStart;
         }
       }
       return false;
     });
 
-    expect(hasFocusinListener && hasFocusVisibleMatch && hasScrollIntoViewInlineStart).toBe(true);
+    expect(
+      hasFocusinListener &&
+        hasFocusVisibleMatch &&
+        hasScrollIntoViewInlineStart,
+    ).toBe(true);
   });
 });

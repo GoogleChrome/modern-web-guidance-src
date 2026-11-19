@@ -36,7 +36,7 @@ The following example demonstrates a custom select styled with a monospace font 
 
 /* Style the visible trigger button */
 .brand-select {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   background-color: #fffaf0;
   color: #8b4513;
   border: 2px dashed #8b4513;
@@ -48,7 +48,7 @@ The following example demonstrates a custom select styled with a monospace font 
 
 /* Style the dropdown options list */
 .brand-select::picker(select) {
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
   background-color: #fffaf0;
   border: 2px dashed #8b4513;
   border-radius: 4px;

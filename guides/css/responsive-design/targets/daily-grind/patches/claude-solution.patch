@@ -3,7 +3,7 @@ index 66c9173..3a6f911 100644
 --- a/index.html
 +++ b/index.html
 @@ -74,7 +74,8 @@
- 
+
      /* Hero Section */
      .hero {
 -      height: 60vh;
@@ -15,7 +15,7 @@ index 66c9173..3a6f911 100644
 @@ -107,6 +108,21 @@
        margin-top: 20px;
      }
- 
+
 +    .container section {
 +      container-type: inline-size;
 +      container-name: favorites;

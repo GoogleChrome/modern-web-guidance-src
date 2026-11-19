@@ -5,17 +5,17 @@
   <meta charset="UTF-8">
   <title>Optimize Preload Priority Demo</title>
 
-  <!-- 
+  <!--
     1. Video Poster (High Priority)
   -->
   <link rel="preload" as="image" href="poster.jpg" fetchpriority="high">
 
-  <!-- 
+  <!--
     2. Critical Web Font (High Priority by default)
   -->
   <link rel="preload" as="font" type="font/woff2" href="brand-font.woff2" crossorigin>
 
-  <!-- 
+  <!--
     3. Secondary Web Font (Low Priority)
   -->
   <link rel="preload" as="font" type="font/woff2" href="secondary-font.woff2" crossorigin fetchpriority="low">

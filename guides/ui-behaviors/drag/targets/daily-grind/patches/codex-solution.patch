@@ -62,11 +62,11 @@ index 66c9173..5638df8 100644
 +    .order-total[hidden] { display: none; }
    </style>
  </head>
- 
+
 @@ -197,6 +244,25 @@
      </section>
    </main>
- 
+
 +  <aside class="quick-order" aria-labelledby="order-title">
 +    <header class="order-header" id="order-handle">
 +      <h2 id="order-title">Your coffee break</h2>
@@ -92,7 +92,7 @@ index 66c9173..5638df8 100644
 @@ -207,6 +273,84 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    // @ts-check
 +    const panel = document.querySelector('.quick-order');
@@ -172,7 +172,7 @@ index 66c9173..5638df8 100644
 +    }
 +  </script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..587c05a 100644

@@ -29,7 +29,7 @@ export const CommandType = {
   LEGACY_SCAN: 6,
 } as const;
 
-export type CommandType = typeof CommandType[keyof typeof CommandType];
+export type CommandType = (typeof CommandType)[keyof typeof CommandType];
 
 export interface ToolCommand {
   command_type?: CommandType;
@@ -42,7 +42,7 @@ export const OsType = {
   LINUX: 3,
 } as const;
 
-export type OsType = typeof OsType[keyof typeof OsType];
+export type OsType = (typeof OsType)[keyof typeof OsType];
 
 export interface ChromeModernWebGuidance {
   search_result?: SearchResult;
@@ -73,10 +73,11 @@ export interface LogRequest {
 // telemetry watchdog process.
 // We use a const object and type alias instead of an enum to comply with 'erasableSyntaxOnly'.
 export const WatchdogMessageType = {
-  LOG_EVENT: 'log-event',
+  LOG_EVENT: "log-event",
 } as const;
 
-export type WatchdogMessageType = typeof WatchdogMessageType[keyof typeof WatchdogMessageType];
+export type WatchdogMessageType =
+  (typeof WatchdogMessageType)[keyof typeof WatchdogMessageType];
 
 export interface WatchdogMessage {
   type: typeof WatchdogMessageType.LOG_EVENT;

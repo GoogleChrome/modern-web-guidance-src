@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ChromeModernWebGuidance, LogRequest } from '../types.ts';
+import type { ChromeModernWebGuidance, LogRequest } from "../types.ts";
 
 export interface ClearcutSenderConfig {
   clearcutEndpoint?: string;
@@ -12,7 +12,8 @@ export interface ClearcutSenderConfig {
 }
 
 const MAX_BUFFER_SIZE = 1000;
-const DEFAULT_CLEARCUT_ENDPOINT = 'https://play.googleapis.com/log?format=json_proto';
+const DEFAULT_CLEARCUT_ENDPOINT =
+  "https://play.googleapis.com/log?format=json_proto";
 
 const LOG_SOURCE = 2921;
 const CLIENT_TYPE = 50;
@@ -25,8 +26,8 @@ interface BufferedEvent {
 }
 
 function logger(...args: any[]) {
-  if (process.env.DEBUG_MWG_TELEMETRY === '1') {
-    console.error('[ClearcutSender]', ...args);
+  if (process.env.DEBUG_MWG_TELEMETRY === "1") {
+    console.error("[ClearcutSender]", ...args);
   }
 }
 
@@ -42,10 +43,10 @@ export class ClearcutSender {
   }
 
   enqueueEvent(event: ChromeModernWebGuidance): void {
-    logger('Enqueuing telemetry event', JSON.stringify(event, null, 2));
+    logger("Enqueuing telemetry event", JSON.stringify(event, null, 2));
     if (this.#buffer.length >= MAX_BUFFER_SIZE) {
       this.#buffer.shift();
-      logger('Telemetry buffer overflow: dropped oldest event');
+      logger("Telemetry buffer overflow: dropped oldest event");
     }
     this.#buffer.push({
       event,
@@ -63,11 +64,11 @@ export class ClearcutSender {
     try {
       await Promise.race([
         this.#sendBatch(eventsToSend),
-        new Promise(resolve => setTimeout(resolve, SHUTDOWN_TIMEOUT_MS)),
+        new Promise((resolve) => setTimeout(resolve, SHUTDOWN_TIMEOUT_MS)),
       ]);
-      logger('Final flush completed');
+      logger("Final flush completed");
     } catch (error) {
-      logger('Final flush failed:', error);
+      logger("Final flush failed:", error);
     }
   }
 
@@ -79,7 +80,7 @@ export class ClearcutSender {
       client_info: {
         client_type: CLIENT_TYPE,
       },
-      log_event: events.map(({event, timestamp}) => ({
+      log_event: events.map(({ event, timestamp }) => ({
         event_time_ms: timestamp.toString(),
         source_extension_json: JSON.stringify(event),
       })),
@@ -89,11 +90,11 @@ export class ClearcutSender {
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch(this.#clearcutEndpoint, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...(this.#includePidHeader
-            ? {'X-Watchdog-Pid': process.pid.toString()}
+            ? { "X-Watchdog-Pid": process.pid.toString() }
             : {}),
         },
         body: JSON.stringify(requestBody),
@@ -102,11 +103,11 @@ export class ClearcutSender {
 
       clearTimeout(timeoutId);
       if (!response.ok) {
-        logger('Telemetry error status:', response.status);
+        logger("Telemetry error status:", response.status);
       }
     } catch (err) {
       clearTimeout(timeoutId);
-      logger('Fetch failed:', err);
+      logger("Fetch failed:", err);
     }
   }
 }

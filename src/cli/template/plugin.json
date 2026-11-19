@@ -10,11 +10,5 @@
   "homepage": "https://developer.chrome.com/docs/modern-web-guidance",
   "repository": "https://github.com/GoogleChrome/modern-web-guidance",
   "license": "Apache-2.0",
-  "keywords": [
-    "web",
-    "html",
-    "css",
-    "javascript",
-    "best-practices"
-  ]
+  "keywords": ["web", "html", "css", "javascript", "best-practices"]
 }

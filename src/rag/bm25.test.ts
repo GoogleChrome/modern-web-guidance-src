@@ -1,15 +1,19 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { tokenize, stemEnglishMinimal, buildBm25Index, rankBm25, reciprocalRankFusion } from "./bm25.ts";
+import {
+  tokenize,
+  stemEnglishMinimal,
+  buildBm25Index,
+  rankBm25,
+  reciprocalRankFusion,
+} from "./bm25.ts";
 
 describe("tokenize", () => {
   it("lowercases, keeps inner hyphens, drops stopwords and single characters (pinned to origin/main)", () => {
-    assert.deepStrictEqual(tokenize("Style the :user-invalid state of a Form"), [
-      "style",
-      "user-invalid",
-      "state",
-      "form",
-    ]);
+    assert.deepStrictEqual(
+      tokenize("Style the :user-invalid state of a Form"),
+      ["style", "user-invalid", "state", "form"],
+    );
   });
 
   it("leaves compound terms, plural endings, and tokens unstemmed for static embedder compatibility", () => {
@@ -57,13 +61,22 @@ describe("stemEnglishMinimal", () => {
 
 describe("rankBm25", () => {
   const index = buildBm25Index([
-    { id: "validation", text: "Use :user-invalid to show validation errors after interaction. user-invalid styling." },
+    {
+      id: "validation",
+      text: "Use :user-invalid to show validation errors after interaction. user-invalid styling.",
+    },
     { id: "images", text: "Optimize LCP images with fetchpriority high." },
-    { id: "dialogs", text: "Native dialog element with showModal and light dismiss." },
+    {
+      id: "dialogs",
+      text: "Native dialog element with showModal and light dismiss.",
+    },
   ]);
 
   it("ranks the document containing the rare literal term first and omits non-matching documents", () => {
-    assert.deepStrictEqual(rankBm25(index, "form validation user-invalid").map((r) => r.id), ["validation"]);
+    assert.deepStrictEqual(
+      rankBm25(index, "form validation user-invalid").map((r) => r.id),
+      ["validation"],
+    );
   });
 
   it("returns [] when no query term occurs in the corpus", () => {
@@ -97,23 +110,39 @@ describe("rankBm25", () => {
 
   it("matches singular and plural queries in both directions", () => {
     const pluralIndex = buildBm25Index([
-      { id: "popover-doc", text: "Native popover element supports light dismiss and backdrop styling." },
-      { id: "dialog-doc", text: "Manage modal dialogs with multiple backdrops." },
+      {
+        id: "popover-doc",
+        text: "Native popover element supports light dismiss and backdrop styling.",
+      },
+      {
+        id: "dialog-doc",
+        text: "Manage modal dialogs with multiple backdrops.",
+      },
     ]);
 
     // Plural query matches singular in document
-    assert.deepStrictEqual(rankBm25(pluralIndex, "popovers").map((r) => r.id), ["popover-doc"]);
+    assert.deepStrictEqual(
+      rankBm25(pluralIndex, "popovers").map((r) => r.id),
+      ["popover-doc"],
+    );
 
     // Singular query matches plural in document
-    assert.deepStrictEqual(rankBm25(pluralIndex, "dialog").map((r) => r.id), ["dialog-doc"]);
+    assert.deepStrictEqual(
+      rankBm25(pluralIndex, "dialog").map((r) => r.id),
+      ["dialog-doc"],
+    );
 
     // Both documents match queries for backdrops / backdrop
-    const pluralQueryResults = rankBm25(pluralIndex, "backdrops").map((r) => r.id);
+    const pluralQueryResults = rankBm25(pluralIndex, "backdrops").map(
+      (r) => r.id,
+    );
     assert.ok(pluralQueryResults.includes("popover-doc"));
     assert.ok(pluralQueryResults.includes("dialog-doc"));
     assert.strictEqual(pluralQueryResults.length, 2);
 
-    const singularQueryResults = rankBm25(pluralIndex, "backdrop").map((r) => r.id);
+    const singularQueryResults = rankBm25(pluralIndex, "backdrop").map(
+      (r) => r.id,
+    );
     assert.ok(singularQueryResults.includes("popover-doc"));
     assert.ok(singularQueryResults.includes("dialog-doc"));
     assert.strictEqual(singularQueryResults.length, 2);
@@ -122,7 +151,10 @@ describe("rankBm25", () => {
 
 describe("reciprocalRankFusion", () => {
   it("rewards documents ranked well in both lists over a single-list winner", () => {
-    const fused = reciprocalRankFusion([["a", "b", "c"], ["b", "d", "a"]]).map((r) => r.id);
+    const fused = reciprocalRankFusion([
+      ["a", "b", "c"],
+      ["b", "d", "a"],
+    ]).map((r) => r.id);
     assert.deepStrictEqual(fused.slice(0, 2), ["b", "a"]);
     assert.deepStrictEqual([...fused].sort(), ["a", "b", "c", "d"]);
   });

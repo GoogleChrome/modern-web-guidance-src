@@ -1,4 +1,4 @@
-import { test, expect } from '../../../../../src/grading/test-fixture.ts';
+import { test, expect } from "../../../../../src/grading/test-fixture.ts";
 
 interface ScrollCallRecord {
   method: string;
@@ -42,7 +42,11 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
   let seq = 0;
 
   const origSetTimeout = window.setTimeout.bind(window);
-  window.setTimeout = ((handler: TimerHandler, delay = 0, ...rest: unknown[]) => {
+  window.setTimeout = ((
+    handler: TimerHandler,
+    delay = 0,
+    ...rest: unknown[]
+  ) => {
     if (window.__holdNextScroll && Number(delay) >= 100) window.__longTimers++;
     return origSetTimeout(handler, delay, ...rest);
   }) as typeof window.setTimeout;
@@ -54,31 +58,45 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
     return true;
   };
 
-  function wrapScrollMethod(targetObj: Record<string, any>, methodName: string, isWindow = false) {
+  function wrapScrollMethod(
+    targetObj: Record<string, any>,
+    methodName: string,
+    isWindow = false,
+  ) {
     const orig = targetObj[methodName];
-    if (typeof orig !== 'function') return;
+    if (typeof orig !== "function") return;
 
     targetObj[methodName] = function (this: any, ...args: any[]) {
       const firstArg = args[0];
       const opts =
-        firstArg && typeof firstArg === 'object' ? (firstArg as ScrollIntoViewOptions & ScrollToOptions) : null;
-      const behavior = opts && typeof opts.behavior === 'string' ? opts.behavior : null;
+        firstArg && typeof firstArg === "object"
+          ? (firstArg as ScrollIntoViewOptions & ScrollToOptions)
+          : null;
+      const behavior =
+        opts && typeof opts.behavior === "string" ? opts.behavior : null;
       const ctx = isWindow ? window : this;
 
       window.__scrollLog.push({
         method: methodName,
-        targetTag: !isWindow && ctx && typeof ctx.tagName === 'string' ? ctx.tagName : 'WINDOW',
-        targetId: !isWindow && ctx && typeof ctx.id === 'string' ? ctx.id : null,
+        targetTag:
+          !isWindow && ctx && typeof ctx.tagName === "string"
+            ? ctx.tagName
+            : "WINDOW",
+        targetId:
+          !isWindow && ctx && typeof ctx.id === "string" ? ctx.id : null,
         behavior,
         seq: ++seq,
       });
 
       if (!window.__holdNextScroll) {
         const res = orig.apply(ctx, args);
-        if (res && typeof res.then === 'function') {
+        if (res && typeof res.then === "function") {
           window.__activeNativeScrolls++;
           Promise.resolve(res).finally(() => {
-            window.__activeNativeScrolls = Math.max(0, window.__activeNativeScrolls - 1);
+            window.__activeNativeScrolls = Math.max(
+              0,
+              window.__activeNativeScrolls - 1,
+            );
           });
         }
         return res;
@@ -89,9 +107,17 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
       window.__origScrollSettled = false;
       let instantArgs = args;
       if (opts) {
-        instantArgs = [{ ...opts, behavior: 'instant' as ScrollBehavior }, ...args.slice(1)];
-      } else if (methodName === 'scrollIntoView' && args.length > 0) {
-        instantArgs = [{ behavior: 'instant' as ScrollBehavior, block: args[0] === false ? 'end' : 'start' }];
+        instantArgs = [
+          { ...opts, behavior: "instant" as ScrollBehavior },
+          ...args.slice(1),
+        ];
+      } else if (methodName === "scrollIntoView" && args.length > 0) {
+        instantArgs = [
+          {
+            behavior: "instant" as ScrollBehavior,
+            block: args[0] === false ? "end" : "start",
+          },
+        ];
       }
 
       const origResult = orig.apply(ctx, instantArgs);
@@ -115,10 +141,10 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
     };
   }
 
-  for (const name of ['scrollIntoView', 'scrollTo', 'scrollBy', 'scroll']) {
+  for (const name of ["scrollIntoView", "scrollTo", "scrollBy", "scroll"]) {
     wrapScrollMethod(Element.prototype as any, name, false);
   }
-  for (const name of ['scrollTo', 'scrollBy', 'scroll']) {
+  for (const name of ["scrollTo", "scrollBy", "scroll"]) {
     wrapScrollMethod(Window.prototype as any, name, true);
     if (Object.prototype.hasOwnProperty.call(window, name)) {
       wrapScrollMethod(window as any, name, true);
@@ -126,10 +152,12 @@ const SCROLL_INSTRUMENTATION_SCRIPT = () => {
   }
 };
 
-async function findNavTargetPairs(page: import('@playwright/test').Page) {
+async function findNavTargetPairs(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
     const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>('nav a, [data-scroll-target], [data-target], a[href^="#"]'),
+      document.querySelectorAll<HTMLElement>(
+        'nav a, [data-scroll-target], [data-target], a[href^="#"]',
+      ),
     );
 
     const seenTargets = new Set<HTMLElement>();
@@ -145,14 +173,16 @@ async function findNavTargetPairs(page: import('@playwright/test').Page) {
       if (cRect.width === 0 || cRect.height === 0) continue;
 
       const explicitTarget =
-        el.getAttribute('data-scroll-target') || el.getAttribute('data-target') || '';
-      const href = el.getAttribute('href') || '';
+        el.getAttribute("data-scroll-target") ||
+        el.getAttribute("data-target") ||
+        "";
+      const href = el.getAttribute("href") || "";
 
-      let rawId = '';
+      let rawId = "";
       if (explicitTarget.trim()) {
-        rawId = explicitTarget.trim().replace(/^#/, '');
-      } else if (href.includes('#')) {
-        const hashPart = href.slice(href.indexOf('#') + 1).trim();
+        rawId = explicitTarget.trim().replace(/^#/, "");
+      } else if (href.includes("#")) {
+        const hashPart = href.slice(href.indexOf("#") + 1).trim();
         if (hashPart) rawId = hashPart;
       }
 
@@ -164,7 +194,7 @@ async function findNavTargetPairs(page: import('@playwright/test').Page) {
       if (tRect.height === 0 || tRect.width === 0) continue;
 
       seenTargets.add(target);
-      el.setAttribute('data-grader-nav-idx', String(pairs.length));
+      el.setAttribute("data-grader-nav-idx", String(pairs.length));
       pairs.push({
         controlSelector: `[data-grader-nav-idx="${pairs.length}"]`,
         targetId: rawId,
@@ -176,7 +206,10 @@ async function findNavTargetPairs(page: import('@playwright/test').Page) {
   });
 }
 
-async function waitForOrigScrollAndFrames(page: import('@playwright/test').Page, frameCount = 4) {
+async function waitForOrigScrollAndFrames(
+  page: import("@playwright/test").Page,
+  frameCount = 4,
+) {
   await page.waitForFunction(() => window.__origScrollSettled === true);
   await page.evaluate(
     (count) =>
@@ -193,7 +226,7 @@ async function waitForOrigScrollAndFrames(page: import('@playwright/test').Page,
 }
 
 async function captureTargetSnapshot(
-  page: import('@playwright/test').Page,
+  page: import("@playwright/test").Page,
   targetId: string,
 ): Promise<TargetSnapshot> {
   return page.evaluate((id) => {
@@ -201,7 +234,7 @@ async function captureTargetSnapshot(
     if (!el) throw new Error(`Missing target #${id}`);
     const attrs: Record<string, string> = {};
     for (const attr of Array.from(el.attributes)) {
-      if (attr.name !== 'class' && attr.name !== 'id') {
+      if (attr.name !== "class" && attr.name !== "id") {
         attrs[attr.name] = attr.value;
       }
     }
@@ -214,20 +247,28 @@ async function captureTargetSnapshot(
   }, targetId);
 }
 
-function getAppliedPostScrollState(before: TargetSnapshot, after: TargetSnapshot) {
-  const addedClasses = after.classList.filter((c) => !before.classList.includes(c));
-  const changedAttrs = Object.keys(after.attrs).filter((k) => after.attrs[k] !== before.attrs[k]);
+function getAppliedPostScrollState(
+  before: TargetSnapshot,
+  after: TargetSnapshot,
+) {
+  const addedClasses = after.classList.filter(
+    (c) => !before.classList.includes(c),
+  );
+  const changedAttrs = Object.keys(after.attrs).filter(
+    (k) => after.attrs[k] !== before.attrs[k],
+  );
   const gainedFocus = !before.hasFocus && after.hasFocus;
   return {
     addedClasses,
     changedAttrs,
     gainedFocus,
-    hasAnyEffect: addedClasses.length > 0 || changedAttrs.length > 0 || after.hasFocus,
+    hasAnyEffect:
+      addedClasses.length > 0 || changedAttrs.length > 0 || after.hasFocus,
   };
 }
 
-test.describe('daily-grind Target Grader', () => {
-  test('Clicking a navigation control scrolls the corresponding target element into view using a programmatic scroll method (scrollIntoView(), scrollTo(), scrollBy(), or scroll()) with smooth behavior (behavior: \'smooth\')', async ({
+test.describe("daily-grind Target Grader", () => {
+  test("Clicking a navigation control scrolls the corresponding target element into view using a programmatic scroll method (scrollIntoView(), scrollTo(), scrollBy(), or scroll()) with smooth behavior (behavior: 'smooth')", async ({
     page,
     TARGET_URL,
   }) => {
@@ -244,11 +285,11 @@ test.describe('daily-grind Target Grader', () => {
 
     await page.waitForFunction(() => window.__scrollLog.length >= 1);
     const scrollCalls = await page.evaluate(() => window.__scrollLog.slice());
-    expect(scrollCalls.some((c) => c.behavior === 'smooth')).toBe(true);
+    expect(scrollCalls.some((c) => c.behavior === "smooth")).toBe(true);
     await page.waitForFunction(() => window.scrollY > 0);
   });
 
-  test('The implementation waits for the scroll operation to finish using the Promise returned directly by the scroll method, rather than relying on a hardcoded setTimeout() delay to guess when scrolling ends', async ({
+  test("The implementation waits for the scroll operation to finish using the Promise returned directly by the scroll method, rather than relying on a hardcoded setTimeout() delay to guess when scrolling ends", async ({
     page,
     TARGET_URL,
   }) => {
@@ -274,10 +315,14 @@ test.describe('daily-grind Target Grader', () => {
     // post-scroll state must stay unapplied until the scroll method's returned Promise resolves.
     await waitForOrigScrollAndFrames(page, 4);
     const whilePending = await captureTargetSnapshot(page, firstPair.targetId);
-    expect(getAppliedPostScrollState(before, whilePending).hasAnyEffect).toBe(false);
+    expect(getAppliedPostScrollState(before, whilePending).hasAnyEffect).toBe(
+      false,
+    );
     expect(await page.evaluate(() => window.__longTimers)).toBe(0);
 
-    const resolved = await page.evaluate(() => window.__resolveNextHeldScroll());
+    const resolved = await page.evaluate(() =>
+      window.__resolveNextHeldScroll(),
+    );
     expect(resolved).toBe(true);
 
     await expect
@@ -288,7 +333,7 @@ test.describe('daily-grind Target Grader', () => {
       .toBe(true);
   });
 
-  test('Any active highlight or post-scroll state on previously targeted elements is cleared when a new scroll navigation is triggered', async ({
+  test("Any active highlight or post-scroll state on previously targeted elements is cleared when a new scroll navigation is triggered", async ({
     page,
     TARGET_URL,
   }) => {
@@ -312,7 +357,10 @@ test.describe('daily-grind Target Grader', () => {
         return getAppliedPostScrollState(firstBefore, firstAfter).hasAnyEffect;
       })
       .toBe(true);
-    const firstArrivalState = getAppliedPostScrollState(firstBefore, firstAfter);
+    const firstArrivalState = getAppliedPostScrollState(
+      firstBefore,
+      firstAfter,
+    );
 
     await page.waitForFunction(() => window.__activeNativeScrolls === 0);
     await page.evaluate(() => {
@@ -324,21 +372,27 @@ test.describe('daily-grind Target Grader', () => {
     await page.waitForFunction(() => window.__scrollLog.length >= 1);
     await waitForOrigScrollAndFrames(page, 4);
 
-    const firstDuringSecond = await captureTargetSnapshot(page, firstPair.targetId);
+    const firstDuringSecond = await captureTargetSnapshot(
+      page,
+      firstPair.targetId,
+    );
     for (const cls of firstArrivalState.addedClasses) {
       expect(firstDuringSecond.classList).not.toContain(cls);
     }
     for (const attr of firstArrivalState.changedAttrs) {
       expect(firstDuringSecond.attrs[attr]).toBe(firstBefore.attrs[attr]);
     }
-    if (firstArrivalState.addedClasses.length === 0 && firstArrivalState.changedAttrs.length === 0) {
+    if (
+      firstArrivalState.addedClasses.length === 0 &&
+      firstArrivalState.changedAttrs.length === 0
+    ) {
       expect(firstDuringSecond.hasFocus).toBe(false);
     }
 
     await page.evaluate(() => window.__resolveNextHeldScroll());
   });
 
-  test('The post-scroll effect (such as adding a highlight class to the target element) is applied only after the scroll method\'s returned Promise resolves when scrolling settles, not synchronously while the smooth scroll is still in progress', async ({
+  test("The post-scroll effect (such as adding a highlight class to the target element) is applied only after the scroll method's returned Promise resolves when scrolling settles, not synchronously while the smooth scroll is still in progress", async ({
     page,
     TARGET_URL,
   }) => {
@@ -361,13 +415,19 @@ test.describe('daily-grind Target Grader', () => {
     await page.waitForFunction(() => window.__scrollLog.length >= 1);
 
     const immediateSnap = await captureTargetSnapshot(page, firstPair.targetId);
-    expect(getAppliedPostScrollState(before, immediateSnap).hasAnyEffect).toBe(false);
+    expect(getAppliedPostScrollState(before, immediateSnap).hasAnyEffect).toBe(
+      false,
+    );
 
     await waitForOrigScrollAndFrames(page, 1);
     const midScrollSnap = await captureTargetSnapshot(page, firstPair.targetId);
-    expect(getAppliedPostScrollState(before, midScrollSnap).hasAnyEffect).toBe(false);
+    expect(getAppliedPostScrollState(before, midScrollSnap).hasAnyEffect).toBe(
+      false,
+    );
 
-    const resolved = await page.evaluate(() => window.__resolveNextHeldScroll());
+    const resolved = await page.evaluate(() =>
+      window.__resolveNextHeldScroll(),
+    );
     expect(resolved).toBe(true);
 
     await expect
@@ -378,7 +438,7 @@ test.describe('daily-grind Target Grader', () => {
       .toBe(true);
   });
 
-  test('Triggering a scroll to a target element that is already in view at its target position still resolves the awaited scroll call and applies the post-scroll effect without hanging', async ({
+  test("Triggering a scroll to a target element that is already in view at its target position still resolves the awaited scroll call and applies the post-scroll effect without hanging", async ({
     page,
     TARGET_URL,
   }) => {
@@ -427,17 +487,17 @@ test.describe('daily-grind Target Grader', () => {
       const observer = new MutationObserver((records) => {
         for (const rec of records) {
           window.__navEvents.mutations++;
-          if (rec.attributeName === 'class') {
+          if (rec.attributeName === "class") {
             window.__navEvents.addedClasses.push(target.className);
           }
         }
       });
       observer.observe(target, { attributes: true, subtree: true });
 
-      target.addEventListener('focusin', () => {
+      target.addEventListener("focusin", () => {
         window.__navEvents.focusIn++;
       });
-      target.addEventListener('focus', () => {
+      target.addEventListener("focus", () => {
         window.__navEvents.focusCalls++;
       });
 
@@ -455,7 +515,9 @@ test.describe('daily-grind Target Grader', () => {
         return page.evaluate((id) => {
           const target = document.getElementById(id);
           const active = document.activeElement;
-          const focused = Boolean(target && active && (active === target || target.contains(active)));
+          const focused = Boolean(
+            target && active && (active === target || target.contains(active)),
+          );
           return {
             scrolled: window.__scrollLog.length > 0,
             applied:

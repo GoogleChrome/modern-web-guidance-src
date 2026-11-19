@@ -1,45 +1,51 @@
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
-const targetFile = process.env.TARGET_FILE || path.resolve(import.meta.dirname, 'demo.html');
+const targetFile =
+  process.env.TARGET_FILE || path.resolve(import.meta.dirname, "demo.html");
 const targetDir = path.dirname(targetFile);
 const fileName = path.basename(targetFile);
 const getTargetUrl = (): string => `http://localhost/${fileName}`;
 
-test.describe('Cross-document Transitions Grader', () => {
+test.describe("Cross-document Transitions Grader", () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('http://localhost/**', async (route) => {
+    await page.route("http://localhost/**", async (route) => {
       const url = new URL(route.request().url());
       let reqPath = decodeURIComponent(url.pathname);
-      if (reqPath === '/' || reqPath === '') reqPath = `/${fileName}`;
+      if (reqPath === "/" || reqPath === "") reqPath = `/${fileName}`;
       const fullPath = path.join(targetDir, reqPath);
       if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
         const ext = path.extname(fullPath).toLowerCase();
         const contentType =
-          ext === '.html' ? 'text/html' :
-          ext === '.css' ? 'text/css' :
-          ext === '.js' || ext === '.mjs' ? 'application/javascript' :
-          'application/octet-stream';
+          ext === ".html"
+            ? "text/html"
+            : ext === ".css"
+              ? "text/css"
+              : ext === ".js" || ext === ".mjs"
+                ? "application/javascript"
+                : "application/octet-stream";
         await route.fulfill({
           status: 200,
           contentType,
           body: fs.readFileSync(fullPath),
         });
-      } else if (reqPath.endsWith('.html') && fs.existsSync(targetFile)) {
+      } else if (reqPath.endsWith(".html") && fs.existsSync(targetFile)) {
         // Fallback when secondary HTML pages were not bundled separately:
         // serve the main HTML with #previous pointing back to the main file
-        let html = fs.readFileSync(targetFile, 'utf-8');
-        html = html.replace(
-          /(<a\b[^>]*\bid=["']previous["'][^>]*\bhref=["'])[^"']*(['"][^>]*>)/i,
-          `$1/${fileName}$2`
-        ).replace(
-          /(<a\b[^>]*\bhref=["'])[^"']*(['"][^>]*\bid=["']previous["'][^>]*>)/i,
-          `$1/${fileName}$2`
-        );
+        let html = fs.readFileSync(targetFile, "utf-8");
+        html = html
+          .replace(
+            /(<a\b[^>]*\bid=["']previous["'][^>]*\bhref=["'])[^"']*(['"][^>]*>)/i,
+            `$1/${fileName}$2`,
+          )
+          .replace(
+            /(<a\b[^>]*\bhref=["'])[^"']*(['"][^>]*\bid=["']previous["'][^>]*>)/i,
+            `$1/${fileName}$2`,
+          );
         await route.fulfill({
           status: 200,
-          contentType: 'text/html',
+          contentType: "text/html",
           body: html,
         });
       } else {
@@ -48,15 +54,22 @@ test.describe('Cross-document Transitions Grader', () => {
     });
   });
 
-  test('The @view-transition at-rule is defined with navigation: auto to enable cross-document transitions', async ({ page }) => {
+  test("The @view-transition at-rule is defined with navigation: auto to enable cross-document transitions", async ({
+    page,
+  }) => {
     await page.goto(getTargetUrl());
 
     const hasViewTransition = await page.evaluate(() => {
       const checkRule = (rule: any): boolean => {
-        if (rule.constructor.name === 'CSSViewTransitionRule') {
+        if (rule.constructor.name === "CSSViewTransitionRule") {
           return true;
         }
-        if (rule.cssText && rule.cssText.includes('@view-transition') && rule.cssText.includes('navigation') && rule.cssText.includes('auto')) {
+        if (
+          rule.cssText &&
+          rule.cssText.includes("@view-transition") &&
+          rule.cssText.includes("navigation") &&
+          rule.cssText.includes("auto")
+        ) {
           return true;
         }
         if (rule.cssRules) {
@@ -82,19 +95,27 @@ test.describe('Cross-document Transitions Grader', () => {
     expect(hasViewTransition).toBe(true);
   });
 
-  test('The @view-transition rule is wrapped in a prefers-reduced-motion: no-preference media query to respect user accessibility settings', async ({ page }) => {
+  test("The @view-transition rule is wrapped in a prefers-reduced-motion: no-preference media query to respect user accessibility settings", async ({
+    page,
+  }) => {
     await page.goto(getTargetUrl());
 
     const isWrapped = await page.evaluate(() => {
       const checkRule = (rule: any, insideMedia = false): boolean => {
         let currentInside = insideMedia;
-        if (rule.constructor.name === 'CSSMediaRule') {
-          const mediaText = rule.media.mediaText || '';
-          if (mediaText.includes('prefers-reduced-motion') && mediaText.includes('no-preference')) {
+        if (rule.constructor.name === "CSSMediaRule") {
+          const mediaText = rule.media.mediaText || "";
+          if (
+            mediaText.includes("prefers-reduced-motion") &&
+            mediaText.includes("no-preference")
+          ) {
             currentInside = true;
           }
         }
-        if (rule.constructor.name === 'CSSViewTransitionRule' || (rule.cssText && rule.cssText.includes('@view-transition'))) {
+        if (
+          rule.constructor.name === "CSSViewTransitionRule" ||
+          (rule.cssText && rule.cssText.includes("@view-transition"))
+        ) {
           return currentInside;
         }
         if (rule.cssRules) {
@@ -120,15 +141,19 @@ test.describe('Cross-document Transitions Grader', () => {
     expect(isWrapped).toBe(true);
   });
 
-  test('Custom animations are defined for different transition types using the :active-view-transition-type() pseudo-class', async ({ page }) => {
+  test("Custom animations are defined for different transition types using the :active-view-transition-type() pseudo-class", async ({
+    page,
+  }) => {
     await page.goto(getTargetUrl());
 
     const hasTypesInCSS = await page.evaluate(() => {
       const matchedTypes = new Set<string>();
-      
+
       const checkRule = (rule: any) => {
-        const text = rule.cssText || '';
-        const matches = text.matchAll(/:active-view-transition-type\(\s*([^)\s,]+)\s*\)/gi);
+        const text = rule.cssText || "";
+        const matches = text.matchAll(
+          /:active-view-transition-type\(\s*([^)\s,]+)\s*\)/gi,
+        );
         for (const m of matches) {
           matchedTypes.add(m[1].toLowerCase());
         }
@@ -154,13 +179,17 @@ test.describe('Cross-document Transitions Grader', () => {
     expect(hasTypesInCSS).toBe(true);
   });
 
-  test('A pagereveal event listener is added to the window to dynamically add transition types to the viewTransition object', async ({ page }) => {
+  test("A pagereveal event listener is added to the window to dynamically add transition types to the viewTransition object", async ({
+    page,
+  }) => {
     // Inject script to record the view transition types during pagereveal on the new page
     await page.addInitScript(() => {
-      window.addEventListener('pagereveal', (e: any) => {
+      window.addEventListener("pagereveal", (e: any) => {
         if (e.viewTransition) {
           setTimeout(() => {
-            (window as any).__capturedTransitionTypes = Array.from(e.viewTransition.types);
+            (window as any).__capturedTransitionTypes = Array.from(
+              e.viewTransition.types,
+            );
           }, 0);
         }
       });
@@ -168,22 +197,29 @@ test.describe('Cross-document Transitions Grader', () => {
 
     await page.goto(getTargetUrl());
     const usesQueryParam = await page.evaluate(() => {
-      const next = document.getElementById('next') as HTMLAnchorElement | null;
-      return Boolean(next && next.getAttribute('href')?.includes('?page='));
+      const next = document.getElementById("next") as HTMLAnchorElement | null;
+      return Boolean(next && next.getAttribute("href")?.includes("?page="));
     });
     if (usesQueryParam) {
       await page.goto(`${getTargetUrl()}?page=1`);
     }
 
     // Click the next page link to trigger same-origin navigation and wait for captured transition types
-    await page.click('#next');
-    await expect.poll(
-      () => page.evaluate(() => ((window as any).__capturedTransitionTypes || []).length),
-      { timeout: 3000 }
-    ).toBeGreaterThan(0);
+    await page.click("#next");
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => ((window as any).__capturedTransitionTypes || []).length,
+          ),
+        { timeout: 3000 },
+      )
+      .toBeGreaterThan(0);
   });
 
-  test('The page-level transition animations use ::view-transition-old(root) and ::view-transition-new(root) to create slide or fade effects', async ({ page }) => {
+  test("The page-level transition animations use ::view-transition-old(root) and ::view-transition-new(root) to create slide or fade effects", async ({
+    page,
+  }) => {
     await page.goto(getTargetUrl());
 
     const hasPageElements = await page.evaluate(() => {
@@ -191,11 +227,11 @@ test.describe('Cross-document Transitions Grader', () => {
       let hasNewRoot = false;
 
       const checkRule = (rule: any) => {
-        const text = rule.cssText || '';
-        if (text.includes('::view-transition-old(root)')) {
+        const text = rule.cssText || "";
+        if (text.includes("::view-transition-old(root)")) {
           hasOldRoot = true;
         }
-        if (text.includes('::view-transition-new(root)')) {
+        if (text.includes("::view-transition-new(root)")) {
           hasNewRoot = true;
         }
         if (rule.cssRules) {

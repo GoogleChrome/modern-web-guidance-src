@@ -103,17 +103,24 @@ Without scroll-state queries, the bar never hides, but it stays compact and usab
 
 ```js
 // Runs only where scroll-state queries aren't supported. Run it after .top-bar is parsed (for example, in a module script).
-if (!CSS.supports('container-type', 'scroll-state')) {
-  const bar = document.querySelector('.top-bar');
+if (!CSS.supports("container-type", "scroll-state")) {
+  const bar = document.querySelector(".top-bar");
   let lastY = scrollY;
-  addEventListener('scroll', () => {
-    // Clamp so rubber-band overscroll at the top or bottom doesn't flip the scroll direction.
-    const y = Math.max(0, Math.min(scrollY, document.documentElement.scrollHeight - innerHeight));
-    if (y === lastY) return;
-    // Hide only after scrolling down past the bar's own height, so it doesn't flicker near the top.
-    bar?.classList.toggle('is-hidden', y > lastY && y > bar.offsetHeight);
-    lastY = y;
-  }, { passive: true });
+  addEventListener(
+    "scroll",
+    () => {
+      // Clamp so rubber-band overscroll at the top or bottom doesn't flip the scroll direction.
+      const y = Math.max(
+        0,
+        Math.min(scrollY, document.documentElement.scrollHeight - innerHeight),
+      );
+      if (y === lastY) return;
+      // Hide only after scrolling down past the bar's own height, so it doesn't flicker near the top.
+      bar?.classList.toggle("is-hidden", y > lastY && y > bar.offsetHeight);
+      lastY = y;
+    },
+    { passive: true },
+  );
 }
 ```
 

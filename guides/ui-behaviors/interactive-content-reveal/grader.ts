@@ -1,72 +1,86 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
 const targetFile = process.env.TARGET_FILE;
 
 test.beforeEach(async ({ page }) => {
   if (!targetFile) {
-    throw new Error('TARGET_FILE environment variable is not set');
+    throw new Error("TARGET_FILE environment variable is not set");
   }
   await page.goto(`file://${targetFile}`);
 });
 
-test('sets --mouse-x custom property when moving mouse over the card', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets --mouse-x custom property when moving mouse over the card", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   await container.scrollIntoViewIfNeeded();
   await container.hover();
   await page.waitForFunction(() => {
-    const el = document.querySelector('.product-card, .card');
+    const el = document.querySelector(".product-card, .card");
     if (!el) return false;
-    const val = window.getComputedStyle(el).getPropertyValue('--mouse-x').trim();
-    return val !== '';
+    const val = window
+      .getComputedStyle(el)
+      .getPropertyValue("--mouse-x")
+      .trim();
+    return val !== "";
   });
 
   const mouseX = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--mouse-x').trim();
+    return window.getComputedStyle(el).getPropertyValue("--mouse-x").trim();
   });
-  expect(mouseX).not.toBe('');
+  expect(mouseX).not.toBe("");
 });
 
-test('sets --mouse-y custom property when moving mouse over the card', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets --mouse-y custom property when moving mouse over the card", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   await container.scrollIntoViewIfNeeded();
   await container.hover();
   await page.waitForFunction(() => {
-    const el = document.querySelector('.product-card, .card');
+    const el = document.querySelector(".product-card, .card");
     if (!el) return false;
-    const val = window.getComputedStyle(el).getPropertyValue('--mouse-y').trim();
-    return val !== '';
+    const val = window
+      .getComputedStyle(el)
+      .getPropertyValue("--mouse-y")
+      .trim();
+    return val !== "";
   });
 
   const mouseY = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--mouse-y').trim();
+    return window.getComputedStyle(el).getPropertyValue("--mouse-y").trim();
   });
-  expect(mouseY).not.toBe('');
+  expect(mouseY).not.toBe("");
 });
 
-test('sets custom property --inner-size to 0px when card is not hovered', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets custom property --inner-size to 0px when card is not hovered", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   const innerSize = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--inner-size').trim();
+    return window.getComputedStyle(el).getPropertyValue("--inner-size").trim();
   });
-  expect(innerSize).toBe('0px');
+  expect(innerSize).toBe("0px");
 });
 
-test('sets custom property --outer-size to 0px when card is not hovered', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets custom property --outer-size to 0px when card is not hovered", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   const outerSize = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--outer-size').trim();
+    return window.getComputedStyle(el).getPropertyValue("--outer-size").trim();
   });
-  expect(outerSize).toBe('0px');
+  expect(outerSize).toBe("0px");
 });
 
-test('registers --inner-size property with @property', async ({ page }) => {
+test("registers --inner-size property with @property", async ({ page }) => {
   const registered = await page.evaluate(() => {
     return Array.from(document.styleSheets).some((sheet) => {
       try {
         return Array.from(sheet.cssRules).some((rule) => {
           return (
-            (rule.type === 16 || rule.constructor.name === 'CSSPropertyRule') &&
-            (rule as any).name === '--inner-size'
+            (rule.type === 16 || rule.constructor.name === "CSSPropertyRule") &&
+            (rule as any).name === "--inner-size"
           );
         });
       } catch (e) {
@@ -77,14 +91,14 @@ test('registers --inner-size property with @property', async ({ page }) => {
   expect(registered).toBe(true);
 });
 
-test('registers --outer-size property with @property', async ({ page }) => {
+test("registers --outer-size property with @property", async ({ page }) => {
   const registered = await page.evaluate(() => {
     return Array.from(document.styleSheets).some((sheet) => {
       try {
         return Array.from(sheet.cssRules).some((rule) => {
           return (
-            (rule.type === 16 || rule.constructor.name === 'CSSPropertyRule') &&
-            (rule as any).name === '--outer-size'
+            (rule.type === 16 || rule.constructor.name === "CSSPropertyRule") &&
+            (rule as any).name === "--outer-size"
           );
         });
       } catch (e) {
@@ -95,86 +109,104 @@ test('registers --outer-size property with @property', async ({ page }) => {
   expect(registered).toBe(true);
 });
 
-test('sets --inner-size to non-zero length when card is hovered', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets --inner-size to non-zero length when card is hovered", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   await container.scrollIntoViewIfNeeded();
   await container.hover();
   await page.waitForFunction(() => {
-    const el = document.querySelector('.product-card, .card');
+    const el = document.querySelector(".product-card, .card");
     if (!el) return false;
-    return parseFloat(window.getComputedStyle(el).getPropertyValue('--inner-size')) > 0;
+    return (
+      parseFloat(window.getComputedStyle(el).getPropertyValue("--inner-size")) >
+      0
+    );
   });
 
   const innerSize = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--inner-size').trim();
+    return window.getComputedStyle(el).getPropertyValue("--inner-size").trim();
   });
   const num = parseFloat(innerSize);
   expect(num).toBeGreaterThan(0);
 });
 
-test('sets --outer-size to non-zero length when card is hovered', async ({ page }) => {
-  const container = page.locator('.product-card, .card').first();
+test("sets --outer-size to non-zero length when card is hovered", async ({
+  page,
+}) => {
+  const container = page.locator(".product-card, .card").first();
   await container.scrollIntoViewIfNeeded();
   await container.hover();
   await page.waitForFunction(() => {
-    const el = document.querySelector('.product-card, .card');
+    const el = document.querySelector(".product-card, .card");
     if (!el) return false;
-    return parseFloat(window.getComputedStyle(el).getPropertyValue('--outer-size')) > 0;
+    return (
+      parseFloat(window.getComputedStyle(el).getPropertyValue("--outer-size")) >
+      0
+    );
   });
 
   const outerSize = await container.evaluate((el) => {
-    return window.getComputedStyle(el).getPropertyValue('--outer-size').trim();
+    return window.getComputedStyle(el).getPropertyValue("--outer-size").trim();
   });
   const num = parseFloat(outerSize);
   expect(num).toBeGreaterThan(0);
 });
 
-test('ensures revealed content is non-interactive with pointer-events: none', async ({ page }) => {
+test("ensures revealed content is non-interactive with pointer-events: none", async ({
+  page,
+}) => {
   const pointerEvents = await page.evaluate(() => {
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
         return style.pointerEvents;
       }
     }
-    return 'not-found';
+    return "not-found";
   });
-  expect(pointerEvents).toBe('none');
+  expect(pointerEvents).toBe("none");
 });
 
-test('ensures revealed content has a mask-image radial gradient from black to transparent', async ({ page }) => {
+test("ensures revealed content has a mask-image radial gradient from black to transparent", async ({
+  page,
+}) => {
   const maskImage = await page.evaluate(() => {
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
         return mask;
       }
     }
-    return '';
+    return "";
   });
-  const hasRadial = maskImage.includes('radial-gradient');
-  const hasBlack = maskImage.includes('black') || maskImage.includes('rgb(0, 0, 0)');
-  const hasTransparent = maskImage.includes('transparent') || maskImage.includes('rgba(0, 0, 0, 0)');
+  const hasRadial = maskImage.includes("radial-gradient");
+  const hasBlack =
+    maskImage.includes("black") || maskImage.includes("rgb(0, 0, 0)");
+  const hasTransparent =
+    maskImage.includes("transparent") || maskImage.includes("rgba(0, 0, 0, 0)");
   expect(hasRadial && hasBlack && hasTransparent).toBe(true);
 });
 
-test('determines gradient position using --mouse-x and --mouse-y properties', async ({ page }) => {
+test("determines gradient position using --mouse-x and --mouse-y properties", async ({
+  page,
+}) => {
   const positionMatch = await page.evaluate(() => {
-    const card = document.querySelector('.product-card, .card') as HTMLElement;
+    const card = document.querySelector(".product-card, .card") as HTMLElement;
     if (!card) return false;
-    card.style.setProperty('--mouse-x', '25%');
-    card.style.setProperty('--mouse-y', '75%');
+    card.style.setProperty("--mouse-x", "25%");
+    card.style.setProperty("--mouse-y", "75%");
 
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
-        return mask.includes('25% 75%');
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
+        return mask.includes("25% 75%");
       }
     }
     return false;
@@ -182,18 +214,20 @@ test('determines gradient position using --mouse-x and --mouse-y properties', as
   expect(positionMatch).toBe(true);
 });
 
-test('sets gradient stops via --inner-size and --outer-size properties', async ({ page }) => {
+test("sets gradient stops via --inner-size and --outer-size properties", async ({
+  page,
+}) => {
   const stopsMatch = await page.evaluate(() => {
-    const card = document.querySelector('.product-card, .card') as HTMLElement;
+    const card = document.querySelector(".product-card, .card") as HTMLElement;
     if (!card) return false;
 
     // Find the reveal element
     let revealEl: HTMLElement | null = null;
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
         revealEl = el as HTMLElement;
         break;
       }
@@ -203,72 +237,82 @@ test('sets gradient stops via --inner-size and --outer-size properties', async (
     // Temporarily disable transition on both reveal element and parent card to get immediate computed style
     const originalTransition = revealEl.style.transition;
     const originalCardTransition = card.style.transition;
-    revealEl.style.transition = 'none';
-    card.style.transition = 'none';
+    revealEl.style.transition = "none";
+    card.style.transition = "none";
 
-    card.style.setProperty('--inner-size', '15px');
-    card.style.setProperty('--outer-size', '35px');
+    card.style.setProperty("--inner-size", "15px");
+    card.style.setProperty("--outer-size", "35px");
 
     const styleAfter = window.getComputedStyle(revealEl);
-    const maskAfter = styleAfter.maskImage || styleAfter.webkitMaskImage || '';
+    const maskAfter = styleAfter.maskImage || styleAfter.webkitMaskImage || "";
 
     // Restore transitions
     revealEl.style.transition = originalTransition;
     card.style.transition = originalCardTransition;
 
-    return maskAfter.includes('15px') && maskAfter.includes('35px');
+    return maskAfter.includes("15px") && maskAfter.includes("35px");
   });
   expect(stopsMatch).toBe(true);
 });
 
-test('uses immediate transition (duration 0) for reduced motion users', async ({ page }) => {
+test("uses immediate transition (duration 0) for reduced motion users", async ({
+  page,
+}) => {
   const hasReducedMotionText = await page.evaluate(() => {
-    const styles = Array.from(document.querySelectorAll('style'));
+    const styles = Array.from(document.querySelectorAll("style"));
     return styles.some((style) => {
-      const text = style.textContent || '';
-      if (!text.includes('prefers-reduced-motion')) return false;
-      const cleanText = text.replace(/\s+/g, '');
+      const text = style.textContent || "";
+      if (!text.includes("prefers-reduced-motion")) return false;
+      const cleanText = text.replace(/\s+/g, "");
       return (
-        cleanText.includes('transition:none') ||
-        cleanText.includes('transition-duration:0') ||
-        cleanText.includes('transition-duration:0s') ||
-        cleanText.includes('transition:0') ||
-        cleanText.includes('transition:0s') ||
-        cleanText.includes('transition-duration:none')
+        cleanText.includes("transition:none") ||
+        cleanText.includes("transition-duration:0") ||
+        cleanText.includes("transition-duration:0s") ||
+        cleanText.includes("transition:0") ||
+        cleanText.includes("transition:0s") ||
+        cleanText.includes("transition-duration:none")
       );
     });
   });
   expect(hasReducedMotionText).toBe(true);
 });
 
-test('ensures size properties have a non-zero transition duration by default', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+test("ensures size properties have a non-zero transition duration by default", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   const nonZeroTransition = await page.evaluate(() => {
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
         const duration = style.transitionDuration;
         const prop = style.transitionProperty;
         const hasNonZero = duration
-          .split(',')
+          .split(",")
           .map((s) => parseFloat(s.trim()))
           .some((v) => v > 0);
-        const targetsSize = prop.includes('--inner-size') || prop.includes('--outer-size') || prop === 'all';
+        const targetsSize =
+          prop.includes("--inner-size") ||
+          prop.includes("--outer-size") ||
+          prop === "all";
         if (hasNonZero && targetsSize) return true;
 
         // Fallback: Check parent container card that defines variables transition
-        const card = el.closest('.product-card, .card') || el.parentElement;
+        const card = el.closest(".product-card, .card") || el.parentElement;
         if (card) {
           const parentStyle = window.getComputedStyle(card);
           const parentDuration = parentStyle.transitionDuration;
           const parentProp = parentStyle.transitionProperty;
           const parentHasNonZero = parentDuration
-            .split(',')
+            .split(",")
             .map((s) => parseFloat(s.trim()))
             .some((v) => v > 0);
-          const parentTargetsSize = parentProp.includes('--inner-size') || parentProp.includes('--outer-size') || parentProp === 'all';
+          const parentTargetsSize =
+            parentProp.includes("--inner-size") ||
+            parentProp.includes("--outer-size") ||
+            parentProp === "all";
           if (parentHasNonZero && parentTargetsSize) return true;
         }
       }
@@ -278,15 +322,17 @@ test('ensures size properties have a non-zero transition duration by default', a
   expect(nonZeroTransition).toBe(true);
 });
 
-test('ensures --mouse-x and --mouse-y have no transition on the revealed content', async ({ page }) => {
+test("ensures --mouse-x and --mouse-y have no transition on the revealed content", async ({
+  page,
+}) => {
   const noMouseTransition = await page.evaluate(() => {
-    const all = document.querySelectorAll('*');
+    const all = document.querySelectorAll("*");
     for (const el of all) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      if (mask.includes('radial-gradient')) {
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      if (mask.includes("radial-gradient")) {
         const prop = style.transitionProperty;
-        return !prop.includes('--mouse-x') && !prop.includes('--mouse-y');
+        return !prop.includes("--mouse-x") && !prop.includes("--mouse-y");
       }
     }
     return false;
@@ -294,19 +340,26 @@ test('ensures --mouse-x and --mouse-y have no transition on the revealed content
   expect(noMouseTransition).toBe(true);
 });
 
-test('guarantees underlying content remains fully persistent and visible by default', async ({ page }) => {
+test("guarantees underlying content remains fully persistent and visible by default", async ({
+  page,
+}) => {
   const underlyingContentVisible = await page.evaluate(() => {
-    const card = document.querySelector('.product-card, .card');
+    const card = document.querySelector(".product-card, .card");
     if (!card) return false;
-    const descendants = Array.from(card.querySelectorAll('*'));
+    const descendants = Array.from(card.querySelectorAll("*"));
     let hasUnderlyingVisibleContent = false;
     let hasHiddenUnderlyingContent = false;
     for (const el of descendants) {
       const style = window.getComputedStyle(el);
-      const mask = style.maskImage || style.webkitMaskImage || '';
-      const isMask = mask.includes('radial-gradient');
-      if (!isMask && !el.classList.contains('spotlight') && el.id !== 'spotlight') {
-        const isHidden = style.display === 'none' || style.visibility === 'hidden';
+      const mask = style.maskImage || style.webkitMaskImage || "";
+      const isMask = mask.includes("radial-gradient");
+      if (
+        !isMask &&
+        !el.classList.contains("spotlight") &&
+        el.id !== "spotlight"
+      ) {
+        const isHidden =
+          style.display === "none" || style.visibility === "hidden";
         if (isHidden) {
           hasHiddenUnderlyingContent = true;
         } else if (el.textContent && el.textContent.trim().length > 0) {

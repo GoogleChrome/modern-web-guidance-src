@@ -1,14 +1,15 @@
-import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import type { AnalyzerFinding, AnalyzerRule } from './schema.ts';
+import { createHash } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import type { AnalyzerFinding, AnalyzerRule } from "./schema.ts";
 
-const WORKTREE_ROOT = resolve(import.meta.dirname, '../..');
-const GUIDES_DIR = join(WORKTREE_ROOT, 'guides');
+const WORKTREE_ROOT = resolve(import.meta.dirname, "../..");
+const GUIDES_DIR = join(WORKTREE_ROOT, "guides");
 
-export const LLM_VERIFIER_MODEL = 'gemini-3.8-flash';
+export const LLM_VERIFIER_MODEL = "gemini-3.8-flash";
 export const PROMPT_MODEL = LLM_VERIFIER_MODEL;
-export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+export const GEMINI_API_BASE =
+  "https://generativelanguage.googleapis.com/v1beta";
 
 export interface GeminiEndpointOptions {
   readonly apiKey?: string;
@@ -24,19 +25,21 @@ export function resolveGeminiApiBase(options?: { baseUrl?: string }): string {
     options?.baseUrl ??
     process.env.GEMINI_API_BASE ??
     process.env.GOOGLE_GEMINI_BASE_URL ??
-    ''
+    ""
   ).trim();
   if (!raw) {
     return GEMINI_API_BASE;
   }
   const parsed = new URL(raw);
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(
       `Invalid Gemini API base URL protocol "${parsed.protocol}"; expected http: or https:`,
     );
   }
-  const normalized = parsed.toString().replace(/\/+$/, '');
-  return /\/v1(?:beta|alpha)?$/.test(normalized) ? normalized : `${normalized}/v1beta`;
+  const normalized = parsed.toString().replace(/\/+$/, "");
+  return /\/v1(?:beta|alpha)?$/.test(normalized)
+    ? normalized
+    : `${normalized}/v1beta`;
 }
 
 export const VERIFIER_THINKING_BUDGET = 1024;
@@ -62,8 +65,8 @@ export function computePromptContentHash(params: {
     String(params.thinkingBudget),
     String(params.temperature ?? 0.0),
     String(params.enableSearchGrounding ?? false),
-  ].join('\n---\n');
-  return createHash('sha256').update(payload).digest('hex').slice(0, 8);
+  ].join("\n---\n");
+  return createHash("sha256").update(payload).digest("hex").slice(0, 8);
 }
 
 export const VERIFIER_SYSTEM_PROMPT = `You are an expert static analysis Phase 2 verifier for Modern Web Guidance.
@@ -78,16 +81,16 @@ Follow these verification principles:
 6. Provide your confidence level ('high', 'medium', or 'low').`;
 
 export const VERIFIER_RESPONSE_SCHEMA = {
-  type: 'OBJECT',
+  type: "OBJECT",
   properties: {
-    keep: { type: 'BOOLEAN' },
-    reason: { type: 'STRING' },
+    keep: { type: "BOOLEAN" },
+    reason: { type: "STRING" },
     confidence: {
-      type: 'STRING',
-      enum: ['high', 'medium', 'low'],
+      type: "STRING",
+      enum: ["high", "medium", "low"],
     },
   },
-  required: ['keep', 'reason', 'confidence'],
+  required: ["keep", "reason", "confidence"],
 };
 
 export const VERIFIER_USER_PROMPT_TEMPLATE = `## Modern Web Guidance Guide (\${rule.guideId})
@@ -137,9 +140,17 @@ export function formatVerifierPrompt(
   rule: VerifierPromptRuleInput,
   guideMarkdown?: string,
 ): string {
-  const keepList = rule.verifierRubric.keepWhen.map((item) => `- ${item}`).join('\n');
-  const dropList = rule.verifierRubric.dropWhen.map((item) => `- ${item}`).join('\n');
-  const contextSnippet = (finding.contextSlice || finding.codeSnippet || '').trim();
+  const keepList = rule.verifierRubric.keepWhen
+    .map((item) => `- ${item}`)
+    .join("\n");
+  const dropList = rule.verifierRubric.dropWhen
+    .map((item) => `- ${item}`)
+    .join("\n");
+  const contextSnippet = (
+    finding.contextSlice ||
+    finding.codeSnippet ||
+    ""
+  ).trim();
 
   if (!guideMarkdown || !guideMarkdown.trim()) {
     throw new Error(
@@ -195,18 +206,20 @@ export function getGeminiApiKey(options?: GeminiEndpointOptions): string {
   }
   const baseUrl = resolveGeminiApiBase(options);
   if (baseUrl !== GEMINI_API_BASE) {
-    return process.env.GEMINI_API_KEY?.trim() ?? '';
+    return process.env.GEMINI_API_KEY?.trim() ?? "";
   }
   if (!process.env.GEMINI_API_KEY) {
     try {
-      process.loadEnvFile?.(join(WORKTREE_ROOT, '.env'));
+      process.loadEnvFile?.(join(WORKTREE_ROOT, ".env"));
     } catch {
       /* ignore missing .env */
     }
   }
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) {
-    throw new Error('GEMINI_API_KEY is not defined in environment, options, or .env file');
+    throw new Error(
+      "GEMINI_API_KEY is not defined in environment, options, or .env file",
+    );
   }
   return key;
 }
@@ -214,7 +227,10 @@ export function getGeminiApiKey(options?: GeminiEndpointOptions): string {
 /**
  * Builds the `generateContent` endpoint URL for `model`, appending `?key=` only when an API key is resolved.
  */
-export function buildGenerateContentUrl(model: string, options?: GeminiEndpointOptions): string {
+export function buildGenerateContentUrl(
+  model: string,
+  options?: GeminiEndpointOptions,
+): string {
   const baseUrl = resolveGeminiApiBase(options);
   const apiKey = getGeminiApiKey(options);
   const endpoint = `${baseUrl}/models/${model}:generateContent`;
@@ -225,15 +241,20 @@ async function readGuideMarkdownEntry(
   guideId: string,
   guidesRootDir: string = GUIDES_DIR,
 ): Promise<{ path: string; content: string }> {
-  async function search(dir: string): Promise<{ path: string; content: string } | null> {
+  async function search(
+    dir: string,
+  ): Promise<{ path: string; content: string } | null> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
       const fullPath = join(dir, entry.name);
       if (entry.name === guideId) {
-        const guideFile = join(fullPath, 'guide.md');
+        const guideFile = join(fullPath, "guide.md");
         try {
-          return { path: guideFile, content: await readFile(guideFile, 'utf8') };
+          return {
+            path: guideFile,
+            content: await readFile(guideFile, "utf8"),
+          };
         } catch {
           /* continue searching if unreadable */
         }
@@ -246,7 +267,9 @@ async function readGuideMarkdownEntry(
 
   const found = await search(guidesRootDir);
   if (!found) {
-    throw new Error(`guide.md for guideId "${guideId}" not found under ${guidesRootDir}`);
+    throw new Error(
+      `guide.md for guideId "${guideId}" not found under ${guidesRootDir}`,
+    );
   }
   return found;
 }
@@ -268,7 +291,7 @@ export async function loadRawGuideMarkdown(
   return (await readGuideMarkdownEntry(guideId, guidesRootDir)).content;
 }
 
-export type VerifierConfidence = 'high' | 'medium' | 'low';
+export type VerifierConfidence = "high" | "medium" | "low";
 
 export interface VerifierVerdict {
   readonly cardId: string;
@@ -303,12 +326,12 @@ export function buildVerifierRequestBody(
     },
     contents: [
       {
-        role: 'user',
+        role: "user",
         parts: [{ text: formatVerifierPrompt(finding, rule, guideMarkdown) }],
       },
     ],
     generationConfig: {
-      responseMimeType: 'application/json',
+      responseMimeType: "application/json",
       responseSchema: VERIFIER_RESPONSE_SCHEMA,
       temperature: 0.0,
       thinkingConfig: { thinkingBudget: VERIFIER_THINKING_BUDGET },
@@ -316,27 +339,42 @@ export function buildVerifierRequestBody(
   };
 }
 
-export function parseVerifierResponse(rawText: string, cardId: string): VerifierVerdict {
+export function parseVerifierResponse(
+  rawText: string,
+  cardId: string,
+): VerifierVerdict {
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawText.trim());
   } catch (err: unknown) {
-    throw new Error(`Verifier response JSON parse error for card ${cardId}: ${String(err)}`);
+    throw new Error(
+      `Verifier response JSON parse error for card ${cardId}: ${String(err)}`,
+    );
   }
 
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error(`Verifier invalid response shape for card ${cardId}: expected object`);
+  if (typeof parsed !== "object" || parsed === null) {
+    throw new Error(
+      `Verifier invalid response shape for card ${cardId}: expected object`,
+    );
   }
 
   const rec = parsed as Record<string, unknown>;
-  if (typeof rec.keep !== 'boolean') {
-    throw new Error(`Verifier response missing boolean 'keep' property for card ${cardId}`);
+  if (typeof rec.keep !== "boolean") {
+    throw new Error(
+      `Verifier response missing boolean 'keep' property for card ${cardId}`,
+    );
   }
-  if (typeof rec.reason !== 'string') {
-    throw new Error(`Verifier response missing string 'reason' property for card ${cardId}`);
+  if (typeof rec.reason !== "string") {
+    throw new Error(
+      `Verifier response missing string 'reason' property for card ${cardId}`,
+    );
   }
   const confidence = rec.confidence;
-  if (confidence !== 'high' && confidence !== 'medium' && confidence !== 'low') {
+  if (
+    confidence !== "high" &&
+    confidence !== "medium" &&
+    confidence !== "low"
+  ) {
     throw new Error(
       `Verifier response invalid confidence '${String(confidence)}' for card ${cardId}`,
     );
@@ -350,7 +388,9 @@ export function parseVerifierResponse(rawText: string, cardId: string): Verifier
   };
 }
 
-export const RETRYABLE_HTTP_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
+export const RETRYABLE_HTTP_STATUSES: ReadonlySet<number> = new Set([
+  429, 500, 502, 503, 504,
+]);
 
 export async function fetchWithRetry(
   url: string,
@@ -387,7 +427,8 @@ export async function runLlmVerifier(
   }
 
   const tasks = findings.map((finding) => {
-    const rule = rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
+    const rule =
+      rulesById.get(finding.ruleId) ?? rulesById.get(finding.guideId);
     if (!rule) {
       throw new Error(
         `LLM Verifier error: Rule not found for finding with ruleId='${finding.ruleId}' / guideId='${finding.guideId}' on ${finding.file}:${finding.line}`,
@@ -397,14 +438,23 @@ export async function runLlmVerifier(
   });
 
   const customFetch = options?.fetchFn ?? fetch;
-  const url = buildGenerateContentUrl(options?.model ?? LLM_VERIFIER_MODEL, options);
+  const url = buildGenerateContentUrl(
+    options?.model ?? LLM_VERIFIER_MODEL,
+    options,
+  );
   const maxRetries = options?.maxRetries ?? 8;
-  const workerCount = Math.min(tasks.length, Math.max(1, options?.concurrency ?? 5));
+  const workerCount = Math.min(
+    tasks.length,
+    Math.max(1, options?.concurrency ?? 5),
+  );
 
   const uniqueGuideIds = [...new Set(tasks.map((t) => t.rule.guideId))];
   const guideMarkdownCache = new Map(
     await Promise.all(
-      uniqueGuideIds.map(async (guideId) => [guideId, await loadRawGuideMarkdown(guideId)] as const),
+      uniqueGuideIds.map(
+        async (guideId) =>
+          [guideId, await loadRawGuideMarkdown(guideId)] as const,
+      ),
     ),
   );
 
@@ -417,13 +467,17 @@ export async function runLlmVerifier(
       const task = tasks[idx];
       if (!task) continue;
       const { finding, rule } = task;
-      const body = buildVerifierRequestBody(finding, rule, guideMarkdownCache.get(rule.guideId));
+      const body = buildVerifierRequestBody(
+        finding,
+        rule,
+        guideMarkdownCache.get(rule.guideId),
+      );
 
       const res = await fetchWithRetry(
         url,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         },
         customFetch,

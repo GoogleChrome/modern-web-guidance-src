@@ -1,28 +1,34 @@
-import { Storage } from '@google-cloud/storage';
-import path from 'path';
-import fs from 'fs';
-import { resultsDir as baseResultsDir } from '../../core/paths.ts';
-import { cCyan, cGreen, cYellow, cRed } from '../../core/colors.ts';
-import { hasRawSessionLogs } from './trajectory-normalizer.ts';
+import { Storage } from "@google-cloud/storage";
+import path from "path";
+import fs from "fs";
+import { resultsDir as baseResultsDir } from "../../core/paths.ts";
+import { cCyan, cGreen, cYellow, cRed } from "../../core/colors.ts";
+import { hasRawSessionLogs } from "./trajectory-normalizer.ts";
 
-const PROJECT_ID = 'chrome-kiwi-air-force-dev';
-const BUCKET_NAME = 'guidance-evals';
+const PROJECT_ID = "chrome-kiwi-air-force-dev";
+const BUCKET_NAME = "guidance-evals";
 
-export const GCS_DOWNLOAD_COMPLETE_SENTINEL = '.gcs_download_complete';
+export const GCS_DOWNLOAD_COMPLETE_SENTINEL = ".gcs_download_complete";
 
 const inflightSuiteEvalsDownloads = new Map<string, Promise<void>>();
 
 /**
  * Downloads a file from GCS using the REST API with a Bearer token.
  */
-async function downloadFileWithToken(token: string, gcsFileName: string, destPath: string): Promise<void> {
+async function downloadFileWithToken(
+  token: string,
+  gcsFileName: string,
+  destPath: string,
+): Promise<void> {
   const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o/${encodeURIComponent(gcsFileName)}?alt=media`;
   const response = await fetch(url, {
-    headers: { 'Authorization': token }
+    headers: { Authorization: token },
   });
 
   if (!response.ok) {
-    throw new Error(`REST download failed: HTTP ${response.status} ${response.statusText}`);
+    throw new Error(
+      `REST download failed: HTTP ${response.status} ${response.statusText}`,
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
@@ -34,14 +40,19 @@ async function downloadFileWithToken(token: string, gcsFileName: string, destPat
 /**
  * Lists files in a GCS bucket prefix using the REST API with a Bearer token.
  */
-async function listFilesWithToken(token: string, prefix: string): Promise<string[]> {
+async function listFilesWithToken(
+  token: string,
+  prefix: string,
+): Promise<string[]> {
   const url = `https://storage.googleapis.com/storage/v1/b/${BUCKET_NAME}/o?prefix=${encodeURIComponent(prefix)}`;
   const response = await fetch(url, {
-    headers: { 'Authorization': token }
+    headers: { Authorization: token },
   });
 
   if (!response.ok) {
-    throw new Error(`REST list failed: HTTP ${response.status} ${response.statusText}`);
+    throw new Error(
+      `REST list failed: HTTP ${response.status} ${response.statusText}`,
+    );
   }
 
   const data: any = await response.json();
@@ -62,7 +73,7 @@ async function downloadFileBatch<T>(
   gcsPrefix: string,
   destDir: string,
   getItemName: (item: T) => string,
-  downloadFn: (item: T, destPath: string) => Promise<unknown>
+  downloadFn: (item: T, destPath: string) => Promise<unknown>,
 ): Promise<void> {
   const resolvedDestDir = path.resolve(destDir);
   const queue = [...items];
@@ -74,13 +85,15 @@ async function downloadFileBatch<T>(
 
       const name = getItemName(item);
       const relativeFilePath = name.substring(gcsPrefix.length);
-      if (!relativeFilePath || relativeFilePath.endsWith('/')) {
+      if (!relativeFilePath || relativeFilePath.endsWith("/")) {
         continue;
       }
 
       const destPath = path.join(destDir, relativeFilePath);
       if (!path.resolve(destPath).startsWith(resolvedDestDir)) {
-        throw new Error(`Refusing to write outside destination directory: ${destPath}`);
+        throw new Error(
+          `Refusing to write outside destination directory: ${destPath}`,
+        );
       }
 
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
@@ -100,14 +113,19 @@ async function downloadFileBatch<T>(
 export async function downloadSuiteEvalsIfMissing(
   suiteName: string,
   token: string | undefined,
-  suiteDirOverride?: string
+  suiteDirOverride?: string,
 ): Promise<void> {
-  const destPath = path.join(suiteDirOverride || path.join(baseResultsDir, suiteName), 'evals.json');
+  const destPath = path.join(
+    suiteDirOverride || path.join(baseResultsDir, suiteName),
+    "evals.json",
+  );
   if (fs.existsSync(destPath)) {
     return;
   }
 
-  const inflightKey = suiteDirOverride ? `${suiteName}:${suiteDirOverride}` : suiteName;
+  const inflightKey = suiteDirOverride
+    ? `${suiteName}:${suiteDirOverride}`
+    : suiteName;
   const inflight = inflightSuiteEvalsDownloads.get(inflightKey);
   if (inflight) {
     return inflight;
@@ -119,18 +137,28 @@ export async function downloadSuiteEvalsIfMissing(
     }
 
     const gcsFileName = `${suiteName}/evals.json`;
-    console.log(cCyan(`[GCS Downloader] Suite-level evals.json is missing. Downloading from GCS: gs://${BUCKET_NAME}/${gcsFileName}...`));
+    console.log(
+      cCyan(
+        `[GCS Downloader] Suite-level evals.json is missing. Downloading from GCS: gs://${BUCKET_NAME}/${gcsFileName}...`,
+      ),
+    );
 
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
 
-    if (token && token.startsWith('Bearer ')) {
+    if (token && token.startsWith("Bearer ")) {
       try {
         await downloadFileWithToken(token, gcsFileName, destPath);
-        console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`));
+        console.log(
+          cGreen(
+            `[GCS Downloader] ✅ Successfully downloaded suite evals.json via REST API!`,
+          ),
+        );
         return;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${msg}`);
+        console.warn(
+          `[GCS Downloader] Warning: Failed to download suite evals.json via REST: ${msg}`,
+        );
       }
     }
 
@@ -144,13 +172,21 @@ export async function downloadSuiteEvalsIfMissing(
         const tmpPath = `${destPath}.tmp.${process.pid}.${Date.now()}`;
         await file.download({ destination: tmpPath });
         fs.renameSync(tmpPath, destPath);
-        console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded suite evals.json via Storage SDK!`));
+        console.log(
+          cGreen(
+            `[GCS Downloader] ✅ Successfully downloaded suite evals.json via Storage SDK!`,
+          ),
+        );
       } else {
-        console.warn(`[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`);
+        console.warn(
+          `[GCS Downloader] Suite evals.json does not exist on GCS: gs://${BUCKET_NAME}/${gcsFileName}`,
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`);
+      console.warn(
+        `[GCS Downloader] Warning: Failed to download suite evals.json via SDK: ${msg}`,
+      );
     }
   })().finally(() => {
     inflightSuiteEvalsDownloads.delete(inflightKey);
@@ -171,32 +207,50 @@ function normalizePath(p: string): string {
   }
 }
 
-export function resolveRunPath(runDir: string): { absoluteRunDir: string; relativeRunPath: string } | null {
-  const normalizedRunDir = runDir.replaceAll('\\', '/');
+export function resolveRunPath(
+  runDir: string,
+): { absoluteRunDir: string; relativeRunPath: string } | null {
+  const normalizedRunDir = runDir.replaceAll("\\", "/");
   let absoluteRunDir = normalizePath(runDir);
   const absoluteResultsDir = normalizePath(baseResultsDir);
   let relativeRunPath = path.relative(absoluteResultsDir, absoluteRunDir);
 
-  if (relativeRunPath.startsWith('..') || path.isAbsolute(relativeRunPath)) {
+  if (relativeRunPath.startsWith("..") || path.isAbsolute(relativeRunPath)) {
     const hasSuites = /(^|\/)suites(\/|$)/.test(normalizedRunDir);
-    const stripped = normalizedRunDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
-    const candidate = path.resolve(hasSuites ? path.join(baseResultsDir, 'suites') : baseResultsDir, stripped);
-    const candidateRel = path.relative(absoluteResultsDir, normalizePath(candidate));
-    if (!candidateRel.startsWith('..') && !path.isAbsolute(candidateRel)) {
+    const stripped = normalizedRunDir.replace(
+      /^(\.\/)?(harness\/)?results\/(suites\/)?/,
+      "",
+    );
+    const candidate = path.resolve(
+      hasSuites ? path.join(baseResultsDir, "suites") : baseResultsDir,
+      stripped,
+    );
+    const candidateRel = path.relative(
+      absoluteResultsDir,
+      normalizePath(candidate),
+    );
+    if (!candidateRel.startsWith("..") && !path.isAbsolute(candidateRel)) {
       absoluteRunDir = candidate;
       relativeRunPath = candidateRel;
     } else {
-      console.warn(`[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`);
+      console.warn(
+        `[GCS Downloader] Path is outside results directory: ${absoluteRunDir}`,
+      );
       return null;
     }
   }
 
-  relativeRunPath = relativeRunPath.replaceAll(path.sep, path.posix.sep).replace(/^suites\//, '');
+  relativeRunPath = relativeRunPath
+    .replaceAll(path.sep, path.posix.sep)
+    .replace(/^suites\//, "");
 
   return { absoluteRunDir, relativeRunPath };
 }
 
-async function downloadSingleDirFromGcs(runDir: string, token: string | undefined): Promise<boolean> {
+async function downloadSingleDirFromGcs(
+  runDir: string,
+  token: string | undefined,
+): Promise<boolean> {
   const resolved = resolveRunPath(runDir);
   if (!resolved) return false;
   const { absoluteRunDir, relativeRunPath } = resolved;
@@ -204,82 +258,136 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
   if (fs.existsSync(absoluteRunDir)) {
     const files = fs.readdirSync(absoluteRunDir);
     const hasSentinel = files.includes(GCS_DOWNLOAD_COMPLETE_SENTINEL);
-    const hasTrajectory = files.includes('trajectory_summary.json') || hasRawSessionLogs(absoluteRunDir);
-    const hasResults = files.some((f) => f.endsWith('_results.json') || f === 'runtime.json');
+    const hasTrajectory =
+      files.includes("trajectory_summary.json") ||
+      hasRawSessionLogs(absoluteRunDir);
+    const hasResults = files.some(
+      (f) => f.endsWith("_results.json") || f === "runtime.json",
+    );
     if (hasSentinel || (hasResults && hasTrajectory)) {
       return true;
     }
   }
 
-  console.log(cCyan(`[GCS Downloader] Run directory not found or incomplete locally: ${relativeRunPath}`));
+  console.log(
+    cCyan(
+      `[GCS Downloader] Run directory not found or incomplete locally: ${relativeRunPath}`,
+    ),
+  );
 
   const gcsPrefix = `${relativeRunPath}/`;
 
-  if (token && token.startsWith('Bearer ')) {
-    console.log(cYellow(`[GCS Downloader] Using Bearer token authentication forwarded from browser...`));
+  if (token && token.startsWith("Bearer ")) {
+    console.log(
+      cYellow(
+        `[GCS Downloader] Using Bearer token authentication forwarded from browser...`,
+      ),
+    );
     try {
-      console.log(`[GCS Downloader] Listing files in gs://${BUCKET_NAME}/${gcsPrefix} via REST API...`);
+      console.log(
+        `[GCS Downloader] Listing files in gs://${BUCKET_NAME}/${gcsPrefix} via REST API...`,
+      );
       const fileNames = await listFilesWithToken(token, gcsPrefix);
 
       if (fileNames.length === 0) {
-        console.warn(`[GCS Downloader] No files found on GCS with prefix: ${gcsPrefix}`);
+        console.warn(
+          `[GCS Downloader] No files found on GCS with prefix: ${gcsPrefix}`,
+        );
         return false;
       }
 
-      console.log(cCyan(`[GCS Downloader] Discovered ${fileNames.length} files. Downloading via REST API...`));
+      console.log(
+        cCyan(
+          `[GCS Downloader] Discovered ${fileNames.length} files. Downloading via REST API...`,
+        ),
+      );
 
       await downloadFileBatch(
         fileNames,
         gcsPrefix,
         absoluteRunDir,
         (name) => name,
-        (name, destPath) => downloadFileWithToken(token, name, destPath)
+        (name, destPath) => downloadFileWithToken(token, name, destPath),
       );
 
-      fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
-      console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via REST API!`));
+      fs.writeFileSync(
+        path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL),
+        new Date().toISOString(),
+        "utf8",
+      );
+      console.log(
+        cGreen(
+          `[GCS Downloader] ✅ Successfully downloaded all files via REST API!`,
+        ),
+      );
       return true;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(cRed(`[GCS Downloader] ❌ REST API Download failed: ${msg}`));
+      console.error(
+        cRed(`[GCS Downloader] ❌ REST API Download failed: ${msg}`),
+      );
     }
   }
 
   // Backup / CLI Fallback: Use standard SDK
-  console.log(cYellow(`[GCS Downloader] Attempting standard Google Cloud Storage library authentication (ADC)...`));
+  console.log(
+    cYellow(
+      `[GCS Downloader] Attempting standard Google Cloud Storage library authentication (ADC)...`,
+    ),
+  );
   try {
     const storage = new Storage({ projectId: PROJECT_ID });
     const bucket = storage.bucket(BUCKET_NAME);
 
-    console.log(`[GCS Downloader] Listing files in gs://${BUCKET_NAME}/${gcsPrefix} via Storage SDK...`);
+    console.log(
+      `[GCS Downloader] Listing files in gs://${BUCKET_NAME}/${gcsPrefix} via Storage SDK...`,
+    );
     const [files] = await bucket.getFiles({ prefix: gcsPrefix });
 
     if (files.length === 0) {
-      console.warn(`[GCS Downloader] No files found on GCS with prefix: ${gcsPrefix}`);
+      console.warn(
+        `[GCS Downloader] No files found on GCS with prefix: ${gcsPrefix}`,
+      );
       return false;
     }
 
-    console.log(cCyan(`[GCS Downloader] Discovered ${files.length} files. Downloading via Storage SDK...`));
+    console.log(
+      cCyan(
+        `[GCS Downloader] Discovered ${files.length} files. Downloading via Storage SDK...`,
+      ),
+    );
 
     await downloadFileBatch(
       files,
       gcsPrefix,
       absoluteRunDir,
       (file) => file.name,
-      (file, destPath) => file.download({ destination: destPath })
+      (file, destPath) => file.download({ destination: destPath }),
     );
 
-    fs.writeFileSync(path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL), new Date().toISOString(), 'utf8');
-    console.log(cGreen(`[GCS Downloader] ✅ Successfully downloaded all files via Storage SDK!`));
+    fs.writeFileSync(
+      path.join(absoluteRunDir, GCS_DOWNLOAD_COMPLETE_SENTINEL),
+      new Date().toISOString(),
+      "utf8",
+    );
+    console.log(
+      cGreen(
+        `[GCS Downloader] ✅ Successfully downloaded all files via Storage SDK!`,
+      ),
+    );
     return true;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(cRed(`[GCS Downloader] ❌ Storage SDK Download failed: ${msg}`));
-    console.log(cYellow(`
+    console.error(
+      cRed(`[GCS Downloader] ❌ Storage SDK Download failed: ${msg}`),
+    );
+    console.log(
+      cYellow(`
 💡 Hint: If you are running gd compare directly from the CLI, run:
    gcloud auth application-default login
    to authenticate your local terminal environment with Google Cloud.
-    `));
+    `),
+    );
     return false;
   }
 }
@@ -289,7 +397,9 @@ async function downloadSingleDirFromGcs(runDir: string, token: string | undefine
  * Resolves the path relative to the harness results directory.
  * Orchestrates downloading suite evals.json and the primary requested run.
  */
-export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boolean> {
+export async function downloadRunFromGcsIfMissing(
+  runDir: string,
+): Promise<boolean> {
   const resolved = resolveRunPath(runDir);
   if (!resolved) return false;
   const { absoluteRunDir, relativeRunPath } = resolved;
@@ -298,9 +408,10 @@ export async function downloadRunFromGcsIfMissing(runDir: string): Promise<boole
   const suiteName = parts[0];
   const token = process.env.GD_GCS_TOKEN;
 
-  const localSuiteDir = parts.length > 1
-    ? path.resolve(absoluteRunDir, ...Array(parts.length - 1).fill('..'))
-    : absoluteRunDir;
+  const localSuiteDir =
+    parts.length > 1
+      ? path.resolve(absoluteRunDir, ...Array(parts.length - 1).fill(".."))
+      : absoluteRunDir;
 
   // 1. Lazily download the suite-level evals.json
   await downloadSuiteEvalsIfMissing(suiteName, token, localSuiteDir);

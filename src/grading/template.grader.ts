@@ -5,7 +5,7 @@ import {
   getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 
 // NOTE: Add imports from ts-morph, linkedom, or cssomnom as needed:
 // e.g. import { SyntaxKind, type Project } from 'ts-morph';
@@ -26,20 +26,19 @@ import {
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-test.describe('<guide-name> Target Grader', () => {
-
+test.describe("<guide-name> Target Grader", () => {
   // --- STATIC ASSERTIONS (PARSERS: STRUCTURE & API USAGE) ---
   // Check structure and API usage (DOM structure, attributes, CSS rules, and JS/TS syntax) with parsers (Linkedom, CSSOMNom, ts-morph), never regex on source.
   // These run instantly and are far more robust for structural verification than starting a browser.
-  
-  test('Example test containing HTML checks (linkedom)', () => {
+
+  test("Example test containing HTML checks (linkedom)", () => {
     // EXAMPLE: DOM parsing using linkedom across HTML & component templates:
     // const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
     // const targetEl = docs.map(d => d.document.querySelector('.target-element')).find(Boolean);
     // expect(targetEl).not.toBeUndefined();
   });
 
-  test('Example test containing CSS checks (cssomnom)', () => {
+  test("Example test containing CSS checks (cssomnom)", () => {
     // EXAMPLE 1: Recursive rule lookup across stylesheets and nested rules (pre-order):
     // const styleRules = getRules(targetFiles, CSSStyleRule);
     // (Or getCssStyleSheet(targetFiles) if inspecting the stylesheet directly or using getCascadedStyle)
@@ -69,7 +68,7 @@ test.describe('<guide-name> Target Grader', () => {
     // }
   });
 
-  test('Example test containing JS checks (ts-morph)', () => {
+  test("Example test containing JS checks (ts-morph)", () => {
     // EXAMPLE: JavaScript AST parsing using ts-morph across JS/TS files and <script> tags:
     // const project: Project = getJsProject(targetFiles);
     // const functionDecls = project.getSourceFiles().flatMap(sf =>
@@ -83,9 +82,8 @@ test.describe('<guide-name> Target Grader', () => {
   // Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright.
   // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes); never invented routes, custom REST endpoints/payloads, or IDs/classes that exist only in the golden patches.
   // If no expectations require runtime browser checks, this entire `test.describe('Browser tests', ...)` section should be omitted.
-  
-  test.describe('Browser tests', () => {
-    
+
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.goto(TARGET_URL);
     });

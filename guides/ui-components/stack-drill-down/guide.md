@@ -186,12 +186,16 @@ A scroll-driven `view(inline)` animation tracks each view's progress through the
      their left edge during the transition so they feel like cards
      stacking over the previous view. */
   .Stack-view:not(:first-child) .Stack-viewContent {
-    animation: parallax linear both, shadow-fade linear both;
+    animation:
+      parallax linear both,
+      shadow-fade linear both;
     animation-timeline: view(inline), view(inline);
     /* parallax: only exit (the view sliding back as a deeper one comes in).
        shadow-fade: entry through exit (visible the whole time the view is
        transitioning, not when it's at rest). */
-    animation-range: exit 0% exit 100%, entry 0% exit 100%;
+    animation-range:
+      exit 0% exit 100%,
+      entry 0% exit 100%;
   }
 
   @keyframes parallax {
@@ -206,8 +210,14 @@ A scroll-driven `view(inline)` animation tracks each view's progress through the
     /* Shadow ramps in during entry, holds across the middle of the
        gesture, and ramps out during exit — so it's only visible while
        the view is mid-transition, not when at rest. */
-    0%, 100% { box-shadow: 0 0 1.5rem #0000; }
-    25%, 75% { box-shadow: 0 0 1.5rem #0004; }
+    0%,
+    100% {
+      box-shadow: 0 0 1.5rem #0000;
+    }
+    25%,
+    75% {
+      box-shadow: 0 0 1.5rem #0004;
+    }
   }
 }
 ```
@@ -219,7 +229,7 @@ NOTE: This effect is popular in modern native stack applications and is a good s
 The stack tracks four pieces of state in module scope:
 
 ```js
-const stack = document.querySelector('.Stack');
+const stack = document.querySelector(".Stack");
 
 // Reference to the root view DOM element. The Stack starts empty, so
 // this is null until the root view is created — either at init (step 8,
@@ -266,8 +276,8 @@ function resolveUrl(urlPath) {
 // render a back button — the root view has nothing behind it in the
 // stack.
 function createRootView() {
-  const view = document.createElement('div');
-  view.className = 'Stack-view';
+  const view = document.createElement("div");
+  view.className = "Stack-view";
   view.innerHTML = `
     <!-- tabindex="-1" lets step 7 focus the root's content when there is
          no link to return focus to. -->
@@ -284,8 +294,8 @@ function createRootView() {
 // / .Stack-viewContent wrapper structure and DO include a back button
 // (the swipe gesture is not discoverable or available to all users).
 function createDrillDownView(routeData) {
-  const view = document.createElement('div');
-  view.className = 'Stack-view';
+  const view = document.createElement("div");
+  view.className = "Stack-view";
   view.innerHTML = `
     <div class="Stack-viewContent">
       <header>
@@ -303,7 +313,7 @@ function createDrillDownView(routeData) {
   `;
   // Set the title as text so it can't inject markup. (`title` is an
   // example field; use whatever your routeData provides.)
-  view.querySelector('h2').textContent = routeData.title;
+  view.querySelector("h2").textContent = routeData.title;
   return view;
 }
 
@@ -324,7 +334,7 @@ function drillDown(urlPath) {
   const newDepth = currentDepth + 1;
   // Push BEFORE creating the view so the URL is correct if anything
   // observing history (analytics, etc.) reads it during view creation.
-  history.pushState({depth: newDepth}, '', urlPath);
+  history.pushState({ depth: newDepth }, "", urlPath);
 
   // pushState truncates forward entries in real browser history;
   // mirror that truncation in our depth map so we don't hold references
@@ -336,14 +346,14 @@ function drillDown(urlPath) {
 
   const newView = createDrillDownView(routeData);
   stack.appendChild(newView);
-  entriesByDepth.set(newDepth, {urlPath, view: newView});
+  entriesByDepth.set(newDepth, { urlPath, view: newView });
 
   // Scroll one viewport-width to the right. behavior: 'auto' defers to
   // the CSS `scroll-behavior` set in step 2, which is smooth unless
   // prefers-reduced-motion is set. The snap container locks onto the
   // new view; the scrollsnapchange listener (step 7) fires when the
   // snap settles.
-  stack.scrollBy({left: stack.clientWidth, behavior: 'auto'});
+  stack.scrollBy({ left: stack.clientWidth, behavior: "auto" });
 }
 ```
 
@@ -352,23 +362,23 @@ function drillDown(urlPath) {
 Intercept link clicks inside the stack and convert them to drill-downs. Preserve modifier-key behavior so cmd/middle-click still opens the link in a new tab.
 
 ```js
-stack.addEventListener('click', (e) => {
+stack.addEventListener("click", (e) => {
   // Back button: defer to goBack() (defined below), which handles both
   // the normal in-app case and the deep-link case.
-  if (e.target.closest('.back')) {
+  if (e.target.closest(".back")) {
     goBack();
     return;
   }
 
   // Drill-down link.
-  const link = e.target.closest('a');
+  const link = e.target.closest("a");
   if (!link || !stack.contains(link)) return;
   // Let the browser handle modified clicks so users can open links
   // in new tabs / windows. e.button !== 0 filters out middle-clicks.
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
 
   const urlPath = new URL(link.href).pathname;
-  const parentView = link.closest('.Stack-view');
+  const parentView = link.closest(".Stack-view");
   // If the URL isn't handled by this section of the app (resolveUrl
   // returns null), fall through so the browser navigates normally.
   if (!resolveUrl(urlPath) || !parentView) return;
@@ -388,8 +398,8 @@ stack.addEventListener('click', (e) => {
 // a deep link lands on the root view and the platform Back from there
 // returns the user to where they came from.
 function goBack() {
-  const atDeepLinkRoot = currentDepth === 0
-    && entriesByDepth.get(0)?.view !== rootView;
+  const atDeepLinkRoot =
+    currentDepth === 0 && entriesByDepth.get(0)?.view !== rootView;
   if (atDeepLinkRoot) {
     synthesizeRootEntry();
   } else {
@@ -405,7 +415,7 @@ function synthesizeRootEntry() {
   // entry the user "came from"; the original deep-linked entry is now
   // behind us, so platform Back from the root view will return there.
   const newDepth = currentDepth + 1;
-  history.pushState({depth: newDepth}, '', '/');
+  history.pushState({ depth: newDepth }, "", "/");
 
   // Create the root view if it doesn't exist yet (we landed on a deep
   // link and never needed it before now), and insert it at the LEFT end
@@ -417,7 +427,7 @@ function synthesizeRootEntry() {
     stack.prepend(rootView);
     stack.scrollLeft += stack.clientWidth;
   }
-  entriesByDepth.set(newDepth, {urlPath: '/', view: rootView});
+  entriesByDepth.set(newDepth, { urlPath: "/", view: rootView });
 
   // Now scroll to the new entry (the root view). updateFromHistoryState
   // smooth-scrolls one step left, the parallax plays, and
@@ -431,7 +441,7 @@ function synthesizeRootEntry() {
 `popstate` fires when the user uses the browser/OS back or forward button, or when JavaScript calls `history.back()` / `.go()`. This handler is the only path that scrolls the stack in response to a history change.
 
 ```js
-window.addEventListener('popstate', (event) => {
+window.addEventListener("popstate", (event) => {
   updateFromHistoryState(event.state);
 });
 
@@ -442,10 +452,10 @@ function updateFromHistoryState(state, behaviorOverride) {
   // Ensure entriesByDepth has an entry for the destination depth.
   // If the URL changed (e.g. forward-nav into a previously-pruned
   // view), clear the cached view reference so the loop below rebuilds.
-  const entry = entriesByDepth.get(newDepth) ?? {view: null};
+  const entry = entriesByDepth.get(newDepth) ?? { view: null };
   if (entry.urlPath !== urlPath) {
     entry.urlPath = urlPath;
-    entry.view = urlPath === '/' ? rootView : null;
+    entry.view = urlPath === "/" ? rootView : null;
   }
   entriesByDepth.set(newDepth, entry);
 
@@ -499,8 +509,9 @@ function updateFromHistoryState(state, behaviorOverride) {
   // back-style (smooth).
   const forward = toIdx > fromIdx;
   const multiStep = Math.abs(toIdx - fromIdx) > 1;
-  const behavior = behaviorOverride ?? (forward || multiStep ? 'instant' : 'auto');
-  stack.scrollTo({left: toIdx * stack.clientWidth, behavior});
+  const behavior =
+    behaviorOverride ?? (forward || multiStep ? "instant" : "auto");
+  stack.scrollTo({ left: toIdx * stack.clientWidth, behavior });
 }
 ```
 
@@ -538,7 +549,7 @@ function onActiveViewChanged(currentView) {
       // and screen-reader navigation can reach content hidden behind
       // the parallax — a severe accessibility failure that's
       // invisible to sighted users.
-      view.toggleAttribute('inert', view !== currentView);
+      view.toggleAttribute("inert", view !== currentView);
       if (view === currentView) seenCurrent = true;
     }
   }
@@ -560,18 +571,19 @@ function onActiveViewChanged(currentView) {
   // root. Each drill-down adds a history entry, and the title is what the
   // history list, the tab and screen readers use to tell them apart.
   // ('Mail' is an example app name.)
-  const viewTitle = currentView.querySelector('h2')?.textContent;
-  document.title = viewTitle ? `${viewTitle} | Mail` : 'Mail';
+  const viewTitle = currentView.querySelector("h2")?.textContent;
+  document.title = viewTitle ? `${viewTitle} | Mail` : "Mail";
 
   // Name the back button after the view it returns to: the previous view
   // in the stack, or the root view after a deep link. Focus lands on it
   // after a drill-down, so "Back" alone tells screen reader users nothing
   // about where they are. ('Inbox' is the example root title.)
-  const back = currentView.querySelector('.back');
+  const back = currentView.querySelector(".back");
   if (back) {
     const parentTitle =
-      currentView.previousElementSibling?.querySelector('h2')?.textContent ?? 'Inbox';
-    back.setAttribute('aria-label', `Back to ${parentTitle}`);
+      currentView.previousElementSibling?.querySelector("h2")?.textContent ??
+      "Inbox";
+    back.setAttribute("aria-label", `Back to ${parentTitle}`);
   }
 
   // Restore focus on the now-active view:
@@ -585,20 +597,22 @@ function onActiveViewChanged(currentView) {
   //    fights the snap and can land the user mid-snap.
   const stored = returnFocus.get(currentView);
   if (stored?.isConnected) {
-    stored.focus({preventScroll: true});
+    stored.focus({ preventScroll: true });
     returnFocus.delete(currentView);
   } else if (currentView !== rootView) {
-    currentView.querySelector('.back')?.focus({preventScroll: true});
+    currentView.querySelector(".back")?.focus({ preventScroll: true });
   } else if (focusWasInStack && !currentView.contains(document.activeElement)) {
     // The root has no back button, and after a deep link or a pruned view
     // there is no stored link either, so focus the root's content. Otherwise
     // focus would stay in a removed or inert view and fall to <body>, and
     // keyboard and screen reader users would restart from the top of the page.
-    currentView.querySelector('.Stack-viewContent')?.focus({preventScroll: true});
+    currentView
+      .querySelector(".Stack-viewContent")
+      ?.focus({ preventScroll: true });
   }
 }
 
-stack.addEventListener('scrollsnapchange', (event) => {
+stack.addEventListener("scrollsnapchange", (event) => {
   // snapTargetInline is the element that was just snapped to on the
   // inline (horizontal) axis. For this stack — where each view is one
   // horizontal snap stop — that's the new active view.
@@ -628,12 +642,12 @@ if (initialRouteData) {
 }
 stack.appendChild(initialView);
 
-entriesByDepth.set(0, {urlPath: initialUrlPath, view: initialView});
+entriesByDepth.set(0, { urlPath: initialUrlPath, view: initialView });
 // replaceState attaches a `depth` to the entry the user landed on, so
 // any subsequent pushState / popstate has a base depth to count from.
-history.replaceState({depth: 0}, '');
+history.replaceState({ depth: 0 }, "");
 
-updateFromHistoryState(history.state, 'instant');
+updateFromHistoryState(history.state, "instant");
 ```
 
 ### Best practices
@@ -652,7 +666,7 @@ updateFromHistoryState(history.state, 'instant');
 - **DO** respect `prefers-reduced-motion`: declare `scroll-behavior: smooth` only inside `@media (prefers-reduced-motion: no-preference)` and call `scrollTo` / `scrollBy` with `behavior: 'auto'` (not `'smooth'`) so the OS-level preference takes effect without per-call JS branching. Hard-coding `behavior: 'smooth'` bypasses the user's setting.
 - **DO** render real `<a href>` elements as drill-down triggers, not `<button onclick>` or `<div>`. Real anchors get URL preview on hover, shareability, middle-click, screen-reader role, and SEO for free.
 - **DO** include an explicit back button in every drill-down view. The swipe gesture is not discoverable or available to all users — keyboard, pointer, and desktop users need a visible affordance. Horizontal arrow keys and trackpad swipes can also scroll the stack.
-- **DO NOT** call `history.pushState` from the `popstate` handler — that pushes *new* entries while the user is trying to go back and breaks the browser back button.
+- **DO NOT** call `history.pushState` from the `popstate` handler — that pushes _new_ entries while the user is trying to go back and breaks the browser back button.
 - **DO NOT** drive the parallax with a `scroll` event listener when scroll-driven animations are available. The CSS path runs on the compositor; a JS scroll listener runs on the main thread and will visibly drop frames during the gesture.
 - **DO NOT** mutate views you removed from the DOM after a swipe-back. Treat `entriesByDepth` as the canonical record: a pruned entry has `view: null` and is rebuilt on demand in `updateFromHistoryState`.
 
@@ -677,18 +691,21 @@ The `scrollsnapchange` event is the cleanest way to detect "the active view chan
 // yet. Check `HTMLElement.prototype` (not `window` or `document`) — the
 // event handler IDL attribute is added to the prototype when the feature
 // is supported, regardless of whether any element has the handler set.
-if (!('onscrollsnapchange' in HTMLElement.prototype)) {
-  const viewObserver = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      // threshold:1 only fires for fully-visible entries, but the
-      // observer also emits a "leaving" entry per view that drops below
-      // ratio 1. Filter to the entering side, which is the snap-commit
-      // moment we're trying to detect.
-      if (entry.intersectionRatio === 1) {
-        onActiveViewChanged(entry.target);
+if (!("onscrollsnapchange" in HTMLElement.prototype)) {
+  const viewObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        // threshold:1 only fires for fully-visible entries, but the
+        // observer also emits a "leaving" entry per view that drops below
+        // ratio 1. Filter to the entering side, which is the snap-commit
+        // moment we're trying to detect.
+        if (entry.intersectionRatio === 1) {
+          onActiveViewChanged(entry.target);
+        }
       }
-    }
-  }, {root: stack, threshold: 1});
+    },
+    { root: stack, threshold: 1 },
+  );
 
   // Auto-observe every .Stack-view as it's added to the stack, and stop
   // observing as it's removed. Using a MutationObserver lets the primary
@@ -697,13 +714,14 @@ if (!('onscrollsnapchange' in HTMLElement.prototype)) {
   new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (const node of m.addedNodes) {
-        if (node.classList?.contains('Stack-view')) viewObserver.observe(node);
+        if (node.classList?.contains("Stack-view")) viewObserver.observe(node);
       }
       for (const node of m.removedNodes) {
-        if (node.classList?.contains('Stack-view')) viewObserver.unobserve(node);
+        if (node.classList?.contains("Stack-view"))
+          viewObserver.unobserve(node);
       }
     }
-  }).observe(stack, {childList: true});
+  }).observe(stack, { childList: true });
 
   // Catch up to any views already in the stack at the time this code
   // runs (typically the initial view appended in step 8).
@@ -720,15 +738,15 @@ The scroll-driven parallax / dim / shadow effect is a progressive enhancement on
 If a parallax fallback is required for older baseline targets, attach a `scroll` listener to the stack and write a CSS custom property describing each view's progress through the scrollport, then drive `transform` and `filter` from that property:
 
 ```js
-if (!CSS.supports('animation-timeline: view()')) {
-  stack.addEventListener('scroll', () => {
+if (!CSS.supports("animation-timeline: view()")) {
+  stack.addEventListener("scroll", () => {
     const viewWidth = stack.clientWidth;
     for (const view of stack.children) {
       // Progress: 0 when this view is centered, 1 when it has fully
       // exited to the left. Matches the @keyframes mapping above.
       const offsetLeft = view.offsetLeft - stack.scrollLeft;
       const progress = Math.min(1, Math.max(0, -offsetLeft / viewWidth));
-      const content = view.querySelector('.Stack-viewContent');
+      const content = view.querySelector(".Stack-viewContent");
       content.style.transform = `translateX(${progress * 75}%)`;
       content.style.filter = `brightness(${1 - progress * 0.2})`;
     }

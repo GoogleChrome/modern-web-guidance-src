@@ -27,7 +27,7 @@ index 92f6399..e3faaf2 100644
 @@ -10,6 +10,25 @@ import type { RenderResult } from 'astro:content';
  const articles = await getCollection('articles');
  articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
- 
+
 +const multimedia = await getCollection('multimedia');
 +multimedia.sort((a, b) => b.data.publishDate.localeCompare(a.data.publishDate));
 +const reports = await getCollection('reports');
@@ -52,7 +52,7 @@ index 92f6399..e3faaf2 100644
  const topStories = articles.slice(1, 4);
 @@ -38,6 +57,35 @@ politicsArticles[2] = {
  ---
- 
+
  <Layout title="The DevTools Times">
 +  <!-- Section navigation: switches between client-side SPA views -->
 +  <nav aria-label="Sections" class="border-b border-gray-300 bg-white">
@@ -88,23 +88,23 @@ index 92f6399..e3faaf2 100644
          <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
 @@ -55,9 +103,9 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </div>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <section class="p-4 md:p-6 text-center">
 @@ -66,19 +114,255 @@ politicsArticles[2] = {
- 
+
          <!-- "Top News" section with the new grid variant -->
          <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
 +    </div>
 +  </section>
- 
+
 -        <section class="p-4 md:p-6 text-center">
 -            <Ad client:visible />
 -        </section>
@@ -121,13 +121,13 @@ index 92f6399..e3faaf2 100644
 +  >
 +    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
- 
+
          <section class="p-4 md:p-6 text-center">
              <Ad client:visible />
          </section>
 +    </div>
 +  </section>
- 
+
 +  <!-- View: Politics -->
 +  <section
 +    id="spa-view-politics"
@@ -141,7 +141,7 @@ index 92f6399..e3faaf2 100644
 +    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <!-- "Politics" section with the new grid variant -->
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
--        
+-
 +
 +        <section class="p-4 md:p-6 text-center">
 +            <Ad client:visible />

@@ -24,7 +24,7 @@
 <body>
     <h1>Apply Visual Effects using WebGL to HTML Content</h1>
     <p>This demo shows how to apply WebGL shaders to HTML content rendered in a canvas.</p>
-    
+
     <canvas id="canvas" style="width: 400px; height: 300px;">
         <div id="effect_element">
            <h2 class="font">Hello World</h2>
@@ -129,9 +129,9 @@
 
         function render() {
             const currentTime = (Date.now() - startTime) * 0.001;
-            
+
             gl.viewport(0, 0, canvas.width, canvas.height);
-            
+
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, effect_element);
 
@@ -151,7 +151,7 @@
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-            
+
             gl.uniform2f(programInfo.uniformLocations.u_resolution, canvas.width, canvas.height);
             gl.uniform2f(programInfo.uniformLocations.u_mouse, mouseX, mouseY);
             gl.uniform1f(programInfo.uniformLocations.u_time, currentTime);

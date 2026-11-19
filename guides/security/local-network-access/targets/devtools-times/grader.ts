@@ -4,14 +4,14 @@ import {
   getTargetFiles,
   getJsProject,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 import {
   SyntaxKind,
   type CallExpression,
   type PropertyAssignment,
   type ShorthandPropertyAssignment,
   type SourceFile,
-} from 'ts-morph';
+} from "ts-morph";
 
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
@@ -19,7 +19,7 @@ function isPermissionsQueryCall(call: CallExpression): boolean {
   const expr = call.getExpression();
   if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
     return (
-      expr.getName() === 'query' &&
+      expr.getName() === "query" &&
       /\bpermissions\b/.test(expr.getExpression().getText())
     );
   }
@@ -28,20 +28,22 @@ function isPermissionsQueryCall(call: CallExpression): boolean {
 
 function getPermissionsQueryCalls(sourceFiles: SourceFile[]): CallExpression[] {
   return sourceFiles.flatMap((sf) =>
-    sf.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isPermissionsQueryCall)
+    sf
+      .getDescendantsOfKind(SyntaxKind.CallExpression)
+      .filter(isPermissionsQueryCall),
   );
 }
 
 function getTargetAddressSpaceProperties(
-  sourceFiles: SourceFile[]
+  sourceFiles: SourceFile[],
 ): Array<PropertyAssignment | ShorthandPropertyAssignment> {
   return sourceFiles.flatMap((sf) => [
     ...sf
       .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-      .filter((prop) => prop.getName() === 'targetAddressSpace'),
+      .filter((prop) => prop.getName() === "targetAddressSpace"),
     ...sf
       .getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)
-      .filter((prop) => prop.getName() === 'targetAddressSpace'),
+      .filter((prop) => prop.getName() === "targetAddressSpace"),
   ]);
 }
 
@@ -65,13 +67,23 @@ function collectRequestFunctionNames(sourceFiles: SourceFile[]): Set<string> {
       for (const call of sf.getDescendantsOfKind(SyntaxKind.CallExpression)) {
         const calleeName = call.getExpression().getText();
         if (requestFnNames.has(calleeName)) {
-          const enclosingFn = call.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration);
-          if (enclosingFn?.getName() && !requestFnNames.has(enclosingFn.getName()!)) {
+          const enclosingFn = call.getFirstAncestorByKind(
+            SyntaxKind.FunctionDeclaration,
+          );
+          if (
+            enclosingFn?.getName() &&
+            !requestFnNames.has(enclosingFn.getName()!)
+          ) {
             requestFnNames.add(enclosingFn.getName()!);
             changed = true;
           }
-          const enclosingVar = call.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
-          if (enclosingVar?.getName() && !requestFnNames.has(enclosingVar.getName())) {
+          const enclosingVar = call.getFirstAncestorByKind(
+            SyntaxKind.VariableDeclaration,
+          );
+          if (
+            enclosingVar?.getName() &&
+            !requestFnNames.has(enclosingVar.getName())
+          ) {
             requestFnNames.add(enclosingVar.getName());
             changed = true;
           }
@@ -90,23 +102,23 @@ function getLnaSourceFiles(sourceFiles: SourceFile[]): SourceFile[] {
       ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
     ].some((lit) => {
       const val = lit.getLiteralValue();
-      return val === 'local-network' || val === 'loopback-network';
+      return val === "local-network" || val === "loopback-network";
     });
 
     const hasTargetAddressSpace =
       sf
         .getDescendantsOfKind(SyntaxKind.PropertyAssignment)
-        .some((p) => p.getName() === 'targetAddressSpace') ||
+        .some((p) => p.getName() === "targetAddressSpace") ||
       sf
         .getDescendantsOfKind(SyntaxKind.ShorthandPropertyAssignment)
-        .some((p) => p.getName() === 'targetAddressSpace');
+        .some((p) => p.getName() === "targetAddressSpace");
 
     return hasGranularString || hasTargetAddressSpace;
   });
 }
 
-test.describe('local-network-access Target Grader', () => {
-  test('queries granular permission (local-network or loopback-network) via navigator.permissions.query() with fallback error handling', () => {
+test.describe("local-network-access Target Grader", () => {
+  test("queries granular permission (local-network or loopback-network) via navigator.permissions.query() with fallback error handling", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const permissionQueries = getPermissionsQueryCalls(sourceFiles);
@@ -119,12 +131,12 @@ test.describe('local-network-access Target Grader', () => {
         ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
       ].some((lit) => {
         const val = lit.getLiteralValue();
-        return val === 'local-network' || val === 'loopback-network';
+        return val === "local-network" || val === "loopback-network";
       });
 
       const hasTemplate = sf
         .getDescendantsOfKind(SyntaxKind.TemplateExpression)
-        .some((tmpl) => tmpl.getText().includes('-network'));
+        .some((tmpl) => tmpl.getText().includes("-network"));
 
       return hasLiteral || hasTemplate;
     });
@@ -138,7 +150,7 @@ test.describe('local-network-access Target Grader', () => {
       while (current) {
         if (
           current.isKind(SyntaxKind.PropertyAccessExpression) &&
-          current.getName() === 'catch'
+          current.getName() === "catch"
         ) {
           return true;
         }
@@ -150,7 +162,7 @@ test.describe('local-network-access Target Grader', () => {
     expect(hasGranularPermissionName && hasFallbackErrorHandling).toBe(true);
   });
 
-  test('never queries the legacy local-network-access permission name via navigator.permissions.query()', () => {
+  test("never queries the legacy local-network-access permission name via navigator.permissions.query()", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const permissionQueries = getPermissionsQueryCalls(sourceFiles);
@@ -158,39 +170,46 @@ test.describe('local-network-access Target Grader', () => {
     expect(permissionQueries.length).toBeGreaterThan(0);
 
     const queriesLegacyInCall = permissionQueries.some((call) =>
-      call.getArguments().some((arg) =>
-        [
-          ...arg.getDescendantsOfKind(SyntaxKind.StringLiteral),
-          ...arg.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
-        ].some((lit) => lit.getLiteralValue() === 'local-network-access')
-      )
+      call
+        .getArguments()
+        .some((arg) =>
+          [
+            ...arg.getDescendantsOfKind(SyntaxKind.StringLiteral),
+            ...arg.getDescendantsOfKind(
+              SyntaxKind.NoSubstitutionTemplateLiteral,
+            ),
+          ].some((lit) => lit.getLiteralValue() === "local-network-access"),
+        ),
     );
 
     const hasLegacyDescriptorAssignment = sourceFiles.some((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.PropertyAssignment).some((prop) => {
-        if (prop.getName() !== 'name') return false;
+        if (prop.getName() !== "name") return false;
         const init = prop.getInitializer();
         if (!init) return false;
         if (
           init.isKind(SyntaxKind.StringLiteral) ||
           init.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)
         ) {
-          return init.getLiteralValue() === 'local-network-access';
+          return init.getLiteralValue() === "local-network-access";
         }
         return [
           ...init.getDescendantsOfKind(SyntaxKind.StringLiteral),
-          ...init.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
-        ].some((lit) => lit.getLiteralValue() === 'local-network-access');
-      })
+          ...init.getDescendantsOfKind(
+            SyntaxKind.NoSubstitutionTemplateLiteral,
+          ),
+        ].some((lit) => lit.getLiteralValue() === "local-network-access");
+      }),
     );
 
     expect(queriesLegacyInCall || hasLegacyDescriptorAssignment).toBe(false);
   });
 
-  test('specifies targetAddressSpace: local for local network requests and targetAddressSpace: loopback for loopback requests in fetch() or Request options', () => {
+  test("specifies targetAddressSpace: local for local network requests and targetAddressSpace: loopback for loopback requests in fetch() or Request options", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
-    const targetAddressSpaceProps = getTargetAddressSpaceProperties(sourceFiles);
+    const targetAddressSpaceProps =
+      getTargetAddressSpaceProperties(sourceFiles);
 
     expect(targetAddressSpaceProps.length).toBeGreaterThan(0);
 
@@ -198,10 +217,18 @@ test.describe('local-network-access Target Grader', () => {
       const sf = prop.getSourceFile();
       const hasRequestNew = sf
         .getDescendantsOfKind(SyntaxKind.NewExpression)
-        .some((ne) => ne.getExpression().getText() === 'Request' && ne.getArguments().length >= 2);
+        .some(
+          (ne) =>
+            ne.getExpression().getText() === "Request" &&
+            ne.getArguments().length >= 2,
+        );
       const hasFetchCall = sf
         .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .some((ce) => /\bfetch$/.test(ce.getExpression().getText()) && ce.getArguments().length >= 1);
+        .some(
+          (ce) =>
+            /\bfetch$/.test(ce.getExpression().getText()) &&
+            ce.getArguments().length >= 1,
+        );
       return hasRequestNew || hasFetchCall;
     });
 
@@ -219,48 +246,60 @@ test.describe('local-network-access Target Grader', () => {
             ? [init]
             : []),
           ...init.getDescendantsOfKind(SyntaxKind.StringLiteral),
-          ...init.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+          ...init.getDescendantsOfKind(
+            SyntaxKind.NoSubstitutionTemplateLiteral,
+          ),
         ].map((l) => l.getLiteralValue());
 
-        if (directLiterals.includes('local')) {
+        if (directLiterals.includes("local")) {
           hasLocalAddressSpace = true;
         }
-        if (directLiterals.includes('loopback')) {
+        if (directLiterals.includes("loopback")) {
           hasLoopbackAddressSpace = true;
         }
 
         if (directLiterals.length === 0) {
           const sfLiterals = [
-            ...prop.getSourceFile().getDescendantsOfKind(SyntaxKind.StringLiteral),
-            ...prop.getSourceFile().getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+            ...prop
+              .getSourceFile()
+              .getDescendantsOfKind(SyntaxKind.StringLiteral),
+            ...prop
+              .getSourceFile()
+              .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
           ].map((l) => l.getLiteralValue());
 
-          if (sfLiterals.includes('local')) {
+          if (sfLiterals.includes("local")) {
             hasLocalAddressSpace = true;
           }
-          if (sfLiterals.includes('loopback')) {
+          if (sfLiterals.includes("loopback")) {
             hasLoopbackAddressSpace = true;
           }
         }
       } else {
         const sfLiterals = [
-          ...prop.getSourceFile().getDescendantsOfKind(SyntaxKind.StringLiteral),
-          ...prop.getSourceFile().getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
+          ...prop
+            .getSourceFile()
+            .getDescendantsOfKind(SyntaxKind.StringLiteral),
+          ...prop
+            .getSourceFile()
+            .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
         ].map((l) => l.getLiteralValue());
 
-        if (sfLiterals.includes('local')) {
+        if (sfLiterals.includes("local")) {
           hasLocalAddressSpace = true;
         }
-        if (sfLiterals.includes('loopback')) {
+        if (sfLiterals.includes("loopback")) {
           hasLoopbackAddressSpace = true;
         }
       }
     }
 
-    expect(usedInFetchOrRequest && hasLocalAddressSpace && hasLoopbackAddressSpace).toBe(true);
+    expect(
+      usedInFetchOrRequest && hasLocalAddressSpace && hasLoopbackAddressSpace,
+    ).toBe(true);
   });
 
-  test('gates local network and loopback requests on explicit user interaction when permission state is prompt rather than firing unconditionally on page load', () => {
+  test("gates local network and loopback requests on explicit user interaction when permission state is prompt rather than firing unconditionally on page load", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const docs = getHtmlDocuments(targetFiles);
@@ -272,7 +311,7 @@ test.describe('local-network-access Target Grader', () => {
       [
         ...sf.getDescendantsOfKind(SyntaxKind.StringLiteral),
         ...sf.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
-      ].some((lit) => lit.getLiteralValue() === 'prompt')
+      ].some((lit) => lit.getLiteralValue() === "prompt"),
     );
 
     const requestFnNames = collectRequestFunctionNames(lnaFiles);
@@ -280,7 +319,7 @@ test.describe('local-network-access Target Grader', () => {
     const useEffectCalls = lnaFiles.flatMap((sf) =>
       sf
         .getDescendantsOfKind(SyntaxKind.CallExpression)
-        .filter((call) => /\buseEffect$/.test(call.getExpression().getText()))
+        .filter((call) => /\buseEffect$/.test(call.getExpression().getText())),
     );
 
     const notFiredUnconditionallyOnLoad = useEffectCalls.every((effectCall) => {
@@ -300,15 +339,21 @@ test.describe('local-network-access Target Grader', () => {
       ];
 
       return requestNodesInEffect.every((reqNode) => {
-        const ifAncestor = reqNode.getFirstAncestorByKind(SyntaxKind.IfStatement);
+        const ifAncestor = reqNode.getFirstAncestorByKind(
+          SyntaxKind.IfStatement,
+        );
         if (!ifAncestor) return false;
         const condLiterals = [
-          ...ifAncestor.getExpression().getDescendantsOfKind(SyntaxKind.StringLiteral),
+          ...ifAncestor
+            .getExpression()
+            .getDescendantsOfKind(SyntaxKind.StringLiteral),
           ...ifAncestor
             .getExpression()
             .getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
         ].map((l) => l.getLiteralValue());
-        return condLiterals.includes('granted') && !condLiterals.includes('prompt');
+        return (
+          condLiterals.includes("granted") && !condLiterals.includes("prompt")
+        );
       });
     });
 
@@ -316,28 +361,30 @@ test.describe('local-network-access Target Grader', () => {
       const hasButton = [
         ...sf.getDescendantsOfKind(SyntaxKind.JsxOpeningElement),
         ...sf.getDescendantsOfKind(SyntaxKind.JsxSelfClosingElement),
-      ].some((el) => el.getTagNameNode().getText() === 'button');
+      ].some((el) => el.getTagNameNode().getText() === "button");
 
       const hasInteractiveAttr = sf
         .getDescendantsOfKind(SyntaxKind.JsxAttribute)
         .some((attr) => {
           const name = attr.getNameNode().getText();
-          return name === 'onClick' || name === 'onSubmit';
+          return name === "onClick" || name === "onSubmit";
         });
 
       return hasButton && hasInteractiveAttr;
     });
 
-    const hasDomButton = docs.some((d) => Boolean(d.document.querySelector('button')));
+    const hasDomButton = docs.some((d) =>
+      Boolean(d.document.querySelector("button")),
+    );
 
     expect(
       hasPromptState &&
         notFiredUnconditionallyOnLoad &&
-        (hasJsxButtonAndHandler || hasDomButton)
+        (hasJsxButtonAndHandler || hasDomButton),
     ).toBe(true);
   });
 
-  test('catches denied or failed local network and loopback requests and reveals error or remediation feedback in the UI', () => {
+  test("catches denied or failed local network and loopback requests and reveals error or remediation feedback in the UI", () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
     const lnaFiles = getLnaSourceFiles(sourceFiles);
@@ -360,20 +407,30 @@ test.describe('local-network-access Target Grader', () => {
           const hasRequestInTry =
             tryBlock
               .getDescendantsOfKind(SyntaxKind.CallExpression)
-              .some((call) => !isPermissionsQueryCall(call) && isLnaRequestCall(call)) ||
+              .some(
+                (call) =>
+                  !isPermissionsQueryCall(call) && isLnaRequestCall(call),
+              ) ||
             tryBlock
               .getDescendantsOfKind(SyntaxKind.NewExpression)
               .some((ne) => /\bRequest$/.test(ne.getExpression().getText()));
 
           const catchUpdatesState =
-            catchClause.getBlock().getDescendantsOfKind(SyntaxKind.CallExpression).length > 0 ||
-            catchClause.getBlock().getDescendantsOfKind(SyntaxKind.BinaryExpression).length > 0;
+            catchClause
+              .getBlock()
+              .getDescendantsOfKind(SyntaxKind.CallExpression).length > 0 ||
+            catchClause
+              .getBlock()
+              .getDescendantsOfKind(SyntaxKind.BinaryExpression).length > 0;
 
           return hasRequestInTry && catchUpdatesState;
         }) ||
         sf.getDescendantsOfKind(SyntaxKind.CallExpression).some((call) => {
           const expr = call.getExpression();
-          if (!expr.isKind(SyntaxKind.PropertyAccessExpression) || expr.getName() !== 'catch') {
+          if (
+            !expr.isKind(SyntaxKind.PropertyAccessExpression) ||
+            expr.getName() !== "catch"
+          ) {
             return false;
           }
           const receiver = expr.getExpression();
@@ -381,19 +438,21 @@ test.describe('local-network-access Target Grader', () => {
             ...(receiver.isKind(SyntaxKind.CallExpression) ? [receiver] : []),
             ...receiver.getDescendantsOfKind(SyntaxKind.CallExpression),
           ];
-          return receiverCalls.some((c) => !isPermissionsQueryCall(c) && isLnaRequestCall(c));
-        })
+          return receiverCalls.some(
+            (c) => !isPermissionsQueryCall(c) && isLnaRequestCall(c),
+          );
+        }),
     );
 
     const handlesDeniedState = lnaFiles.some((sf) =>
       sf.getDescendantsOfKind(SyntaxKind.BinaryExpression).some((bin) => {
         const op = bin.getOperatorToken().getText();
-        if (!['===', '!==', '==', '!='].includes(op)) return false;
+        if (!["===", "!==", "==", "!="].includes(op)) return false;
         return [
           ...bin.getDescendantsOfKind(SyntaxKind.StringLiteral),
           ...bin.getDescendantsOfKind(SyntaxKind.NoSubstitutionTemplateLiteral),
-        ].some((lit) => lit.getLiteralValue() === 'denied');
-      })
+        ].some((lit) => lit.getLiteralValue() === "denied");
+      }),
     );
 
     const hasErrorOrRemediationUI = lnaFiles.some((sf) => {
@@ -401,10 +460,10 @@ test.describe('local-network-access Target Grader', () => {
         .getDescendantsOfKind(SyntaxKind.JsxAttribute)
         .some((attr) => {
           const attrName = attr.getNameNode().getText();
-          const initText = attr.getInitializer()?.getText() ?? '';
+          const initText = attr.getInitializer()?.getText() ?? "";
           return (
-            attrName === 'data-remediation' ||
-            (attrName === 'role' && /alert|status/.test(initText))
+            attrName === "data-remediation" ||
+            (attrName === "role" && /alert|status/.test(initText))
           );
         });
 
@@ -412,13 +471,15 @@ test.describe('local-network-access Target Grader', () => {
         .getDescendantsOfKind(SyntaxKind.BinaryExpression)
         .some(
           (bin) =>
-            bin.getOperatorToken().getText() === '&&' &&
-            /\berror\b/i.test(bin.getLeft().getText())
+            bin.getOperatorToken().getText() === "&&" &&
+            /\berror\b/i.test(bin.getLeft().getText()),
         );
 
       return hasAlertOrRemediationAttr || hasConditionalErrorDisplay;
     });
 
-    expect(catchesRequestErrors && handlesDeniedState && hasErrorOrRemediationUI).toBe(true);
+    expect(
+      catchesRequestErrors && handlesDeniedState && hasErrorOrRemediationUI,
+    ).toBe(true);
   });
 });

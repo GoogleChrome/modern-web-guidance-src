@@ -5,7 +5,7 @@ index c2b8e14..712b6e7 100644
 @@ -23,4 +23,6 @@ pnpm-debug.log*
  # jetbrains setting folder
  .idea/
- 
+
 -db.file
 \ No newline at end of file
 +db.file
@@ -232,13 +232,13 @@ index 92f6399..2301d7b 100644
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
 +import SmallptRender from '../components/SmallptRender';
  import type { RenderResult } from 'astro:content';
- 
+
  const articles = await getCollection('articles');
 @@ -79,6 +80,15 @@ politicsArticles[2] = {
- 
+
          <!-- "Politics" section with the new grid variant -->
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
--        
+-
 +
 +        <section class="p-4 md:p-6" aria-labelledby="smallpt-heading">
 +            <h2 id="smallpt-heading" class="text-2xl font-bold text-gray-900 mb-2">Path Tracing in Your Browser</h2>

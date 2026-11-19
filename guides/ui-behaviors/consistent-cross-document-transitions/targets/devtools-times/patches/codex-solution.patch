@@ -5,7 +5,7 @@ index 980b279..646ae69 100644
 @@ -13,7 +13,7 @@ const baseUrl = import.meta.env.BASE_URL;
  const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
  ---
- 
+
 -<header class="font-inter group relative bg-white">
 +<header id="site-header" class="font-inter group relative bg-white">
    <!-- Row 1: Search, Subscribe, Log In -->
@@ -18,23 +18,23 @@ index dcf9696..17536d1 100644
 @@ -4,13 +4,12 @@ import Footer from "../components/Footer.astro";
  import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
  import "../styles/global.css";
- 
+
 -import { ClientRouter } from "astro:transitions";
 -
  export interface Props {
    title: string;
 +  transitionContentId?: string;
  }
- 
+
 -const { title } = Astro.props;
 +const { title, transitionContentId } = Astro.props;
  const baseUrl = import.meta.env.BASE_URL;
  ---
- 
+
 @@ -34,7 +33,13 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
      <link rel="icon" href=`${baseUrl}/favicon.svg` />
- 
+
 -    <ClientRouter />
 +    {transitionContentId && (
 +      <>
@@ -53,7 +53,7 @@ index 24fea39..dd8b137 100644
 @@ -35,7 +35,7 @@ const readingList = await Astro.session?.get('readingList') || [];
  const isBookmarked = readingList.includes(article.slug);
  ---
- 
+
 -<Layout title={article.data.title}>
 +<Layout title={article.data.title} transitionContentId="article-lead">
      <article class="max-w-3xl mx-auto px-4 py-8 md:py-12">
@@ -61,17 +61,17 @@ index 24fea39..dd8b137 100644
          <div class="text-base text-gray-600 font-semibold mb-2">
 @@ -58,7 +58,7 @@ const isBookmarked = readingList.includes(article.slug);
          </div>
- 
+
          <!-- Main Article Image -->
 -        <figure class="mb-5">
 +        <figure id="article-lead" class="mb-5">
              {article.data.prompt_comment && <Fragment set:html={`<!-- ${article.data.prompt_comment} -->`} />}
              {article.data.prompt_comment ? (
-                 <img 
+                 <img
 @@ -123,4 +123,4 @@ const isBookmarked = readingList.includes(article.slug);
      </section>
- 
- 
+
+
 -</Layout>
 \ No newline at end of file
 +</Layout>
@@ -82,7 +82,7 @@ index 79bf126..bf70eb1 100644
 @@ -37,7 +37,7 @@ const featuredArticleImage = featuredArticle ? await getArticleImage(featuredArt
  const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1);
  ---
- 
+
 -<Layout title={`Category: ${capitalizedCategory}`}>
 +<Layout title={`Category: ${capitalizedCategory}`} transitionContentId="category-lead-ready">
      <div class="pb-8">
@@ -91,7 +91,7 @@ index 79bf126..bf70eb1 100644
 @@ -86,6 +86,9 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
                  </section>
              )}
- 
+
 +            <!-- This marker also exists if no featured article is available. -->
 +            <span id="category-lead-ready" hidden></span>
 +
@@ -105,7 +105,7 @@ index 92f6399..ada09bf 100644
 @@ -37,7 +37,7 @@ politicsArticles[2] = {
    };
  ---
- 
+
 -<Layout title="The DevTools Times">
 +<Layout title="The DevTools Times" transitionContentId="home-lead">
      <!-- Top Stories Bar -->
@@ -113,19 +113,19 @@ index 92f6399..ada09bf 100644
          <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
 @@ -55,9 +55,9 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <section id="home-lead" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </section>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <section class="p-4 md:p-6 text-center">
 @@ -81,4 +81,4 @@ politicsArticles[2] = {
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-         
+
      </div>
 -</Layout>
 \ No newline at end of file
@@ -136,7 +136,7 @@ index e9a9abb..f1198bf 100644
 +++ b/src/styles/global.css
 @@ -1,7 +1,24 @@
  @import "tailwindcss";
- 
+
 +/* Native same-origin navigation; unsupported browsers keep normal navigation. */
 +@view-transition {
 +  navigation: auto;

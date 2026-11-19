@@ -23,6 +23,7 @@ To enable light-dismiss:
 - `none`: Only developer mechanisms can close the dialog.
 
 ### Styling the Backdrop
+
 When a dialog is opened as a modal using `showModal()`, the browser generates a `::backdrop` pseudo-element. This backdrop covers the entire viewport and sits directly behind the dialog.
 
 ```css
@@ -45,7 +46,9 @@ dialog::backdrop {
   </form>
 </dialog>
 
-<button onclick="document.getElementById('myDialog').showModal()">Open Dialog</button>
+<button onclick="document.getElementById('myDialog').showModal()">
+  Open Dialog
+</button>
 ```
 
 ## Constraints & Accessibility
@@ -55,7 +58,7 @@ dialog::backdrop {
 - **DO**: Ensure that there is always a close button visible to provide people with a clear, alternative way to close the modal dialog.
 - **DO**: Use `aria-labelledby` or `aria-label` to provide an accessible name for the dialog.
 - **DO NOT**: Use `closedby` for non-modal dialogs (opened with `show()`), as they do not have a backdrop and won't trigger light-dismiss.
-- **DO NOT**: Use the `click` event for critical logic that should happen *before* closing; instead, listen for the `close` or `cancel` events.
+- **DO NOT**: Use the `click` event for critical logic that should happen _before_ closing; instead, listen for the `close` or `cancel` events.
 
 Ensure that there aren't components in the modal dialog that themselves use the `Esc` key for interaction, as this may lead to the dialog being inadvertently closed. If the modal dialog does include components that use the `Esc` key (e.g. a menu or a combobox), ensure that when these components are focused, they capture the `Esc` key press and use it accordingly, and that the dialog is not closed accidentally.
 
@@ -66,11 +69,11 @@ Ensure that there aren't components in the modal dialog that themselves use the 
 **MANDATORY**: For browsers that do not yet support `closedby`, you **must** implement a fallback for light-dismiss by checking if a click occurred outside the dialog content's boundaries using the following script:
 
 ```javascript
-const dialog = document.querySelector('dialog');
+const dialog = document.querySelector("dialog");
 
 // Fallback for browsers without closedby support
-if (!('closedBy' in HTMLDialogElement.prototype)) {
-  dialog.addEventListener('click', (event) => {
+if (!("closedBy" in HTMLDialogElement.prototype)) {
+  dialog.addEventListener("click", (event) => {
     // 1. When clicking the backdrop, the event target is the dialog element itself.
     // Ignore clicks where the target is a child element inside the dialog.
     if (event.target !== dialog) return;
@@ -78,12 +81,11 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
     // 2. Check if the click coordinates fall within the dialog's content box.
     // This distinguishes between a click on the backdrop vs a click on the dialog's background/padding.
     const rect = dialog.getBoundingClientRect();
-    const isDialogContent = (
+    const isDialogContent =
       rect.top <= event.clientY &&
       event.clientY <= rect.top + rect.height &&
       rect.left <= event.clientX &&
-      event.clientX <= rect.left + rect.width
-    );
+      event.clientX <= rect.left + rect.width;
 
     if (isDialogContent) return;
 

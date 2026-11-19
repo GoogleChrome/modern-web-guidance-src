@@ -18,10 +18,10 @@ guides:
 
 Icon storage and rendering are separate choices. For example, an SVG sprite can supply an icon to the CSS icon system or be referenced with `<use>`.
 
-* **CSS icon system:** Use when CSS should choose when and which icon to show. Use a mask for a single-color icon or a background image for a full-color icon.
-* **SVG with `<use>`:** Use to reuse a symbol when its built-in styling options are enough. CSS can't arbitrarily style or animate the referenced SVG's contents, but inherited properties and custom properties can be passed in when the symbol is designed to use them. For example, a path can use `fill="var(--icon-accent, currentColor)"` to let CSS color that part of the icon.
-* **Inline SVG:** Use when you need arbitrary styling or animation of the SVG's contents.
-* **`<img>` with CSS filters:** Avoid this for recoloring icons. Filters can't reliably apply an arbitrary CSS color value to the image, so recoloring is cumbersome and inflexible.
+- **CSS icon system:** Use when CSS should choose when and which icon to show. Use a mask for a single-color icon or a background image for a full-color icon.
+- **SVG with `<use>`:** Use to reuse a symbol when its built-in styling options are enough. CSS can't arbitrarily style or animate the referenced SVG's contents, but inherited properties and custom properties can be passed in when the symbol is designed to use them. For example, a path can use `fill="var(--icon-accent, currentColor)"` to let CSS color that part of the icon.
+- **Inline SVG:** Use when you need arbitrary styling or animation of the SVG's contents.
+- **`<img>` with CSS filters:** Avoid this for recoloring icons. Filters can't reliably apply an arbitrary CSS color value to the image, so recoloring is cumbersome and inflexible.
 
 To decide, ask two questions. Does CSS need to pick or swap the icon (component defaults, state changes, theming)? If yes, use the CSS icon system. Do you need to reach inside the icon beyond color? If yes and you control the icon source, design the symbol with custom properties and use `<use>`; if you do not control the source, inline the SVG. Third-party icon sets rarely expose custom properties, so `<use>` against them gives you color and little else.
 
@@ -37,9 +37,9 @@ If a page renders thousands of icons at once, benchmark the actual page and asse
 
 Icons are design tokens: each icon is a custom property holding an image, and any element can display one by setting `--icon-start` or `--icon-end`. The engine combines three CSS capabilities:
 
-* **Registered custom properties (`@property`)** keep `--icon-start` and `--icon-end` from inheriting, so an icon set on a component does not cascade into its children.
-* **Container style queries (`@container style(...)`)** detect when an element has an icon assigned and render it, with no class or markup changes.
-* **CSS masks and `currentColor`** render the icon in a pseudo-element that follows the element's text color. Size, color, spacing and vertical offset are read from inheritable `--icon-style-*` properties with sensible fallbacks, so a whole subtree can be restyled from an ancestor. The `--icon-style-` prefix keeps these settings from colliding with the icon tokens themselves, which also live under `--icon-*`.
+- **Registered custom properties (`@property`)** keep `--icon-start` and `--icon-end` from inheriting, so an icon set on a component does not cascade into its children.
+- **Container style queries (`@container style(...)`)** detect when an element has an icon assigned and render it, with no class or markup changes.
+- **CSS masks and `currentColor`** render the icon in a pseudo-element that follows the element's text color. Size, color, spacing and vertical offset are read from inheritable `--icon-style-*` properties with sensible fallbacks, so a whole subtree can be restyled from an ancestor. The `--icon-style-` prefix keeps these settings from colliding with the icon tokens themselves, which also live under `--icon-*`.
 
 ### Defining icon design tokens
 
@@ -107,7 +107,10 @@ Second, a container style query detects when the property is set on an element a
     background-color: var(--icon-style-color, currentColor);
     mask: var(--icon-start) no-repeat center / contain;
     /* Center on the cap height, nudged slightly up for optical balance */
-    vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
+    vertical-align: calc(
+      0.5cap - var(--icon-style-size, 1em) / 2 +
+        var(--icon-style-voffset, -0.02em)
+    );
     flex: none;
     pointer-events: none;
     forced-color-adjust: none;
@@ -122,11 +125,11 @@ Second, a container style query detects when the property is set on an element a
 
 Each declaration earns its place:
 
-* **`vertical-align`**: `middle` aligns to half the x-height, which sits visibly low for most icon sets. Centering on `0.5cap` keeps the icon's center fixed as `--icon-style-size` grows, and the small negative `--icon-style-voffset` compensates for the eye weighting the space above an icon more than the space below.
-* **`flex: none`**: An empty pseudo-element has a zero minimum size, so inside a flex button it is the first thing to shrink when the label is long, potentially to nothing. Icon size is a design decision, not something layout pressure should negotiate.
-* **`pointer-events: none`**: Keeps the icon from trapping clicks or becoming the `event.target`.
-* **`forced-color-adjust: none`**: In forced-colors mode the browser otherwise replaces `background-color`, making a masked icon disappear. The mask fill is preserved, and `currentColor` still follows the forced text color.
-* **`content: "" / var(--icon-style-alt, "")`**: Alternative text for generated content lets an icon-only control take its accessible name from the icon via `--icon-style-alt` (see Icon-Only Controls below). The default empty alt keeps decorative icons hidden from assistive technology.
+- **`vertical-align`**: `middle` aligns to half the x-height, which sits visibly low for most icon sets. Centering on `0.5cap` keeps the icon's center fixed as `--icon-style-size` grows, and the small negative `--icon-style-voffset` compensates for the eye weighting the space above an icon more than the space below.
+- **`flex: none`**: An empty pseudo-element has a zero minimum size, so inside a flex button it is the first thing to shrink when the label is long, potentially to nothing. Icon size is a design decision, not something layout pressure should negotiate.
+- **`pointer-events: none`**: Keeps the icon from trapping clicks or becoming the `event.target`.
+- **`forced-color-adjust: none`**: In forced-colors mode the browser otherwise replaces `background-color`, making a masked icon disappear. The mask fill is preserved, and `currentColor` still follows the forced text color.
+- **`content: "" / var(--icon-style-alt, "")`**: Alternative text for generated content lets an icon-only control take its accessible name from the icon via `--icon-style-alt` (see Icon-Only Controls below). The default empty alt keeps decorative icons hidden from assistive technology.
 
 For a trailing icon, follow the same pattern with `--icon-end` and `::after` instead of `--icon-start` and `::before`. Use `mask: var(--icon-end)` and apply spacing with `margin-inline-start` instead of `margin-inline-end`.
 
@@ -196,10 +199,19 @@ Icon-only buttons use the `.icon` class and `--icon` described above. Give the b
 <button class="icon button-close"></button>
 
 <!-- Icon-only interactive control, named via aria-label -->
-<button class="icon" style="--icon: var(--icon-trash);" aria-label="Delete item"></button>
+<button
+  class="icon"
+  style="--icon: var(--icon-trash);"
+  aria-label="Delete item"
+></button>
 
 <!-- Standalone informative icon -->
-<span class="icon" style="--icon: var(--icon-favorite);" role="img" aria-label="Favorite"></span>
+<span
+  class="icon"
+  style="--icon: var(--icon-favorite);"
+  role="img"
+  aria-label="Favorite"
+></span>
 ```
 
 ## Working with SVG directly
@@ -214,10 +226,10 @@ CSS `d` is not supported in Safari, so use this customization only when that sup
 
 `<use>` gotchas worth knowing:
 
-* The `viewBox` must be on the `<symbol>` or referenced `<svg>`; the outer `<svg>` wrapping `<use>` does not pick it up from the reference, so set `width` and `height` on the wrapper and keep the `viewBox` with the symbol.
-* Styles do not cross the boundary in either direction: `<style>` inside an external sprite does not apply to the page, and page stylesheets do not apply inside the referenced tree. Only inherited properties and custom properties pass through.
-* External references are same-origin only; cross-origin sprites fail silently.
-* Sprites inlined into the document share the page's `id` namespace, so namespace symbol ids to avoid collisions.
+- The `viewBox` must be on the `<symbol>` or referenced `<svg>`; the outer `<svg>` wrapping `<use>` does not pick it up from the reference, so set `width` and `height` on the wrapper and keep the `viewBox` with the symbol.
+- Styles do not cross the boundary in either direction: `<style>` inside an external sprite does not apply to the page, and page stylesheets do not apply inside the referenced tree. Only inherited properties and custom properties pass through.
+- External references are same-origin only; cross-origin sprites fail silently.
+- Sprites inlined into the document share the page's `id` namespace, so namespace symbol ids to avoid collisions.
 
 Mark decorative SVGs with `aria-hidden="true"` and give the containing control its own accessible name, as with the CSS icon system.
 
@@ -237,7 +249,8 @@ To support browsers without Container Style Queries, use classes or component se
 
 ```css
 :where(.icon-start, .icon:empty)::before {
-  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
+  content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) /
+    var(--icon-style-alt, "");
   /* icon styles */
 }
 
@@ -263,11 +276,17 @@ This `image-set()` pattern makes `content` invalid when the custom property is u
 Safari has two rendering bugs affecting icons: WebKit [#301609](https://bugs.webkit.org/show_bug.cgi?id=301609) can prevent them from appearing until user interaction, and [#320220](https://bugs.webkit.org/show_bug.cgi?id=320220) also affects their rendering. The workaround below addresses both:
 
 ```css
-@keyframes webkit-301609 {}
+@keyframes webkit-301609 {
+}
 
-@supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
+@supports (
+    (-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or
+      (font: -apple-system-body)
+  )
+  and (content-visibility: auto) {
   @layer webkit-301609-fix {
-    ::before, ::after {
+    ::before,
+    ::after {
       animation: webkit-301609 0s;
     }
   }
@@ -279,9 +298,11 @@ The `@supports` query targets Safari only, and `@layer` reduces animation confli
 WebKit bug #325900 can prevent a direct override of `--icon-start` from taking effect in some cases, such as changing the icon on hover. This affects the workaround for non-inheriting registered properties. For Safari, register `--icon-start` as inheriting and reset it on descendants inside the style query:
 
 ```css
-@supports ((-webkit-nbsp-mode: normal) or
-           (-webkit-touch-callout: none) or
-           (font: -apple-system-body)) and (content-visibility: auto) {
+@supports (
+    (-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or
+      (font: -apple-system-body)
+  )
+  and (content-visibility: auto) {
   /* Override previous declaration */
   @property --icon-start {
     syntax: "*";

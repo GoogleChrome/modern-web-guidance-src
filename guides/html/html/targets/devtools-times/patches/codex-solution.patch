@@ -8,7 +8,7 @@ index af1fa02..c2f7778 100644
      large?: boolean;
 +    headingLevel?: 2 | 3;
  }
- 
+
 -const { article, large = false } = Astro.props;
 +const { article, large = false, headingLevel = 2 } = Astro.props;
 +const Heading = `h${headingLevel}`;
@@ -17,8 +17,8 @@ index af1fa02..c2f7778 100644
  const isBookmarked = readingList.includes(article.id);
 @@ -41,10 +43,14 @@ const capitalizedCategory = article.data.category.charAt(0).toUpperCase() + arti
                  <a href={`${import.meta.env.BASE_URL}articles/${article.id}`}>
-                     <Image 
-                         src={image} 
+                     <Image
+                         src={image}
 -                        alt=""
 +                        alt={article.data.title}
                          width={800}
@@ -65,7 +65,7 @@ index f089dc0..23a5e96 100644
 +++ b/src/components/BookmarkButton.tsx
 @@ -23,7 +23,7 @@ export default function BookmarkButton({ slug, initialIsBookmarked }: Props) {
    };
- 
+
    return (
 -    <button onClick={handleClick} className="p-1">
 +    <button type="button" aria-label={isBookmarked ? "Remove from reading list" : "Save to reading list"} aria-pressed={isBookmarked} onClick={handleClick} className="p-1">
@@ -81,7 +81,7 @@ index 6d031f5..f31beba 100644
 -import FlyoutMenu from './FlyoutMenu';
 +import { useId } from 'react';
 +import FlyoutMenu, { type FlyoutMenuProps } from './FlyoutMenu';
- 
+
 -interface BottomNavProps {
 -    categories: string[];
 -    articles: any[];
@@ -132,13 +132,13 @@ index 6d031f5..f31beba 100644
 -                <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
 -                    {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
 -                        return (
--                            <div 
+-                            <div
 -                                key={groupName}
 -                                onMouseEnter={() => setActiveCategory(groupName)}
 -                                className="h-full flex items-center"
 -                            >
--                                <a 
--                                    href="#" 
+-                                <a
+-                                    href="#"
 -                                    className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap`}
 -                                >
 -                                    <span>{groupName}</span>
@@ -151,8 +151,8 @@ index 6d031f5..f31beba 100644
 -                    })}
 -                </nav>
 -            </div>
--            <FlyoutMenu 
--                isOpen={activeCategory !== null} 
+-            <FlyoutMenu
+-                isOpen={activeCategory !== null}
 -                categories={activeSubCategories.filter(c => categories.includes(c))}
 -                articles={articles}
 -                reports={filteredReports}
@@ -170,7 +170,7 @@ index 847fef0..8e3eb43 100644
 @@ -1,48 +1,15 @@
 -import React, { useState } from 'react';
 +import { useId } from 'react';
- 
+
 -interface CategoryNavItemProps {
 -    groupName: string;
 -    subCategories: string[];
@@ -195,13 +195,13 @@ index 847fef0..8e3eb43 100644
 -    const isActive = subCategories.some(category => currentPath.includes(`/category/${category.toLowerCase().replace(' ', '%20')}`));
 -
 -    return (
--        <div 
+-        <div
 -            className="relative"
 -            onMouseEnter={() => setIsFlyoutOpen(true)}
 -            onMouseLeave={() => setIsFlyoutOpen(false)}
 -        >
--            <a 
--                href="#" 
+-            <a
+-                href="#"
 -                className={`flex items-center space-x-1 hover:text-gray-600 whitespace-nowrap ${isActive ? 'text-amber-400' : ''}`}
 -            >
 -                <span>{groupName}</span>
@@ -236,7 +236,7 @@ index 37cf4bf..11a1b1c 100644
 @@ -1,38 +1,25 @@
  import React from 'react';
 +import type { CollectionEntry } from 'astro:content';
- 
+
 -interface FlyoutMenuProps {
 -  isOpen: boolean;
 +export interface FlyoutMenuProps {
@@ -249,7 +249,7 @@ index 37cf4bf..11a1b1c 100644
 +  reports: CollectionEntry<'reports'>[];
 +  multimedia: CollectionEntry<'multimedia'>[];
  }
- 
+
 -const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, reports, multimedia }) => {
 -  if (!isOpen) {
 -    return null;
@@ -268,14 +268,14 @@ index 37cf4bf..11a1b1c 100644
 -  }
 +const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ id, categories, articles, reports, multimedia }) => {
 +  const topStories = articles.slice(0, 3);
- 
+
    return (
 -    <div className="flyout-menu absolute top-full left-0 right-0 bg-white border-b border-gray-300 shadow-lg z-10">
 +    <div id={id} popover="auto" className="flyout-menu bg-white border-b border-gray-300 shadow-lg">
        <div className="container mx-auto px-4 py-6">
 -        <div className="grid grid-cols-4 gap-x-8">
 +        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8">
-           
+
            {/* Column 1: SECTIONS */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Sections</h3>
@@ -284,7 +284,7 @@ index 37cf4bf..11a1b1c 100644
                {categories.map(category => (
                  <li key={category}>
 @@ -46,7 +33,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 2: TOP STORIES */}
            <div>
 -            <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Top Stories</h3>
@@ -293,7 +293,7 @@ index 37cf4bf..11a1b1c 100644
                  {topStories.map(article => (
                      <li key={article.id}>
 @@ -58,11 +45,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 3: REPORTS */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
@@ -308,7 +308,7 @@ index 37cf4bf..11a1b1c 100644
                                    <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
                                </div>
 @@ -81,11 +68,11 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
- 
+
            {/* Column 4: MULTIMEDIA */}
            <div>
 -              <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Multimedia</h3>
@@ -335,7 +335,7 @@ index 5f2d281..1925d80 100644
              />
          </a>
 @@ -19,7 +20,7 @@ const baseUrl = import.meta.env.BASE_URL;
-         
+
          <!-- Column 1: NEWS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">News</h3>
@@ -344,7 +344,7 @@ index 5f2d281..1925d80 100644
                  <li><a href="/category/national" class="text-sm hover:underline">National</a></li>
                  <li><a href="/category/politics" class="text-sm hover:underline">Politics</a></li>
 @@ -29,7 +30,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 2: ARTS -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Arts</h3>
@@ -353,7 +353,7 @@ index 5f2d281..1925d80 100644
                  <li><a href="/category/culture" class="text-sm hover:underline">Culture</a></li>
                  <li><a href="/category/media" class="text-sm hover:underline">Media</a></li>
 @@ -38,7 +39,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 3: LIFESTYLE -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Lifestyle</h3>
@@ -362,7 +362,7 @@ index 5f2d281..1925d80 100644
                  <li><a href="/category/lifestyle" class="text-sm hover:underline">Lifestyle</a></li>
                  <li><a href="/category/sports" class="text-sm hover:underline">Sports</a></li>
 @@ -48,7 +49,7 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 4: SCIENCE & TECH -->
          <div>
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Science & Tech</h3>
@@ -371,7 +371,7 @@ index 5f2d281..1925d80 100644
                  <li><a href="/category/science" class="text-sm hover:underline">Science</a></li>
              </ul>
 @@ -60,17 +61,17 @@ const baseUrl = import.meta.env.BASE_URL;
- 
+
          <!-- Column 7: ACCOUNT -->
          <div class="col-span-2 sm:col-span-1">
 -            <h3 class="font-bold text-xs uppercase tracking-wider mb-3">Account</h3>
@@ -403,7 +403,7 @@ index 980b279..9df710a 100644
 +          <img src=`${baseUrl}logo.svg` alt="The DevTools Times" width="872" height="102" class="w-80 h-auto mx-auto" />
          </a>
        </div>
- 
+
 diff --git a/src/components/MenuButton.tsx b/src/components/MenuButton.tsx
 index 4e6592b..bac6e51 100644
 --- a/src/components/MenuButton.tsx
@@ -412,11 +412,11 @@ index 4e6592b..bac6e51 100644
 -import React, { useState } from 'react';
 +import React, { useId } from 'react';
  import FlyoutMenu from './FlyoutMenu';
- 
+
  interface Props {
 @@ -6,24 +6,16 @@ interface Props {
  }
- 
+
  export default function MenuButton({ categories }: Props) {
 -  const [isOpen, setIsOpen] = useState(false);
 -
@@ -428,7 +428,7 @@ index 4e6592b..bac6e51 100644
 -    setIsOpen(false);
 -  };
 +  const id = useId();
- 
+
    return (
      <>
 -      <button className="text-gray-700 hover:text-amber-400" onClick={toggleMenu}>
@@ -489,7 +489,7 @@ index 29642be..042982a 100644
 --- a/src/components/ReadingListButton.tsx
 +++ b/src/components/ReadingListButton.tsx
 @@ -24,8 +24,8 @@ export default function ReadingListButton() {
- 
+
    return (
      <>
 -      <button onClick={() => setIsOpen(true)} className="p-1">
@@ -504,16 +504,16 @@ index 10bfbad..402cae4 100644
 --- a/src/components/ReadingListFlyout.tsx
 +++ b/src/components/ReadingListFlyout.tsx
 @@ -1,5 +1,6 @@
- 
+
  import React, { useState, useEffect } from 'react';
 +import Modal from './Modal';
- 
+
  interface Article {
    slug: string;
 @@ -25,17 +26,7 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    useEffect(() => {
      fetchReadingList();
- 
+
 -    const handleKeyDown = (event: KeyboardEvent) => {
 -      if (event.key === 'Escape') {
 -        onClose();
@@ -526,12 +526,12 @@ index 10bfbad..402cae4 100644
 -    };
 -  }, [onClose]);
 +  }, []);
- 
+
    const handleRemove = async (slug: string) => {
      await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`, {
 @@ -51,15 +42,9 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
    const readingListArticles = articles.filter(article => readingList.includes(article.slug));
- 
+
    return (
 -    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -      <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -582,11 +582,11 @@ index 3f57913..099139a 100644
 +    image?: string;
 +    srcSet?: string;
  }
- 
+
  export default function SearchButton() {
 @@ -14,9 +16,11 @@ export default function SearchButton() {
      const [isLoading, setIsLoading] = useState(false);
- 
+
      const openSearch = async () => {
 +        setIsFlyoutOpen(true);
          try {
@@ -599,7 +599,7 @@ index 3f57913..099139a 100644
              console.error('Failed to fetch articles:', error);
          } finally {
 @@ -30,7 +34,7 @@ export default function SearchButton() {
- 
+
      return (
          <>
 -            <button
@@ -627,11 +627,11 @@ index 9dabc6e..389eeae 100644
 --- a/src/components/SearchFlyout.tsx
 +++ b/src/components/SearchFlyout.tsx
 @@ -1,11 +1,13 @@
- 
+
 -import React, { useState, useMemo, useEffect } from 'react';
 +import React, { useState, useMemo } from 'react';
 +import Modal from './Modal';
- 
+
  interface Article {
      slug: string;
      title: string;
@@ -639,10 +639,10 @@ index 9dabc6e..389eeae 100644
      image?: string;
 +    srcSet?: string;
  }
- 
+
  interface Props {
 @@ -20,33 +22,7 @@ const getShuffledItems = <T,>(arr: T[], count: number): T[] => {
- 
+
  export default function SearchFlyout({ articles, onClose }: Props) {
      const [searchTerm, setSearchTerm] = useState('');
 -    const [suggestions, setSuggestions] = useState<Article[]>([]);
@@ -654,7 +654,7 @@ index 9dabc6e..389eeae 100644
 -            }
 -        };
 -        window.addEventListener('keydown', handleKeyDown);
--        
+-
 -        // Bug: Redundant fetch for suggestions
 -        const fetchSuggestions = async () => {
 -            try {
@@ -673,12 +673,12 @@ index 9dabc6e..389eeae 100644
 -        };
 -    }, [onClose]);
 +    const suggestions = useMemo(() => getShuffledItems(articles, 3), [articles]);
- 
+
      const filteredArticles = useMemo(() => {
          if (!searchTerm) {
 @@ -59,25 +35,19 @@ export default function SearchFlyout({ articles, onClose }: Props) {
      }, [articles, searchTerm]);
- 
+
      return (
 -        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm z-[99999] flex justify-center items-start p-4 pt-[15vh]" onClick={onClose}>
 -            <div className="bg-white shadow-xl w-full max-w-2xl relative" onClick={e => e.stopPropagation()}>
@@ -746,12 +746,12 @@ index a7c52b6..181dd96 100644
 --- a/src/components/SignInForm.tsx
 +++ b/src/components/SignInForm.tsx
 @@ -41,7 +41,7 @@ export default function SignInForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign In</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -63,6 +63,8 @@ export default function SignInForm() {
@@ -777,12 +777,12 @@ index 589fe62..0ee9f14 100644
 --- a/src/components/SignUpForm.tsx
 +++ b/src/components/SignUpForm.tsx
 @@ -42,7 +42,7 @@ export default function SignUpForm() {
- 
+
    return (
      <div className="max-w-md mx-auto mt-10 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
 -      <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h2>
 +      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800">Sign Up</h1>
-       
+
        {error && (
          <div className="mb-4 p-3 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
 @@ -64,6 +64,8 @@ export default function SignUpForm() {
@@ -819,7 +819,7 @@ index 29e7e50..c4b3554 100644
 +++ b/src/components/SimpleTeaserGrid.astro
 @@ -15,6 +15,6 @@ const { title, articles } = Astro.props;
      </h2>
- 
+
      <div class="grid md:grid-cols-3 gap-6">
 -      {articles.map(article => <ArticleTeaser article={article} />)}
 +      {articles.map(article => <ArticleTeaser article={article} headingLevel={3} />)}
@@ -861,46 +861,46 @@ index af5e892..af5329f 100644
 --- a/src/content/articles/coastal-pulse.md
 +++ b/src/content/articles/coastal-pulse.md
 @@ -13,14 +13,14 @@ Living by the seaside offers a sensory experience that shifts with the tides. It
- 
+
  The air at the coast is rich in negative ions, which are thought to improve oxygen absorption and balance serotonin levels. Furthermore, the "blue space" effect—the mental clarity gained from being near water—is a well-documented phenomenon that reduces cortisol and encourages mindfulness.
- 
+
 -### The Coastal Environment
 +## The Coastal Environment
  **Microclimates:** Large bodies of water act as heat sinks, often resulting in cooler summers and milder winters compared to inland areas.
- 
+
  **Salt Spray & Ecology:** The high salinity creates a unique ecosystem where only hardy, salt-tolerant plants (halophytes) thrive.
- 
+
  **Tidal Dynamics:** Understanding the Lunar cycle is essential, as the gravitational pull of the moon creates the high and low tides that reshape the landscape daily.
- 
+
 -### Explore
 +## Explore
  While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
- 
+
  <script>
 diff --git a/src/content/articles/coffee-alchemy.md b/src/content/articles/coffee-alchemy.md
 index cc7e252..94df1a7 100644
 --- a/src/content/articles/coffee-alchemy.md
 +++ b/src/content/articles/coffee-alchemy.md
 @@ -13,7 +13,7 @@ Coffee is more than a morning ritual; it is a complex beverage derived from the
- 
+
  The profile of a cup depends heavily on the roast profile and extraction method. During roasting, chemical reactions like the Maillard reaction transform green beans into aromatic brown ones, developing over 800 distinct flavor compounds.
- 
+
 -### Key Varieties
 +## Key Varieties
  **Arabica:** Known for its acidity, sweetness, and nuanced floral notes.
- 
+
  **Robusta:** Noted for its higher caffeine content, bitter edge, and thick "crema."
 diff --git a/src/content/articles/silent-architects.md b/src/content/articles/silent-architects.md
 index ee5cdd8..c4b9be0 100644
 --- a/src/content/articles/silent-architects.md
 +++ b/src/content/articles/silent-architects.md
 @@ -13,7 +13,7 @@ Plants are the quiet powerhouses of our planet, serving as the literal foundatio
- 
+
  Beyond just being "oxygen factories," plants are sophisticated organisms with complex systems. Their roots anchor the soil and prevent erosion, while their vascular tissues—xylem and phloem—act like a biological highway, transporting water and nutrients against the pull of gravity.
- 
+
 -### Why They Matter
 +## Why They Matter
- 
+
  *   **Biodiversity:** They provide habitats and food for countless species.
  *   **Climate Regulation:** Forests act as "carbon sinks," absorbing $CO_2$ to help mitigate global warming.
 diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
@@ -915,7 +915,7 @@ index dcf9696..8de5d00 100644
 +    <meta charset="utf-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
      <title>{title}</title>
- 
+
      <link rel="preconnect" href="https://fonts.googleapis.com" />
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 -    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -925,10 +925,10 @@ index dcf9696..8de5d00 100644
 @@ -32,7 +31,7 @@ const baseUrl = import.meta.env.BASE_URL;
      <!-- <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/ad-client.js"></script> -->
      <script is:inline defer src="https://us-central1-web-devrel-apps.cloudfunctions.net/times_cdn/lib/analytics-client.js"></script>
- 
+
 -    <link rel="icon" href=`${baseUrl}/favicon.svg` />
 +    <link rel="icon" href={`${baseUrl}favicon.svg`} />
- 
+
      <ClientRouter />
    </head>
 diff --git a/src/pages/api/articles.json.ts b/src/pages/api/articles.json.ts
@@ -936,12 +936,12 @@ index 4cd4be4..58efec6 100644
 --- a/src/pages/api/articles.json.ts
 +++ b/src/pages/api/articles.json.ts
 @@ -1,16 +1,22 @@
- 
+
  import { getCollection } from 'astro:content';
  import type { APIRoute } from 'astro';
 +import { getImage } from 'astro:assets';
 +import { getArticleImage } from '../../utils/images';
- 
+
 -export const GET: APIRoute = async ({ params, request }) => {
 +export const GET: APIRoute = async () => {
      const articles = await getCollection('articles');
@@ -958,7 +958,7 @@ index 4cd4be4..58efec6 100644
 +        srcSet: image.srcSet.attribute,
 +    });
      }));
- 
+
 -    // Simulate a network delay to make the INP issue more noticeable
      return new Response(JSON.stringify(formattedArticles));
  }
@@ -973,7 +973,7 @@ index 24fea39..9f6c3f0 100644
 -const isBookmarked = readingList.includes(article.slug);
 +const isBookmarked = readingList.includes(article.id);
  ---
- 
+
  <Layout title={article.data.title}>
 @@ -67,7 +67,8 @@ const isBookmarked = readingList.includes(article.slug);
                      width="1200"
@@ -984,7 +984,7 @@ index 24fea39..9f6c3f0 100644
 +                    fetchpriority="high"
                  />
              ) : (
-                 <Image 
+                 <Image
 @@ -76,6 +77,10 @@ const isBookmarked = readingList.includes(article.slug);
                      width={1200}
                      height={675}
@@ -1013,12 +1013,12 @@ index 24fea39..9f6c3f0 100644
 -                <BookmarkButton client:visible slug={article.slug} initialIsBookmarked={isBookmarked} />
 +                <BookmarkButton client:visible slug={article.id} initialIsBookmarked={isBookmarked} />
              </div>
- 
+
          </div>
 @@ -123,4 +128,4 @@ const isBookmarked = readingList.includes(article.slug);
      </section>
- 
- 
+
+
 -</Layout>
 \ No newline at end of file
 +</Layout>
@@ -1028,17 +1028,17 @@ index 79bf126..28a7cef 100644
 +++ b/src/pages/category/[category].astro
 @@ -17,6 +17,7 @@ export const getStaticPaths = (async () => {
  }) satisfies GetStaticPaths;
- 
+
  const { category } = Astro.params;
 +if (!category) return Astro.redirect(`${import.meta.env.BASE_URL}404`);
- 
+
  const allArticlesInCategory = await getCollection('articles', ({ data }) => {
      return data.category.toLowerCase() === category;
 @@ -44,10 +45,13 @@ const capitalizedCategory = category.charAt(0).toUpperCase() + category.slice(1)
              {heroImage && (
-                 <Image 
-                     src={heroImage} 
--                    alt={`Background for ${capitalizedCategory}`} 
+                 <Image
+                     src={heroImage}
+-                    alt={`Background for ${capitalizedCategory}`}
 +                    alt=""
                      width={1200}
                      height={400}
@@ -1069,7 +1069,7 @@ index 92f6399..9996c6c 100644
  import { getCollection } from 'astro:content';
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
 -import type { RenderResult } from 'astro:content';
- 
+
  const articles = await getCollection('articles');
  articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 @@ -32,8 +31,6 @@ politicsArticles[2] = {
@@ -1080,7 +1080,7 @@ index 92f6399..9996c6c 100644
 -    render: async () => '' as unknown as RenderResult,
    };
  ---
- 
+
 @@ -45,7 +42,7 @@ politicsArticles[2] = {
                  {topStories.map(article => (
                      <div class="border-l border-gray-300 pl-4 first:border-l-0 first:pl-0">
@@ -1092,19 +1092,19 @@ index 92f6399..9996c6c 100644
                      </div>
 @@ -55,9 +52,9 @@ politicsArticles[2] = {
      </div>
- 
+
      <!-- Main Content Area -->
 -    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
 +    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
          <ArticleTeaser article={topArticle} large={true} />
 -    </main>
 +    </div>
- 
+
      <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
          <section class="p-4 md:p-6 text-center">
 @@ -81,4 +78,4 @@ politicsArticles[2] = {
          <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-         
+
      </div>
 -</Layout>
 \ No newline at end of file
@@ -1165,10 +1165,10 @@ index b8fe01e..ffd2da9 100644
 --- a/src/utils/images.ts
 +++ b/src/utils/images.ts
 @@ -1,4 +1,5 @@
- 
+
 +import type { ImageMetadata } from 'astro';
  import type { CollectionEntry } from 'astro:content';
- 
+
  // Get all images from the content directory
 @@ -9,7 +10,7 @@ const allImages = import.meta.glob<{ default: ImageMetadata }>(
  export async function getArticleImage(article: CollectionEntry<'articles'>) {
@@ -1177,14 +1177,14 @@ index b8fe01e..ffd2da9 100644
 -        throw new Error(`Image path is missing for article: ${article.slug}`);
 +        throw new Error(`Image path is missing for article: ${article.id}`);
      }
- 
+
      if (imagePath.startsWith('http')) {
 @@ -17,7 +18,7 @@ export async function getArticleImage(article: CollectionEntry<'articles'>) {
      }
- 
+
      // Find the matching image module in the glob import
 -    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(imagePath.split('/').pop()));
 +    const imageModuleKey = Object.keys(allImages).find(key => key.endsWith(imagePath.split('/').pop() ?? ''));
- 
+
      if (!imageModuleKey) {
          throw new Error(`Could not find image module for path: ${imagePath}`);

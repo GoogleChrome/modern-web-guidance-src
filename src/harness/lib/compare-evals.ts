@@ -1,27 +1,43 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { cGreen, cRed, cCyan, cBold } from '../../core/colors.ts';
-import { downloadRunFromGcsIfMissing } from './gcs-downloader.ts';
-import { baseAppsDir, guidesDir, resultsDir, suitesDir } from '../../core/paths.ts';
-import { getComparisonPrompts } from './compare-prompts.ts';
-import { generateUnifiedDiff, extractTargetFilesFromPatch } from '../../core/patch-utils.ts';
+import fs from "node:fs";
+import path from "node:path";
+import { cGreen, cRed, cCyan, cBold } from "../../core/colors.ts";
+import { downloadRunFromGcsIfMissing } from "./gcs-downloader.ts";
+import {
+  baseAppsDir,
+  guidesDir,
+  resultsDir,
+  suitesDir,
+} from "../../core/paths.ts";
+import { getComparisonPrompts } from "./compare-prompts.ts";
+import {
+  generateUnifiedDiff,
+  extractTargetFilesFromPatch,
+} from "../../core/patch-utils.ts";
 import {
   categorizeAction,
   ensureFreshTrajectorySummarySync,
   type CanonicalCategory,
-  type TrajectorySummary
-} from './trajectory-normalizer.ts';
-import { parseResultPath } from './collection.ts';
-import { cleanupIsolatedHome, isEnoent } from './agent-shared.ts';
-import { getDefaultSolutionAgent, getGuidesMap, getTaskMap, GUIDE_FILE, EXPECTATIONS_FILE, GRADER_FILE, TASK_FILE } from '../../core/guide-validation.ts';
-import { runAgent, setupGuideDevWorkDir } from './utils.ts';
+  type TrajectorySummary,
+} from "./trajectory-normalizer.ts";
+import { parseResultPath } from "./collection.ts";
+import { cleanupIsolatedHome, isEnoent } from "./agent-shared.ts";
+import {
+  getDefaultSolutionAgent,
+  getGuidesMap,
+  getTaskMap,
+  GUIDE_FILE,
+  EXPECTATIONS_FILE,
+  GRADER_FILE,
+  TASK_FILE,
+} from "../../core/guide-validation.ts";
+import { runAgent, setupGuideDevWorkDir } from "./utils.ts";
 
 const ERROR_LOOP_THRESHOLD = 2;
 const MAX_THOUGHT_SNIPPET_LEN = 120;
 
 function tryReadFile(filePath: string): string | null {
   try {
-    return fs.readFileSync(filePath, 'utf8');
+    return fs.readFileSync(filePath, "utf8");
   } catch (err: unknown) {
     if (isEnoent(err)) return null;
     throw err;
@@ -43,9 +59,9 @@ function tryReadJson<T = any>(filePath: string): T | null {
  * Strips leading conversational narration before the first Markdown report heading.
  */
 export function stripAgentNarration(rawOutput: string): string {
-  if (!rawOutput) return '';
+  if (!rawOutput) return "";
   const trimmed = rawOutput.trim();
-  const primaryHeading = '### 1. First Meaningful Divergence';
+  const primaryHeading = "### 1. First Meaningful Divergence";
   const primaryIdx = trimmed.indexOf(primaryHeading);
   if (primaryIdx !== -1) {
     return trimmed.slice(primaryIdx).trim();
@@ -64,7 +80,7 @@ export type AgentCaller = (
   prompt: string,
   label?: string,
   workDir?: string,
-  homeDir?: string
+  homeDir?: string,
 ) => Promise<string>;
 
 /**
@@ -73,18 +89,20 @@ export type AgentCaller = (
 async function callAgentCli(
   systemInstruction: string,
   prompt: string,
-  label = 'Compare Agent',
+  label = "Compare Agent",
   workDir?: string,
-  homeDir?: string
+  homeDir?: string,
 ): Promise<string> {
-  const combinedPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
+  const combinedPrompt = systemInstruction
+    ? `${systemInstruction}\n\n${prompt}`
+    : prompt;
   const agent = getDefaultSolutionAgent();
 
   console.log(`[${label}] Executing via ${agent}...`);
 
   const rawOutput = await runAgent(agent, combinedPrompt, workDir, {
     captureOutput: true,
-    homeDir: homeDir ?? (workDir ? path.dirname(workDir) : undefined)
+    homeDir: homeDir ?? (workDir ? path.dirname(workDir) : undefined),
   });
   if (!rawOutput) {
     throw new Error(`[${label}] Empty response received from ${agent}`);
@@ -94,7 +112,7 @@ async function callAgentCli(
 
 export interface TaggedStep {
   stepNumber: number;
-  category: Exclude<CanonicalCategory, 'other'>;
+  category: Exclude<CanonicalCategory, "other">;
   thought?: string;
   actionName?: string;
   detail?: string;
@@ -145,29 +163,38 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
   const taskKey = `${guideName}/${taskName}`;
   const taskInfo = getTaskMap().get(taskKey);
 
-  const guideDir = taskInfo?.guideDir || guideInfo?.dir || (fs.existsSync(path.join(guidesDir, guideName)) ? path.join(guidesDir, guideName) : '');
+  const guideDir =
+    taskInfo?.guideDir ||
+    guideInfo?.dir ||
+    (fs.existsSync(path.join(guidesDir, guideName))
+      ? path.join(guidesDir, guideName)
+      : "");
 
-  let guideContent = '';
-  let expectationsContent = '';
-  let graderContent = '';
-  let taskPrompt = taskInfo?.prompt || '';
-  let baseAppContent = '';
+  let guideContent = "";
+  let expectationsContent = "";
+  let graderContent = "";
+  let taskPrompt = taskInfo?.prompt || "";
+  let baseAppContent = "";
 
   if (guideDir) {
-    guideContent = tryReadFile(path.join(guideDir, GUIDE_FILE)) || '';
-    expectationsContent = tryReadFile(path.join(guideDir, EXPECTATIONS_FILE)) || '';
+    guideContent = tryReadFile(path.join(guideDir, GUIDE_FILE)) || "";
+    expectationsContent =
+      tryReadFile(path.join(guideDir, EXPECTATIONS_FILE)) || "";
 
     // Check target-specific grader first (targets/<taskName>/grader.ts), then root grader.ts
-    const targetGrader = path.join(guideDir, 'targets', taskName, GRADER_FILE);
-    graderContent = tryReadFile(targetGrader) || tryReadFile(path.join(guideDir, GRADER_FILE)) || '';
+    const targetGrader = path.join(guideDir, "targets", taskName, GRADER_FILE);
+    graderContent =
+      tryReadFile(targetGrader) ||
+      tryReadFile(path.join(guideDir, GRADER_FILE)) ||
+      "";
 
     // If prompt wasn't populated from task map, check candidate file locations
     if (!taskPrompt) {
       const taskCandidates = [
-        path.join(guideDir, 'targets', taskName, TASK_FILE),
-        path.join(guideDir, 'tasks', `${taskName}.md`),
-        path.join(guideDir, 'tasks', TASK_FILE),
-        path.join(guideDir, TASK_FILE)
+        path.join(guideDir, "targets", taskName, TASK_FILE),
+        path.join(guideDir, "tasks", `${taskName}.md`),
+        path.join(guideDir, "tasks", TASK_FILE),
+        path.join(guideDir, TASK_FILE),
       ];
 
       for (const candidate of taskCandidates) {
@@ -179,13 +206,17 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
       }
     }
 
-    const baseAppName = taskInfo?.baseApp || taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i)?.[1]?.trim();
+    const baseAppName =
+      taskInfo?.baseApp ||
+      taskPrompt.match(/base_app:\s*([^\s\r\n]+)/i)?.[1]?.trim();
     if (baseAppName) {
       const baseAppDir = path.join(baseAppsDir, baseAppName);
       let targetRelFile: string | undefined;
-      const targetDir = guideDir ? path.join(guideDir, 'targets', taskName) : undefined;
+      const targetDir = guideDir
+        ? path.join(guideDir, "targets", taskName)
+        : undefined;
       if (targetDir) {
-        const solPatch = path.join(targetDir, 'patches', 'solution.patch');
+        const solPatch = path.join(targetDir, "patches", "solution.patch");
         const [extracted] = extractTargetFilesFromPatch(solPatch);
         targetRelFile = extracted;
       }
@@ -197,19 +228,23 @@ function findGuideContext(guideName: string, taskName: string): GuideContext {
   return {
     guideName,
     taskName,
-    guideContent: guideContent || 'No guide.md content found.',
-    expectationsContent: expectationsContent || 'No expectations.md content found.',
-    taskPrompt: taskPrompt || 'No task.md prompt found.',
-    graderContent: graderContent || 'No grader.ts content found.',
-    baseAppContent: baseAppContent || ''
+    guideContent: guideContent || "No guide.md content found.",
+    expectationsContent:
+      expectationsContent || "No expectations.md content found.",
+    taskPrompt: taskPrompt || "No task.md prompt found.",
+    graderContent: graderContent || "No grader.ts content found.",
+    baseAppContent: baseAppContent || "",
   };
 }
 
 /**
  * Finds the main generated code file in a run directory.
  */
-function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: string; content: string } {
-  if (targetFileFromEvals && targetFileFromEvals !== 'agent.patch') {
+function findCodeOutput(
+  dir: string,
+  targetFileFromEvals?: string,
+): { path: string; content: string } {
+  if (targetFileFromEvals && targetFileFromEvals !== "agent.patch") {
     const content = tryReadFile(path.join(dir, targetFileFromEvals));
     if (content !== null) {
       return { path: targetFileFromEvals, content };
@@ -217,20 +252,20 @@ function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: stri
   }
 
   const candidates = [
-    'dist/index.html',
-    'src/App.tsx',
-    'src/App.jsx',
-    'src/App.ts',
-    'src/App.js',
-    'src/main.tsx',
-    'src/main.jsx',
-    'src/main.ts',
-    'src/main.js',
-    'src/index.tsx',
-    'src/index.jsx',
-    'src/index.ts',
-    'src/index.js',
-    'index.html'
+    "dist/index.html",
+    "src/App.tsx",
+    "src/App.jsx",
+    "src/App.ts",
+    "src/App.js",
+    "src/main.tsx",
+    "src/main.jsx",
+    "src/main.ts",
+    "src/main.js",
+    "src/index.tsx",
+    "src/index.jsx",
+    "src/index.ts",
+    "src/index.js",
+    "index.html",
   ];
 
   for (const candidate of candidates) {
@@ -240,12 +275,12 @@ function findCodeOutput(dir: string, targetFileFromEvals?: string): { path: stri
     }
   }
 
-  return { path: 'unknown', content: '' };
+  return { path: "unknown", content: "" };
 }
 
 function stripAnsi(text: string): string {
   // eslint-disable-next-line no-control-regex
-  return text.replace(/\u001b\[[0-9;]*m/g, '');
+  return text.replace(/\u001b\[[0-9;]*m/g, "");
 }
 
 /**
@@ -262,7 +297,8 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
       suite.specs.forEach((spec: any) => {
         const passed = !!spec.ok;
         const errors: string[] = [];
-        let location: { file?: string; line?: number; column?: number } | undefined;
+        let location:
+          { file?: string; line?: number; column?: number } | undefined;
 
         if (!passed && Array.isArray(spec.tests)) {
           for (const test of spec.tests) {
@@ -292,7 +328,7 @@ function parsePlaywrightResults(report: any): PlaywrightAssertion[] {
           message: spec.title,
           passed,
           errors: errors.length > 0 ? errors : undefined,
-          location
+          location,
         });
       });
     }
@@ -312,7 +348,7 @@ export function extractSearchQuery(cmd: string): string | undefined {
   if (!cmd) return undefined;
 
   const normalized = cmd.replace(/\\"/g, '"').replace(/\\'/g, "'").trim();
-  const searchIdx = normalized.toLowerCase().indexOf('search');
+  const searchIdx = normalized.toLowerCase().indexOf("search");
   if (searchIdx === -1) return undefined;
 
   const afterSearch = normalized.slice(searchIdx + 6).trim();
@@ -336,24 +372,30 @@ export function extractSearchQuery(cmd: string): string | undefined {
       skipNext = false;
       continue;
     }
-    if (token.startsWith('--') || token.startsWith('-')) {
-      if (!token.includes('=') && i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) {
+    if (token.startsWith("--") || token.startsWith("-")) {
+      if (
+        !token.includes("=") &&
+        i + 1 < tokens.length &&
+        !tokens[i + 1].startsWith("-")
+      ) {
         skipNext = true;
       }
       continue;
     }
-    if (token === '\\') continue;
+    if (token === "\\") continue;
     queryTokens.push(token);
   }
 
-  const query = queryTokens.join(' ').trim();
+  const query = queryTokens.join(" ").trim();
   return query || undefined;
 }
 
 /**
  * Categorizes trajectory steps into milestone/noise types and computes metrics.
  */
-export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null): PreprocessedTrajectory {
+export function preprocessTrajectory(
+  trajectorySummary: TrajectorySummary | null,
+): PreprocessedTrajectory {
   const steps = trajectorySummary?.steps || [];
   const taggedSteps: TaggedStep[] = [];
   const searchQueries: string[] = [];
@@ -367,10 +409,10 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
   for (let i = 0; i < steps.length; i++) {
     const rawStep = steps[i];
     const stepNumber = rawStep.stepNumber || i + 1;
-    const thought = rawStep.thought || '';
-    const actionName = rawStep.action?.name || '';
+    const thought = rawStep.thought || "";
+    const actionName = rawStep.action?.name || "";
     const actionParams = rawStep.action?.params;
-    const isErr = rawStep.outcome?.status === 'error';
+    const isErr = rawStep.outcome?.status === "error";
 
     if (isErr) {
       consecutiveErrors++;
@@ -381,29 +423,36 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
       consecutiveErrors = 0;
     }
 
-    const rawCat = categorizeAction(actionName, actionParams, thought, rawStep.action?.type);
-    const category: TaggedStep['category'] = rawCat && rawCat !== 'other' ? rawCat : 'incidental_noise';
+    const rawCat = categorizeAction(
+      actionName,
+      actionParams,
+      thought,
+      rawStep.action?.type,
+    );
+    const category: TaggedStep["category"] =
+      rawCat && rawCat !== "other" ? rawCat : "incidental_noise";
 
     switch (category) {
-      case 'guide_retrieval':
+      case "guide_retrieval":
         // Retrieved guide ids come from trajectorySummary.retrievedGuides below.
         break;
-      case 'skill_search': {
-        const cmd = typeof actionParams?.command === 'string' ? actionParams.command : '';
+      case "skill_search": {
+        const cmd =
+          typeof actionParams?.command === "string" ? actionParams.command : "";
         const query = extractSearchQuery(cmd);
         if (query) searchQueries.push(query);
         break;
       }
-      case 'skill_activation':
+      case "skill_activation":
         // Kept out of the noise bucket so it stays visible in the milestone timeline.
         break;
-      case 'code_mutation':
+      case "code_mutation":
         codeMutationCount++;
         break;
-      case 'mandatory_rule_thought':
+      case "mandatory_rule_thought":
         mandatoryRulesAdopted.push(thought.slice(0, MAX_THOUGHT_SNIPPET_LEN));
         break;
-      case 'incidental_noise':
+      case "incidental_noise":
         noiseCount++;
         break;
       default: {
@@ -417,7 +466,8 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
       category,
       thought,
       actionName,
-      detail: String(actionParams?.command ?? actionParams?.path ?? '') || undefined
+      detail:
+        String(actionParams?.command ?? actionParams?.path ?? "") || undefined,
     });
   }
 
@@ -433,7 +483,7 @@ export function preprocessTrajectory(trajectorySummary: TrajectorySummary | null
     mandatoryRulesAdopted,
     codeMutationCount,
     noiseCount,
-    errorLoopCount
+    errorLoopCount,
   };
 }
 
@@ -444,13 +494,16 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
   const taskName = parsed?.taskName;
 
   while (curr && curr !== path.dirname(curr)) {
-    const data = tryReadJson(path.join(curr, 'evals.json'));
+    const data = tryReadJson(path.join(curr, "evals.json"));
     if (data && data.results) {
       for (const testName in data.results) {
         const runs = data.results[testName];
         if (Array.isArray(runs)) {
           for (const run of runs) {
-            const matchesGuide = !guideName || run.guideName === guideName || run.taskPath?.includes(guideName);
+            const matchesGuide =
+              !guideName ||
+              run.guideName === guideName ||
+              run.taskPath?.includes(guideName);
             const matchesTask = !taskName || run.taskName === taskName;
             if (matchesGuide && matchesTask && run.targetFile) {
               return run.targetFile;
@@ -470,7 +523,10 @@ function extractTargetFileFromEvalsJson(runDir: string): string | undefined {
 export function loadRunContext(runDir: string): RunContext {
   let absoluteDir = path.resolve(runDir);
   if (!fs.existsSync(absoluteDir)) {
-    const stripped = runDir.replace(/^(\.\/)?(harness\/)?results\/(suites\/)?/, '');
+    const stripped = runDir.replace(
+      /^(\.\/)?(harness\/)?results\/(suites\/)?/,
+      "",
+    );
     const suiteCandidate = path.resolve(suitesDir, stripped);
     const resultsCandidate = path.resolve(resultsDir, stripped);
     if (fs.existsSync(suiteCandidate)) {
@@ -490,15 +546,19 @@ export function loadRunContext(runDir: string): RunContext {
   }
 
   const parsed = parseResultPath(absoluteDir);
-  const guideName = parsed?.guide || '';
+  const guideName = parsed?.guide || "";
 
   let resultsJson: PlaywrightAssertion[] = [];
   let score = 0;
 
-  let rawReport = tryReadJson(path.join(absoluteDir, `${guideName}_results.json`));
+  let rawReport = tryReadJson(
+    path.join(absoluteDir, `${guideName}_results.json`),
+  );
   if (!rawReport) {
     try {
-      const fallbackFile = fs.readdirSync(absoluteDir).find((f) => f.endsWith('_results.json'));
+      const fallbackFile = fs
+        .readdirSync(absoluteDir)
+        .find((f) => f.endsWith("_results.json"));
       if (fallbackFile) {
         rawReport = tryReadJson(path.join(absoluteDir, fallbackFile));
       }
@@ -510,15 +570,21 @@ export function loadRunContext(runDir: string): RunContext {
   if (rawReport) {
     resultsJson = parsePlaywrightResults(rawReport);
     const passed = resultsJson.filter((c) => c.passed).length;
-    score = resultsJson.length > 0 ? Math.round((passed / resultsJson.length) * 100) : 0;
+    score =
+      resultsJson.length > 0
+        ? Math.round((passed / resultsJson.length) * 100)
+        : 0;
   }
 
   const trajectorySummary = ensureFreshTrajectorySummarySync(absoluteDir);
   const targetFileFromEvals = extractTargetFileFromEvalsJson(absoluteDir);
   const code = findCodeOutput(absoluteDir, targetFileFromEvals);
-  const patchContent = tryReadFile(path.join(absoluteDir, 'agent.patch')) || undefined;
+  const patchContent =
+    tryReadFile(path.join(absoluteDir, "agent.patch")) || undefined;
   const preprocessed = preprocessTrajectory(trajectorySummary);
-  const initialPrompt = trajectorySummary?.initialPrompt || 'Initial prompt not found in trajectory summary.';
+  const initialPrompt =
+    trajectorySummary?.initialPrompt ||
+    "Initial prompt not found in trajectory summary.";
 
   return {
     dir: absoluteDir,
@@ -527,60 +593,81 @@ export function loadRunContext(runDir: string): RunContext {
     codeOutput: code.content,
     patchContent,
     preprocessed,
-    initialPrompt
+    initialPrompt,
   };
 }
 
 function computeInterRunDiff(ctxA: RunContext, ctxB: RunContext): string {
   if (ctxA.patchContent && ctxB.patchContent) {
-    return generateUnifiedDiff(ctxA.patchContent.trim(), ctxB.patchContent.trim(), 'Run A Patch', 'Run B Patch');
+    return generateUnifiedDiff(
+      ctxA.patchContent.trim(),
+      ctxB.patchContent.trim(),
+      "Run A Patch",
+      "Run B Patch",
+    );
   }
   if (ctxA.patchContent || ctxB.patchContent) {
-    const patchRun = ctxA.patchContent ? 'Run A' : 'Run B';
-    const fileRun = ctxA.patchContent ? 'Run B' : 'Run A';
+    const patchRun = ctxA.patchContent ? "Run A" : "Run B";
+    const fileRun = ctxA.patchContent ? "Run B" : "Run A";
     return `Direct diff unavailable: ${patchRun} is patch-based while ${fileRun} produced standalone file output.`;
   }
-  return generateUnifiedDiff(ctxA.codeOutput || '', ctxB.codeOutput || '', 'Run A Output', 'Run B Output');
+  return generateUnifiedDiff(
+    ctxA.codeOutput || "",
+    ctxB.codeOutput || "",
+    "Run A Output",
+    "Run B Output",
+  );
 }
 
 function sanitizeLabelSegment(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'run';
+  return raw.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "run";
 }
 
 function inferSuiteDir(runDir: string): string | null {
-  const resultsMatch = runDir.match(/(.*[/\\]results[/\\](?:suites[/\\])?(?!suites(?:[/\\]|$))[^/\\]+)/);
+  const resultsMatch = runDir.match(
+    /(.*[/\\]results[/\\](?:suites[/\\])?(?!suites(?:[/\\]|$))[^/\\]+)/,
+  );
   if (resultsMatch) return resultsMatch[1];
 
-  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
-  const segments = normalized.split('/').filter(Boolean);
+  const normalized = runDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  const segments = normalized.split("/").filter(Boolean);
   // Standard eval structure: .../<suite>/<trialIndex>/<guide>/<task>/<runType>
   if (segments.length >= 5 && /^\d+$/.test(segments[segments.length - 4])) {
-    const prefix = normalized.startsWith('/') ? '/' : '';
-    return prefix + segments.slice(0, -4).join('/');
+    const prefix = normalized.startsWith("/") ? "/" : "";
+    return prefix + segments.slice(0, -4).join("/");
   }
   return null;
 }
 
-function extractRunLabel(runDir: string, guideName: string, taskName: string, includeSuite: boolean): string {
-  const normalized = runDir.replace(/\\/g, '/').replace(/\/+$/, '');
+function extractRunLabel(
+  runDir: string,
+  guideName: string,
+  taskName: string,
+  includeSuite: boolean,
+): string {
+  const normalized = runDir.replace(/\\/g, "/").replace(/\/+$/, "");
   const suiteDir = inferSuiteDir(runDir);
 
   if (suiteDir) {
-    const normalizedSuite = suiteDir.replace(/\\/g, '/').replace(/\/+$/, '');
+    const normalizedSuite = suiteDir.replace(/\\/g, "/").replace(/\/+$/, "");
     const suiteName = path.basename(normalizedSuite);
-    const remainder = normalized.startsWith(normalizedSuite + '/')
+    const remainder = normalized.startsWith(normalizedSuite + "/")
       ? normalized.slice(normalizedSuite.length + 1)
-      : '';
+      : "";
     const relSegments = remainder
-      .split('/')
+      .split("/")
       .filter((seg) => Boolean(seg) && seg !== guideName && seg !== taskName);
-    const baseLabel = relSegments.join('-') || path.basename(normalized);
-    return sanitizeLabelSegment(includeSuite ? `${suiteName}-${baseLabel}` : baseLabel);
+    const baseLabel = relSegments.join("-") || path.basename(normalized);
+    return sanitizeLabelSegment(
+      includeSuite ? `${suiteName}-${baseLabel}` : baseLabel,
+    );
   }
 
-  const segments = normalized.split('/').filter(Boolean);
-  const filtered = segments.filter((seg) => seg !== guideName && seg !== taskName);
-  const tail = filtered.slice(-2).join('-') || path.basename(normalized);
+  const segments = normalized.split("/").filter(Boolean);
+  const filtered = segments.filter(
+    (seg) => seg !== guideName && seg !== taskName,
+  );
+  const tail = filtered.slice(-2).join("-") || path.basename(normalized);
   return sanitizeLabelSegment(tail);
 }
 
@@ -593,17 +680,19 @@ export function buildComparisonReportPath(
   dirA: string,
   dirB: string,
   guideName: string,
-  taskName: string
+  taskName: string,
 ): string {
   const suiteDirA = inferSuiteDir(dirA);
   const suiteDirB = inferSuiteDir(dirB);
 
   const baseOutputDir = suiteDirA || suiteDirB || resultsDir;
-  const diagnosesDir = path.join(baseOutputDir, 'variance_diagnoses');
+  const diagnosesDir = path.join(baseOutputDir, "variance_diagnoses");
 
-  const suiteNameA = suiteDirA ? path.basename(suiteDirA) : '';
-  const suiteNameB = suiteDirB ? path.basename(suiteDirB) : '';
-  const includeSuite = Boolean((suiteNameA || suiteNameB) && suiteNameA !== suiteNameB);
+  const suiteNameA = suiteDirA ? path.basename(suiteDirA) : "";
+  const suiteNameB = suiteDirB ? path.basename(suiteDirB) : "";
+  const includeSuite = Boolean(
+    (suiteNameA || suiteNameB) && suiteNameA !== suiteNameB,
+  );
 
   let labelA = extractRunLabel(dirA, guideName, taskName, includeSuite);
   let labelB = extractRunLabel(dirB, guideName, taskName, includeSuite);
@@ -627,16 +716,44 @@ function writeComparisonWorkspaceFiles(
   ctxB: RunContext,
   diffBaseVsA: string,
   diffBaseVsB: string,
-  diffAvsB: string
+  diffAvsB: string,
 ): void {
-  fs.writeFileSync(path.join(workDir, 'guide.md'), guideCtx.guideContent, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'expectations.md'), guideCtx.expectationsContent, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'grader.ts'), guideCtx.graderContent, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'diff_base_vs_a.patch'), diffBaseVsA, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'diff_base_vs_b.patch'), diffBaseVsB, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'diff_a_vs_b.patch'), diffAvsB, 'utf8');
-  fs.writeFileSync(path.join(workDir, 'run_a_trajectory.json'), JSON.stringify(ctxA.preprocessed, null, 2), 'utf8');
-  fs.writeFileSync(path.join(workDir, 'run_b_trajectory.json'), JSON.stringify(ctxB.preprocessed, null, 2), 'utf8');
+  fs.writeFileSync(
+    path.join(workDir, "guide.md"),
+    guideCtx.guideContent,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(workDir, "expectations.md"),
+    guideCtx.expectationsContent,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(workDir, "grader.ts"),
+    guideCtx.graderContent,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(workDir, "diff_base_vs_a.patch"),
+    diffBaseVsA,
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(workDir, "diff_base_vs_b.patch"),
+    diffBaseVsB,
+    "utf8",
+  );
+  fs.writeFileSync(path.join(workDir, "diff_a_vs_b.patch"), diffAvsB, "utf8");
+  fs.writeFileSync(
+    path.join(workDir, "run_a_trajectory.json"),
+    JSON.stringify(ctxA.preprocessed, null, 2),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(workDir, "run_b_trajectory.json"),
+    JSON.stringify(ctxB.preprocessed, null, 2),
+    "utf8",
+  );
 
   const fullContextMd = `# Full Uncapped Comparison Context (${guideCtx.guideName} / ${guideCtx.taskName})
 
@@ -686,7 +803,11 @@ ${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
 \`\`\`
 `;
 
-  fs.writeFileSync(path.join(workDir, 'comparison_context.md'), fullContextMd, 'utf8');
+  fs.writeFileSync(
+    path.join(workDir, "comparison_context.md"),
+    fullContextMd,
+    "utf8",
+  );
 }
 
 /**
@@ -695,27 +816,33 @@ ${JSON.stringify(ctxB.preprocessed.taggedSteps, null, 2)}
 export async function runComparison(
   runDirA: string,
   runDirB: string,
-  agentCaller: AgentCaller = callAgentCli
+  agentCaller: AgentCaller = callAgentCli,
 ): Promise<string> {
-  console.log(cCyan(`\n=== Starting Run Comparison (Unified Subagent-Orchestrated Pipeline) ===`));
+  console.log(
+    cCyan(
+      `\n=== Starting Run Comparison (Unified Subagent-Orchestrated Pipeline) ===`,
+    ),
+  );
   console.log(`Run A: ${runDirA}`);
   console.log(`Run B: ${runDirB}\n`);
 
   await Promise.all([
     downloadRunFromGcsIfMissing(runDirA),
-    downloadRunFromGcsIfMissing(runDirB)
+    downloadRunFromGcsIfMissing(runDirB),
   ]);
 
   const ctxA = loadRunContext(runDirA);
   const ctxB = loadRunContext(runDirB);
 
-  console.log(`Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`);
+  console.log(
+    `Comparing Run A (Score: ${ctxA.score}%) vs Run B (Score: ${ctxB.score}%)...`,
+  );
 
   const parsedPath = parseResultPath(ctxA.dir) || parseResultPath(ctxB.dir);
   if (!parsedPath) {
     throw new Error(
       `Invalid run directory structure: cannot parse guide, task, and runType from "${ctxA.dir}". ` +
-        `Expected path format ending in: <guide>/<task>/<runType>`
+        `Expected path format ending in: <guide>/<task>/<runType>`,
     );
   }
   const { guide: guideName, taskName } = parsedPath;
@@ -723,25 +850,65 @@ export async function runComparison(
   const guideCtx = findGuideContext(guideName, taskName);
   const diffBaseVsA = ctxA.patchContent
     ? ctxA.patchContent.trim()
-    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxA.codeOutput || '', 'Base App', 'Run A Output');
+    : generateUnifiedDiff(
+        guideCtx.baseAppContent || "",
+        ctxA.codeOutput || "",
+        "Base App",
+        "Run A Output",
+      );
   const diffBaseVsB = ctxB.patchContent
     ? ctxB.patchContent.trim()
-    : generateUnifiedDiff(guideCtx.baseAppContent || '', ctxB.codeOutput || '', 'Base App', 'Run B Output');
+    : generateUnifiedDiff(
+        guideCtx.baseAppContent || "",
+        ctxB.codeOutput || "",
+        "Base App",
+        "Run B Output",
+      );
   const diffAvsB = computeInterRunDiff(ctxA, ctxB);
 
-  const statusA = ctxA.score > ctxB.score ? 'SUCCESSFUL' : ctxA.score < ctxB.score ? 'FAILED/POORER' : 'COMPARED RUN';
-  const statusB = ctxB.score > ctxA.score ? 'SUCCESSFUL' : ctxB.score < ctxA.score ? 'FAILED/POORER' : 'COMPARED RUN';
+  const statusA =
+    ctxA.score > ctxB.score
+      ? "SUCCESSFUL"
+      : ctxA.score < ctxB.score
+        ? "FAILED/POORER"
+        : "COMPARED RUN";
+  const statusB =
+    ctxB.score > ctxA.score
+      ? "SUCCESSFUL"
+      : ctxB.score < ctxA.score
+        ? "FAILED/POORER"
+        : "COMPARED RUN";
 
-  const { workDir, tempHome } = setupGuideDevWorkDir('compare');
+  const { workDir, tempHome } = setupGuideDevWorkDir("compare");
 
   try {
-    console.log(cBold(`[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`));
-    console.log(`  Run A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`);
-    console.log(`  Run B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`);
+    console.log(
+      cBold(
+        `[Compare Agent] Phase 1: Pre-processed trajectories into tagged milestones.`,
+      ),
+    );
+    console.log(
+      `  Run A: ${ctxA.preprocessed.taggedSteps.length} steps (${ctxA.preprocessed.noiseCount} noise, ${ctxA.preprocessed.errorLoopCount} retries)`,
+    );
+    console.log(
+      `  Run B: ${ctxB.preprocessed.taggedSteps.length} steps (${ctxB.preprocessed.noiseCount} noise, ${ctxB.preprocessed.errorLoopCount} retries)`,
+    );
 
-    writeComparisonWorkspaceFiles(workDir, guideCtx, ctxA, ctxB, diffBaseVsA, diffBaseVsB, diffAvsB);
+    writeComparisonWorkspaceFiles(
+      workDir,
+      guideCtx,
+      ctxA,
+      ctxB,
+      diffBaseVsA,
+      diffBaseVsB,
+      diffAvsB,
+    );
 
-    console.log(cBold(`[Compare Agent] Phase 2: Executing unified diagnostic prompt in isolated workspace...`));
+    console.log(
+      cBold(
+        `[Compare Agent] Phase 2: Executing unified diagnostic prompt in isolated workspace...`,
+      ),
+    );
     const { systemInstruction, prompt } = getComparisonPrompts(
       guideCtx,
       ctxA,
@@ -750,20 +917,31 @@ export async function runComparison(
       diffBaseVsB,
       diffAvsB,
       statusA,
-      statusB
+      statusB,
     );
 
-    const rawReport = await agentCaller(systemInstruction, prompt, 'Compare Agent', workDir, tempHome);
+    const rawReport = await agentCaller(
+      systemInstruction,
+      prompt,
+      "Compare Agent",
+      workDir,
+      tempHome,
+    );
     const markdownReport = stripAgentNarration(rawReport);
 
-    const savedPath = buildComparisonReportPath(ctxA.dir, ctxB.dir, guideName, taskName);
+    const savedPath = buildComparisonReportPath(
+      ctxA.dir,
+      ctxB.dir,
+      guideName,
+      taskName,
+    );
     fs.mkdirSync(path.dirname(savedPath), { recursive: true });
-    fs.writeFileSync(savedPath, markdownReport, 'utf8');
+    fs.writeFileSync(savedPath, markdownReport, "utf8");
     console.log(cGreen(`\n✅ Saved diagnostic report to: ${savedPath}`));
 
-    console.log(cBold(cCyan('--- DIAGNOSTIC REPORT ---')));
+    console.log(cBold(cCyan("--- DIAGNOSTIC REPORT ---")));
     console.log(markdownReport);
-    console.log(cCyan('-------------------------'));
+    console.log(cCyan("-------------------------"));
 
     return markdownReport;
   } catch (err: any) {

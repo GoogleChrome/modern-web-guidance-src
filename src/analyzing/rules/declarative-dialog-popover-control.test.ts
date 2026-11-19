@@ -1,14 +1,14 @@
-import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { scanJsSource } from '../scanners/js-scanner.ts';
-import type { JsRuleMatcher } from '../schema.ts';
-import {
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { scanJsSource } from "../scanners/js-scanner.ts";
+import type { JsRuleMatcher } from "../schema.ts";
+import { declarativeDialogPopoverControlClickListenerMatcher } from "./declarative-dialog-popover-control.ts";
+
+const jsRules: readonly JsRuleMatcher[] = [
   declarativeDialogPopoverControlClickListenerMatcher,
-} from './declarative-dialog-popover-control.ts';
+];
 
-const jsRules: readonly JsRuleMatcher[] = [declarativeDialogPopoverControlClickListenerMatcher];
-
-describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
+describe("declarativeDialogPopoverControlClickListenerRule (AST)", () => {
   it('flags addEventListener("click", () => dialog.showModal())', () => {
     const js = `
       const openBtn = document.querySelector('#open');
@@ -17,7 +17,7 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         dialog.showModal();
       });
     `;
-    const { matches } = scanJsSource('modal.js', js, jsRules);
+    const { matches } = scanJsSource("modal.js", js, jsRules);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 5);
   });
@@ -26,11 +26,11 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
     const js = `
       btn.addEventListener('click', () => popover.togglePopover());
     `;
-    const { matches } = scanJsSource('popover.js', js, jsRules);
+    const { matches } = scanJsSource("popover.js", js, jsRules);
     assert.equal(matches.length, 1);
   });
 
-  it('flags pure click listener with preventDefault and local getElementById lookup', () => {
+  it("flags pure click listener with preventDefault and local getElementById lookup", () => {
     const js = `
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -38,7 +38,7 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         modal.showModal();
       });
     `;
-    const { matches } = scanJsSource('settings.js', js, jsRules);
+    const { matches } = scanJsSource("settings.js", js, jsRules);
     assert.equal(matches.length, 1);
   });
 
@@ -48,7 +48,7 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         $('#my-modal').modal('show');
       });
     `;
-    const { matches } = scanJsSource('legacy.js', js, jsRules);
+    const { matches } = scanJsSource("legacy.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
@@ -58,11 +58,11 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         dialog.close('confirm');
       });
     `;
-    const { matches } = scanJsSource('confirm.js', js, jsRules);
+    const { matches } = scanJsSource("confirm.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  it('ignores click listeners with side effects like fetch() or classList.add()', () => {
+  it("ignores click listeners with side effects like fetch() or classList.add()", () => {
     const js = `
       openBtn.addEventListener('click', () => {
         fetch('/api/analytics');
@@ -73,41 +73,41 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         popover.togglePopover();
       });
     `;
-    const { matches } = scanJsSource('impure.js', js, jsRules);
+    const { matches } = scanJsSource("impure.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  it('ignores non-click event listeners calling showModal', () => {
+  it("ignores non-click event listeners calling showModal", () => {
     const js = `
       window.addEventListener('keydown', () => {
         dialog.showModal();
       });
     `;
-    const { matches } = scanJsSource('keys.js', js, jsRules);
+    const { matches } = scanJsSource("keys.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  it('ignores click listeners that do not call dialog/popover methods', () => {
+  it("ignores click listeners that do not call dialog/popover methods", () => {
     const js = `
       btn.addEventListener('click', () => {
         console.log('clicked');
       });
     `;
-    const { matches } = scanJsSource('log.js', js, jsRules);
+    const { matches } = scanJsSource("log.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  it('ignores click listeners on document, window, overlay, or the dialog itself', () => {
+  it("ignores click listeners on document, window, overlay, or the dialog itself", () => {
     const js = `
       overlay.addEventListener('click', () => dialog.close());
       document.addEventListener('click', () => dialog.close());
       dialog.addEventListener('click', () => dialog.close());
     `;
-    const { matches } = scanJsSource('backdrop.js', js, jsRules);
+    const { matches } = scanJsSource("backdrop.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 
-  it('ignores event.data.dialog and custom class instances constructed with new', () => {
+  it("ignores event.data.dialog and custom class instances constructed with new", () => {
     const js = `
       $container.on('click', { dialog: this }, function(event) {
         event.data.dialog.close();
@@ -117,7 +117,7 @@ describe('declarativeDialogPopoverControlClickListenerRule (AST)', () => {
         audioProcessingModal.showModal();
       });
     `;
-    const { matches } = scanJsSource('exempt-patterns.js', js, jsRules);
+    const { matches } = scanJsSource("exempt-patterns.js", js, jsRules);
     assert.equal(matches.length, 0);
   });
 });

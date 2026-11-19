@@ -37,7 +37,7 @@ Things that are easy to get wrong:
 By default, interest is shown and lost for keyboard and mouse users with a delay of half a second. This prevents the targeted popover from opening while tabbing through a page or moving your mouse around, and from closing while moving your mouse from the trigger to the popover. To adjust the timing, use the `interest-delay` CSS property.
 
 ```css
-[interestfor]{
+[interestfor] {
   /* Shorthand for interest-delay-start and interest-delay-end */
   interest-delay: 0.2s 0.1s;
 }
@@ -46,7 +46,7 @@ By default, interest is shown and lost for keyboard and mouse users with a delay
 If users are likely to move through multiple triggers in quick succession, set the initial delay to `0s` if an interest-triggered popover is already open. To prevent performance issues with `:has()`, select a nearby container with a small number of child nodes, and target the triggers as directly as possible.
 
 ```css
-.container:has( > li > a:interest-source) [interestfor] {
+.container:has(> li > a:interest-source) [interestfor] {
   interest-delay-start: 0s;
 }
 ```
@@ -74,8 +74,12 @@ When using the polyfill, the CSS API changes slightly to account for the lack of
 
 ```css
 /* Styles to apply when the effect is being previewed */
-:is(:interest-source, .interest-source) { /* ... */ }
-:is(:interest-target, .interest-target) { /* ... */ }
+:is(:interest-source, .interest-source) {
+  /* ... */
+}
+:is(:interest-target, .interest-target) {
+  /* ... */
+}
 ```
 
 - **CSS Properties:** For `interest-delay`, `interest-delay-start`, and `interest-delay-end`, the polyfill requires using CSS variables as it cannot read the custom properties directly in all browsers.
@@ -93,7 +97,8 @@ When using the polyfill, the CSS API changes slightly to account for the lack of
 Set the initial delay to `0s` if an interest-triggered popover is already open and users are likely to move through multiple triggers in quick succession.
 
 ```css
-.container:has([interestfor]:is(:interest-source, .interest-source)) [interestfor] {
+.container:has([interestfor]:is(:interest-source, .interest-source))
+  [interestfor] {
   --interest-delay-start: 0s;
 }
 ```

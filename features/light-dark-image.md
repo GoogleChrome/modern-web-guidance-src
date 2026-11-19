@@ -21,7 +21,10 @@ Define the switch once on `:root`. Every use site then only needs both images in
 }
 
 .hero {
-  background-image: image-set(url(hero-light.png) var(--light-type), url(hero-dark.png) var(--dark-type));
+  background-image: image-set(
+    url(hero-light.png) var(--light-type),
+    url(hero-dark.png) var(--dark-type)
+  );
 
   @supports (background-image: light-dark(url("a"), url("b"))) {
     background-image: light-dark(url(hero-light.png), url(hero-dark.png));

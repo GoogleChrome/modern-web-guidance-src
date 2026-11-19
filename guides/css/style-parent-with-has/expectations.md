@@ -1,4 +1,4 @@
 - On page load, the parent container wrapping the input should have neutral styling.
-- Typing an invalid value (or typing and deleting to leave it empty) then clicking away (blur) MUST trigger the error state on the *parent container* (e.g., a border turns red or its background changes).
+- Typing an invalid value (or typing and deleting to leave it empty) then clicking away (blur) MUST trigger the error state on the _parent container_ (e.g., a border turns red or its background changes).
 - Correcting the input MUST revert the parent container to the neutral state.
 - The stylesheet MUST use `:has(:user-invalid)` scoped to a form field container rather than `body`.

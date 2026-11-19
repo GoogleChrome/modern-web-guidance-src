@@ -20,7 +20,7 @@ Subresource Integrity (SRI) ensures the browser only executes or renders an exte
 - **Compute digests at build or release time, never from live untrusted responses**: Generate integrity hashes during your build or release step from known-good local asset bytes (or copy the official digest published by the package author) and hardcode them into your HTML, CSS, or JavaScript. Never fetch a third-party URL in the browser at runtime to compute its own `integrity` hash, which trusts whatever bytes the remote server returns and defeats SRI.
 - **Use `sha384-` by default**: Format integrity metadata as `<algorithm>-<base64-digest>` using `sha384-` (recommended default), `sha512-`, or `sha256-`.
 - **Pin external subresources to immutable, versioned URLs**: Always reference third-party assets using immutable, version-pinned or content-addressed URLs (such as `https://cdn.example.com/ui@2.4.0/app.min.js`) rather than mutable floating URLs (`latest/app.min.js`), which expose your site to silent supply-chain changes and break SRI as soon as the remote file updates. If you must load a mutable third-party script that updates in place (such as a vendor analytics tag), omit `integrity` on that URL and restrict it with Content Security Policy (`strict-dynamic` / nonces) or iframe sandboxing instead.
-- **Space-separate multiple digests when an endpoint may serve multiple valid payloads**: All browsers that support SRI implement `sha256-`, `sha384-`, and `sha512-`. If a URL may legitimately return one of several known-good payloads (such as during an A/B test, staged CDN rollout, or content-negotiated build), list multiple digests of the same algorithm separated by whitespace (for example, `integrity="sha384-variantA... sha384-variantB..."`). The browser accepts the response if it matches *any* listed digest of the strongest algorithm present.
+- **Space-separate multiple digests when an endpoint may serve multiple valid payloads**: All browsers that support SRI implement `sha256-`, `sha384-`, and `sha512-`. If a URL may legitimately return one of several known-good payloads (such as during an A/B test, staged CDN rollout, or content-negotiated build), list multiple digests of the same algorithm separated by whitespace (for example, `integrity="sha384-variantA... sha384-variantB..."`). The browser accepts the response if it matches _any_ listed digest of the strongest algorithm present.
 - **Serve cross-origin subresources with CORS headers**: Browsers can only verify the integrity of a cross-origin response when it is CORS-readable (`Access-Control-Allow-Origin: *` for anonymous requests, or the exact requesting origin with `Access-Control-Allow-Credentials: true` for credentialed requests).
 
 ```bash
@@ -32,11 +32,11 @@ printf "sha384-%s\n" "$(openssl dgst -sha384 -binary app.min.js | openssl base64
 // Build-time / tooling helper (Node.js 19+, Deno, Bun) to compute an SRI string from known-good local bytes
 export async function computeIntegrityMetadata(bytes) {
   const rawBytes =
-    typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
-  const digestBuffer = await crypto.subtle.digest('SHA-384', rawBytes);
+    typeof bytes === "string" ? new TextEncoder().encode(bytes) : bytes;
+  const digestBuffer = await crypto.subtle.digest("SHA-384", rawBytes);
   const binary = Array.from(new Uint8Array(digestBuffer), (b) =>
     String.fromCharCode(b),
-  ).join('');
+  ).join("");
   return `sha384-${btoa(binary)}`;
 }
 ```
@@ -76,11 +76,12 @@ Then, on external `<script>`, `<link rel="stylesheet">`, `<link rel="preload">`,
 When fetching external subresources programmatically with `fetch()`, pass the matching `integrity`, `mode`, `credentials`, and `referrerPolicy` options (a digest mismatch rejects the promise with `TypeError`):
 
 ```javascript
-const response = await fetch('https://cdn.example.com/ui@2.4.0/manifest.json', {
-  integrity: 'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC',
-  mode: 'cors',
-  credentials: 'omit',
-  referrerPolicy: 'no-referrer',
+const response = await fetch("https://cdn.example.com/ui@2.4.0/manifest.json", {
+  integrity:
+    "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC",
+  mode: "cors",
+  credentials: "omit",
+  referrerPolicy: "no-referrer",
 });
 ```
 
@@ -88,11 +89,11 @@ const response = await fetch('https://cdn.example.com/ui@2.4.0/manifest.json', {
 
 CSS `url()` request modifiers (`cross-origin()`, `referrer-policy()`, and `integrity()`) control the fetch mode, referrer header, and Subresource Integrity verification of CSS-loaded resources—including `background-image`, `content`, `mask-image`, `border-image-source`, `filter`, `@font-face` `src`, and `@import` rules—directly from CSS:
 
-| Modifier function | Argument syntax & allowed values | Purpose |
-|---|---|---|
-| `cross-origin(<ident>)` | **Unquoted keyword**: `anonymous` (recommended default) or `use-credentials` | Fetches the CSS resource using CORS and controls whether credentials are sent. Always include alongside `integrity()` on cross-origin CSS resources. |
-| `referrer-policy(<ident>)` | **Unquoted keyword**: `no-referrer` (recommended default for third-party assets), `strict-origin-when-cross-origin`, `origin`, `same-origin`, `strict-origin`, `origin-when-cross-origin`, `no-referrer-when-downgrade`, or `unsafe-url` | Overrides the document referrer policy for this specific CSS request. |
-| `integrity("<string>")` | **Quoted string**: `"sha384-<base64>"` (or space-separated digests `"sha384-... sha384-..."`) | Verifies the fetched CSS resource against the expected cryptographic digest before rendering or applying it. |
+| Modifier function          | Argument syntax & allowed values                                                                                                                                                                                                         | Purpose                                                                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cross-origin(<ident>)`    | **Unquoted keyword**: `anonymous` (recommended default) or `use-credentials`                                                                                                                                                             | Fetches the CSS resource using CORS and controls whether credentials are sent. Always include alongside `integrity()` on cross-origin CSS resources. |
+| `referrer-policy(<ident>)` | **Unquoted keyword**: `no-referrer` (recommended default for third-party assets), `strict-origin-when-cross-origin`, `origin`, `same-origin`, `strict-origin`, `origin-when-cross-origin`, `no-referrer-when-downgrade`, or `unsafe-url` | Overrides the document referrer policy for this specific CSS request.                                                                                |
+| `integrity("<string>")`    | **Quoted string**: `"sha384-<base64>"` (or space-separated digests `"sha384-... sha384-..."`)                                                                                                                                            | Verifies the fetched CSS resource against the expected cryptographic digest before rendering or applying it.                                         |
 
 Follow these CSS syntax and security rules when authoring `url()` modifiers:
 
@@ -102,31 +103,29 @@ Follow these CSS syntax and security rules when authoring `url()` modifiers:
 - **Place modifiers inside `url("...")` in `@import` and `@font-face` rules**: Keep `cross-origin()`, `referrer-policy()`, and `integrity()` inside `url("..." ...)`, while keeping font descriptors like `format("woff2")` and `tech(...)` outside `url(...)`.
 
 ```css
-@import url(
-  "https://cdn.example.com/theme@1.2.0/tokens.css"
-  cross-origin(anonymous)
-  referrer-policy(no-referrer)
-  integrity("sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5")
-);
+@import url("https://cdn.example.com/theme@1.2.0/tokens.css"cross-origin(
+    anonymous
+  )referrer-policy(no-referrer)integrity(
+    "sha384-bs0EksOYBbU/g0IAHMXbSyH1Mgw83GKn+EZlSI+VE+zVchXmSbLwhVLrPzsOWnc5"
+  ));
 
 @font-face {
   font-family: "BrandSans";
-  src: url(
-    "https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-    integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")
-  ) format("woff2");
+  src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"cross-origin(
+        anonymous
+      )referrer-policy(no-referrer)integrity(
+        "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+      ))
+    format("woff2");
   font-display: swap;
 }
 
 .verified-graphic {
-  background-image: url(
-    "https://cdn.example.com/media@1.0.0/badge.svg"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-    integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91")
-  );
+  background-image: url("https://cdn.example.com/media@1.0.0/badge.svg"cross-origin(
+      anonymous
+    )referrer-policy(no-referrer)integrity(
+      "sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"
+    ));
 }
 ```
 
@@ -149,36 +148,33 @@ If your Baseline target does not yet support CSS `url()` request modifiers (`cro
 @font-face {
   font-family: "BrandSans";
   /* 1. Parse-time fallback for browsers without url() modifier support */
-  src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2") format("woff2");
+  src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2")
+    format("woff2");
   /* 2. Parse-time fallback for browsers supporting cross-origin() and referrer-policy() */
-  src: url(
-    "https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-  ) format("woff2");
+  src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"cross-origin(
+        anonymous
+      )referrer-policy(no-referrer))
+    format("woff2");
   /* 3. Full protection in browsers supporting cross-origin(), referrer-policy(), and integrity() */
-  src: url(
-    "https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-    integrity("sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC")
-  ) format("woff2");
+  src: url("https://cdn.example.com/fonts@1.0.0/brand-sans.woff2"cross-origin(
+        anonymous
+      )referrer-policy(no-referrer)integrity(
+        "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+      ))
+    format("woff2");
   font-display: swap;
 }
 
 .verified-graphic {
   background-image: url("https://cdn.example.com/media@1.0.0/badge.svg");
-  background-image: url(
-    "https://cdn.example.com/media@1.0.0/badge.svg"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-  );
-  background-image: url(
-    "https://cdn.example.com/media@1.0.0/badge.svg"
-    cross-origin(anonymous)
-    referrer-policy(no-referrer)
-    integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91")
-  );
+  background-image: url("https://cdn.example.com/media@1.0.0/badge.svg"cross-origin(
+      anonymous
+    )referrer-policy(no-referrer));
+  background-image: url("https://cdn.example.com/media@1.0.0/badge.svg"cross-origin(
+      anonymous
+    )referrer-policy(no-referrer)integrity(
+      "sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"
+    ));
 }
 ```
 
@@ -187,18 +183,18 @@ If your Baseline target does not yet support CSS `url()` request modifiers (`cro
 ```javascript
 export function getCssUrlModifierSupport() {
   const supportsCrossOriginAndReferrer =
-    typeof CSS !== 'undefined' &&
-    typeof CSS.supports === 'function' &&
+    typeof CSS !== "undefined" &&
+    typeof CSS.supports === "function" &&
     CSS.supports(
-      'background-image',
+      "background-image",
       'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer))',
     );
 
   const supportsUrlIntegrity =
-    typeof CSS !== 'undefined' &&
-    typeof CSS.supports === 'function' &&
+    typeof CSS !== "undefined" &&
+    typeof CSS.supports === "function" &&
     CSS.supports(
-      'background-image',
+      "background-image",
       'url("https://example.com/a.svg" cross-origin(anonymous) referrer-policy(no-referrer) integrity("sha384-Iw/0p59dP96nGTzHvf2XIfqcBwBW7RM6JfOij8uZxyg5azfNaOOUW8SQy6H/hU91"))',
     );
 

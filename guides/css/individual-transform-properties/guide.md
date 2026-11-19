@@ -14,12 +14,13 @@ The individual CSS transform properties (`translate`, `rotate`, and `scale`) all
 ### Key Implementation Details
 
 Individual transform properties are always applied in a **fixed order**, regardless of their order in your CSS:
+
 1. `translate`
 2. `rotate`
 3. `scale`
 4. `transform` (applied last)
 
-If you require a different order (e.g., scaling *before* rotating), you must continue using the `transform` property functions.
+If you require a different order (e.g., scaling _before_ rotating), you must continue using the `transform` property functions.
 
 Transform functions do not override the individual transform properties. In other words, `scale: 2; transform: scale(3);` will first scale by 2x, then again by 3x, for a total of 6x.
 
@@ -28,7 +29,7 @@ Transform functions do not override the individual transform properties. In othe
 The `transform` property and individual transform properties impact the layout and rendering of the page and may cause unexpected behavior with the z-index or anchor positioning. MANDATORY: If an element may have a transform applied as part of a state change like `:hover`, or a transition or animation, apply an identity transformation to the base element. This ensures that the element's stacking context and containment do not change when a transform is applied.
 
 ```css
-.element{
+.element {
   /* MANDATORY: Apply identity transformations for properties that will
      change on state changes (like :hover). This prevents unexpected layout
      or z-index shifts caused by creating a new stacking context only on hover. */
@@ -36,7 +37,7 @@ The `transform` property and individual transform properties impact the layout a
   rotate: 0deg;
   scale: 1;
 }
-.element:hover{
+.element:hover {
   translate: 10px 10px;
   rotate: 20deg;
   scale: 0.8;
@@ -51,7 +52,7 @@ The primary benefit is the ability to define overlapping animations or transitio
 .card {
   /* Define independent animations that don't overwrite each other */
   animation: float 3s infinite ease-in-out;
-  
+
   /* Transition only the scale property for hover states */
   transition: scale 0.3s ease;
 
@@ -65,8 +66,13 @@ The primary benefit is the ability to define overlapping animations or transitio
 }
 
 @keyframes float {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -10px; }
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
 }
 ```
 

@@ -5,7 +5,7 @@ index 66c9173..af6f448 100644
 @@ -72,9 +72,18 @@
        border-radius: 4px;
      }
- 
+
 +    /* Responsive Media */
 +    img,
 +    video {
@@ -25,7 +25,7 @@ index 66c9173..af6f448 100644
 @@ -100,6 +109,11 @@
        padding: 0 20px;
      }
- 
+
 +    .container section {
 +      container-type: inline-size;
 +      container-name: favorites;
@@ -37,7 +37,7 @@ index 66c9173..af6f448 100644
 @@ -107,6 +121,16 @@
        margin-top: 20px;
      }
- 
+
 +    @container favorites (max-width: 600px) {
 +      .grid {
 +        grid-template-columns: 1fr;

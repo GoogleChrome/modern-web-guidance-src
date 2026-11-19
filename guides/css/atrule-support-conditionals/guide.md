@@ -82,17 +82,17 @@ In some cases, if the conditional CSS to apply can be reduced to a single proper
 @property --progress-dash-animation {
   syntax: "*";
   inherits: false;
-  initial-value: , progress-dash 3s ease-in-out infinite;
+  initial-value:
+    ,
+    progress-dash 3s ease-in-out infinite;
 }
 
 .spinner {
   /* The dash animation is only included if @property is supported */
-  animation:
-    progress-spin var(--_used-spinner-duration) linear infinite
-    var(--progress-dash-animation, );
+  animation: progress-spin var(--_used-spinner-duration) linear infinite
+    var(--progress-dash-animation,);
 }
 ```
-
 
 For a more general-purpose solution, you can register a non-inheriting property and set it to ` ` (a space) on the root element:
 
@@ -100,21 +100,22 @@ For a more general-purpose solution, you can register a non-inheriting property 
 
 ```css
 @property --supports-atproperty {
-	syntax: "*";
-	inherits: false;
+  syntax: "*";
+  inherits: false;
 }
 
 :root {
-	--supports-atproperty: ;
+  --supports-atproperty: ;
 }
 
 body {
   /* The background is only applied if @property is supported */
-	background: var(--supports-atproperty, green);
+  background: var(--supports-atproperty, green);
 }
 ```
 
 Notes:
+
 - Both of these only work if whitespace is an acceptable alternative. For other cases, you will need to use JS as described below.
 - The general-purpose solution depends on non-inheritance, so it will not work for declarations on the root element.
 
@@ -138,6 +139,7 @@ const SUPPORTS_PAGE_MARGINS = Boolean(sheet.cssRules[0]?.cssRules?.[0]);
 ```
 
 IMPORTANT:
+
 - When using JS to detect support for CSS features, do NOT apply the styles from JS directly. Instead, apply a class to the root element and branch off that in CSS.
 - Do note that container queries are parsed even if the prelude is not recognized, and there is no way to detect support for certain types of container queries from the CSSOM structure.
 - Do NOT use `CSS.registerProperty` to detect support for `@property` as its support is slightly broader.

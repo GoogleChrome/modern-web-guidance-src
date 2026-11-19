@@ -6,8 +6,5 @@
     "name": "Google Chrome"
   },
   "license": "Apache-2.0",
-  "skills": [
-    "./skills/modern-web-guidance/",
-    "./skills/chrome-extensions/"
-  ]
+  "skills": ["./skills/modern-web-guidance/", "./skills/chrome-extensions/"]
 }

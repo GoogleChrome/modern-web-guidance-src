@@ -1,11 +1,13 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
-import { iconsCssMatcher } from './icons.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanCss } from "../scanners/css-scanner.ts";
+import { iconsCssMatcher } from "./icons.ts";
 
-void test('icons CSS matcher', async (t) => {
-  await t.test('flags invert/sepia/saturate/hue-rotate filter chains used to recolor icons', () => {
-    const css = `
+void test("icons CSS matcher", async (t) => {
+  await t.test(
+    "flags invert/sepia/saturate/hue-rotate filter chains used to recolor icons",
+    () => {
+      const css = `
       .icon-link:hover .link-icon {
         filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(346deg) brightness(104%) contrast(97%);
       }
@@ -13,12 +15,15 @@ void test('icons CSS matcher', async (t) => {
         -webkit-filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1352%) hue-rotate(87deg);
       }
     `;
-    const matches = scanCss('icons.css', css, [iconsCssMatcher]);
-    assert.equal(matches.length, 2);
-  });
+      const matches = scanCss("icons.css", css, [iconsCssMatcher]);
+      assert.equal(matches.length, 2);
+    },
+  );
 
-  await t.test('exempts simple dark-mode invert(1), zero-saturation filters, photo/video elements, and mask icons', () => {
-    const css = `
+  await t.test(
+    "exempts simple dark-mode invert(1), zero-saturation filters, photo/video elements, and mask icons",
+    () => {
+      const css = `
       .icon-dark {
         filter: invert(1);
       }
@@ -36,19 +41,20 @@ void test('icons CSS matcher', async (t) => {
         filter: invert(10%) sepia(46%) saturate(439%) hue-rotate(194deg) brightness(100%) contrast(94%);
       }
     `;
-    const matches = scanCss('modern-icons.css', css, [iconsCssMatcher]);
-    assert.equal(matches.length, 0);
+      const matches = scanCss("modern-icons.css", css, [iconsCssMatcher]);
+      assert.equal(matches.length, 0);
 
-    const userstyleCss = `
+      const userstyleCss = `
       @-moz-document domain("example.com") {
         .lh-report-icon::before {
           filter: invert(77%) sepia(4%) saturate(1976%) hue-rotate(193deg) brightness(111%) contrast(92%);
         }
       }
     `;
-    assert.equal(
-      scanCss('userstyle.css', userstyleCss, [iconsCssMatcher]).length,
-      0,
-    );
-  });
+      assert.equal(
+        scanCss("userstyle.css", userstyleCss, [iconsCssMatcher]).length,
+        0,
+      );
+    },
+  );
 });

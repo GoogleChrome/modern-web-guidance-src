@@ -1,15 +1,15 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { scanCss } from '../scanners/css-scanner.ts';
-import type { CssRuleMatcher } from '../schema.ts';
-import {
-  deliverOptimizedDecorativeImagesRule
-} from './deliver-optimized-decorative-images.ts';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { scanCss } from "../scanners/css-scanner.ts";
+import type { CssRuleMatcher } from "../schema.ts";
+import { deliverOptimizedDecorativeImagesRule } from "./deliver-optimized-decorative-images.ts";
 
 const matcher = deliverOptimizedDecorativeImagesRule.matcher as CssRuleMatcher;
-void test('deliver-optimized-decorative-images: positive brownfield matches', async (t) => {
-  await t.test('flags background-image with -webkit-image-set without standard image-set', () => {
-    const css = `
+void test("deliver-optimized-decorative-images: positive brownfield matches", async (t) => {
+  await t.test(
+    "flags background-image with -webkit-image-set without standard image-set",
+    () => {
+      const css = `
       .badge {
         background-image: -webkit-image-set(
           url("badge@1x.png") 1x,
@@ -17,27 +17,30 @@ void test('deliver-optimized-decorative-images: positive brownfield matches', as
         );
       }
     `;
-    const matches = scanCss('badge.css', css, [matcher]);
-    assert.equal(matches.length, 1);
-    assert.equal(matches[0]?.line, 2);
-    assert.match(matches[0]?.message ?? '', /image-set\(\)/);
-  });
+      const matches = scanCss("badge.css", css, [matcher]);
+      assert.equal(matches.length, 1);
+      assert.equal(matches[0]?.line, 2);
+      assert.match(matches[0]?.message ?? "", /image-set\(\)/);
+    },
+  );
 
-  await t.test('flags content property with -webkit-image-set', () => {
+  await t.test("flags content property with -webkit-image-set", () => {
     const css = `
       .icon::before {
         content: -webkit-image-set(url("icon.png") 1x, url("icon@2x.png") 2x);
       }
     `;
-    const matches = scanCss('icon.css', css, [matcher]);
+    const matches = scanCss("icon.css", css, [matcher]);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
   });
 });
 
-void test('deliver-optimized-decorative-images: negative / exempt cases', async (t) => {
-  await t.test('exempts rule pairing -webkit-image-set with standard image-set', () => {
-    const css = `
+void test("deliver-optimized-decorative-images: negative / exempt cases", async (t) => {
+  await t.test(
+    "exempts rule pairing -webkit-image-set with standard image-set",
+    () => {
+      const css = `
       .badge {
         background-image: -webkit-image-set(
           url("badge@1x.png") 1x,
@@ -49,11 +52,12 @@ void test('deliver-optimized-decorative-images: negative / exempt cases', async 
         );
       }
     `;
-    const matches = scanCss('paired.css', css, [matcher]);
-    assert.equal(matches.length, 0);
-  });
+      const matches = scanCss("paired.css", css, [matcher]);
+      assert.equal(matches.length, 0);
+    },
+  );
 
-  await t.test('exempts standard image-set without vendor prefix', () => {
+  await t.test("exempts standard image-set without vendor prefix", () => {
     const css = `
       .gallery-item {
         background-image: image-set(
@@ -62,18 +66,18 @@ void test('deliver-optimized-decorative-images: negative / exempt cases', async 
         );
       }
     `;
-    const matches = scanCss('modern.css', css, [matcher]);
+    const matches = scanCss("modern.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 
-  await t.test('exempts regular background-image url without image-set', () => {
+  await t.test("exempts regular background-image url without image-set", () => {
     const css = `
       .hero {
         background-image: url("hero.jpg");
         background-size: cover;
       }
     `;
-    const matches = scanCss('hero.css', css, [matcher]);
+    const matches = scanCss("hero.css", css, [matcher]);
     assert.equal(matches.length, 0);
   });
 });

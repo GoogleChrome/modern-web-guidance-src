@@ -18,7 +18,7 @@ index 66c9173..e7ef540 100644
 @@ -135,6 +135,76 @@
        background: #3e2723;
      }
- 
+
 +    [popover].hovercard {
 +      position: fixed;
 +      position-area: block-end span-inline-end;
@@ -153,7 +153,7 @@ index 66c9173..e7ef540 100644
 +      </details>
 +    </div>
    </main>
- 
+
    <footer>
 diff --git a/index.html b/index.html
 index 66c9173..e7ef540 100644
@@ -162,7 +162,7 @@ index 66c9173..e7ef540 100644
 @@ -135,6 +135,76 @@
        background: #3e2723;
      }
- 
+
 +    [popover].hovercard {
 +      position: fixed;
 +      position-area: block-end span-inline-end;
@@ -297,7 +297,7 @@ index 66c9173..e7ef540 100644
 +      </details>
 +    </div>
    </main>
- 
+
    <footer>
 diff --git a/package.json b/package.json
 index 2bd4d77..5c14ac8 100644

@@ -5,9 +5,13 @@ import { mean, median } from "./metrics.ts";
 
 export async function runLatencyBenchmark(): Promise<void> {
   const harness = loadPublicDataset("harness");
-  const sampleIndices = [0, 30, 60, 90, 120].filter((i) => i < harness.queries.length);
+  const sampleIndices = [0, 30, 60, 90, 120].filter(
+    (i) => i < harness.queries.length,
+  );
   const queries = sampleIndices.map((i) => harness.queries[i].query);
-  console.log(`Selected ${queries.length} queries from harness-queries.jsonl for latency benchmarking:`);
+  console.log(
+    `Selected ${queries.length} queries from harness-queries.jsonl for latency benchmarking:`,
+  );
   queries.forEach((q, i) => console.log(`  [${i + 1}] "${q.slice(0, 60)}"`));
 
   const WARM_RUNS = 10;
@@ -18,9 +22,13 @@ export async function runLatencyBenchmark(): Promise<void> {
   embedder.init();
   await embedder.embed(queries[0]);
   const coldDuration = performance.now() - coldStart;
-  console.log(`StaticEmbedder Cold Start Latency (init + first embed): ${coldDuration.toFixed(2)}ms`);
+  console.log(
+    `StaticEmbedder Cold Start Latency (init + first embed): ${coldDuration.toFixed(2)}ms`,
+  );
 
-  console.log(`Running ${WARM_RUNS} warm runs across ${queries.length} queries...`);
+  console.log(
+    `Running ${WARM_RUNS} warm runs across ${queries.length} queries...`,
+  );
   const warmDurations: number[] = [];
   for (let r = 0; r < WARM_RUNS; r++) {
     for (const q of queries) {
@@ -32,7 +40,7 @@ export async function runLatencyBenchmark(): Promise<void> {
   const warmMedian = median(warmDurations);
   const warmMean = mean(warmDurations);
   console.log(
-    `StaticEmbedder Warm Median Latency: ${warmMedian.toFixed(2)}ms (mean: ${warmMean.toFixed(2)}ms, samples: ${warmDurations.length})`
+    `StaticEmbedder Warm Median Latency: ${warmMedian.toFixed(2)}ms (mean: ${warmMean.toFixed(2)}ms, samples: ${warmDurations.length})`,
   );
 
   console.log("\n=== Latency Summary ===");

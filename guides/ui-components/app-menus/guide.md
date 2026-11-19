@@ -21,24 +21,42 @@ Each menu in the bar is a complete popup menu: invoker-triggered popover, nested
 
 ## Structure
 
-* Put `role="menubar"` with an `aria-label` on the container of the top-level triggers, never on a popover. Each top-level trigger is a direct child of the menubar, immediately followed by its popover.
-* Each top-level trigger has an accessible name that describes its purpose, and has a `role="menuitem"` attribute.
-* Style the bar as one continuous strip with no gaps or borders between triggers. Visually separate buttons signal one `Tab` stop each; a continuous bar signals one widget.
-* Give the trigger with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
+- Put `role="menubar"` with an `aria-label` on the container of the top-level triggers, never on a popover. Each top-level trigger is a direct child of the menubar, immediately followed by its popover.
+- Each top-level trigger has an accessible name that describes its purpose, and has a `role="menuitem"` attribute.
+- Style the bar as one continuous strip with no gaps or borders between triggers. Visually separate buttons signal one `Tab` stop each; a continuous bar signals one widget.
+- Give the trigger with `aria-expanded="true"` a visible active style so users can tell which menu is open or previewed.
 
 ```html
 <div role="menubar" aria-label="Document commands">
   <!-- Only the active trigger is tabbable; the script moves tabindex with ArrowLeft and ArrowRight. -->
-  <button id="file-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
-    commandfor="file-menu" command="toggle-popover" role="menuitem">File</button>
+  <button
+    id="file-trigger"
+    type="button"
+    aria-haspopup="menu"
+    aria-expanded="false"
+    commandfor="file-menu"
+    command="toggle-popover"
+    role="menuitem"
+  >
+    File
+  </button>
   <div id="file-menu" popover="auto">
     <div focusgroup="menu nomemory" aria-labelledby="file-trigger">
       <!-- Items and submenus as in the menu guide -->
     </div>
   </div>
 
-  <button id="edit-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
-    commandfor="edit-menu" command="toggle-popover" tabindex="-1">Edit</button>
+  <button
+    id="edit-trigger"
+    type="button"
+    aria-haspopup="menu"
+    aria-expanded="false"
+    commandfor="edit-menu"
+    command="toggle-popover"
+    tabindex="-1"
+  >
+    Edit
+  </button>
   <div id="edit-menu" popover="auto">
     <div focusgroup="menu nomemory" aria-labelledby="edit-trigger">
       <!-- … -->
@@ -51,15 +69,15 @@ Each menu in the bar is a complete popup menu: invoker-triggered popover, nested
 
 The menu guide's keyboard model applies inside every menu. The bar adds, on top of it:
 
-* **One tab stop.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item.
-  * **Note: which trigger `Tab` returns to.** The APG allows either the first trigger or the last one used. The guide specifies the first, but moving the tab stop with `ArrowLeft` and `ArrowRight` means that after keyboard navigation `Shift`+`Tab` returns to the last trigger reached. Pointer use does not move it, so the same sequence can land on a different trigger. Either behavior is acceptable; pick one and keep it consistent.
-* **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
-* **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
-* **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
-* **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu.
-* **ArrowRight on a submenu item without a child submenu.** Closes the hierarchy and previews the next top-level menu while focus stays on its trigger. `ArrowDown` then enters it.
-* **Pointer over another top-level trigger while a menu is open.** Closes it and previews the hovered one, focusing its trigger without a ring. Nothing open: hover does nothing.
-* **Tab.** Leaves the bar from a trigger or from inside any menu, closing every open menu.
+- **One tab stop.** `Tab` enters at the first top-level trigger. `ArrowLeft` and `ArrowRight` move between top-level triggers and wrap at either end. `Home` and `End` on a trigger enter its menu at the first or last item.
+  - **Note: which trigger `Tab` returns to.** The APG allows either the first trigger or the last one used. The guide specifies the first, but moving the tab stop with `ArrowLeft` and `ArrowRight` means that after keyboard navigation `Shift`+`Tab` returns to the last trigger reached. Pointer use does not move it, so the same sequence can land on a different trigger. Either behavior is acceptable; pick one and keep it consistent.
+- **Preview.** Focusing a top-level trigger shows its menu and sets `aria-expanded="true"`. Focus stays on the trigger, and no item is focused. Blurring the trigger closes a preview-only menu.
+- **Enter and Space on a preview.** They close the preview and keep focus on the trigger. The native `toggle-popover` action handles this, so the script must not intercept these keys.
+- **ArrowDown on a preview.** Converts it to an open menu and focuses the first item.
+- **ArrowLeft or ArrowRight in an open top-level menu.** Closes it and previews the adjacent menu with focus on its trigger, wrapping at either end. `ArrowDown` then enters it. Left and Right never land inside a menu.
+- **ArrowRight on a submenu item without a child submenu.** Closes the hierarchy and previews the next top-level menu while focus stays on its trigger. `ArrowDown` then enters it.
+- **Pointer over another top-level trigger while a menu is open.** Closes it and previews the hovered one, focusing its trigger without a ring. Nothing open: hover does nothing.
+- **Tab.** Leaves the bar from a trigger or from inside any menu, closing every open menu.
 
 ## Implementing the bar
 
@@ -69,14 +87,25 @@ The menu guide's keyboard model applies inside every menu. The bar adds, on top 
 
 ```js
 // Direct children only: submenu triggers live inside the bar's nested popovers.
-const rootTriggers = [...document.querySelectorAll('[role="menubar"] > [commandfor]')];
+const rootTriggers = [
+  ...document.querySelectorAll('[role="menubar"] > [commandfor]'),
+];
 
 // Left/Right always land on the adjacent trigger as a preview, never inside its menu, as in
 // native menubars. ArrowDown then enters.
 function moveToRootTrigger(from, direction) {
-  const next = rootTriggers[(rootTriggers.indexOf(from) + direction + rootTriggers.length) % rootTriggers.length];
-  rootTriggers.forEach(trigger => { trigger.tabIndex = trigger === next ? 0 : -1; });
-  rootTriggers.map(menuFor).filter(isOpen).forEach(menu => menu.hidePopover());
+  const next =
+    rootTriggers[
+      (rootTriggers.indexOf(from) + direction + rootTriggers.length) %
+        rootTriggers.length
+    ];
+  rootTriggers.forEach((trigger) => {
+    trigger.tabIndex = trigger === next ? 0 : -1;
+  });
+  rootTriggers
+    .map(menuFor)
+    .filter(isOpen)
+    .forEach((menu) => menu.hidePopover());
   next.focus({ preventScroll: true }); // Focusing the trigger previews its menu.
 }
 ```
@@ -99,11 +128,11 @@ function moveToRootTrigger(from, direction) {
 
 An instruction cannot guarantee behavior, so test the result. Open the page and check each of these with the real keyboard and mouse; fix and re-test any that fail. Check the menus themselves against the menu guide's list.
 
-* **One tab stop.** `Tab` lands on the first trigger once and previews its menu; `Shift`+`Tab` from the page content returns to the bar once, not to every trigger.
-* **Arrow keys.** `ArrowRight` and `ArrowLeft` on a trigger preview the adjacent menu, wrapping, without focusing an item; `ArrowDown` enters; inside an open menu, `ArrowRight` and `ArrowLeft` switch to the adjacent menu as a preview.
-* **Hover.** With File open, pointing at Edit switches to it instantly; with nothing open, pointing at a trigger does nothing.
-* **Window focus.** Switching to another window and back does not reopen the last menu.
-* **Leaving.** `Tab` from a trigger or from inside a menu closes everything and leaves the bar.
+- **One tab stop.** `Tab` lands on the first trigger once and previews its menu; `Shift`+`Tab` from the page content returns to the bar once, not to every trigger.
+- **Arrow keys.** `ArrowRight` and `ArrowLeft` on a trigger preview the adjacent menu, wrapping, without focusing an item; `ArrowDown` enters; inside an open menu, `ArrowRight` and `ArrowLeft` switch to the adjacent menu as a preview.
+- **Hover.** With File open, pointing at Edit switches to it instantly; with nothing open, pointing at a trigger does nothing.
+- **Window focus.** Switching to another window and back does not reopen the last menu.
+- **Leaving.** `Tab` from a trigger or from inside a menu closes everything and leaves the bar.
 
 ## Fallback strategies
 

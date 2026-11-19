@@ -189,7 +189,7 @@ index 92f6399..5eca5b5 100644
  import { getCollection } from 'astro:content';
  import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
 @@ -39,20 +40,7 @@ politicsArticles[2] = {
- 
+
  <Layout title="The DevTools Times">
      <!-- Top Stories Bar -->
 -    <div class="bg-white border-b border-gray-300">
@@ -207,6 +207,6 @@ index 92f6399..5eca5b5 100644
 -        </div>
 -    </div>
 +    <TopStoriesCarousel articles={topStories} />
- 
+
      <!-- Main Content Area -->
      <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">

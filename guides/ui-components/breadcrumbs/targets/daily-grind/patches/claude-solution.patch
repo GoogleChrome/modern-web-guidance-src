@@ -4,7 +4,7 @@ index 66c9173..3675ef2 100644
 +++ b/index.html
 @@ -28,7 +28,7 @@
      }
- 
+
      /* Navigation */
 -    nav {
 +    .site-nav {
@@ -14,18 +14,18 @@ index 66c9173..3675ef2 100644
 @@ -46,23 +46,23 @@
        letter-spacing: 1px;
      }
- 
+
 -    nav ul {
 +    .site-nav ul {
        display: flex;
        list-style: none;
      }
- 
+
 -    nav ul li {
 +    .site-nav ul li {
        margin-left: 20px;
      }
- 
+
 -    nav a {
 +    .site-nav a {
        color: white;
@@ -33,16 +33,16 @@ index 66c9173..3675ef2 100644
        font-size: 0.9rem;
        transition: color 0.3s;
      }
- 
+
 -    nav a:hover {
 +    .site-nav a:hover {
        color: var(--accent);
      }
- 
+
 @@ -93,6 +93,78 @@
        margin-bottom: 1rem;
      }
- 
+
 +    /* Breadcrumbs (plain chevron variant) */
 +    .breadcrumb {
 +      max-width: 1100px;
@@ -119,9 +119,9 @@ index 66c9173..3675ef2 100644
      .container {
        max-width: 1100px;
 @@ -157,7 +229,7 @@
- 
+
  <body>
- 
+
 -  <nav>
 +  <nav class="site-nav" aria-label="Main">
      <div class="logo">THE DAILY GRIND</div>
@@ -130,7 +130,7 @@ index 66c9173..3675ef2 100644
 @@ -174,9 +246,17 @@
      <a href="/order-online" class="btn">Order Now</a>
    </header>
- 
+
 +  <nav class="breadcrumb" aria-label="Breadcrumbs">
 +    <ol>
 +      <li><a href="/">Home</a></li>

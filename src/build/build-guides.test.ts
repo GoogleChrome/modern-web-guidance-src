@@ -1,8 +1,8 @@
-import { describe, it } from 'node:test';
-import assert from 'node:assert';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { describe, it } from "node:test";
+import assert from "node:assert";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import {
   generateGuidesIndex,
   generateGuidesTocYaml,
@@ -10,42 +10,42 @@ import {
   processDevsiteGuide,
   type DevsiteGuideMetadata,
   type StoreUseCase,
-} from './build-guides.ts';
-import { chunkMarkdown, formatChunkHeader } from '../core/guide-chunks.ts';
+} from "./build-guides.ts";
+import { chunkMarkdown, formatChunkHeader } from "../core/guide-chunks.ts";
 import {
   getOriginTrialsRegistry,
   getVolatileFeaturesRegistry,
-} from '../core/feature-gates.ts';
+} from "../core/feature-gates.ts";
 
-describe('chunkMarkdown', () => {
-  it('chunks simple markdown by headings', () => {
+describe("chunkMarkdown", () => {
+  it("chunks simple markdown by headings", () => {
     const input = `# Heading 1
 Some text here.
 
 ## Heading 2
 More text.`;
-    
+
     const chunks = chunkMarkdown(input);
     assert.strictEqual(chunks.length, 2);
-    assert.ok(chunks[0].includes('Heading 1'));
-    assert.ok(chunks[0].includes('Some text here.'));
-    assert.ok(chunks[1].includes('Heading 2'));
-    assert.ok(chunks[1].includes('More text.'));
+    assert.ok(chunks[0].includes("Heading 1"));
+    assert.ok(chunks[0].includes("Some text here."));
+    assert.ok(chunks[1].includes("Heading 2"));
+    assert.ok(chunks[1].includes("More text."));
   });
 
-  it('keeps paragraphs that appear before any heading', () => {
+  it("keeps paragraphs that appear before any heading", () => {
     const input = `Intro text.
 
 # First heading
 Text under first heading.`;
-    
+
     const chunks = chunkMarkdown(input);
     assert.strictEqual(chunks.length, 2);
-    assert.ok(chunks[0].includes('Intro text.'));
-    assert.ok(chunks[1].includes('First heading'));
+    assert.ok(chunks[0].includes("Intro text."));
+    assert.ok(chunks[1].includes("First heading"));
   });
 
-  it('merges consecutive headings without intervening body content into a single chunk', () => {
+  it("merges consecutive headings without intervening body content into a single chunk", () => {
     const input = `# Heading 1
 ## Heading 2
 ### Heading 3
@@ -53,165 +53,237 @@ Body paragraph under Heading 3.
 
 ## Heading 4
 Body paragraph under Heading 4.`;
-    
+
     const chunks = chunkMarkdown(input);
     assert.strictEqual(chunks.length, 2);
-    assert.ok(chunks[0].includes('# Heading 1'));
-    assert.ok(chunks[0].includes('## Heading 2'));
-    assert.ok(chunks[0].includes('### Heading 3'));
-    assert.ok(chunks[0].includes('Body paragraph under Heading 3.'));
-    assert.ok(chunks[1].includes('## Heading 4'));
-    assert.ok(chunks[1].includes('Body paragraph under Heading 4.'));
+    assert.ok(chunks[0].includes("# Heading 1"));
+    assert.ok(chunks[0].includes("## Heading 2"));
+    assert.ok(chunks[0].includes("### Heading 3"));
+    assert.ok(chunks[0].includes("Body paragraph under Heading 3."));
+    assert.ok(chunks[1].includes("## Heading 4"));
+    assert.ok(chunks[1].includes("Body paragraph under Heading 4."));
   });
 
-  it('returns empty array for empty string', () => {
-    const chunks = chunkMarkdown('');
+  it("returns empty array for empty string", () => {
+    const chunks = chunkMarkdown("");
     assert.strictEqual(chunks.length, 0);
   });
 });
 
-describe('generateGuidesIndex', () => {
+describe("generateGuidesIndex", () => {
   const sampleGuides: DevsiteGuideMetadata[] = [
     {
-      id: 'style-parent-with-has',
-      title: 'Style parent with :has()',
-      description: 'Use `:has()` to conditionally *style* parent containers.',
-      category: 'css',
-      webFeatureIds: ['has'],
-      refreshDate: '2026-10-20',
-      path: 'guides/css/style-parent-with-has.md',
+      id: "style-parent-with-has",
+      title: "Style parent with :has()",
+      description: "Use `:has()` to conditionally *style* parent containers.",
+      category: "css",
+      webFeatureIds: ["has"],
+      refreshDate: "2026-10-20",
+      path: "guides/css/style-parent-with-has.md",
     },
     {
-      id: 'apply-webgl-shaders',
-      title: 'Apply WebGL shaders',
-      description: 'Apply shaders to elements.',
-      category: 'visual-design',
+      id: "apply-webgl-shaders",
+      title: "Apply WebGL shaders",
+      description: "Apply shaders to elements.",
+      category: "visual-design",
       webFeatureIds: [],
-      refreshDate: '2026-10-26',
-      path: 'guides/visual-design/apply-webgl-shaders.md',
+      refreshDate: "2026-10-26",
+      path: "guides/visual-design/apply-webgl-shaders.md",
     },
   ];
 
-  it('generates landing page with canonical category order, promo include, and card formatting', () => {
-    const md = generateGuidesIndex(sampleGuides, '2026-10-26');
+  it("generates landing page with canonical category order, promo include, and card formatting", () => {
+    const md = generateGuidesIndex(sampleGuides, "2026-10-26");
 
     // Frontmatter & header
-    assert.ok(md.includes('refresh_date: 2026-10-26'));
+    assert.ok(md.includes("refresh_date: 2026-10-26"));
     assert.ok(md.includes("{{ macros.Date('October 26, 2026') }}"));
-    assert.ok(md.includes('{% include "/docs/modern-web-guidance/_guide-promo.html" %}'));
+    assert.ok(
+      md.includes(
+        '{% include "/docs/modern-web-guidance/_guide-promo.html" %}',
+      ),
+    );
 
     // Category headings in canonical order (visual-design before css)
-    const visualDesignIdx = md.indexOf('## Visual Design');
-    const cssIdx = md.indexOf('## CSS');
+    const visualDesignIdx = md.indexOf("## Visual Design");
+    const cssIdx = md.indexOf("## CSS");
     assert.ok(visualDesignIdx !== -1);
     assert.ok(cssIdx !== -1);
     assert.ok(visualDesignIdx < cssIdx);
 
     // Card formatting
-    assert.ok(md.includes('<a class="guidance-card" href="/docs/modern-web-guidance/guides/css/style-parent-with-has">'));
-    assert.ok(md.includes('<div class="guidance-card-title">Style parent with :has()</div>'));
-    assert.ok(md.includes('<div class="guidance-card-desc">Use <code>:has()</code> to conditionally <em>style</em> parent containers.</div>'));
+    assert.ok(
+      md.includes(
+        '<a class="guidance-card" href="/docs/modern-web-guidance/guides/css/style-parent-with-has">',
+      ),
+    );
+    assert.ok(
+      md.includes(
+        '<div class="guidance-card-title">Style parent with :has()</div>',
+      ),
+    );
+    assert.ok(
+      md.includes(
+        '<div class="guidance-card-desc">Use <code>:has()</code> to conditionally <em>style</em> parent containers.</div>',
+      ),
+    );
   });
 });
 
-describe('generateGuidesTocYaml', () => {
+describe("generateGuidesTocYaml", () => {
   const sampleGuides: DevsiteGuideMetadata[] = [
     {
-      id: 'css-nesting',
-      title: 'CSS Nesting: Best practices',
-      description: 'Guidelines for nesting.',
-      category: 'css',
-      webFeatureIds: ['nesting'],
-      refreshDate: '2026-10-15',
-      path: 'guides/css/css-nesting.md',
+      id: "css-nesting",
+      title: "CSS Nesting: Best practices",
+      description: "Guidelines for nesting.",
+      category: "css",
+      webFeatureIds: ["nesting"],
+      refreshDate: "2026-10-15",
+      path: "guides/css/css-nesting.md",
     },
   ];
 
-  it('generates valid DevSite _toc.yaml with quoted titles and correct paths', () => {
+  it("generates valid DevSite _toc.yaml with quoted titles and correct paths", () => {
     const yaml = generateGuidesTocYaml(sampleGuides);
 
-    assert.ok(yaml.startsWith('# This file is generated by npm run build:devsite. Do not edit manually.'));
-    assert.ok(yaml.includes('toc:\n- title: All guides\n  path: /docs/modern-web-guidance/guides'));
-    assert.ok(yaml.includes('- heading: CSS'));
+    assert.ok(
+      yaml.startsWith(
+        "# This file is generated by npm run build:devsite. Do not edit manually.",
+      ),
+    );
+    assert.ok(
+      yaml.includes(
+        "toc:\n- title: All guides\n  path: /docs/modern-web-guidance/guides",
+      ),
+    );
+    assert.ok(yaml.includes("- heading: CSS"));
     assert.ok(yaml.includes('- title: "CSS Nesting: Best practices"'));
-    assert.ok(yaml.includes('  path: /docs/modern-web-guidance/guides/css/css-nesting'));
-  });
-});
-
-describe('formatChunkHeader', () => {
-  it('omits Features line when featureIds is empty', () => {
-    const header = formatChunkHeader('Apply WebGL shaders', 'apply-webgl-shaders', 'visual-design', []);
-    assert.strictEqual(header, 'Apply WebGL shaders\napply-webgl-shaders (visual-design)');
-  });
-
-  it('does not duplicate single-word IDs when display name differs', () => {
-    const header = formatChunkHeader('Accordion', 'accordion', 'ui-components', ['details', 'where']);
-    assert.strictEqual(
-      header,
-      'Accordion\naccordion (ui-components)\nFeatures: <details> (details), :where() (where)'
-    );
-  });
-
-  it('emits unslugged subwords for hyphenated IDs whose display name equals the ID', () => {
-    const header = formatChunkHeader('Auto-growing textarea', 'auto-growing-textarea', 'forms', ['field-sizing']);
-    assert.strictEqual(
-      header,
-      'Auto-growing textarea\nauto-growing-textarea (forms)\nFeatures: field-sizing (field sizing)'
-    );
-  });
-
-  it('deduplicates unslugged ID when display name already matches case-insensitively', () => {
-    const header = formatChunkHeader('Page transitions', 'page-transitions', 'animations', ['view-transitions']);
-    assert.strictEqual(
-      header,
-      'Page transitions\npage-transitions (animations)\nFeatures: View transitions (view-transitions)'
-    );
-  });
-
-  it('includes both hyphenated and unslugged IDs when display name differs from both', () => {
-    const header = formatChunkHeader('Exclusive accordion', 'exclusive-accordion', 'ui-components', ['details-name']);
-    assert.strictEqual(
-      header,
-      'Exclusive accordion\nexclusive-accordion (ui-components)\nFeatures: Mutually exclusive <details> elements (details-name, details name)'
-    );
-  });
-
-  it('strips tmp- prefix so tmp does not leak into chunk metadata', () => {
-    const header = formatChunkHeader('Email verification', 'email-verification', 'forms', ['tmp-email-verification']);
-    assert.strictEqual(
-      header,
-      'Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)'
+    assert.ok(
+      yaml.includes("  path: /docs/modern-web-guidance/guides/css/css-nesting"),
     );
   });
 });
 
-describe('processSkillsCliGuide cache miss regression', () => {
-  it('assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'guide-cache-miss-test-'));
+describe("formatChunkHeader", () => {
+  it("omits Features line when featureIds is empty", () => {
+    const header = formatChunkHeader(
+      "Apply WebGL shaders",
+      "apply-webgl-shaders",
+      "visual-design",
+      [],
+    );
+    assert.strictEqual(
+      header,
+      "Apply WebGL shaders\napply-webgl-shaders (visual-design)",
+    );
+  });
+
+  it("does not duplicate single-word IDs when display name differs", () => {
+    const header = formatChunkHeader(
+      "Accordion",
+      "accordion",
+      "ui-components",
+      ["details", "where"],
+    );
+    assert.strictEqual(
+      header,
+      "Accordion\naccordion (ui-components)\nFeatures: <details> (details), :where() (where)",
+    );
+  });
+
+  it("emits unslugged subwords for hyphenated IDs whose display name equals the ID", () => {
+    const header = formatChunkHeader(
+      "Auto-growing textarea",
+      "auto-growing-textarea",
+      "forms",
+      ["field-sizing"],
+    );
+    assert.strictEqual(
+      header,
+      "Auto-growing textarea\nauto-growing-textarea (forms)\nFeatures: field-sizing (field sizing)",
+    );
+  });
+
+  it("deduplicates unslugged ID when display name already matches case-insensitively", () => {
+    const header = formatChunkHeader(
+      "Page transitions",
+      "page-transitions",
+      "animations",
+      ["view-transitions"],
+    );
+    assert.strictEqual(
+      header,
+      "Page transitions\npage-transitions (animations)\nFeatures: View transitions (view-transitions)",
+    );
+  });
+
+  it("includes both hyphenated and unslugged IDs when display name differs from both", () => {
+    const header = formatChunkHeader(
+      "Exclusive accordion",
+      "exclusive-accordion",
+      "ui-components",
+      ["details-name"],
+    );
+    assert.strictEqual(
+      header,
+      "Exclusive accordion\nexclusive-accordion (ui-components)\nFeatures: Mutually exclusive <details> elements (details-name, details name)",
+    );
+  });
+
+  it("strips tmp- prefix so tmp does not leak into chunk metadata", () => {
+    const header = formatChunkHeader(
+      "Email verification",
+      "email-verification",
+      "forms",
+      ["tmp-email-verification"],
+    );
+    assert.strictEqual(
+      header,
+      "Email verification\nemail-verification (forms)\nFeatures: email-verification (email verification)",
+    );
+  });
+});
+
+describe("processSkillsCliGuide cache miss regression", () => {
+  it("assigns vector: [] on teacher cache miss instead of StaticEmbedder fallback vector", async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "guide-cache-miss-test-"),
+    );
     try {
-      const guideFile = path.join(tmpDir, 'test-guide.md');
+      const guideFile = path.join(tmpDir, "test-guide.md");
       fs.writeFileSync(
         guideFile,
-        `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`
+        `---\ntitle: Test Guide\ndescription: Test guide description\n---\n# Test Guide\nSome markdown content for chunking.`,
       );
       const storeUseCases: StoreUseCase[] = [];
-      const missingChunks: Array<{ guideId: string; category: string; chunk: string }> = [];
+      const missingChunks: Array<{
+        guideId: string;
+        category: string;
+        chunk: string;
+      }> = [];
       const emptyCache = new Map<string, Float32Array>();
 
       await processSkillsCliGuide({
         filePath: guideFile,
-        category: 'css',
-        id: 'test-guide',
+        category: "css",
+        id: "test-guide",
         useCases: [],
         storeUseCases,
         chunkCache: emptyCache,
         missingChunks,
       });
 
-      assert.ok(missingChunks.length > 0, 'Should record cache miss');
-      assert.ok(storeUseCases.length > 0, 'Should have generated store use cases');
+      assert.ok(missingChunks.length > 0, "Should record cache miss");
+      assert.ok(
+        storeUseCases.length > 0,
+        "Should have generated store use cases",
+      );
       for (const item of storeUseCases) {
-        assert.deepStrictEqual(item.vector, [], 'Uncached chunk vector must be empty array, not StaticEmbedder vector');
+        assert.deepStrictEqual(
+          item.vector,
+          [],
+          "Uncached chunk vector must be empty array, not StaticEmbedder vector",
+        );
       }
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -219,68 +291,86 @@ describe('processSkillsCliGuide cache miss regression', () => {
   });
 });
 
-describe('processDevsiteGuide', () => {
-  it('extracts metadata and omits caution notices for standard guides', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-guide-test-'));
+describe("processDevsiteGuide", () => {
+  it("extracts metadata and omits caution notices for standard guides", async () => {
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "devsite-guide-test-"),
+    );
     try {
-      const guideFile = path.join(tmpDir, 'test-guide.md');
+      const guideFile = path.join(tmpDir, "test-guide.md");
       fs.writeFileSync(
         guideFile,
-        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`
+        `---\ntitle: DevSite Test Guide\ndescription: Guide for devsite\nweb-feature-ids:\n  - subgrid\n---\n# DevSite Test Guide\nSome markdown content.`,
       );
       const devsiteGuides: DevsiteGuideMetadata[] = [];
-      const outGuidesDir = path.join(tmpDir, 'built');
+      const outGuidesDir = path.join(tmpDir, "built");
 
       await processDevsiteGuide({
         filePath: guideFile,
-        category: 'css',
-        id: 'test-guide',
+        category: "css",
+        id: "test-guide",
         buildGuidesDir: outGuidesDir,
         devsiteGuides,
       });
 
       assert.strictEqual(devsiteGuides.length, 1);
-      assert.strictEqual(devsiteGuides[0].id, 'test-guide');
-      assert.strictEqual(devsiteGuides[0].title, 'DevSite Test Guide');
-      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ['subgrid']);
-      const output = fs.readFileSync(path.join(outGuidesDir, 'css/test-guide.md'), 'utf-8');
+      assert.strictEqual(devsiteGuides[0].id, "test-guide");
+      assert.strictEqual(devsiteGuides[0].title, "DevSite Test Guide");
+      assert.deepStrictEqual(devsiteGuides[0].webFeatureIds, ["subgrid"]);
+      const output = fs.readFileSync(
+        path.join(outGuidesDir, "css/test-guide.md"),
+        "utf-8",
+      );
       assert.ok(!output.includes('<aside class="caution">'));
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
 
-  it('wires unfiltered rawFeatureIds into DevSite gate caution notices', async () => {
+  it("wires unfiltered rawFeatureIds into DevSite gate caution notices", async () => {
     const otKeys = Object.keys(getOriginTrialsRegistry());
     const volatileKeys = Object.keys(getVolatileFeaturesRegistry());
-    const tmpOtId = otKeys.find((k) => k.startsWith('tmp-')) ?? otKeys[0];
-    const volatileId = volatileKeys.find((k) => k.startsWith('tmp-')) ?? volatileKeys[0];
+    const tmpOtId = otKeys.find((k) => k.startsWith("tmp-")) ?? otKeys[0];
+    const volatileId =
+      volatileKeys.find((k) => k.startsWith("tmp-")) ?? volatileKeys[0];
     if (!tmpOtId || !volatileId) return;
 
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'devsite-gates-test-'));
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "devsite-gates-test-"),
+    );
     try {
-      const guideFile = path.join(tmpDir, 'gated-guide.md');
+      const guideFile = path.join(tmpDir, "gated-guide.md");
       fs.writeFileSync(
         guideFile,
-        `---\ntitle: Gated Guide\ndescription: Both gates\nweb-feature-ids:\n  - ${tmpOtId}\n  - ${volatileId}\n---\n# Gated Guide\nBody content.`
+        `---\ntitle: Gated Guide\ndescription: Both gates\nweb-feature-ids:\n  - ${tmpOtId}\n  - ${volatileId}\n---\n# Gated Guide\nBody content.`,
       );
       const devsiteGuides: DevsiteGuideMetadata[] = [];
-      const outGuidesDir = path.join(tmpDir, 'built');
+      const outGuidesDir = path.join(tmpDir, "built");
 
       await processDevsiteGuide({
         filePath: guideFile,
-        category: 'security',
-        id: 'gated-guide',
+        category: "security",
+        id: "gated-guide",
         buildGuidesDir: outGuidesDir,
         devsiteGuides,
       });
 
-      const output = fs.readFileSync(path.join(outGuidesDir, 'security/gated-guide.md'), 'utf-8');
-      const promoIdx = output.indexOf('{% include "/docs/modern-web-guidance/_guide-promo.html" %}');
-      const otIdx = output.indexOf('set-allow-origin-trials');
-      const volatileIdx = output.indexOf('set-allow-volatile-features');
-      const bodyIdx = output.indexOf('Body content.');
-      assert.ok(promoIdx !== -1 && otIdx > promoIdx && volatileIdx > otIdx && volatileIdx < bodyIdx);
+      const output = fs.readFileSync(
+        path.join(outGuidesDir, "security/gated-guide.md"),
+        "utf-8",
+      );
+      const promoIdx = output.indexOf(
+        '{% include "/docs/modern-web-guidance/_guide-promo.html" %}',
+      );
+      const otIdx = output.indexOf("set-allow-origin-trials");
+      const volatileIdx = output.indexOf("set-allow-volatile-features");
+      const bodyIdx = output.indexOf("Body content.");
+      assert.ok(
+        promoIdx !== -1 &&
+          otIdx > promoIdx &&
+          volatileIdx > otIdx &&
+          volatileIdx < bodyIdx,
+      );
       assert.strictEqual(output.match(/<aside class="caution">/g)?.length, 2);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });

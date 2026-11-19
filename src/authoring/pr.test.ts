@@ -1,19 +1,19 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
-import { describe, it, beforeEach, afterEach } from 'node:test';
-import assert from 'node:assert/strict';
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert/strict";
 import {
   determinePrLabels,
   computeLabelDiff,
   runDevPr,
   devPrCli,
   type DevPrLabel,
-} from './pr.ts';
-import { getGuideResultsDir } from '../core/paths.ts';
+} from "./pr.ts";
+import { getGuideResultsDir } from "../core/paths.ts";
 
-describe('determinePrLabels', () => {
-  it('detects gd-dev-content when guide.md is recommended', () => {
+describe("determinePrLabels", () => {
+  it("detects gd-dev-content when guide.md is recommended", () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -33,10 +33,10 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.deepEqual(labels, ['gd-dev-content']);
+    assert.deepEqual(labels, ["gd-dev-content"]);
   });
 
-  it('detects gd-dev-content when expectations.md is recommended with path prefix', () => {
+  it("detects gd-dev-content when expectations.md is recommended with path prefix", () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -48,10 +48,10 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.deepEqual(labels, ['gd-dev-content']);
+    assert.deepEqual(labels, ["gd-dev-content"]);
   });
 
-  it('detects gd-dev-eval when grader.ts or task.md is recommended', () => {
+  it("detects gd-dev-eval when grader.ts or task.md is recommended", () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`devtools-times\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -64,10 +64,10 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.deepEqual(labels, ['gd-dev-eval']);
+    assert.deepEqual(labels, ["gd-dev-eval"]);
   });
 
-  it('detects both gd-dev-content and gd-dev-eval across different targets', () => {
+  it("detects both gd-dev-content and gd-dev-eval across different targets", () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -88,12 +88,12 @@ The guide lacks Safari fallback examples.
 `;
 
     const labels = determinePrLabels(report);
-    assert.ok(labels.includes('gd-dev-content'));
-    assert.ok(labels.includes('gd-dev-eval'));
+    assert.ok(labels.includes("gd-dev-content"));
+    assert.ok(labels.includes("gd-dev-eval"));
     assert.equal(labels.length, 2);
   });
 
-  it('returns empty array when all targets are healthy', () => {
+  it("returns empty array when all targets are healthy", () => {
     const report = `# Evaluation Report: size-aware-styling
 
 ## Target: \`daily-grind\` (Status: \`HEALTHY\`)
@@ -121,7 +121,7 @@ Target is healthy.
     assert.deepEqual(labels, []);
   });
 
-  it('handles clean backticks and plain file bullet formats', () => {
+  it("handles clean backticks and plain file bullet formats", () => {
     const report = `# Evaluation Report: test
 
 ## Target: \`app-1\` (Status: \`LOW_GUIDED_PASS_RATE\`)
@@ -134,47 +134,57 @@ Target is healthy.
 `;
 
     const labels = determinePrLabels(report);
-    assert.ok(labels.includes('gd-dev-content'));
-    assert.ok(labels.includes('gd-dev-eval'));
+    assert.ok(labels.includes("gd-dev-content"));
+    assert.ok(labels.includes("gd-dev-eval"));
   });
 
-  it('returns empty labels on healthy reports so computeLabelDiff can clear previous labels', () => {
+  it("returns empty labels on healthy reports so computeLabelDiff can clear previous labels", () => {
     const emptyReport = `# Evaluation Report: test\n\n## Target: \`daily-grind\` (Status: \`HEALTHY\`)\n\n#### Actionable Recommendations:\n- None (target is healthy and verified).\n`;
     const labels = determinePrLabels(emptyReport);
     assert.deepEqual(labels, []);
   });
 });
 
-describe('computeLabelDiff', () => {
-  it('computes labels to add and remove correctly, including rerun trigger labels', () => {
+describe("computeLabelDiff", () => {
+  it("computes labels to add and remove correctly, including rerun trigger labels", () => {
     // 1. Initial creation (no labels on PR yet)
-    const diff1 = computeLabelDiff(['gd-dev-content'], []);
-    assert.deepEqual(diff1.addLabels, ['gd-dev-content']);
+    const diff1 = computeLabelDiff(["gd-dev-content"], []);
+    assert.deepEqual(diff1.addLabels, ["gd-dev-content"]);
     assert.deepEqual(diff1.removeLabels, []);
 
     // 2. Guide fixed, eval issue found (content removed, eval added, custom PR label preserved)
-    const diff2 = computeLabelDiff(['gd-dev-eval'], [{ name: 'gd-dev-content' }, { name: 'category:css' }]);
-    assert.deepEqual(diff2.addLabels, ['gd-dev-eval']);
-    assert.deepEqual(diff2.removeLabels, ['gd-dev-content']);
+    const diff2 = computeLabelDiff(
+      ["gd-dev-eval"],
+      [{ name: "gd-dev-content" }, { name: "category:css" }],
+    );
+    assert.deepEqual(diff2.addLabels, ["gd-dev-eval"]);
+    assert.deepEqual(diff2.removeLabels, ["gd-dev-content"]);
 
     // 3. All issues resolved + rerun labels cleared (all gd-dev and rerun labels removed)
-    const diff3 = computeLabelDiff([], [
-      { name: 'gd-dev-content' },
-      { name: 'gd-dev-eval' },
-      { name: 'needs-dev-rerun' },
-      { name: 'enhancement' },
-    ]);
+    const diff3 = computeLabelDiff(
+      [],
+      [
+        { name: "gd-dev-content" },
+        { name: "gd-dev-eval" },
+        { name: "needs-dev-rerun" },
+        { name: "enhancement" },
+      ],
+    );
     assert.deepEqual(diff3.addLabels, []);
-    assert.deepEqual(diff3.removeLabels, ['gd-dev-content', 'gd-dev-eval', 'needs-dev-rerun']);
+    assert.deepEqual(diff3.removeLabels, [
+      "gd-dev-content",
+      "gd-dev-eval",
+      "needs-dev-rerun",
+    ]);
   });
 });
 
-describe('runDevPr', () => {
+describe("runDevPr", () => {
   let originalDevPrCli: typeof devPrCli;
 
   beforeEach(() => {
     originalDevPrCli = { ...devPrCli };
-    devPrCli.getCurrentBranch = () => 'feat/test-branch';
+    devPrCli.getCurrentBranch = () => "feat/test-branch";
     devPrCli.commitChanges = () => {};
     devPrCli.pushBranch = () => {};
     devPrCli.findFinishedPrInHistory = () => null;
@@ -184,19 +194,19 @@ describe('runDevPr', () => {
     Object.assign(devPrCli, originalDevPrCli);
   });
 
-  it('creates a new PR when no PR exists for branch', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("creates a new PR when no PR exists for branch", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `guide.md`: Fix guide\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `guide.md`: Fix guide\n",
     );
 
     let prCreated = false;
-    let prTitleArg = '';
+    let prTitleArg = "";
     let prLabelsArg: DevPrLabel[] = [];
 
     devPrCli.viewOpenPr = () => null;
@@ -204,30 +214,33 @@ describe('runDevPr', () => {
       prCreated = true;
       prTitleArg = title;
       prLabelsArg = labels;
-      return 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/101';
+      return "https://github.com/GoogleChrome/modern-web-guidance-src/pull/101";
     };
 
     try {
       const prUrl = await runDevPr(tempDir, { category, name });
-      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/101');
+      assert.equal(
+        prUrl,
+        "https://github.com/GoogleChrome/modern-web-guidance-src/pull/101",
+      );
       assert.equal(prCreated, true);
       assert.equal(prTitleArg, `grader updates: ${path.basename(tempDir)}`);
-      assert.deepEqual(prLabelsArg, ['gd-dev-content']);
+      assert.deepEqual(prLabelsArg, ["gd-dev-content"]);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(resultsDir, { recursive: true, force: true });
     }
   });
 
-  it('updates an existing PR description and removes rerun labels when a PR already exists', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("updates an existing PR description and removes rerun labels when a PR already exists", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `targets/app/grader.ts`: Fix grader\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `targets/app/grader.ts`: Fix grader\n",
     );
 
     let prUpdated = false;
@@ -237,8 +250,12 @@ describe('runDevPr', () => {
 
     devPrCli.viewOpenPr = () => ({
       number: 42,
-      url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
-      labels: [{ name: 'gd-dev-content' }, { name: 'needs-dev-rerun' }, { name: 'category:css' }],
+      url: "https://github.com/GoogleChrome/modern-web-guidance-src/pull/42",
+      labels: [
+        { name: "gd-dev-content" },
+        { name: "needs-dev-rerun" },
+        { name: "category:css" },
+      ],
     });
 
     devPrCli.editPr = (prNumber, _bodyPath, addLabels, removeLabels) => {
@@ -250,37 +267,46 @@ describe('runDevPr', () => {
 
     try {
       const prUrl = await runDevPr(tempDir, { category, name });
-      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42');
+      assert.equal(
+        prUrl,
+        "https://github.com/GoogleChrome/modern-web-guidance-src/pull/42",
+      );
       assert.equal(prUpdated, true);
       assert.equal(updatedPrNumber, 42);
-      assert.deepEqual(addedLabels, ['gd-dev-eval']);
-      assert.deepEqual(removedLabels, ['gd-dev-content', 'needs-dev-rerun']);
+      assert.deepEqual(addedLabels, ["gd-dev-eval"]);
+      assert.deepEqual(removedLabels, ["gd-dev-content", "needs-dev-rerun"]);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
       fs.rmSync(resultsDir, { recursive: true, force: true });
     }
   });
 
-  it('opens a new PR when the branch has no open PR and no finished PR in its history', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("opens a new PR when the branch has no open PR and no finished PR in its history", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n",
     );
 
     let edited = false;
 
     devPrCli.viewOpenPr = () => null;
-    devPrCli.editPr = () => { edited = true; };
-    devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43';
+    devPrCli.editPr = () => {
+      edited = true;
+    };
+    devPrCli.createPr = () =>
+      "https://github.com/GoogleChrome/modern-web-guidance-src/pull/43";
 
     try {
       const prUrl = await runDevPr(tempDir, { category, name });
-      assert.equal(prUrl, 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/43');
+      assert.equal(
+        prUrl,
+        "https://github.com/GoogleChrome/modern-web-guidance-src/pull/43",
+      );
       assert.equal(edited, false);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -288,24 +314,29 @@ describe('runDevPr', () => {
     }
   });
 
-  it('refuses a branch whose history already contains a merged PR, before pushing', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("refuses a branch whose history already contains a merged PR, before pushing", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n",
     );
 
     let pushed = false;
     let created = false;
 
     devPrCli.viewOpenPr = () => null;
-    devPrCli.findFinishedPrInHistory = () => ({ number: 7, state: 'MERGED' });
-    devPrCli.pushBranch = () => { pushed = true; };
-    devPrCli.createPr = () => { created = true; return 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/44'; };
+    devPrCli.findFinishedPrInHistory = () => ({ number: 7, state: "MERGED" });
+    devPrCli.pushBranch = () => {
+      pushed = true;
+    };
+    devPrCli.createPr = () => {
+      created = true;
+      return "https://github.com/GoogleChrome/modern-web-guidance-src/pull/44";
+    };
 
     try {
       const prUrl = await runDevPr(tempDir, { category, name });
@@ -318,19 +349,19 @@ describe('runDevPr', () => {
     }
   });
 
-  it('automatically creates a new branch if currently on main', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("automatically creates a new branch if currently on main", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `guide.md`: Fix guide\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- `guide.md`: Fix guide\n",
     );
 
-    let createdBranch = '';
-    let current = 'main';
+    let createdBranch = "";
+    let current = "main";
 
     devPrCli.getCurrentBranch = () => current;
     devPrCli.createAndCheckoutBranch = (branchName: string) => {
@@ -338,7 +369,8 @@ describe('runDevPr', () => {
       current = branchName;
     };
     devPrCli.viewOpenPr = () => null;
-    devPrCli.createPr = () => 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/105';
+    devPrCli.createPr = () =>
+      "https://github.com/GoogleChrome/modern-web-guidance-src/pull/105";
 
     try {
       const prUrl = await runDevPr(tempDir, { category, name });
@@ -351,8 +383,8 @@ describe('runDevPr', () => {
     }
   });
 
-  it('returns null when no evaluation report is found', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
+  it("returns null when no evaluation report is found", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
     try {
       const prUrl = await runDevPr(tempDir);
       assert.strictEqual(prUrl, null);
@@ -361,20 +393,20 @@ describe('runDevPr', () => {
     }
   });
 
-  it('returns null when gh pr create throws an error', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("returns null when gh pr create throws an error", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n",
     );
 
     devPrCli.viewOpenPr = () => null;
     devPrCli.createPr = () => {
-      throw new Error('GraphQL authentication error');
+      throw new Error("GraphQL authentication error");
     };
 
     try {
@@ -386,24 +418,24 @@ describe('runDevPr', () => {
     }
   });
 
-  it('returns null when gh pr edit throws an error', async () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-pr-test-'));
-    const category = 'cat';
+  it("returns null when gh pr edit throws an error", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "dev-pr-test-"));
+    const category = "cat";
     const name = path.basename(tempDir);
     const resultsDir = getGuideResultsDir({ category, name });
     fs.mkdirSync(resultsDir, { recursive: true });
     fs.writeFileSync(
-      path.join(resultsDir, 'report.md'),
-      '# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n'
+      path.join(resultsDir, "report.md"),
+      "# Report\n## Target: `test-app`\n#### Actionable Recommendations:\n- None\n",
     );
 
     devPrCli.viewOpenPr = () => ({
       number: 42,
-      url: 'https://github.com/GoogleChrome/modern-web-guidance-src/pull/42',
+      url: "https://github.com/GoogleChrome/modern-web-guidance-src/pull/42",
       labels: [],
     });
     devPrCli.editPr = () => {
-      throw new Error('gh pr edit network timeout');
+      throw new Error("gh pr edit network timeout");
     };
 
     try {
@@ -415,4 +447,3 @@ describe('runDevPr', () => {
     }
   });
 });
-

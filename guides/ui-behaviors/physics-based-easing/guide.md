@@ -12,7 +12,7 @@ Traditional CSS easing functions like `ease-in` or `cubic-bezier()` are limited 
 ### Implementation Steps
 
 1.  **Generate the curve stops:**
-    Manually plotting dozens of points for a spring or bounce is impractical. Use a timing function from an external library, or use a  tool to convert an existing JavaScript easing function or an SVG path into the `linear()` syntax. Optional: store these timing functions as CSS custom properties for reuse throughout your site.
+    Manually plotting dozens of points for a spring or bounce is impractical. Use a timing function from an external library, or use a tool to convert an existing JavaScript easing function or an SVG path into the `linear()` syntax. Optional: store these timing functions as CSS custom properties for reuse throughout your site.
 2.  **Define the timing function:**
     Apply the generated stops to the `transition-timing-function` or `animation-timing-function` property, or through the `transition` or `animation` shorthands.
 3.  **Adjust the duration:**
@@ -25,8 +25,51 @@ This example shows how to use a custom `linear()` function to create a spring ef
 ```css
 .spring {
   /* Define the physics-based easing as a reusable variable */
-  --spring-easing: linear(0, 0.016 0.5%, 0.06 1%, 0.226 2%, 1.116 5.4%, 1.375 6.6%, 1.527 7.7%, 1.565 8.2%, 1.585 8.8%, 1.581 9.3%, 1.559 9.8%, 1.458 10.9%, 0.937 14.3%, 0.784 15.5%, 0.693 16.6%, 0.67 17.1%, 0.657 17.7%, 0.671 18.7%, 0.729 19.8%, 1.042 23.3%, 1.13 24.5%, 1.182 25.6%, 1.201 26.7%, 1.192 27.7%, 1.156 28.8%, 0.977 32.2%, 0.925 33.4%, 0.894 34.5%, 0.882 35.6%, 0.887 36.6%, 0.907 37.7%, 1.045 42.4%, 1.069 44.5%, 1.059 46.3%, 0.979 50.9%, 0.96 53.4%, 0.966 55.3%, 1.013 59.9%, 1.024 62.3%, 0.986 71.2%, 1.008 79.9%, 0.995 88.9%, 1);
-
+  --spring-easing: linear(
+    0,
+    0.016 0.5%,
+    0.06 1%,
+    0.226 2%,
+    1.116 5.4%,
+    1.375 6.6%,
+    1.527 7.7%,
+    1.565 8.2%,
+    1.585 8.8%,
+    1.581 9.3%,
+    1.559 9.8%,
+    1.458 10.9%,
+    0.937 14.3%,
+    0.784 15.5%,
+    0.693 16.6%,
+    0.67 17.1%,
+    0.657 17.7%,
+    0.671 18.7%,
+    0.729 19.8%,
+    1.042 23.3%,
+    1.13 24.5%,
+    1.182 25.6%,
+    1.201 26.7%,
+    1.192 27.7%,
+    1.156 28.8%,
+    0.977 32.2%,
+    0.925 33.4%,
+    0.894 34.5%,
+    0.882 35.6%,
+    0.887 36.6%,
+    0.907 37.7%,
+    1.045 42.4%,
+    1.069 44.5%,
+    1.059 46.3%,
+    0.979 50.9%,
+    0.96 53.4%,
+    0.966 55.3%,
+    1.013 59.9%,
+    1.024 62.3%,
+    0.986 71.2%,
+    1.008 79.9%,
+    0.995 88.9%,
+    1
+  );
 
   /* Apply the easing with a duration that fits the spring's complexity */
   /* MANDATORY: Always include a duration; linear() does not calculate it automatically */
@@ -37,6 +80,7 @@ This example shows how to use a custom `linear()` function to create a spring ef
   scale: 1.2;
 }
 ```
+
 ### Example: Bounce Easing
 
 This example shows how to use a custom `linear()` function to create a bounce effect.
@@ -44,8 +88,24 @@ This example shows how to use a custom `linear()` function to create a bounce ef
 ```css
 .bounce {
   /* Define the physics-based easing as a reusable variable */
-  --bounce-easing: linear(0, 0.214 14.7%, 0.386 23.7%, 0.598 31.9%, 0.999 44.7%, 0.807 52.6%, 0.762 56%, 0.747 59.4%, 0.758 62.4%, 0.793 65.6%, 0.999 77.4%, 0.961 81.2%, 0.949 84.8%, 0.956 88%, 0.993 95.5%, 1);
-
+  --bounce-easing: linear(
+    0,
+    0.214 14.7%,
+    0.386 23.7%,
+    0.598 31.9%,
+    0.999 44.7%,
+    0.807 52.6%,
+    0.762 56%,
+    0.747 59.4%,
+    0.758 62.4%,
+    0.793 65.6%,
+    0.999 77.4%,
+    0.961 81.2%,
+    0.949 84.8%,
+    0.956 88%,
+    0.993 95.5%,
+    1
+  );
 
   /* Apply the easing with a duration that fits the bounce's complexity */
   /* MANDATORY: Always include a duration; linear() does not calculate it automatically */
@@ -59,10 +119,10 @@ This example shows how to use a custom `linear()` function to create a bounce ef
 
 ### Key Considerations
 
-*   **Performance:** For the smoothest physics-based animations, apply `linear()` to properties that run on a separate thread, such as `transform` and `opacity`.
-*   **Precision vs. Payload:** While more stops result in a smoother curve, they also increase the size of your CSS. Most generators allow you to "simplify" the curve to find the optimal balance between smoothness and code size.
-*   **Avoid Opacity for Bounces:** Applying bounce easings to `opacity` can cause visually jarring flickering if the value overshoots below 0 or above 1.
-*   **Accessibility:** Complex physics-based animations can be distracting or cause motion sensitivity for some users. Always respect user preferences by reducing or disabling these animations.
+- **Performance:** For the smoothest physics-based animations, apply `linear()` to properties that run on a separate thread, such as `transform` and `opacity`.
+- **Precision vs. Payload:** While more stops result in a smoother curve, they also increase the size of your CSS. Most generators allow you to "simplify" the curve to find the optimal balance between smoothness and code size.
+- **Avoid Opacity for Bounces:** Applying bounce easings to `opacity` can cause visually jarring flickering if the value overshoots below 0 or above 1.
+- **Accessibility:** Complex physics-based animations can be distracting or cause motion sensitivity for some users. Always respect user preferences by reducing or disabling these animations.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
@@ -77,13 +137,14 @@ This example shows how to use a custom `linear()` function to create a bounce ef
 {{ BASELINE_STATUS("linear-easing") }}
 
 #### CSS Fallback
+
 For browsers that do not support `linear()`, provide a standard easing function as a fallback. The browser will ignore the `linear()` value if it doesn't recognize it, falling back to the previous valid declaration.
 
 ```css
 .element {
   /* Fallback for older browsers (standard smooth exit) */
   transition: transform 0.8s ease-out;
-  
+
   /* Modern browsers will override with the physics-based easing */
   transition-timing-function: linear(0, 1.1, 0.95, 1.02, 1);
 }
@@ -98,18 +159,25 @@ Optional: If a high-fidelity physics animation is critical even in older browser
 
 ```javascript
 /* Detect if the browser supports the linear() function */
-const supportsLinearEasing = window.CSS && CSS.supports('animation-timing-function', 'linear(0, 1)');
+const supportsLinearEasing =
+  window.CSS && CSS.supports("animation-timing-function", "linear(0, 1)");
 
 if (!supportsLinearEasing) {
-  /* 
+  /*
      Example using Motion (motion.dev) for a spring fallback.
      This should only be initialized if native CSS support is missing.
   */
-  import("https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js").then(({ animate, spring }) => {
-    animate(".element", { transform: "scale(1.2)" }, {
-      easing: spring({ stiffness: 100, damping: 10 })
-    });
-  });
+  import("https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js").then(
+    ({ animate, spring }) => {
+      animate(
+        ".element",
+        { transform: "scale(1.2)" },
+        {
+          easing: spring({ stiffness: 100, damping: 10 }),
+        },
+      );
+    },
+  );
 }
 ```
 

@@ -1,11 +1,15 @@
-import { Agents } from '../config.ts';
+import { Agents } from "../config.ts";
 import {
   pickHigherPrecedenceEffort,
   REASONING_EFFORT_SOURCES,
   sanitizeReasoningEffort,
-} from '../../dashboard/agents.js';
+} from "../../dashboard/agents.js";
 
-export { pickHigherPrecedenceEffort, REASONING_EFFORT_SOURCES, sanitizeReasoningEffort };
+export {
+  pickHigherPrecedenceEffort,
+  REASONING_EFFORT_SOURCES,
+  sanitizeReasoningEffort,
+};
 
 export type ReasoningEffortSource = (typeof REASONING_EFFORT_SOURCES)[number];
 
@@ -35,7 +39,7 @@ const MODEL_ID_LEVEL_SUFFIX_RE =
  */
 export function defaultLevelFromModelId(modelId: string): string | undefined {
   const trimmed = modelId.trim();
-  if (!trimmed || trimmed.toLowerCase() === 'unknown') {
+  if (!trimmed || trimmed.toLowerCase() === "unknown") {
     return undefined;
   }
   const match = MODEL_ID_LEVEL_SUFFIX_RE.exec(trimmed);
@@ -47,20 +51,20 @@ export function defaultLevelFromModelId(modelId: string): string | undefined {
 
 export const EFFORT_ADAPTERS: Record<Agents, EffortAdapter> = {
   [Agents.ANTIGRAVITY_CLI]: {
-    envVar: 'ANTIGRAVITY_EFFORT',
-    toCliArgs: (level) => ['--effort', level],
+    envVar: "ANTIGRAVITY_EFFORT",
+    toCliArgs: (level) => ["--effort", level],
   },
   [Agents.JETSKI_CLI]: {
-    envVar: 'JETSKI_EFFORT',
-    toCliArgs: (level) => ['--effort', level],
+    envVar: "JETSKI_EFFORT",
+    toCliArgs: (level) => ["--effort", level],
   },
   [Agents.CLAUDE_CODE]: {
-    envVar: 'CLAUDE_EFFORT',
-    toCliArgs: (level) => ['--effort', level],
+    envVar: "CLAUDE_EFFORT",
+    toCliArgs: (level) => ["--effort", level],
   },
   [Agents.CODEX_CLI]: {
-    envVar: 'CODEX_EFFORT',
-    toCliArgs: (level) => ['-c', `model_reasoning_effort=${level}`],
+    envVar: "CODEX_EFFORT",
+    toCliArgs: (level) => ["-c", `model_reasoning_effort=${level}`],
   },
   [Agents.PI]: {
     // Pi configures thinking level via PI_MODEL's `:<thinking>` suffix (model-id / observed).
@@ -69,7 +73,7 @@ export const EFFORT_ADAPTERS: Record<Agents, EffortAdapter> = {
 
 function resolveKnownAgent(rawAgent?: string): Agents | undefined {
   if (!rawAgent) return undefined;
-  const normalized = rawAgent.trim().toLowerCase().replace(/-/g, '_');
+  const normalized = rawAgent.trim().toLowerCase().replace(/-/g, "_");
   return (Object.values(Agents) as string[]).includes(normalized)
     ? (normalized as Agents)
     : undefined;
@@ -129,7 +133,9 @@ function normalizeToken(raw?: string): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): ReasoningEffort {
+function resolveLiveReasoningEffort(
+  options: ResolveReasoningEffortOptions,
+): ReasoningEffort {
   const env = options.env ?? process.env;
   const knownAgent = resolveKnownAgent(options.agent);
   const adapter = knownAgent ? EFFORT_ADAPTERS[knownAgent] : undefined;
@@ -137,20 +143,20 @@ function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): Rea
 
   // 1. Observed from agent logs (highest trust; silently wins over configured).
   const observedToken =
-    typeof options.observed === 'string'
+    typeof options.observed === "string"
       ? normalizeToken(options.observed)
-      : options.observed?.source === 'observed'
+      : options.observed?.source === "observed"
         ? normalizeToken(options.observed.level)
         : undefined;
   if (observedToken) {
-    return { level: observedToken, source: 'observed' };
+    return { level: observedToken, source: "observed" };
   }
 
   // 2. Configured via `<AGENT>_EFFORT` env var.
   if (adapter?.envVar) {
     const configuredToken = normalizeToken(env[adapter.envVar]);
     if (configuredToken) {
-      return { level: configuredToken, source: 'configured' };
+      return { level: configuredToken, source: "configured" };
     }
   }
 
@@ -158,7 +164,7 @@ function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): Rea
   if (options.model) {
     const modelLevel = extractLevel(options.model);
     if (modelLevel) {
-      return { level: modelLevel, source: 'model-id' };
+      return { level: modelLevel, source: "model-id" };
     }
   }
 
@@ -169,17 +175,24 @@ function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): Rea
     if (rawPiModel) {
       const piLevel = extractLevel(rawPiModel);
       if (piLevel) {
-        const piBase = rawPiModel.replace(MODEL_ID_LEVEL_SUFFIX_RE, '').toLowerCase();
+        const piBase = rawPiModel
+          .replace(MODEL_ID_LEVEL_SUFFIX_RE, "")
+          .toLowerCase();
         const logged = options.model?.trim().toLowerCase();
-        if (!logged || logged === 'unknown' || logged === piBase || piBase.endsWith(`/${logged}`)) {
-          return { level: piLevel, source: 'model-id' };
+        if (
+          !logged ||
+          logged === "unknown" ||
+          logged === piBase ||
+          piBase.endsWith(`/${logged}`)
+        ) {
+          return { level: piLevel, source: "model-id" };
         }
       }
     }
   }
 
   // 4. Unknown / CLI built-in default.
-  return { source: 'agent-default' };
+  return { source: "agent-default" };
 }
 
 /**
@@ -188,12 +201,16 @@ function resolveLiveReasoningEffort(options: ResolveReasoningEffortOptions): Rea
  *
  * When both `observed` and `configured` exist and disagree, `observed` wins silently.
  */
-export function resolveReasoningEffort(options: ResolveReasoningEffortOptions): ReasoningEffort {
+export function resolveReasoningEffort(
+  options: ResolveReasoningEffortOptions,
+): ReasoningEffort {
   const liveResolved = resolveLiveReasoningEffort(options);
   const normalizedFallback = sanitizeReasoningEffort(
     options.fallback?.level !== undefined
       ? { ...options.fallback, level: normalizeToken(options.fallback.level) }
       : options.fallback,
   );
-  return pickHigherPrecedenceEffort(liveResolved, normalizedFallback) ?? liveResolved;
+  return (
+    pickHigherPrecedenceEffort(liveResolved, normalizedFallback) ?? liveResolved
+  );
 }

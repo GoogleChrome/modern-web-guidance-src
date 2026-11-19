@@ -5,7 +5,7 @@ index 66c9173..eb90289 100644
 @@ -135,6 +135,15 @@
        background: #3e2723;
      }
- 
+
 +    /* Page-level customization of the drink cards' exposed parts */
 +    drink-card::part(title) {
 +      letter-spacing: 0.5px;
@@ -55,7 +55,7 @@ index 66c9173..eb90289 100644
 @@ -207,6 +216,85 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    class DrinkCard extends HTMLElement {
 +      constructor() {
@@ -136,5 +136,5 @@ index 66c9173..eb90289 100644
 +    customElements.define('drink-card', DrinkCard);
 +  </script>
  </body>
- 
+
  </html>

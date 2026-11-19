@@ -5,7 +5,7 @@ index 66c9173..733df16 100644
 @@ -135,6 +135,219 @@
        background: #3e2723;
      }
- 
+
 +    .visually-hidden {
 +      position: absolute;
 +      width: 1px;
@@ -223,7 +223,7 @@ index 66c9173..733df16 100644
        background: var(--secondary);
        text-align: center;
 @@ -176,24 +389,63 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -294,11 +294,11 @@ index 66c9173..733df16 100644
 +      <div id="seasonal-live" class="visually-hidden" role="status" aria-live="polite"></div>
      </section>
    </main>
- 
+
 @@ -207,6 +459,480 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script>
 +    (() => {
 +      const list = document.getElementById('seasonal-list');
@@ -774,5 +774,5 @@ index 66c9173..733df16 100644
 +  </script>
 +
  </body>
- 
+
  </html>

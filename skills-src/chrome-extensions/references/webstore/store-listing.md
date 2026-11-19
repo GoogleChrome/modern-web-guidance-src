@@ -12,11 +12,13 @@ This appears in search results and category pages. It's your elevator pitch. Rul
 - Don't waste characters on "Chrome extension" — the user already knows
 
 **Good examples:**
+
 - "Save articles to read later with one click. Works offline."
 - "Replace new tab with a minimal dashboard showing weather and tasks"
 - "Highlight and annotate text on any webpage. Export notes as Markdown."
 
 **Bad examples:**
+
 - "The best productivity tool for Chrome!" (vague, marketing-speak)
 - "Extension for helping you do things better" (says nothing)
 - "NEW! Amazing tab manager extension tool app for Chrome browser" (keyword stuffing)
@@ -65,13 +67,13 @@ Strip all of the following from every piece of copy:
 
 **Transform every implementation sentence into a user benefit:**
 
-| Before (implementation) | After (user benefit) |
-|-------------------------|----------------------|
-| "Uses a MutationObserver to detect page changes" | "Automatically detects new content as you browse" |
-| "Built with custom elements and Shadow DOM" | "Works seamlessly without affecting page styles" |
-| "Powered by a service worker" | "Runs quietly in the background" |
-| "Your settings are synced via chrome.storage.sync" | "Your settings sync across all your devices" |
-| "Implements declarativeNetRequest for filtering" | "Blocks ads and trackers without reading your page content" |
+| Before (implementation)                            | After (user benefit)                                        |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| "Uses a MutationObserver to detect page changes"   | "Automatically detects new content as you browse"           |
+| "Built with custom elements and Shadow DOM"        | "Works seamlessly without affecting page styles"            |
+| "Powered by a service worker"                      | "Runs quietly in the background"                            |
+| "Your settings are synced via chrome.storage.sync" | "Your settings sync across all your devices"                |
+| "Implements declarativeNetRequest for filtering"   | "Blocks ads and trackers without reading your page content" |
 
 ### Why This Structure Works
 
@@ -90,11 +92,13 @@ This is filled in the developer dashboard, not shown to users. The review team r
 carefully. It must be a single sentence that describes the extension's narrow purpose.
 
 **Approved examples:**
+
 - "Saves highlighted text from web pages to a local reading list"
 - "Replaces the new tab page with a customizable dashboard"
 - "Blocks cookie consent banners on websites"
 
 **Rejected examples:**
+
 - "Improves your browsing experience" (too vague)
 - "Productivity and organization tool" (too broad)
 - "Highlights text, saves bookmarks, manages tabs, and blocks ads" (not single purpose)
@@ -109,6 +113,7 @@ description can cover secondary features.
 **Symptom:** "Your extension requests more permissions than it needs."
 
 **Fix:**
+
 - Replace `<all_urls>` with specific host patterns
 - Replace `tabs` with `activeTab` if you only need the current tab on click
 - Remove permissions you're not using
@@ -119,6 +124,7 @@ description can cover secondary features.
 **Symptom:** "Your item does not have a single, clear purpose."
 
 **Fix:**
+
 - Rewrite the single purpose field to be narrow and specific
 - If the extension truly does too many unrelated things, consider splitting it
 
@@ -127,6 +133,7 @@ description can cover secondary features.
 **Symptom:** "Your extension does not provide the functionality described."
 
 **Fix:**
+
 - Ensure every feature listed in the description actually works
 - Remove claims about features you haven't built yet
 - Don't use superlatives ("the best", "the fastest") unless verifiable
@@ -137,6 +144,7 @@ description can cover secondary features.
 is not accessible."
 
 **Fix:**
+
 - Host the privacy policy at a stable, public URL
 - Ensure it's not behind a login wall
 - Make sure it covers all data the extension actually collects
@@ -147,6 +155,7 @@ is not accessible."
 **Symptom:** "Your extension uses trademarked content without authorization."
 
 **Fix:**
+
 - Don't use other companies' names in your extension name (e.g., "YouTube Downloader")
 - Don't use logos or brand colors that imply affiliation
 - Use generic terms: "Video Downloader for [site]" might be fine, but check the site's terms
@@ -156,6 +165,7 @@ is not accessible."
 **Symptom:** "Your extension contains obfuscated code."
 
 **Fix:**
+
 - Minification is allowed; obfuscation is not
 - If using a bundler (webpack, rollup, vite), ensure source maps are NOT included but
   the output is minified, not obfuscated
@@ -166,6 +176,7 @@ is not accessible."
 **Symptom:** "Your extension executes remotely hosted code."
 
 **Fix:**
+
 - Bundle all JavaScript in the extension package
 - Don't load scripts from CDNs at runtime
 - Don't use `eval()` or `new Function()` with remote content
@@ -176,6 +187,7 @@ is not accessible."
 **Symptom:** "Your extension's data usage does not match your disclosure."
 
 **Fix:**
+
 - Audit every `fetch()`, `XMLHttpRequest`, and `chrome.storage.sync` call
 - Remember that `chrome.storage.sync` transmits data to Google's servers
 - If you use any analytics library (even self-hosted), declare it

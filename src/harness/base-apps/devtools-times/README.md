@@ -2,7 +2,6 @@
 
 This project is a sample news application built with Astro, designed to serve as a testing ground for new features in Chrome DevTools.
 
-
 ```sh
 pnpm install && pnpm run start
 ```

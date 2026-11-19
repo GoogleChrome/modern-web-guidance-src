@@ -13,7 +13,7 @@ import {
   expect,
   getTargetFiles,
   getJsProject,
-} from '../../../../../src/grading/test-fixture.ts';
+} from "../../../../../src/grading/test-fixture.ts";
 import {
   SyntaxKind,
   type Project,
@@ -21,7 +21,7 @@ import {
   type ObjectLiteralExpression,
   type Expression,
   type Node,
-} from 'ts-morph';
+} from "ts-morph";
 
 // @ts-ignore - package.json omits "type": "module", causing tsc nodenext to warn on import.meta
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -33,7 +33,7 @@ function findRegisterToolCalls(project: Project): CallExpression[] {
     .filter((call) => {
       const expr = call.getExpression();
       if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
-        return expr.getName() === 'registerTool';
+        return expr.getName() === "registerTool";
       }
       return false;
     });
@@ -41,7 +41,7 @@ function findRegisterToolCalls(project: Project): CallExpression[] {
 
 function resolveObjectLiteral(
   node: Node | undefined,
-  project: Project
+  project: Project,
 ): ObjectLiteralExpression | undefined {
   if (!node) return undefined;
   if (node.isKind(SyntaxKind.ObjectLiteralExpression)) {
@@ -53,7 +53,9 @@ function resolveObjectLiteral(
   if (node.isKind(SyntaxKind.Identifier)) {
     const name = node.getText();
     for (const sf of project.getSourceFiles()) {
-      for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+      for (const varDecl of sf.getDescendantsOfKind(
+        SyntaxKind.VariableDeclaration,
+      )) {
         if (varDecl.getName() === name) {
           const init = varDecl.getInitializer();
           const resolved = resolveObjectLiteral(init, project);
@@ -67,28 +69,46 @@ function resolveObjectLiteral(
     if (expr.isKind(SyntaxKind.Identifier)) {
       const fnName = expr.getText();
       for (const sf of project.getSourceFiles()) {
-        for (const fnDecl of sf.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
+        for (const fnDecl of sf.getDescendantsOfKind(
+          SyntaxKind.FunctionDeclaration,
+        )) {
           if (fnDecl.getName() === fnName) {
-            for (const ret of fnDecl.getDescendantsOfKind(SyntaxKind.ReturnStatement)) {
-              const resolved = resolveObjectLiteral(ret.getExpression(), project);
+            for (const ret of fnDecl.getDescendantsOfKind(
+              SyntaxKind.ReturnStatement,
+            )) {
+              const resolved = resolveObjectLiteral(
+                ret.getExpression(),
+                project,
+              );
               if (resolved) return resolved;
             }
           }
         }
-        for (const varDecl of sf.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        for (const varDecl of sf.getDescendantsOfKind(
+          SyntaxKind.VariableDeclaration,
+        )) {
           if (varDecl.getName() === fnName) {
             const init = varDecl.getInitializer();
             if (
               init &&
-              (init.isKind(SyntaxKind.ArrowFunction) || init.isKind(SyntaxKind.FunctionExpression))
+              (init.isKind(SyntaxKind.ArrowFunction) ||
+                init.isKind(SyntaxKind.FunctionExpression))
             ) {
               const body = init.getBody();
-              if (body.isKind(SyntaxKind.ObjectLiteralExpression) || body.isKind(SyntaxKind.ParenthesizedExpression)) {
+              if (
+                body.isKind(SyntaxKind.ObjectLiteralExpression) ||
+                body.isKind(SyntaxKind.ParenthesizedExpression)
+              ) {
                 const resolved = resolveObjectLiteral(body, project);
                 if (resolved) return resolved;
               }
-              for (const ret of body.getDescendantsOfKind(SyntaxKind.ReturnStatement)) {
-                const resolved = resolveObjectLiteral(ret.getExpression(), project);
+              for (const ret of body.getDescendantsOfKind(
+                SyntaxKind.ReturnStatement,
+              )) {
+                const resolved = resolveObjectLiteral(
+                  ret.getExpression(),
+                  project,
+                );
                 if (resolved) return resolved;
               }
             }
@@ -102,7 +122,7 @@ function resolveObjectLiteral(
 
 function getObjectPropertyInitializer(
   obj: ObjectLiteralExpression,
-  propName: string
+  propName: string,
 ): Expression | Node | undefined {
   const prop = obj.getProperty(propName);
   if (!prop) return undefined;
@@ -118,45 +138,58 @@ function getObjectPropertyInitializer(
   return undefined;
 }
 
-test.describe('webmcp Target Grader', () => {
-  test('Expectation 1: Feature-detect document.modelContext before calling imperative WebMCP registration methods', () => {
+test.describe("webmcp Target Grader", () => {
+  test("Expectation 1: Feature-detect document.modelContext before calling imperative WebMCP registration methods", () => {
     const project: Project = getJsProject(targetFiles);
     const registerCalls = findRegisterToolCalls(project);
     expect(registerCalls.length).toBeGreaterThan(0);
 
     const sourceFiles = project.getSourceFiles();
     const hasFeatureDetection =
-      registerCalls.some((call) => call.getExpression().getText().includes('?.')) ||
+      registerCalls.some((call) =>
+        call.getExpression().getText().includes("?."),
+      ) ||
       sourceFiles.some((sf) => {
         // Only count modelContext/registerTool reads in a guard's condition, not
         // code that merely sits inside some unrelated if/ternary/assignment.
         const inside = (outer: Node, inner: Node) =>
-          inner.getStart() >= outer.getStart() && inner.getEnd() <= outer.getEnd();
+          inner.getStart() >= outer.getStart() &&
+          inner.getEnd() <= outer.getEnd();
         const hasPropAccessGuard = sf
           .getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
           .some((pa) => {
-            if (pa.getName() !== 'modelContext' && pa.getName() !== 'registerTool') {
+            if (
+              pa.getName() !== "modelContext" &&
+              pa.getName() !== "registerTool"
+            ) {
               return false;
             }
-            return pa.getAncestors().some(
-              (anc) =>
-                (anc.isKind(SyntaxKind.IfStatement) && inside(anc.getExpression(), pa)) ||
-                (anc.isKind(SyntaxKind.ConditionalExpression) && inside(anc.getCondition(), pa)) ||
-                anc.isKind(SyntaxKind.PrefixUnaryExpression) ||
-                anc.isKind(SyntaxKind.TypeOfExpression) ||
-                (anc.isKind(SyntaxKind.BinaryExpression) &&
-                  anc.getOperatorToken().getKind() !== SyntaxKind.EqualsToken &&
-                  inside(anc.getLeft(), pa))
-            );
+            return pa
+              .getAncestors()
+              .some(
+                (anc) =>
+                  (anc.isKind(SyntaxKind.IfStatement) &&
+                    inside(anc.getExpression(), pa)) ||
+                  (anc.isKind(SyntaxKind.ConditionalExpression) &&
+                    inside(anc.getCondition(), pa)) ||
+                  anc.isKind(SyntaxKind.PrefixUnaryExpression) ||
+                  anc.isKind(SyntaxKind.TypeOfExpression) ||
+                  (anc.isKind(SyntaxKind.BinaryExpression) &&
+                    anc.getOperatorToken().getKind() !==
+                      SyntaxKind.EqualsToken &&
+                    inside(anc.getLeft(), pa)),
+              );
           });
 
         const hasInOperatorGuard = sf
           .getDescendantsOfKind(SyntaxKind.BinaryExpression)
           .some((bin) => {
-            if (bin.getOperatorToken().getKind() !== SyntaxKind.InKeyword) return false;
+            if (bin.getOperatorToken().getKind() !== SyntaxKind.InKeyword)
+              return false;
             const left = bin.getLeft();
             return (
-              left.isKind(SyntaxKind.StringLiteral) && left.getLiteralValue() === 'modelContext'
+              left.isKind(SyntaxKind.StringLiteral) &&
+              left.getLiteralValue() === "modelContext"
             );
           });
 
@@ -166,7 +199,7 @@ test.describe('webmcp Target Grader', () => {
     expect(hasFeatureDetection).toBe(true);
   });
 
-  test('Expectation 2: Use document.modelContext.registerTool() to register dynamic client-side tools with name, description, and execute properties', () => {
+  test("Expectation 2: Use document.modelContext.registerTool() to register dynamic client-side tools with name, description, and execute properties", () => {
     const project: Project = getJsProject(targetFiles);
     const registerCalls = findRegisterToolCalls(project);
     expect(registerCalls.length).toBeGreaterThan(0);
@@ -175,16 +208,16 @@ test.describe('webmcp Target Grader', () => {
       const firstArg = call.getArguments()[0];
       const toolDef = resolveObjectLiteral(firstArg, project);
       if (!toolDef) continue; // dynamic definitions are checked at runtime below
-      const nameProp = getObjectPropertyInitializer(toolDef, 'name');
-      const descProp = getObjectPropertyInitializer(toolDef, 'description');
-      const execProp = getObjectPropertyInitializer(toolDef, 'execute');
+      const nameProp = getObjectPropertyInitializer(toolDef, "name");
+      const descProp = getObjectPropertyInitializer(toolDef, "description");
+      const execProp = getObjectPropertyInitializer(toolDef, "execute");
       expect(nameProp).toBeDefined();
       expect(descProp).toBeDefined();
       expect(execProp).toBeDefined();
     }
   });
 
-  test('Expectation 5: Pass an AbortSignal from an AbortController to document.modelContext.registerTool() to support tool cleanup and lifecycle management', () => {
+  test("Expectation 5: Pass an AbortSignal from an AbortController to document.modelContext.registerTool() to support tool cleanup and lifecycle management", () => {
     const project: Project = getJsProject(targetFiles);
     const registerCalls = findRegisterToolCalls(project);
     expect(registerCalls.length).toBeGreaterThan(0);
@@ -193,7 +226,7 @@ test.describe('webmcp Target Grader', () => {
       .getSourceFiles()
       .flatMap((sf) => sf.getDescendantsOfKind(SyntaxKind.NewExpression));
     const hasAbortController = newExprs.some(
-      (ne) => ne.getExpression().getText() === 'AbortController'
+      (ne) => ne.getExpression().getText() === "AbortController",
     );
     expect(hasAbortController).toBe(true);
 
@@ -202,18 +235,18 @@ test.describe('webmcp Target Grader', () => {
       expect(secondArg).toBeDefined();
       const optionsObj = resolveObjectLiteral(secondArg, project);
       if (optionsObj) {
-        const signalProp = getObjectPropertyInitializer(optionsObj, 'signal');
+        const signalProp = getObjectPropertyInitializer(optionsObj, "signal");
         expect(signalProp).toBeDefined();
       } else {
         const hasSignalAccess = secondArg
           ?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-          .some((pa) => pa.getName() === 'signal');
+          .some((pa) => pa.getName() === "signal");
         expect(Boolean(hasSignalAccess)).toBe(true);
       }
     }
   });
 
-  test('Expectation 6: Do not call unregisterTool() directly and rely on AbortController.abort() for tool removal', () => {
+  test("Expectation 6: Do not call unregisterTool() directly and rely on AbortController.abort() for tool removal", () => {
     const project: Project = getJsProject(targetFiles);
     const allCalls = project
       .getSourceFiles()
@@ -221,25 +254,29 @@ test.describe('webmcp Target Grader', () => {
 
     const abortCalls = allCalls.filter((call) => {
       const expr = call.getExpression();
-      return expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'abort';
+      return (
+        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+        expr.getName() === "abort"
+      );
     });
     expect(abortCalls.length).toBeGreaterThan(0);
 
     const unregisterCalls = allCalls.filter((call) => {
       const expr = call.getExpression();
       return (
-        expr.isKind(SyntaxKind.PropertyAccessExpression) && expr.getName() === 'unregisterTool'
+        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+        expr.getName() === "unregisterTool"
       );
     });
     expect(unregisterCalls.length).toBe(0);
   });
 
-  test.describe('Browser tests', () => {
+  test.describe("Browser tests", () => {
     test.beforeEach(async ({ page, TARGET_URL }) => {
       await page.addInitScript(() => {
         const registeredTools: Array<{ definition: any; options: any }> = [];
         (window as any).__webmcpRegisteredTools = registeredTools;
-        Object.defineProperty(document, 'modelContext', {
+        Object.defineProperty(document, "modelContext", {
           value: {
             registerTool(definition: any, options?: any) {
               registeredTools.push({ definition, options });
@@ -253,7 +290,7 @@ test.describe('webmcp Target Grader', () => {
       await page.goto(TARGET_URL);
     });
 
-    test('Expectation 2 (runtime): Registered tools have name, description, and execute properties', async ({
+    test("Expectation 2 (runtime): Registered tools have name, description, and execute properties", async ({
       page,
     }) => {
       const defs = await page.evaluate(() =>
@@ -261,15 +298,19 @@ test.describe('webmcp Target Grader', () => {
           name: typeof t.definition?.name,
           description: typeof t.definition?.description,
           execute: typeof t.definition?.execute,
-        }))
+        })),
       );
       expect(defs.length).toBeGreaterThan(0);
       for (const d of defs) {
-        expect(d).toEqual({ name: 'string', description: 'string', execute: 'function' });
+        expect(d).toEqual({
+          name: "string",
+          description: "string",
+          execute: "function",
+        });
       }
     });
 
-    test('Expectation 3: Define tool input parameters with an inputSchema JSON Schema object where every parameter includes an explicit type and descriptive description', async ({
+    test("Expectation 3: Define tool input parameters with an inputSchema JSON Schema object where every parameter includes an explicit type and descriptive description", async ({
       page,
     }) => {
       const toolsWithParams = await page.evaluate(() => {
@@ -279,23 +320,27 @@ test.describe('webmcp Target Grader', () => {
           name: t.definition?.name,
           inputSchema: t.definition?.inputSchema,
           hasDeclarativeFormsWithParams: Array.from(
-            document.querySelectorAll('form[toolname][tooldescription]')
+            document.querySelectorAll("form[toolname][tooldescription]"),
           ).map((form) => {
             const controls = Array.from(
-              form.querySelectorAll('input[name], select[name], textarea[name]')
+              form.querySelectorAll(
+                "input[name], select[name], textarea[name]",
+              ),
             );
             return {
-              toolname: form.getAttribute('toolname'),
+              toolname: form.getAttribute("toolname"),
               controlCount: controls.length,
               allControlsDescribed:
                 controls.length > 0 &&
                 controls.every((el) => {
                   const desc =
-                    el.getAttribute('toolparamdescription') ||
-                    el.closest('label')?.textContent?.trim() ||
+                    el.getAttribute("toolparamdescription") ||
+                    el.closest("label")?.textContent?.trim() ||
                     (el.id
-                      ? document.querySelector(`label[for="${el.id}"]`)?.textContent?.trim()
-                      : '');
+                      ? document
+                          .querySelector(`label[for="${el.id}"]`)
+                          ?.textContent?.trim()
+                      : "");
                   return Boolean(desc && desc.length > 0);
                 }),
             };
@@ -308,19 +353,22 @@ test.describe('webmcp Target Grader', () => {
       let verifiedParamCount = 0;
       for (const tool of toolsWithParams) {
         expect(tool.inputSchema).toBeDefined();
-        expect(tool.inputSchema.type).toBe('object');
+        expect(tool.inputSchema.type).toBe("object");
         const props = tool.inputSchema.properties || {};
         const propEntries = Object.entries(props) as Array<[string, any]>;
 
         for (const [, paramSchema] of propEntries) {
-          expect(typeof paramSchema.type).toBe('string');
+          expect(typeof paramSchema.type).toBe("string");
           expect(paramSchema.type.length).toBeGreaterThan(0);
-          expect(typeof paramSchema.description).toBe('string');
+          expect(typeof paramSchema.description).toBe("string");
           expect(paramSchema.description.trim().length).toBeGreaterThan(0);
           verifiedParamCount++;
         }
 
-        if (propEntries.length === 0 && tool.hasDeclarativeFormsWithParams.length > 0) {
+        if (
+          propEntries.length === 0 &&
+          tool.hasDeclarativeFormsWithParams.length > 0
+        ) {
           for (const formInfo of tool.hasDeclarativeFormsWithParams) {
             if (formInfo.controlCount > 0 && formInfo.allControlsDescribed) {
               verifiedParamCount += formInfo.controlCount;
@@ -332,7 +380,7 @@ test.describe('webmcp Target Grader', () => {
       expect(verifiedParamCount).toBeGreaterThan(0);
     });
 
-    test('Expectation 7: Ensure tool execute functions resolve only after corresponding UI state updates have completed', async ({
+    test("Expectation 7: Ensure tool execute functions resolve only after corresponding UI state updates have completed", async ({
       page,
     }) => {
       const executionResult = await page.evaluate(async () => {
@@ -344,11 +392,18 @@ test.describe('webmcp Target Grader', () => {
 
         const getStatusSnapshot = () => {
           const liveNodes = Array.from(
-            document.querySelectorAll('[role="status"], [role="alert"], [aria-live], output, dialog')
+            document.querySelectorAll(
+              '[role="status"], [role="alert"], [aria-live], output, dialog',
+            ),
           );
-          const liveText = liveNodes.map((n) => n.textContent?.trim() || '').join(' | ');
+          const liveText = liveNodes
+            .map((n) => n.textContent?.trim() || "")
+            .join(" | ");
           const mainText =
-            document.querySelector('main')?.textContent?.replace(/\s+/g, ' ').trim() || '';
+            document
+              .querySelector("main")
+              ?.textContent?.replace(/\s+/g, " ")
+              .trim() || "";
           return `${liveText} || ${mainText}`;
         };
 
@@ -361,13 +416,15 @@ test.describe('webmcp Target Grader', () => {
         if (orderingTool) {
           const props = orderingTool.definition.inputSchema.properties;
           const sampleInput: Record<string, any> = {};
-          for (const [key, schema] of Object.entries(props) as Array<[string, any]>) {
+          for (const [key, schema] of Object.entries(props) as Array<
+            [string, any]
+          >) {
             if (Array.isArray(schema.enum) && schema.enum.length > 0) {
               sampleInput[key] = schema.enum[0];
-            } else if (schema.type === 'integer' || schema.type === 'number') {
+            } else if (schema.type === "integer" || schema.type === "number") {
               sampleInput[key] = schema.minimum ?? 2;
-            } else if (schema.type === 'string') {
-              sampleInput[key] = 'small';
+            } else if (schema.type === "string") {
+              sampleInput[key] = "small";
             }
           }
 
@@ -377,19 +434,25 @@ test.describe('webmcp Target Grader', () => {
 
           return {
             toolCount: tools.length,
-            uiUpdatedBeforeResolve: afterText !== beforeText && afterText.length > 0,
+            uiUpdatedBeforeResolve:
+              afterText !== beforeText && afterText.length > 0,
           };
         }
 
         // If the imperative tool is a read-only tool and ordering is via declarative forms,
         // submit a form to update the UI and verify the tool's execute() reflects the updated UI state immediately upon resolution
-        const orderForm = document.querySelector('form[toolname], form') as HTMLFormElement | null;
+        const orderForm = document.querySelector(
+          "form[toolname], form",
+        ) as HTMLFormElement | null;
         if (orderForm) {
           const beforeText = getStatusSnapshot();
           let agentResponseResolvedAfterUiUpdate = false;
-          const submitEvent = new SubmitEvent('submit', { bubbles: true, cancelable: true });
-          Object.defineProperty(submitEvent, 'agentInvoked', { value: true });
-          Object.defineProperty(submitEvent, 'respondWith', {
+          const submitEvent = new SubmitEvent("submit", {
+            bubbles: true,
+            cancelable: true,
+          });
+          Object.defineProperty(submitEvent, "agentInvoked", { value: true });
+          Object.defineProperty(submitEvent, "respondWith", {
             value: (promise: Promise<any>) => {
               const midText = getStatusSnapshot();
               if (midText !== beforeText && midText.length > 0) {
@@ -406,7 +469,8 @@ test.describe('webmcp Target Grader', () => {
           return {
             toolCount: tools.length,
             uiUpdatedBeforeResolve:
-              (agentResponseResolvedAfterUiUpdate || afterFormText !== beforeText) &&
+              (agentResponseResolvedAfterUiUpdate ||
+                afterFormText !== beforeText) &&
               toolText.length > 0,
           };
         }

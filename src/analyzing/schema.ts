@@ -1,4 +1,4 @@
-import type { SourceFile } from 'ts-morph';
+import type { SourceFile } from "ts-morph";
 
 /**
  * Axis 1 of Guide Triage: How easy it is to spot the guide's cleanest legacy sub-pattern statically without false alarms.
@@ -8,10 +8,7 @@ import type { SourceFile } from 'ts-morph';
  * - `'no-legacy-pattern'`: No client-side legacy code pattern to find — either a greenfield platform capability (`passkey-registration`, `agentic-forms`) or a guide whose applicability depends on human visual/semantic judgment (`adapt-scrollbar-to-contrast-preferences`, `accessible-generated-content`).
  */
 export type Detection =
-  | 'direct-token'
-  | 'structural-ast'
-  | 'needs-verifier'
-  | 'no-legacy-pattern';
+  "direct-token" | "structural-ast" | "needs-verifier" | "no-legacy-pattern";
 
 /**
  * Axis 2 of Guide Triage: What kind of code change the guide asks for (`'n/a'` when `Detection` is `'no-legacy-pattern'`).
@@ -21,10 +18,7 @@ export type Detection =
  * - `'n/a'`: Applicable when `detection === 'no-legacy-pattern'`.
  */
 export type UpdateScope =
-  | 'local-swap'
-  | 'cross-layer-refactor'
-  | 'widget-recipe'
-  | 'n/a';
+  "local-swap" | "cross-layer-refactor" | "widget-recipe" | "n/a";
 
 /**
  * Upfront classification and scoping of a published feature guide, recording whether a static matcher is feasible, the migration update scope, and exact replaces / doesNotReplace bounds.
@@ -128,28 +122,34 @@ export interface DependencyMatcherContext {
 export type FastTokenSpec = readonly string[] | readonly (readonly string[])[];
 
 export interface JsRuleMatcher {
-  readonly kind: 'js';
+  readonly kind: "js";
   readonly fastTokens: FastTokenSpec;
   matchFile(sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[];
 }
 
 export interface DomRuleMatcher {
-  readonly kind: 'dom';
+  readonly kind: "dom";
   readonly selector: string;
   readonly fastTokens: FastTokenSpec;
   readonly skipIfHasSpread?: boolean;
   readonly skipIfDynamicAttributes?: readonly string[];
-  matchElement(element: DomElementView, ctx: DomMatcherContext): { message: string; subPattern?: string } | null;
+  matchElement(
+    element: DomElementView,
+    ctx: DomMatcherContext,
+  ): { message: string; subPattern?: string } | null;
 }
 
 export interface CssRuleMatcher {
-  readonly kind: 'css';
+  readonly kind: "css";
   readonly fastTokens: FastTokenSpec;
-  matchRule(styleRule: CssRuleView, ctx: CssMatcherContext): { message: string; subPattern?: string } | null;
+  matchRule(
+    styleRule: CssRuleView,
+    ctx: CssMatcherContext,
+  ): { message: string; subPattern?: string } | null;
 }
 
 export interface DependencyRuleMatcher {
-  readonly kind: 'dependency';
+  readonly kind: "dependency";
   readonly packages: readonly string[];
   matchPackage?(
     pkgName: string,
@@ -159,10 +159,7 @@ export interface DependencyRuleMatcher {
 }
 
 export type RuleMatcher =
-  | JsRuleMatcher
-  | DomRuleMatcher
-  | CssRuleMatcher
-  | DependencyRuleMatcher;
+  JsRuleMatcher | DomRuleMatcher | CssRuleMatcher | DependencyRuleMatcher;
 
 /**
  * Static Matcher rule contract binding a pattern id, guide hash, high-recall matcher (JS, CSS, DOM, or dependency), and VerifierRubric.

@@ -5,7 +5,7 @@ index 66c9173..02d18e6 100644
 @@ -135,6 +135,10 @@
        background: #3e2723;
      }
- 
+
 +    .section-title {
 +      text-align: center;
 +    }
@@ -14,7 +14,7 @@ index 66c9173..02d18e6 100644
        background: var(--secondary);
        text-align: center;
 @@ -176,7 +180,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>

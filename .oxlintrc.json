@@ -9,11 +9,14 @@
     "Diff": "readonly"
   },
   "rules": {
-    "no-unused-vars": ["error", {
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_",
-      "caughtErrorsIgnorePattern": "^.*$"
-    }],
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^.*$"
+      }
+    ],
     "eslint(no-undef)": "error",
     "no-undef": "error"
   }

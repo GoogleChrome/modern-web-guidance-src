@@ -14,6 +14,7 @@ Living by the seaside offers a sensory experience that shifts with the tides. It
 The air at the coast is rich in negative ions, which are thought to improve oxygen absorption and balance serotonin levels. Furthermore, the "blue space" effect—the mental clarity gained from being near water—is a well-documented phenomenon that reduces cortisol and encourages mindfulness.
 
 ### The Coastal Environment
+
 **Microclimates:** Large bodies of water act as heat sinks, often resulting in cooler summers and milder winters compared to inland areas.
 
 **Salt Spray & Ecology:** The high salinity creates a unique ecosystem where only hardy, salt-tolerant plants (halophytes) thrive.
@@ -21,6 +22,7 @@ The air at the coast is rich in negative ions, which are thought to improve oxyg
 **Tidal Dynamics:** Understanding the Lunar cycle is essential, as the gravitational pull of the moon creates the high and low tides that reshape the landscape daily.
 
 ### Explore
+
 While the salt air can be corrosive to infrastructure, the trade-off is a front-row seat to nature’s most dynamic theater.
 
 <script>

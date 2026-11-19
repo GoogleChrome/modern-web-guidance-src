@@ -17,11 +17,15 @@ export interface SetAllowGateOptions {
   env?: NodeJS.ProcessEnv;
 }
 
-export async function handleSetAllowOriginTrials(opts?: SetAllowGateOptions): Promise<number> {
+export async function handleSetAllowOriginTrials(
+  opts?: SetAllowGateOptions,
+): Promise<number> {
   return handleSetAllowGate(FEATURE_GATES["origin-trials"], opts);
 }
 
-export async function handleSetAllowVolatileFeatures(opts?: SetAllowGateOptions): Promise<number> {
+export async function handleSetAllowVolatileFeatures(
+  opts?: SetAllowGateOptions,
+): Promise<number> {
   return handleSetAllowGate(FEATURE_GATES["volatile-features"], opts);
 }
 
@@ -43,25 +47,31 @@ export async function handleSetAllowGate(
   opts: SetAllowGateOptions = {},
 ): Promise<number> {
   const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY);
-  const detected = opts.isAgent === false ? undefined : determineAgent(opts.env, undefined, isTTY);
+  const detected =
+    opts.isAgent === false
+      ? undefined
+      : determineAgent(opts.env, undefined, isTTY);
   const isAgent = opts.isAgent ?? Boolean(detected?.isAgent);
 
   if (isAgent || !isTTY) {
     const reason = isAgent
-      ? `detected agent environment${detected?.agent?.name ? `: ${detected.agent.name}` : ''}`
-      : 'non-interactive stdin';
+      ? `detected agent environment${detected?.agent?.name ? `: ${detected.agent.name}` : ""}`
+      : "non-interactive stdin";
     console.error(
       `Error: \`${gate.cliCommand}\` must be run interactively by a human developer, not an AI agent (${reason}).\n` +
-      `Ask the developer to run \`npx modern-web-guidance@latest ${gate.cliCommand}\` in their own terminal.\n` +
-      `If your IDE terminal sets agent environment variables, run the command in an external terminal.`
+        `Ask the developer to run \`npx modern-web-guidance@latest ${gate.cliCommand}\` in their own terminal.\n` +
+        `If your IDE terminal sets agent environment variables, run the command in an external terminal.`,
     );
     return 1;
   }
 
   const targetPath = resolveMwgrcPath(opts.cwd);
-  const ask = opts.askConfirmation ?? ((target: string) =>
-    defaultAskConfirmation(`Enable ${gate.promptLabel} for this project (${target})? [y/N] `)
-  );
+  const ask =
+    opts.askConfirmation ??
+    ((target: string) =>
+      defaultAskConfirmation(
+        `Enable ${gate.promptLabel} for this project (${target})? [y/N] `,
+      ));
   const confirmed = await ask(targetPath);
   if (!confirmed) {
     console.log("Aborted.");
@@ -69,6 +79,8 @@ export async function handleSetAllowGate(
   }
 
   writeMwgrc({ [gate.optInKey]: true }, opts.cwd);
-  console.log(`Enabled ${gate.headingLabel} in ${targetPath}. Commit this file to share the opt-in.`);
+  console.log(
+    `Enabled ${gate.headingLabel} in ${targetPath}. Commit this file to share the opt-in.`,
+  );
   return 0;
 }

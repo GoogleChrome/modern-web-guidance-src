@@ -83,7 +83,12 @@ export interface CodexSessionMeta {
   creator_user_id?: string;
   creator_account_id?: string;
   base_instructions?: string | { text?: string; [key: string]: unknown };
-  git?: { commit_hash?: string; branch?: string; repository_url?: string; [key: string]: unknown };
+  git?: {
+    commit_hash?: string;
+    branch?: string;
+    repository_url?: string;
+    [key: string]: unknown;
+  };
   history_mode?: string;
   thread_source?: string;
   runtime_workspace_roots?: string[];
@@ -92,7 +97,9 @@ export interface CodexSessionMeta {
   parent_thread_id?: string;
   agent_path?: string;
   agent_role?: string;
-  selected_capability_roots?: Array<string | { root: string; read_only?: boolean }>;
+  selected_capability_roots?: Array<
+    string | { root: string; read_only?: boolean }
+  >;
   [key: string]: unknown;
 }
 
@@ -101,8 +108,17 @@ export type CodexSessionSource =
   | "vscode"
   | "exec"
   | "mcp"
-  | { subagent: { parent_thread_id: string; agent_path?: string; agent_role?: string } }
-  | { provenance?: { type: string; model?: string; [key: string]: unknown }; [key: string]: unknown }
+  | {
+      subagent: {
+        parent_thread_id: string;
+        agent_path?: string;
+        agent_role?: string;
+      };
+    }
+  | {
+      provenance?: { type: string; model?: string; [key: string]: unknown };
+      [key: string]: unknown;
+    }
   | Record<string, unknown>;
 
 // ============================================================================
@@ -184,9 +200,7 @@ export type CodexFunctionCallOutputContentItem =
 export type CodexOutputContentBlock = CodexFunctionCallOutputContentItem;
 
 export type CodexToolCallOutput =
-  | string
-  | CodexFunctionCallOutputContentItem[]
-  | Record<string, unknown>;
+  string | CodexFunctionCallOutputContentItem[] | Record<string, unknown>;
 
 export interface CodexResponseFunctionCallOutputItem extends CodexResponseItemMetadata {
   type: "function_call_output";
@@ -299,7 +313,8 @@ export interface CodexUpdatePlanParams {
     id: string;
     title: string;
     description?: string;
-    status: "pending" | "in_progress" | "completed" | "failed" | "skipped" | string;
+    status:
+      "pending" | "in_progress" | "completed" | "failed" | "skipped" | string;
   }>;
 }
 
@@ -380,30 +395,156 @@ export interface CodexMultiAgentV2InterruptParams {
 // ============================================================================
 
 export type CodexEventMsg =
-  | { type: "task_started" | "turn_started"; turn_id: string; trace_id?: string; started_at?: number; model_context_window?: number; collaboration_mode_kind?: string }
-  | { type: "task_complete" | "turn_complete"; turn_id: string; last_agent_message?: string; error?: unknown; started_at?: number; completed_at?: number; duration_ms?: number }
-  | { type: "agent_message"; message: string; phase?: CodexMessagePhase; memory_citation?: unknown }
-  | { type: "user_message"; message: string; client_id?: string; images?: string[]; local_images?: string[]; text_elements?: unknown[]; audio?: unknown[]; local_audio?: unknown[] }
+  | {
+      type: "task_started" | "turn_started";
+      turn_id: string;
+      trace_id?: string;
+      started_at?: number;
+      model_context_window?: number;
+      collaboration_mode_kind?: string;
+    }
+  | {
+      type: "task_complete" | "turn_complete";
+      turn_id: string;
+      last_agent_message?: string;
+      error?: unknown;
+      started_at?: number;
+      completed_at?: number;
+      duration_ms?: number;
+    }
+  | {
+      type: "agent_message";
+      message: string;
+      phase?: CodexMessagePhase;
+      memory_citation?: unknown;
+    }
+  | {
+      type: "user_message";
+      message: string;
+      client_id?: string;
+      images?: string[];
+      local_images?: string[];
+      text_elements?: unknown[];
+      audio?: unknown[];
+      local_audio?: unknown[];
+    }
   | { type: "agent_reasoning"; text: string }
-  | { type: "token_count"; info?: CodexTokenUsageInfo | null; rate_limits?: CodexRateLimitSnapshot | null }
-  | { type: "exec_command_begin"; call_id: string; turn_id: string; command: string[]; cwd: string; parsed_cmd?: unknown[]; source?: string }
+  | {
+      type: "token_count";
+      info?: CodexTokenUsageInfo | null;
+      rate_limits?: CodexRateLimitSnapshot | null;
+    }
+  | {
+      type: "exec_command_begin";
+      call_id: string;
+      turn_id: string;
+      command: string[];
+      cwd: string;
+      parsed_cmd?: unknown[];
+      source?: string;
+    }
   | { type: "exec_command_output_delta"; call_id: string; chunk: string }
-  | { type: "exec_command_end"; call_id: string; turn_id: string; command: string[]; stdout: string; stderr?: string; aggregated_output?: string; formatted_output?: string; exit_code?: number; status?: string; process_id?: string; duration?: { secs: number; nanos: number }; completed_at_ms?: number }
+  | {
+      type: "exec_command_end";
+      call_id: string;
+      turn_id: string;
+      command: string[];
+      stdout: string;
+      stderr?: string;
+      aggregated_output?: string;
+      formatted_output?: string;
+      exit_code?: number;
+      status?: string;
+      process_id?: string;
+      duration?: { secs: number; nanos: number };
+      completed_at_ms?: number;
+    }
   | { type: "patch_apply_begin"; call_id: string; turn_id: string }
-  | { type: "patch_apply_end"; call_id: string; turn_id: string; success: boolean; error?: string; stdout?: string; stderr?: string; changes?: Record<string, CodexPatchFileChange>; status?: string }
-  | { type: "web_search_end"; call_id: string; query?: string; action?: CodexWebSearchAction; results?: unknown[] }
-  | { type: "collab_agent_spawn_end"; call_id: string; sender_thread_id?: string; new_thread_id: string; new_agent_nickname?: string; new_agent_role?: string; prompt?: string; model?: string; reasoning_effort?: string; status?: string }
-  | { type: "thread_settings_applied"; thread_id?: string; turn_id?: string; settings?: CodexThreadSettings; thread_settings?: CodexThreadSettings }
-  | { type: "item_completed"; thread_id?: string; turn_id?: string; item?: { type: string; id: string; text?: string; [key: string]: unknown }; started_at_ms?: number; completed_at_ms?: number }
-  | { type: "sub_agent_activity"; event_id?: string; occurred_at_ms?: number; agent_thread_id?: string; agent_path?: string; kind?: "started" | "interacted" | "interrupted" | "completed" | string }
-  | { type: "mcp_tool_call_begin"; call_id: string; invocation: { server: string; tool: string; arguments?: unknown } }
-  | { type: "mcp_tool_call_end"; call_id: string; result?: unknown; error?: unknown }
+  | {
+      type: "patch_apply_end";
+      call_id: string;
+      turn_id: string;
+      success: boolean;
+      error?: string;
+      stdout?: string;
+      stderr?: string;
+      changes?: Record<string, CodexPatchFileChange>;
+      status?: string;
+    }
+  | {
+      type: "web_search_end";
+      call_id: string;
+      query?: string;
+      action?: CodexWebSearchAction;
+      results?: unknown[];
+    }
+  | {
+      type: "collab_agent_spawn_end";
+      call_id: string;
+      sender_thread_id?: string;
+      new_thread_id: string;
+      new_agent_nickname?: string;
+      new_agent_role?: string;
+      prompt?: string;
+      model?: string;
+      reasoning_effort?: string;
+      status?: string;
+    }
+  | {
+      type: "thread_settings_applied";
+      thread_id?: string;
+      turn_id?: string;
+      settings?: CodexThreadSettings;
+      thread_settings?: CodexThreadSettings;
+    }
+  | {
+      type: "item_completed";
+      thread_id?: string;
+      turn_id?: string;
+      item?: {
+        type: string;
+        id: string;
+        text?: string;
+        [key: string]: unknown;
+      };
+      started_at_ms?: number;
+      completed_at_ms?: number;
+    }
+  | {
+      type: "sub_agent_activity";
+      event_id?: string;
+      occurred_at_ms?: number;
+      agent_thread_id?: string;
+      agent_path?: string;
+      kind?: "started" | "interacted" | "interrupted" | "completed" | string;
+    }
+  | {
+      type: "mcp_tool_call_begin";
+      call_id: string;
+      invocation: { server: string; tool: string; arguments?: unknown };
+    }
+  | {
+      type: "mcp_tool_call_end";
+      call_id: string;
+      result?: unknown;
+      error?: unknown;
+    }
   | { type: "context_compacted" }
   | { type: "thread_rolled_back" }
   | { type: "turn_diff"; diff: string }
   | { type: "plan_update"; plan: unknown }
-  | { type: "turn_aborted"; turn_id?: string; reason?: string; completed_at?: number; duration_ms?: number }
-  | { type: "error"; message: string; codex_error_info?: CodexErrorInfo | string }
+  | {
+      type: "turn_aborted";
+      turn_id?: string;
+      reason?: string;
+      completed_at?: number;
+      duration_ms?: number;
+    }
+  | {
+      type: "error";
+      message: string;
+      codex_error_info?: CodexErrorInfo | string;
+    }
   | { type: string; [key: string]: unknown };
 
 export interface CodexPatchFileChange {
@@ -462,8 +603,16 @@ export interface CodexTokenUsageRecord {
 export interface CodexRateLimitSnapshot {
   limit_id?: string | null;
   limit_name?: string | null;
-  primary?: { used_percent: number; window_minutes?: number; resets_at?: number } | null;
-  secondary?: { used_percent: number; window_minutes?: number; resets_at?: number } | null;
+  primary?: {
+    used_percent: number;
+    window_minutes?: number;
+    resets_at?: number;
+  } | null;
+  secondary?: {
+    used_percent: number;
+    window_minutes?: number;
+    resets_at?: number;
+  } | null;
   credits?: unknown | null;
   plan_type?: string | null;
   rate_limit_reached_type?: string | null;
@@ -509,7 +658,15 @@ export interface CodexWorldState {
 }
 
 export interface CodexSandboxPolicy {
-  type: "danger-full-access" | "read-only" | "external-sandbox" | "workspace-write" | "read_write" | "read_only" | "disabled" | string;
+  type:
+    | "danger-full-access"
+    | "read-only"
+    | "external-sandbox"
+    | "workspace-write"
+    | "read_write"
+    | "read_only"
+    | "disabled"
+    | string;
   writable_roots?: string[];
   network_access?: string | boolean;
   exclude_tmpdir_env_var?: boolean;

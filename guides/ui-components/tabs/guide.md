@@ -25,24 +25,34 @@ Instead of manually implementing a roving tabindex or ARIA activedescendant patt
 ```html
 <div class="tabs">
   <div focusgroup="tablist" aria-label="Web platform technologies">
-      <button type="button" id="html-tab" aria-selected="true" focusgroupstart>HTML</button>
-      <button type="button" id="css-tab">CSS</button>
-      <button type="button" id="js-tab">JavaScript</button>
+    <button type="button" id="html-tab" aria-selected="true" focusgroupstart>
+      HTML
+    </button>
+    <button type="button" id="css-tab">CSS</button>
+    <button type="button" id="js-tab">JavaScript</button>
   </div>
-  <div role="tabpanel" aria-labelledby="html-tab" tabindex="0"><!-- content for HTML tab --></div>
-  <div role="tabpanel" aria-labelledby="css-tab" hidden="until-found"><!-- content for CSS tab --></div>
-  <div role="tabpanel" aria-labelledby="js-tab" hidden="until-found"><!-- content for JavaScript tab --></div>
+  <div role="tabpanel" aria-labelledby="html-tab" tabindex="0">
+    <!-- content for HTML tab -->
+  </div>
+  <div role="tabpanel" aria-labelledby="css-tab" hidden="until-found">
+    <!-- content for CSS tab -->
+  </div>
+  <div role="tabpanel" aria-labelledby="js-tab" hidden="until-found">
+    <!-- content for JavaScript tab -->
+  </div>
 </div>
 ```
 
 DO NOT use this or the WAI-ARIA tabs pattern for page navigation, even if it is intended to be presented as a tabbed interface.
 
 Tablist:
+
 - Prefer `<button>` for the tabs to avoid needing to reimplement button-like behavior. Add `type=button` to avoid unexpected submitter behavior if nested within a form.
 - Use `aria-labelledby` or `aria-label` to give the tablist an accessible name.
 - Use `aria-selected` to indicate which tab is currently selected.
 
 Tab panels:
+
 - Set `role=tabpanel` on the tab panels and use `aria-labelledby` or `aria-label` to give the panel an accessible name (e.g. `aria-labelledby` can reference the associated tab).
 - Do not add `aria-controls` to the tabs: no screen reader uses it.
 - Use `hidden="until-found"` to hide tab panels whose tab is not actively selected while still keeping them searchable by the browser’s find-in-page feature. Use `hidden` with no value to remove the content from the browser's search in-page feature as well.
@@ -58,6 +68,7 @@ When it comes to how tabs become selected, one can either make _selection follow
 Default to _selection follows focus_.
 It saves a keypress per tab, is more discoverable, and matches native radio groups.
 Use selection by activation instead when showing a panel has a cost the user should opt into, since arrowing from the first tab to the fifth would pay it for every tab along the way:
+
 - Showing the panel is not instant: content is fetched on demand, or rendering it is noticeably slow.
 - Selecting a tab has side effects: it changes the URL or history, sends analytics, starts media, or saves state.
 - The panel shifts the layout significantly (e.g. panels of very different heights push the rest of the page around).
@@ -66,13 +77,13 @@ With either pattern, focus entering the group must land on the selected item. By
 Use `nomemory` and move `focusgroupstart` to the selected tab:
 
 ```html
-<div focusgroup="tablist nomemory" aria-label="Web platform technologies">
+<div focusgroup="tablist nomemory" aria-label="Web platform technologies"></div>
 ```
 
 ```js
 for (const tab of tabs) {
   tab.ariaSelected = tab === selected;
-  tab.toggleAttribute('focusgroupstart', tab === selected);
+  tab.toggleAttribute("focusgroupstart", tab === selected);
 }
 ```
 
@@ -105,7 +116,6 @@ Do not apply any styling that changes the dimensions of the tab (e.g., `padding`
 ```
 
 To animate the underline between tabs, move the pseudo-element to the tablist and tether it to the selected tab with anchor positioning. See {{ GUIDE_REF("anchor-positioning-tab-underline") }} for details.
-
 
 - DO NOT put padding, borders, margins, or backgrounds on the panel element itself. `hidden=until-found` does not use `display: none`: it only hides the panel's contents, so a hidden panel still renders its padding, border, margin, and background as an empty strip. Put these styles on a child wrapper inside the panel instead.
 - `hidden=until-found` panels still participate in grid and flex layout, so `gap` adds space for every hidden panel. Place all panels in the same grid cell, or avoid `gap` between panels.
@@ -149,41 +159,57 @@ The rest of this section covers only what is specific to tabs.
 
 ```html
 <div class="tabs">
-  <div class="tablist" focusgroup="tablist nomemory" aria-label="Product details">
+  <div
+    class="tablist"
+    focusgroup="tablist nomemory"
+    aria-label="Product details"
+  >
     <button type="button">Overview</button>
     <button type="button">Specifications</button>
     <!-- … -->
   </div>
   <!-- Outside the tablist: a tablist may only contain tabs.
        Icon, not text, so it does not read as another tab. -->
-  <button type="button" class="more" hidden aria-label="More tabs" aria-haspopup="menu" aria-expanded="false">⋯</button>
+  <button
+    type="button"
+    class="more"
+    hidden
+    aria-label="More tabs"
+    aria-haspopup="menu"
+    aria-expanded="false"
+  >
+    ⋯
+  </button>
   <!-- Menu: see the menu guide. One menuitem per tab. -->
   <!-- Tab panels -->
 </div>
 ```
 
 ```js
-const observer = new IntersectionObserver(entries => {
-  for (const { target: tab, intersectionRatio } of entries) {
-    const overflowed = intersectionRatio < 1;
-    // CSS: .clipped:not([aria-selected="true"], :focus) { visibility: hidden; }
-    tab.classList.toggle('clipped', overflowed);
-    menuItemFor(tab).hidden = !overflowed;
-  }
-  more.hidden = !tabs.some(tab => tab.classList.contains('clipped'));
-  reveal();
-}, { root: tablist, threshold: 1 });
+const observer = new IntersectionObserver(
+  (entries) => {
+    for (const { target: tab, intersectionRatio } of entries) {
+      const overflowed = intersectionRatio < 1;
+      // CSS: .clipped:not([aria-selected="true"], :focus) { visibility: hidden; }
+      tab.classList.toggle("clipped", overflowed);
+      menuItemFor(tab).hidden = !overflowed;
+    }
+    more.hidden = !tabs.some((tab) => tab.classList.contains("clipped"));
+    reveal();
+  },
+  { root: tablist, threshold: 1 },
+);
 
-tabs.forEach(tab => observer.observe(tab));
+tabs.forEach((tab) => observer.observe(tab));
 
 // Also call after every selection change.
 // CSS: .displaced { display: none; }
 function reveal() {
-  const tab = tabs.find(tab => tab.ariaSelected === 'true');
+  const tab = tabs.find((tab) => tab.ariaSelected === "true");
   const before = tabs.slice(0, tabs.indexOf(tab));
-  tabs.forEach(tab => tab.classList.remove('displaced'));
+  tabs.forEach((tab) => tab.classList.remove("displaced"));
   while (before.length && !fits(tab)) {
-    before.pop().classList.add('displaced');
+    before.pop().classList.add("displaced");
   }
 }
 
@@ -212,8 +238,6 @@ It is more well suited to user-driven tablists (e.g. a document editor) rather t
 - Transition `min-inline-size` so tabs resize smoothly when the selection changes, instead of jumping. Set `interpolate-size: allow-keywords` on the tablist so it interpolates to and from `max-content`; no view transition is needed. Only transition it when `prefers-reduced-motion` is `no-preference`. Transitioning `flex-shrink` does not work: any value above 0 shrinks a tab all the way to its minimum when the tabs overflow.
 
 {# NOTE: Unhandled edge case: selecting a tab widens it and shifts the tabs after it, which can move the next tab out from under the pointer. #}
-
-
 
 ## Fallback strategies
 

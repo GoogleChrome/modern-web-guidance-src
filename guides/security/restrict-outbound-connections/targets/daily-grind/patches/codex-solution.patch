@@ -181,10 +181,10 @@ index 66c9173..1ee8a96 100644
 +  <link rel="stylesheet" href="/styles.css">
 +  <script src="/newsletter.js" defer></script>
  </head>
- 
+
  <body>
 @@ -176,7 +30,7 @@
- 
+
    <main class="container">
      <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -207,7 +207,7 @@ index 66c9173..1ee8a96 100644
 +      <p id="newsletter-status" role="status" aria-live="polite" aria-atomic="true"></p>
 +    </section>
    </main>
- 
+
    <footer>
 diff --git a/newsletter.js b/newsletter.js
 new file mode 100644

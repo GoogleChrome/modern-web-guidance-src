@@ -61,7 +61,7 @@ index 66c9173..57cd02d 100644
 @@ -100,6 +100,43 @@
        padding: 0 20px;
      }
- 
+
 +    section[id] {
 +      scroll-margin-top: 110px;
 +      margin-bottom: 64px;
@@ -117,7 +117,7 @@ index 66c9173..57cd02d 100644
      </ul>
 @@ -175,8 +212,8 @@
    </header>
- 
+
    <main class="container">
 -    <section>
 -      <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -141,15 +141,15 @@ index 66c9173..57cd02d 100644
 +      <a href="/rewards" class="btn">Explore Rewards</a>
 +    </section>
    </main>
- 
+
    <footer>
 @@ -207,6 +254,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
- 
+
 +  <script src="app.js" defer></script>
  </body>
- 
+
  </html>
 diff --git a/package.json b/package.json
 index 2bd4d77..3fff91a 100644

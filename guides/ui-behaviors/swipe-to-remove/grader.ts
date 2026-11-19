@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import * as path from 'path';
+import { test, expect } from "@playwright/test";
+import * as path from "path";
 
 declare global {
   interface Window {
@@ -9,97 +9,122 @@ declare global {
   }
 }
 
-const targetFile = process.env.TARGET_FILE || path.resolve((import.meta as any).dirname || process.cwd(), 'demo.html');
+const targetFile =
+  process.env.TARGET_FILE ||
+  path.resolve((import.meta as any).dirname || process.cwd(), "demo.html");
 const url = `file://${targetFile}`;
 
 // Helper to check if the main swipe initialized class is present on the list item
 async function verifyInitialized(page: any): Promise<boolean> {
   return await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item');
-    return item ? item.classList.contains('is-initialized') : false;
+    const item = document.querySelector(".SwipeableList-item");
+    return item ? item.classList.contains("is-initialized") : false;
   });
 }
 
 async function loadPage(page: any) {
   await page.goto(url);
-  const item = page.locator('.SwipeableList-item').first();
-  if (await item.count() > 0) {
+  const item = page.locator(".SwipeableList-item").first();
+  if ((await item.count()) > 0) {
     await item.scrollIntoViewIfNeeded();
-    await expect.poll(async () => {
-      return item.evaluate((el: Element) => el.classList.contains('is-initialized'));
-    }, { timeout: 2000 }).toBe(true).catch(() => {});
+    await expect
+      .poll(
+        async () => {
+          return item.evaluate((el: Element) =>
+            el.classList.contains("is-initialized"),
+          );
+        },
+        { timeout: 2000 },
+      )
+      .toBe(true)
+      .catch(() => {});
   }
 }
 
-test('Track has scroll-snap-type x mandatory', async ({ page }) => {
+test("Track has scroll-snap-type x mandatory", async ({ page }) => {
   await loadPage(page);
   const scrollSnapType = await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-track');
-    if (!track) return '';
+    const track = document.querySelector(".SwipeableList-track");
+    if (!track) return "";
     const style = window.getComputedStyle(track);
-    return style.scrollSnapType || style.getPropertyValue('scroll-snap-type');
+    return style.scrollSnapType || style.getPropertyValue("scroll-snap-type");
   });
   expect(scrollSnapType).toMatch(/\bx\b/);
   expect(scrollSnapType).toMatch(/\bmandatory\b/);
 });
 
-test('Track has overscroll-behavior-x none', async ({ page }) => {
+test("Track has overscroll-behavior-x none", async ({ page }) => {
   await loadPage(page);
   const overscrollBehaviorX = await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-track');
-    if (!track) return '';
+    const track = document.querySelector(".SwipeableList-track");
+    if (!track) return "";
     const style = window.getComputedStyle(track);
-    return style.overscrollBehaviorX || style.getPropertyValue('overscroll-behavior-x');
+    return (
+      style.overscrollBehaviorX ||
+      style.getPropertyValue("overscroll-behavior-x")
+    );
   });
-  expect(overscrollBehaviorX).toBe('none');
+  expect(overscrollBehaviorX).toBe("none");
 });
 
-test('Track hides its scrollbar with scrollbar-width none', async ({ page }) => {
+test("Track hides its scrollbar with scrollbar-width none", async ({
+  page,
+}) => {
   await loadPage(page);
   const scrollbarWidth = await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-track');
-    if (!track) return '';
+    const track = document.querySelector(".SwipeableList-track");
+    if (!track) return "";
     const style = window.getComputedStyle(track);
-    return style.scrollbarWidth || style.getPropertyValue('scrollbar-width');
+    return style.scrollbarWidth || style.getPropertyValue("scrollbar-width");
   });
-  expect(scrollbarWidth).toBe('none');
+  expect(scrollbarWidth).toBe("none");
 });
 
-test('Track spacers have scroll-snap-align set to be valid snap targets', async ({ page }) => {
+test("Track spacers have scroll-snap-align set to be valid snap targets", async ({
+  page,
+}) => {
   await loadPage(page);
   const snapAlign = await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-track');
-    if (!track) return { beforeAlign: 'none', afterAlign: 'none' };
-    const beforeStyle = window.getComputedStyle(track, '::before');
-    const afterStyle = window.getComputedStyle(track, '::after');
-    const beforeAlign = beforeStyle.scrollSnapAlign || beforeStyle.getPropertyValue('scroll-snap-align');
-    const afterAlign = afterStyle.scrollSnapAlign || afterStyle.getPropertyValue('scroll-snap-align');
+    const track = document.querySelector(".SwipeableList-track");
+    if (!track) return { beforeAlign: "none", afterAlign: "none" };
+    const beforeStyle = window.getComputedStyle(track, "::before");
+    const afterStyle = window.getComputedStyle(track, "::after");
+    const beforeAlign =
+      beforeStyle.scrollSnapAlign ||
+      beforeStyle.getPropertyValue("scroll-snap-align");
+    const afterAlign =
+      afterStyle.scrollSnapAlign ||
+      afterStyle.getPropertyValue("scroll-snap-align");
     return { beforeAlign, afterAlign };
   });
-  expect(snapAlign.beforeAlign).not.toBe('none');
-  expect(snapAlign.afterAlign).not.toBe('none');
+  expect(snapAlign.beforeAlign).not.toBe("none");
+  expect(snapAlign.afterAlign).not.toBe("none");
 });
 
-test('Content element has scroll-snap-align set', async ({ page }) => {
+test("Content element has scroll-snap-align set", async ({ page }) => {
   await loadPage(page);
   const contentSnapAlign = await page.evaluate(() => {
-    const content = document.querySelector('.SwipeableList-content');
-    if (!content) return 'none';
+    const content = document.querySelector(".SwipeableList-content");
+    if (!content) return "none";
     const style = window.getComputedStyle(content);
-    return style.scrollSnapAlign || style.getPropertyValue('scroll-snap-align');
+    return style.scrollSnapAlign || style.getPropertyValue("scroll-snap-align");
   });
-  expect(contentSnapAlign).not.toBe('none');
+  expect(contentSnapAlign).not.toBe("none");
 });
 
-test('Content element has an opaque background to hide action behind it', async ({ page }) => {
+test("Content element has an opaque background to hide action behind it", async ({
+  page,
+}) => {
   await loadPage(page);
   const isOpaque = await page.evaluate(() => {
-    const content = document.querySelector('.SwipeableList-content');
+    const content = document.querySelector(".SwipeableList-content");
     if (!content) return false;
     const style = window.getComputedStyle(content);
     const bg = style.backgroundColor;
-    if (bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return false;
-    const match = bg.match(/rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/);
+    if (bg === "transparent" || bg === "rgba(0, 0, 0, 0)") return false;
+    const match = bg.match(
+      /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
+    );
     if (match && parseFloat(match[1]) === 0) return false;
     return true;
   });
@@ -108,52 +133,63 @@ test('Content element has an opaque background to hide action behind it', async 
   expect(isOpaque).toBe(true);
 });
 
-test('scroll-initial-target nearest is gated behind initialization class', async ({ page }) => {
+test("scroll-initial-target nearest is gated behind initialization class", async ({
+  page,
+}) => {
   await loadPage(page);
   const results = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item');
-    const content = item?.querySelector('.SwipeableList-content');
-    if (!item || !content) return { initial: '', afterRemoval: '' };
-    
+    const item = document.querySelector(".SwipeableList-item");
+    const content = item?.querySelector(".SwipeableList-content");
+    if (!item || !content) return { initial: "", afterRemoval: "" };
+
     const initialStyle = window.getComputedStyle(content);
-    const initialVal = initialStyle.getPropertyValue('scroll-initial-target');
-    
-    const possibleClasses = Array.from(item.classList).filter(c => c.includes('init'));
+    const initialVal = initialStyle.getPropertyValue("scroll-initial-target");
+
+    const possibleClasses = Array.from(item.classList).filter((c) =>
+      c.includes("init"),
+    );
     const oldClassList = [...item.classList];
     for (const c of possibleClasses) {
       item.classList.remove(c);
     }
-    
+
     const styleAfter = window.getComputedStyle(content);
-    const valAfter = styleAfter.getPropertyValue('scroll-initial-target');
-    
+    const valAfter = styleAfter.getPropertyValue("scroll-initial-target");
+
     for (const c of oldClassList) {
       item.classList.add(c);
     }
-    
+
     return { initial: initialVal, afterRemoval: valAfter };
   });
 
-  expect(results.initial).toBe('nearest');
-  expect(results.afterRemoval).not.toBe('nearest');
+  expect(results.initial).toBe("nearest");
+  expect(results.afterRemoval).not.toBe("nearest");
 });
 
-test('Swipe detector IntersectionObserver is rooted at the track', async ({ page }) => {
+test("Swipe detector IntersectionObserver is rooted at the track", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     window.__io_spies = [];
     const OriginalIntersectionObserver = window.IntersectionObserver;
-    window.IntersectionObserver = class SpyIntersectionObserver extends OriginalIntersectionObserver {
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    window.IntersectionObserver = class SpyIntersectionObserver extends (
+      OriginalIntersectionObserver
+    ) {
+      constructor(
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit,
+      ) {
         super(callback, options);
         const record = {
           root: options?.root || null,
           thresholds: options?.threshold || null,
-          targets: [] as Element[]
+          targets: [] as Element[],
         };
         window.__io_spies!.push(record);
-        
+
         const originalObserve = this.observe;
-        this.observe = function(target: Element) {
+        this.observe = function (target: Element) {
           record.targets.push(target);
           return originalObserve.call(this, target);
         };
@@ -165,10 +201,12 @@ test('Swipe detector IntersectionObserver is rooted at the track', async ({ page
 
   const hasTrackRootedObserver = await page.evaluate(() => {
     if (!window.__io_spies) return false;
-    return window.__io_spies.some(spy => {
+    return window.__io_spies.some((spy) => {
       if (!spy.root) return false;
-      const isTrack = spy.root.classList?.contains('SwipeableList-track');
-      const observesContent = spy.targets.some((t: any) => t.classList?.contains('SwipeableList-content'));
+      const isTrack = spy.root.classList?.contains("SwipeableList-track");
+      const observesContent = spy.targets.some((t: any) =>
+        t.classList?.contains("SwipeableList-content"),
+      );
       return isTrack && observesContent;
     });
   });
@@ -176,22 +214,29 @@ test('Swipe detector IntersectionObserver is rooted at the track', async ({ page
   expect(hasTrackRootedObserver).toBe(true);
 });
 
-test('Swipe detector has low commit and high activate thresholds', async ({ page }) => {
+test("Swipe detector has low commit and high activate thresholds", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     window.__io_spies = [];
     const OriginalIntersectionObserver = window.IntersectionObserver;
-    window.IntersectionObserver = class SpyIntersectionObserver extends OriginalIntersectionObserver {
-      constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    window.IntersectionObserver = class SpyIntersectionObserver extends (
+      OriginalIntersectionObserver
+    ) {
+      constructor(
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit,
+      ) {
         super(callback, options);
         const record = {
           root: options?.root || null,
           thresholds: options?.threshold || null,
-          targets: [] as Element[]
+          targets: [] as Element[],
         };
         window.__io_spies!.push(record);
-        
+
         const originalObserve = this.observe;
-        this.observe = function(target: Element) {
+        this.observe = function (target: Element) {
           record.targets.push(target);
           return originalObserve.call(this, target);
         };
@@ -203,22 +248,24 @@ test('Swipe detector has low commit and high activate thresholds', async ({ page
 
   const thresholds = await page.evaluate(() => {
     if (!window.__io_spies) return null;
-    const spy = window.__io_spies.find(spy => {
+    const spy = window.__io_spies.find((spy) => {
       if (!spy.root) return false;
-      const isTrack = spy.root.classList?.contains('SwipeableList-track');
-      const observesContent = spy.targets.some((t: any) => t.classList?.contains('SwipeableList-content'));
+      const isTrack = spy.root.classList?.contains("SwipeableList-track");
+      const observesContent = spy.targets.some((t: any) =>
+        t.classList?.contains("SwipeableList-content"),
+      );
       return isTrack && observesContent;
     });
     if (!spy) return null;
     const ths = spy.thresholds;
     if (Array.isArray(ths)) return ths;
-    if (typeof ths === 'number') return [ths];
+    if (typeof ths === "number") return [ths];
     return null;
   });
 
   expect(thresholds).not.toBeNull();
   expect(thresholds!.length).toBeGreaterThanOrEqual(2);
-  
+
   const lowThreshold = thresholds!.find((t: number) => t <= 0.3);
   const highThreshold = thresholds!.find((t: number) => t >= 0.7);
 
@@ -226,30 +273,34 @@ test('Swipe detector has low commit and high activate thresholds', async ({ page
   expect(highThreshold).toBeGreaterThanOrEqual(0.7);
 });
 
-test('Updates data-swipe-direction attribute during swipe', async ({ page }) => {
+test("Updates data-swipe-direction attribute during swipe", async ({
+  page,
+}) => {
   await loadPage(page);
   const result = await page.evaluate(async () => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
     if (!track || !item) return null;
 
-    const waitFrames = (n = 5) => new Promise<void>(resolve => {
-      let count = 0;
-      function step() {
-        if (++count >= n) resolve();
-        else requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-    });
+    const waitFrames = (n = 5) =>
+      new Promise<void>((resolve) => {
+        let count = 0;
+        function step() {
+          if (++count >= n) resolve();
+          else requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
 
     // Temporarily disable scroll snapping to prevent auto snapback
-    track.style.scrollSnapType = 'none';
+    track.style.scrollSnapType = "none";
     const initialScrollLeft = track.scrollLeft;
 
     // Swipe right (pull content right -> decrease scrollLeft)
     track.scrollLeft = initialScrollLeft - Math.round(track.clientWidth * 0.3);
     await waitFrames();
-    const dirLeft = item.getAttribute('data-swipe-direction') || item.dataset.swipeDirection;
+    const dirLeft =
+      item.getAttribute("data-swipe-direction") || item.dataset.swipeDirection;
 
     // Reset back to center so that the next scroll crosses the threshold again
     track.scrollLeft = initialScrollLeft;
@@ -258,98 +309,120 @@ test('Updates data-swipe-direction attribute during swipe', async ({ page }) => 
     // Swipe left (pull content left -> increase scrollLeft)
     track.scrollLeft = initialScrollLeft + Math.round(track.clientWidth * 0.3);
     await waitFrames();
-    const dirRight = item.getAttribute('data-swipe-direction') || item.dataset.swipeDirection;
+    const dirRight =
+      item.getAttribute("data-swipe-direction") || item.dataset.swipeDirection;
 
     // Restore scroll snap type
-    track.style.scrollSnapType = '';
+    track.style.scrollSnapType = "";
 
-    const hasInitClass = item.classList.contains('is-initialized');
+    const hasInitClass = item.classList.contains("is-initialized");
     return { dirLeft, dirRight, hasInitClass };
   });
 
   expect(result).not.toBeNull();
   expect(result!.hasInitClass).toBe(true);
-  expect(result!.dirLeft).toBe('left');
-  expect(result!.dirRight).toBe('right');
+  expect(result!.dirLeft).toBe("left");
+  expect(result!.dirRight).toBe("right");
 });
 
-test('Toggles is-activating class during swipe before commit', async ({ page }) => {
+test("Toggles is-activating class during swipe before commit", async ({
+  page,
+}) => {
   await loadPage(page);
   await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
     if (track) {
-      track.style.scrollSnapType = 'none';
+      track.style.scrollSnapType = "none";
       track.scrollLeft = track.scrollLeft - Math.round(track.clientWidth * 0.4);
     }
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-      return item?.classList.contains('is-activating');
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const item = document.querySelector(
+          ".SwipeableList-item",
+        ) as HTMLElement;
+        return item?.classList.contains("is-activating");
+      });
+    })
+    .toBe(true);
 
   const isRemoving = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    return item?.classList.contains('is-removing');
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    return item?.classList.contains("is-removing");
   });
   expect(isRemoving).toBe(false);
 
   // Restore scroll snap type
   await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-item .SwipeableList-track') as HTMLElement;
-    if (track) track.style.scrollSnapType = '';
+    const track = document.querySelector(
+      ".SwipeableList-item .SwipeableList-track",
+    ) as HTMLElement;
+    if (track) track.style.scrollSnapType = "";
   });
 });
 
-test('Triggers row collapse animation when swiped past commit threshold', async ({ page }) => {
+test("Triggers row collapse animation when swiped past commit threshold", async ({
+  page,
+}) => {
   await loadPage(page);
   await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
     if (track) {
-      track.style.scrollSnapType = 'none';
-      track.scrollLeft = track.scrollLeft - Math.round(track.clientWidth * 0.85);
+      track.style.scrollSnapType = "none";
+      track.scrollLeft =
+        track.scrollLeft - Math.round(track.clientWidth * 0.85);
     }
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-      return item?.classList.contains('is-removing');
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const item = document.querySelector(
+          ".SwipeableList-item",
+        ) as HTMLElement;
+        return item?.classList.contains("is-removing");
+      });
+    })
+    .toBe(true);
 });
 
-test('Does not drive the swipe with manual pointermove transform updates', async ({ page }) => {
+test("Does not drive the swipe with manual pointermove transform updates", async ({
+  page,
+}) => {
   await loadPage(page);
-  const content = page.locator('.SwipeableList-content').first();
+  const content = page.locator(".SwipeableList-content").first();
   const box = await content.boundingBox();
   expect(box).not.toBeNull();
-  
+
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.down();
   await page.mouse.move(box!.x + box!.width / 2 + 50, box!.y + box!.height / 2);
-  
-  const inlineTransform = await content.evaluate(el => el.style.transform || el.style.translate);
-  
+
+  const inlineTransform = await content.evaluate(
+    (el) => el.style.transform || el.style.translate,
+  );
+
   await page.mouse.up();
-  
+
   const isInit = await verifyInitialized(page);
   expect(isInit).toBe(true);
-  expect(inlineTransform).not.toContain('translate');
+  expect(inlineTransform).not.toContain("translate");
 });
 
-test('MutationObserver wires up dynamically added list items', async ({ page }) => {
+test("MutationObserver wires up dynamically added list items", async ({
+  page,
+}) => {
   await loadPage(page);
   await page.evaluate(() => {
-    const list = document.querySelector('.SwipeableList');
+    const list = document.querySelector(".SwipeableList");
     if (!list) return;
-    const newItem = document.createElement('li');
-    newItem.id = 'dynamic-item-test';
-    newItem.className = 'SwipeableList-item';
+    const newItem = document.createElement("li");
+    newItem.id = "dynamic-item-test";
+    newItem.className = "SwipeableList-item";
     newItem.innerHTML = `
       <div class="SwipeableList-track">
         <div class="SwipeableList-content">Dynamic Item</div>
@@ -358,31 +431,37 @@ test('MutationObserver wires up dynamically added list items', async ({ page }) 
     list.insertBefore(newItem, list.firstChild);
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const newItem = document.getElementById('dynamic-item-test');
-      return newItem?.classList.contains('is-initialized') ?? false;
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const newItem = document.getElementById("dynamic-item-test");
+        return newItem?.classList.contains("is-initialized") ?? false;
+      });
+    })
+    .toBe(true);
 });
 
-test('scroll-initial-target fallback scrolls track programmatically when CSS.supports is false', async ({ page }) => {
+test("scroll-initial-target fallback scrolls track programmatically when CSS.supports is false", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
-    (CSS as any).supports = function(property: string, value?: string) {
-      if (property === 'scroll-initial-target') return false;
-      return value === undefined ? (originalSupports as any)(property) : (originalSupports as any)(property, value);
+    (CSS as any).supports = function (property: string, value?: string) {
+      if (property === "scroll-initial-target") return false;
+      return value === undefined
+        ? (originalSupports as any)(property)
+        : (originalSupports as any)(property, value);
     };
   });
 
   await loadPage(page);
 
   const scrollResult = await page.evaluate(() => {
-    const track = document.querySelector('.SwipeableList-track');
+    const track = document.querySelector(".SwipeableList-track");
     if (!track) return null;
     return {
       scrollLeft: track.scrollLeft,
-      clientWidth: track.clientWidth
+      clientWidth: track.clientWidth,
     };
   });
 
@@ -392,26 +471,32 @@ test('scroll-initial-target fallback scrolls track programmatically when CSS.sup
   expect(scrollResult!.scrollLeft).toBe(scrollResult!.clientWidth);
 });
 
-test('ResizeObserver is attached to track when fallback is active', async ({ page }) => {
+test("ResizeObserver is attached to track when fallback is active", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
-    (CSS as any).supports = function(property: string, value?: string) {
-      if (property === 'scroll-initial-target') return false;
-      return value === undefined ? (originalSupports as any)(property) : (originalSupports as any)(property, value);
+    (CSS as any).supports = function (property: string, value?: string) {
+      if (property === "scroll-initial-target") return false;
+      return value === undefined
+        ? (originalSupports as any)(property)
+        : (originalSupports as any)(property, value);
     };
 
     window.__ro_spies = [];
     const OriginalResizeObserver = window.ResizeObserver;
-    window.ResizeObserver = class SpyResizeObserver extends OriginalResizeObserver {
+    window.ResizeObserver = class SpyResizeObserver extends (
+      OriginalResizeObserver
+    ) {
       constructor(callback: ResizeObserverCallback) {
         super(callback);
         const record = {
-          targets: [] as Element[]
+          targets: [] as Element[],
         };
         window.__ro_spies!.push(record);
-        
+
         const originalObserve = this.observe;
-        this.observe = function(target: Element) {
+        this.observe = function (target: Element) {
           record.targets.push(target);
           return originalObserve.call(this, target);
         };
@@ -423,8 +508,10 @@ test('ResizeObserver is attached to track when fallback is active', async ({ pag
 
   const hasTrackResizeObserver = await page.evaluate(() => {
     if (!window.__ro_spies) return false;
-    return window.__ro_spies.some(spy => {
-      return spy.targets.some((t: any) => t.classList?.contains('SwipeableList-track'));
+    return window.__ro_spies.some((spy) => {
+      return spy.targets.some((t: any) =>
+        t.classList?.contains("SwipeableList-track"),
+      );
     });
   });
 
@@ -433,26 +520,32 @@ test('ResizeObserver is attached to track when fallback is active', async ({ pag
   expect(hasTrackResizeObserver).toBe(true);
 });
 
-test('ResizeObserver is NOT attached to track when scroll-initial-target is supported', async ({ page }) => {
+test("ResizeObserver is NOT attached to track when scroll-initial-target is supported", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
-    (CSS as any).supports = function(property: string, value?: string) {
-      if (property === 'scroll-initial-target') return true;
-      return value === undefined ? (originalSupports as any)(property) : (originalSupports as any)(property, value);
+    (CSS as any).supports = function (property: string, value?: string) {
+      if (property === "scroll-initial-target") return true;
+      return value === undefined
+        ? (originalSupports as any)(property)
+        : (originalSupports as any)(property, value);
     };
 
     window.__ro_spies = [];
     const OriginalResizeObserver = window.ResizeObserver;
-    window.ResizeObserver = class SpyResizeObserver extends OriginalResizeObserver {
+    window.ResizeObserver = class SpyResizeObserver extends (
+      OriginalResizeObserver
+    ) {
       constructor(callback: ResizeObserverCallback) {
         super(callback);
         const record = {
-          targets: [] as Element[]
+          targets: [] as Element[],
         };
         window.__ro_spies!.push(record);
-        
+
         const originalObserve = this.observe;
-        this.observe = function(target: Element) {
+        this.observe = function (target: Element) {
           record.targets.push(target);
           return originalObserve.call(this, target);
         };
@@ -464,8 +557,10 @@ test('ResizeObserver is NOT attached to track when scroll-initial-target is supp
 
   const hasTrackResizeObserver = await page.evaluate(() => {
     if (!window.__ro_spies) return false;
-    return window.__ro_spies.some(spy => {
-      return spy.targets.some((t: any) => t.classList?.contains('SwipeableList-track'));
+    return window.__ro_spies.some((spy) => {
+      return spy.targets.some((t: any) =>
+        t.classList?.contains("SwipeableList-track"),
+      );
     });
   });
 
@@ -474,43 +569,53 @@ test('ResizeObserver is NOT attached to track when scroll-initial-target is supp
   expect(hasTrackResizeObserver).toBe(false);
 });
 
-test('Safari scroll-latching workaround defers item removal and sets inert', async ({ page }) => {
+test("Safari scroll-latching workaround defers item removal and sets inert", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     (window as any).GestureEvent = class GestureEvent {};
   });
 
   await loadPage(page);
   await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
     if (track) {
-      track.style.scrollSnapType = 'none';
+      track.style.scrollSnapType = "none";
       track.scrollLeft = track.scrollLeft - Math.round(width(track) * 0.85);
     }
-    function width(el: HTMLElement) { return el.clientWidth; }
+    function width(el: HTMLElement) {
+      return el.clientWidth;
+    }
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-      return item?.inert ?? false;
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const item = document.querySelector(
+          ".SwipeableList-item",
+        ) as HTMLElement;
+        return item?.inert ?? false;
+      });
+    })
+    .toBe(true);
 
   const isInDOM = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
     return !!item?.parentNode;
   });
   const hasInitClass = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    return item?.classList.contains('is-initialized') ?? false;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    return item?.classList.contains("is-initialized") ?? false;
   });
 
   expect(hasInitClass).toBe(true);
   expect(isInDOM).toBe(true);
 });
 
-test('Non-Safari browsers remove the item immediately after collapse', async ({ page }) => {
+test("Non-Safari browsers remove the item immediately after collapse", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     delete (window as any).GestureEvent;
   });
@@ -518,42 +623,54 @@ test('Non-Safari browsers remove the item immediately after collapse', async ({ 
   await loadPage(page);
 
   await page.evaluate(() => {
-    const list = document.querySelector('.SwipeableList');
+    const list = document.querySelector(".SwipeableList");
     const item = list?.firstElementChild as HTMLElement;
     if (item) {
-      item.id = 'collapsing-test-item';
-      const track = item.querySelector('.SwipeableList-track') as HTMLElement;
+      item.id = "collapsing-test-item";
+      const track = item.querySelector(".SwipeableList-track") as HTMLElement;
       if (track) {
-        track.style.scrollSnapType = 'none';
-        track.scrollLeft = track.scrollLeft - Math.round(track.clientWidth * 0.85);
+        track.style.scrollSnapType = "none";
+        track.scrollLeft =
+          track.scrollLeft - Math.round(track.clientWidth * 0.85);
       }
     }
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const list = document.querySelector('.SwipeableList');
-      const item = document.getElementById('collapsing-test-item');
-      return !item || !list?.contains(item);
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const list = document.querySelector(".SwipeableList");
+        const item = document.getElementById("collapsing-test-item");
+        return !item || !list?.contains(item);
+      });
+    })
+    .toBe(true);
 
   const hasInitClass = await page.evaluate(() => {
-    const initialItem = document.querySelector('.SwipeableList-item') as HTMLElement;
-    return initialItem ? initialItem.classList.contains('is-initialized') : false;
+    const initialItem = document.querySelector(
+      ".SwipeableList-item",
+    ) as HTMLElement;
+    return initialItem
+      ? initialItem.classList.contains("is-initialized")
+      : false;
   });
   expect(hasInitClass).toBe(true);
 });
 
-test('Uses WAAPI animations to collapse row height and translate content', async ({ page }) => {
+test("Uses WAAPI animations to collapse row height and translate content", async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     window.__animation_spies = [];
     const originalAnimate = Element.prototype.animate;
-    Element.prototype.animate = function(keyframes: Keyframe[] | PropertyIndexedKeyframes | any, options?: number | KeyframeAnimationOptions) {
+    Element.prototype.animate = function (
+      keyframes: Keyframe[] | PropertyIndexedKeyframes | any,
+      options?: number | KeyframeAnimationOptions,
+    ) {
       const record = {
         className: this.className,
         keyframes,
-        options
+        options,
       };
       window.__animation_spies!.push(record);
       return originalAnimate.call(this, keyframes, options);
@@ -562,62 +679,78 @@ test('Uses WAAPI animations to collapse row height and translate content', async
 
   await loadPage(page);
   await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
     if (track) {
-      track.style.scrollSnapType = 'none';
-      track.scrollLeft = track.scrollLeft - Math.round(track.clientWidth * 0.85);
+      track.style.scrollSnapType = "none";
+      track.scrollLeft =
+        track.scrollLeft - Math.round(track.clientWidth * 0.85);
     }
   });
 
-  await expect.poll(async () => {
-    return page.evaluate(() => {
-      const animations = window.__animation_spies || [];
-      const heightAnim = animations.find(a => 
-        a.className.includes('SwipeableList-item') &&
-        a.keyframes?.some((k: any) => k.height !== undefined)
-      );
-      const translateAnim = animations.find(a => 
-        a.className.includes('SwipeableList-content') &&
-        a.keyframes?.some((k: any) => k.translate !== undefined || k.transform?.includes('translate'))
-      );
-      return !!heightAnim && !!translateAnim;
-    });
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const animations = window.__animation_spies || [];
+        const heightAnim = animations.find(
+          (a) =>
+            a.className.includes("SwipeableList-item") &&
+            a.keyframes?.some((k: any) => k.height !== undefined),
+        );
+        const translateAnim = animations.find(
+          (a) =>
+            a.className.includes("SwipeableList-content") &&
+            a.keyframes?.some(
+              (k: any) =>
+                k.translate !== undefined || k.transform?.includes("translate"),
+            ),
+        );
+        return !!heightAnim && !!translateAnim;
+      });
+    })
+    .toBe(true);
 
   const isInit = await verifyInitialized(page);
   expect(isInit).toBe(true);
 });
 
-test('Projects focus affordance onto content element when track has focus', async ({ page }) => {
+test("Projects focus affordance onto content element when track has focus", async ({
+  page,
+}) => {
   await loadPage(page);
   const result = await page.evaluate(() => {
-    const item = document.querySelector('.SwipeableList-item') as HTMLElement;
-    const track = item?.querySelector('.SwipeableList-track') as HTMLElement;
-    const content = track?.querySelector('.SwipeableList-content') as HTMLElement;
+    const item = document.querySelector(".SwipeableList-item") as HTMLElement;
+    const track = item?.querySelector(".SwipeableList-track") as HTMLElement;
+    const content = track?.querySelector(
+      ".SwipeableList-content",
+    ) as HTMLElement;
     if (!track || !content) return null;
-    
-    const hadTabindex = track.hasAttribute('tabindex');
+
+    const hadTabindex = track.hasAttribute("tabindex");
     if (!hadTabindex) {
-      track.setAttribute('tabindex', '0');
+      track.setAttribute("tabindex", "0");
     }
-    
+
     track.focus();
     const styleFocused = window.getComputedStyle(content);
-    const outlineStyleFocused = styleFocused.outlineStyle || styleFocused.getPropertyValue('outline-style');
-    
+    const outlineStyleFocused =
+      styleFocused.outlineStyle ||
+      styleFocused.getPropertyValue("outline-style");
+
     track.blur();
     const styleBlurred = window.getComputedStyle(content);
-    const outlineStyleBlurred = styleBlurred.outlineStyle || styleBlurred.getPropertyValue('outline-style');
-    
+    const outlineStyleBlurred =
+      styleBlurred.outlineStyle ||
+      styleBlurred.getPropertyValue("outline-style");
+
     return {
       outlineStyleFocused,
       outlineStyleBlurred,
-      hasInitClass: item.classList.contains('is-initialized')
+      hasInitClass: item.classList.contains("is-initialized"),
     };
   });
 
   expect(result).not.toBeNull();
   expect(result!.hasInitClass).toBe(true);
-  expect(result!.outlineStyleFocused).not.toBe('none');
+  expect(result!.outlineStyleFocused).not.toBe("none");
 });

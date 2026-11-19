@@ -27,7 +27,7 @@ web-feature-ids:
 
 ```css
 .hero {
-  background-image: url('texture.png'), linear-gradient(to bottom, #fff, #eee);
+  background-image: url("texture.png"), linear-gradient(to bottom, #fff, #eee);
   background-blend-mode: soft-light;
 }
 ```
@@ -35,10 +35,11 @@ web-feature-ids:
 ### Gradients and `color-mix()`
 
 Use `in oklab` or `in oklch` to explicitly specify the interpolation color space for gradients or `color-mix()`.
+
 - Prefer `in oklab` by default for `color-mix()`, especially when mixing neutrals. Using `oklch` for neutrals provides no benefit, and due to a Chromium bug (565837690) low chroma oklch colors have powerless hue angles (`none`), which resolve to `0deg` (magenta-red) and cause an unintended reddish/pink tint shift when rendered. Cartesian `in oklab` scales `(a, b)` coordinates linearly toward `(0, 0)` without computing a polar hue angle, preserving the exact hue and preventing tint shifts.
 - `in oklab` stays in gamut more easily (assuming in-gamut endpoints) but can create washed out desaturated colors in the middle when interpolating between two opposing saturated hues.
 - `in oklch` preserves chroma better when interpolating gradients between two distinct saturated chromatic hues, but can more easily get out of device gamut, especially for bigger differences between colors. Avoid using `in oklch` for alpha transparency fades or mixing neutral colors.
-- *DON'T* use `in srgb` unless you have a specific reason to do so (e.g. you are building a color picker that needs to interpolate in srgb).
+- _DON'T_ use `in srgb` unless you have a specific reason to do so (e.g. you are building a color picker that needs to interpolate in srgb).
 
 #### Fallback
 
@@ -63,7 +64,11 @@ Then use like:
 
 ```css
 .card {
-  background: linear-gradient(to bottom var(--in-oklab), var(--accent-color), var(--darker));
+  background: linear-gradient(
+    to bottom var(--in-oklab),
+    var(--accent-color),
+    var(--darker)
+  );
 }
 ```
 
@@ -80,28 +85,40 @@ Examples below.
 Vertical stripes of `1em` width each:
 
 ```css
-background: linear-gradient(to right, var(--color-1) 50%, var(--color-2) 0) 0 / 2em;
+background: linear-gradient(to right, var(--color-1) 50%, var(--color-2) 0) 0 /
+  2em;
 ```
 
 Diagonal stripes of `1em` width each:
 
 ```css
-background: repeating-linear-gradient(-45deg, var(--color-1) 0 1em, var(--color-2) 0 2em);
+background: repeating-linear-gradient(
+  -45deg,
+  var(--color-1) 0 1em,
+  var(--color-2) 0 2em
+);
 ```
 
 Checkerboard pattern with `1em` squares:
 
 ```css
-background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%) 0 / 2em 2em;
+background: repeating-conic-gradient(var(--color-1) 0 25%, var(--color-2) 0 50%)
+  0 / 2em 2em;
 ```
 
 Polka dot with `.5em` radius dots spaced `2em` apart (horizontally/vertically — multiply by `sqrt(2)` for diagonal distance):
 
 ```css
 --distance: 2em;
---radius: .5em;
---polka: radial-gradient(circle, var(--color-1) var(--radius), transparent calc(var(--radius) + 1px));
-background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--color-2);
+--radius: 0.5em;
+--polka: radial-gradient(
+  circle,
+  var(--color-1) var(--radius),
+  transparent calc(var(--radius) + 1px)
+);
+background:
+  var(--polka) 0 0,
+  var(--polka) var(--distance) var(--distance) var(--color-2);
 background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
 ```
 
@@ -113,7 +130,8 @@ Simple pie chart:
   width: 60px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(var(--color-1) var(--p), transparent 0%) var(--color-2);
+  background: conic-gradient(var(--color-1) var(--p), transparent 0%)
+    var(--color-2);
 }
 ```
 

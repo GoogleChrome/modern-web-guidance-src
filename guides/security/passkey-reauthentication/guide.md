@@ -90,10 +90,13 @@ async function triggerButtonReauth() {
 
       if (verifyResponse.ok) {
         showTransactionSuccessUI();
-      } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
+      } else if (
+        verifyResponse.status === 404 &&
+        PublicKeyCredential.signalUnknownCredential
+      ) {
         await PublicKeyCredential.signalUnknownCredential({
           rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
-          credentialId: encodedCredential.id
+          credentialId: encodedCredential.id,
         });
       }
     }
@@ -119,7 +122,7 @@ Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is av
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-import 'webauthn-polyfills';
+import "webauthn-polyfills";
 ```
 
 Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
@@ -140,7 +143,7 @@ Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()`
 
 ```js
 // With a bundler (`npm install webauthn-polyfills`):
-import 'webauthn-polyfills';
+import "webauthn-polyfills";
 ```
 
 Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.

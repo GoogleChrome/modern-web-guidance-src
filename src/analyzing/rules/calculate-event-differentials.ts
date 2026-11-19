@@ -3,46 +3,49 @@ import {
   SyntaxKind,
   type CallExpression,
   type SourceFile,
-} from 'ts-morph';
+} from "ts-morph";
 import type {
   AnalyzerMatch,
   AnalyzerRule,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
-import { isProtectedByFeatureGuard, unwrapExpression } from '../scanners/ast-helpers.ts';
+} from "../schema.ts";
+import {
+  isProtectedByFeatureGuard,
+  unwrapExpression,
+} from "../scanners/ast-helpers.ts";
 
-export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = '77481d042afa';
+export const FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH = "77481d042afa";
 
 const DURATION_FEATURE_TOKENS = [
-  'Intl.DurationFormat',
-  'DurationFormat',
-  'Temporal.Duration',
-  'Temporal',
+  "Intl.DurationFormat",
+  "DurationFormat",
+  "Temporal.Duration",
+  "Temporal",
 ] as const;
 
 const DURATION_FUNCTION_NAME_REGEX =
   /^(?:format|pretty)Duration\b|^secondsTo(?:Hms|Time|Duration)|^msTo(?:Time|Duration)/i;
 
 const DURATION_UNIT_LABELS = new Set([
-  'h',
-  'hr',
-  'hrs',
-  'hour',
-  'hours',
-  'm',
-  'min',
-  'mins',
-  'minute',
-  'minutes',
-  's',
-  'sec',
-  'secs',
-  'second',
-  'seconds',
-  'd',
-  'day',
-  'days',
+  "h",
+  "hr",
+  "hrs",
+  "hour",
+  "hours",
+  "m",
+  "min",
+  "mins",
+  "minute",
+  "minutes",
+  "s",
+  "sec",
+  "secs",
+  "second",
+  "seconds",
+  "d",
+  "day",
+  "days",
 ]);
 
 /**
@@ -54,20 +57,20 @@ function isKnownDurationCall(callExpr: CallExpression): string | null {
 
   if (Node.isIdentifier(expr)) {
     const name = expr.getText();
-    if (name === 'humanizeDuration' || name === 'prettyMs') {
+    if (name === "humanizeDuration" || name === "prettyMs") {
       return `Call to ${name}(...) can be modernized with native Temporal.Duration and Intl.DurationFormat.`;
     }
   }
 
   if (Node.isPropertyAccessExpression(expr)) {
     const methodName = expr.getName();
-    if (methodName === 'humanize' || methodName === 'format') {
+    if (methodName === "humanize" || methodName === "format") {
       const caller = unwrapExpression(expr.getExpression());
       const callerText = caller.getText();
       // Must be explicitly chained from moment.duration or dayjs.duration
       if (
-        callerText.includes('moment.duration') ||
-        callerText.includes('dayjs.duration')
+        callerText.includes("moment.duration") ||
+        callerText.includes("dayjs.duration")
       ) {
         return `Method call .${methodName}() on duration object can be modernized with native Temporal.Duration and Intl.DurationFormat.`;
       }
@@ -89,12 +92,9 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     return false;
   }
 
-  let name = '';
-  if (
-    Node.isFunctionDeclaration(fnNode) ||
-    Node.isMethodDeclaration(fnNode)
-  ) {
-    name = fnNode.getName() ?? '';
+  let name = "";
+  if (Node.isFunctionDeclaration(fnNode) || Node.isMethodDeclaration(fnNode)) {
+    name = fnNode.getName() ?? "";
   } else {
     const parent = fnNode.getParent();
     if (parent && Node.isVariableDeclaration(parent)) {
@@ -102,7 +102,10 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
     }
   }
 
-  if (!DURATION_FUNCTION_NAME_REGEX.test(name) || fnNode.getText().includes('DurationFormat')) {
+  if (
+    !DURATION_FUNCTION_NAME_REGEX.test(name) ||
+    fnNode.getText().includes("DurationFormat")
+  ) {
     return false;
   }
 
@@ -145,7 +148,10 @@ function isCustomDurationFormatterFunction(fnNode: Node): boolean {
       }
     }
 
-    if (Node.isStringLiteral(child) || Node.isNoSubstitutionTemplateLiteral(child)) {
+    if (
+      Node.isStringLiteral(child) ||
+      Node.isNoSubstitutionTemplateLiteral(child)
+    ) {
       const text = child.getLiteralText().trim().toLowerCase();
       if (DURATION_UNIT_LABELS.has(text)) {
         hasUnitLabel = true;
@@ -164,19 +170,23 @@ function isTestBenchOrCliFile(ctx?: JsMatcherContext, text?: string): boolean {
   if (ctx?.filePath) {
     const filePathLower = ctx.filePath.toLowerCase();
     if (
-      filePathLower.includes('.test.') ||
-      filePathLower.includes('.spec.') ||
-      filePathLower.includes('__tests__') ||
-      filePathLower.includes('/test/') ||
-      filePathLower.includes('/tests/') ||
-      filePathLower.includes('/bench/') ||
-      filePathLower.includes('/benchmark/')
+      filePathLower.includes(".test.") ||
+      filePathLower.includes(".spec.") ||
+      filePathLower.includes("__tests__") ||
+      filePathLower.includes("/test/") ||
+      filePathLower.includes("/tests/") ||
+      filePathLower.includes("/bench/") ||
+      filePathLower.includes("/benchmark/")
     ) {
       return true;
     }
   }
   if (text) {
-    if (text.startsWith('#!') || text.includes("from 'chalk'") || text.includes('require("chalk")')) {
+    if (
+      text.startsWith("#!") ||
+      text.includes("from 'chalk'") ||
+      text.includes('require("chalk")')
+    ) {
       return true;
     }
   }
@@ -184,24 +194,27 @@ function isTestBenchOrCliFile(ctx?: JsMatcherContext, text?: string): boolean {
 }
 
 export const durationJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+  kind: "js",
   fastTokens: [
-    'humanizeDuration',
-    'prettyMs',
-    'moment.duration',
-    'dayjs.duration',
-    '.humanize(',
-    'formatDuration',
-    'prettyDuration',
-    'secondsToHms',
-    'secondsToTime',
-    'secondsToDuration',
-    'msToTime',
-    'msToDuration',
-    '86400',
-    '3600',
+    "humanizeDuration",
+    "prettyMs",
+    "moment.duration",
+    "dayjs.duration",
+    ".humanize(",
+    "formatDuration",
+    "prettyDuration",
+    "secondsToHms",
+    "secondsToTime",
+    "secondsToDuration",
+    "msToTime",
+    "msToDuration",
+    "86400",
+    "3600",
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (
+    sourceFile: SourceFile,
+    ctx: JsMatcherContext,
+  ): AnalyzerMatch[] => {
     const fullText = sourceFile.getFullText();
     if (isTestBenchOrCliFile(ctx, fullText)) {
       return [];
@@ -218,10 +231,13 @@ export const durationJsMatcher: JsRuleMatcher = {
               Node.isArrowFunction(node) ||
               Node.isMethodDeclaration(node)) &&
             isCustomDurationFormatterFunction(node)
-          ? 'Custom duration formatting function computing multi-unit breakdown can be replaced with native Temporal.Duration and Intl.DurationFormat.'
+          ? "Custom duration formatting function computing multi-unit breakdown can be replaced with native Temporal.Duration and Intl.DurationFormat."
           : null;
 
-      if (!message || isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)) {
+      if (
+        !message ||
+        isProtectedByFeatureGuard(node, DURATION_FEATURE_TOKENS)
+      ) {
         return;
       }
       const line = node.getStartLineNumber();
@@ -236,21 +252,21 @@ export const durationJsMatcher: JsRuleMatcher = {
 };
 
 export const formatHumanReadableDurationsJsRule: AnalyzerRule = {
-  id: 'format-human-readable-durations/js-duration-formatter',
-  guideId: 'calculate-event-differentials',
+  id: "format-human-readable-durations/js-duration-formatter",
+  guideId: "calculate-event-differentials",
   guideHash: FORMAT_HUMAN_READABLE_DURATIONS_GUIDE_HASH,
   summary:
-    'Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.',
+    "Custom duration formatting logic or libraries (humanizeDuration, prettyMs, moment.duration().humanize()) can be modernized with native Temporal.Duration and Intl.DurationFormat.",
   matcher: durationJsMatcher,
   verifierRubric: {
     keepWhen: [
-      'Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.',
-      'Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).',
-      'Implementing custom time duration formatters that manually divide milliseconds or seconds into hours, minutes, and seconds with unit labels.',
+      "Using third-party duration formatting packages (such as humanize-duration, pretty-ms, or moment-duration-format) to format time spans.",
+      "Calling duration methods like humanizeDuration(...), prettyMs(...), moment.duration(...).humanize(), or moment.duration(...).format(...).",
+      "Implementing custom time duration formatters that manually divide milliseconds or seconds into hours, minutes, and seconds with unit labels.",
     ],
     dropWhen: [
-      'Code already utilizing native Intl.DurationFormat or Temporal.Duration for formatted duration strings.',
-      'Guarded by runtime feature detection for Intl.DurationFormat or globalThis.Temporal.',
+      "Code already utilizing native Intl.DurationFormat or Temporal.Duration for formatted duration strings.",
+      "Guarded by runtime feature detection for Intl.DurationFormat or globalThis.Temporal.",
       'Formatting fixed calendar dates or timestamps (such as Intl.DateTimeFormat or moment(date).format("YYYY-MM-DD")) rather than elapsed durations.',
     ],
   },

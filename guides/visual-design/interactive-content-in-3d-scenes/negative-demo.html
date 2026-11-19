@@ -26,7 +26,7 @@
 <body>
     <h1>HTML-in-Canvas 3D Cube</h1>
     <p>This demo renders a rotating 3D cube with rich HTML content applied as a texture.</p>
-    
+
     <canvas id="gl-canvas">
         <div id="draw_element">
           <h2>Hello world!</h2>
@@ -34,7 +34,7 @@
           <img src="https://example.com/image.png">
         </div>
     </canvas>
-    
+
     <script>
         const canvas = document.querySelector('#gl-canvas');
         const gl = canvas.getContext('webgl2');
@@ -146,9 +146,9 @@
 
         function animate() {
             cubeRotation += 0.01;
-            
+
             gl.viewport(0, 0, canvas.width, canvas.height);
-            
+
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, draw_element);
 

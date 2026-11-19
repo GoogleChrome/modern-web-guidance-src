@@ -1,27 +1,37 @@
 /// <reference types="node" />
-import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const targetFile = process.env.TARGET_FILE || path.join(__dirname, 'demo.html');
+const targetFile = process.env.TARGET_FILE || path.join(__dirname, "demo.html");
 const targetDir = path.dirname(targetFile);
 const targetUrl = `http://localhost/${path.basename(targetFile)}`;
 
-const STACK_SEL = '.Stack, .stack, [data-stack], [class*="stack" i]:not([class*="view" i])';
+const STACK_SEL =
+  '.Stack, .stack, [data-stack], [class*="stack" i]:not([class*="view" i])';
 const VIEW_SEL =
   ':is(.Stack, .stack, [data-stack], [class*="stack" i]:not([class*="view" i])) > :is(.Stack-view, .stack-view, [data-view], [class*="stack-view" i], [class*="view" i], section, article)';
-const VIEW_CONTENT_SEL = '.Stack-viewContent, .stack-view-content, .view-content';
-const BACK_SEL = '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
+const VIEW_CONTENT_SEL =
+  ".Stack-viewContent, .stack-view-content, .view-content";
+const BACK_SEL =
+  '.icon-back, .back, [class*="back" i], button[aria-label*="Back" i]';
 
 test.beforeEach(async ({ page }) => {
-  await page.route('http://localhost/**', async (route) => {
+  await page.route("http://localhost/**", async (route) => {
     const reqUrl = new URL(route.request().url());
-    const relPath = decodeURIComponent(reqUrl.pathname).replace(/^\/+/, '');
-    let filePath = path.resolve(targetDir, relPath || path.basename(targetFile));
+    const relPath = decodeURIComponent(reqUrl.pathname).replace(/^\/+/, "");
+    let filePath = path.resolve(
+      targetDir,
+      relPath || path.basename(targetFile),
+    );
 
-    if (!filePath.startsWith(targetDir) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    if (
+      !filePath.startsWith(targetDir) ||
+      !fs.existsSync(filePath) ||
+      fs.statSync(filePath).isDirectory()
+    ) {
       // Support pathname-based routing (e.g. /menu, /view/1) by serving targetFile
       if (!path.extname(relPath)) {
         filePath = targetFile;
@@ -33,17 +43,17 @@ test.beforeEach(async ({ page }) => {
 
     const ext = path.extname(filePath).toLowerCase();
     const contentTypeMap: Record<string, string> = {
-      '.html': 'text/html; charset=utf-8',
-      '.js': 'text/javascript; charset=utf-8',
-      '.mjs': 'text/javascript; charset=utf-8',
-      '.css': 'text/css; charset=utf-8',
-      '.json': 'application/json; charset=utf-8',
-      '.svg': 'image/svg+xml',
+      ".html": "text/html; charset=utf-8",
+      ".js": "text/javascript; charset=utf-8",
+      ".mjs": "text/javascript; charset=utf-8",
+      ".css": "text/css; charset=utf-8",
+      ".json": "application/json; charset=utf-8",
+      ".svg": "image/svg+xml",
     };
 
     await route.fulfill({
       status: 200,
-      contentType: contentTypeMap[ext] || 'text/html; charset=utf-8',
+      contentType: contentTypeMap[ext] || "text/html; charset=utf-8",
       body: fs.readFileSync(filePath),
     });
   });
@@ -54,13 +64,19 @@ const MAIN_DRILL_LINK_SEL = `${VIEW_SEL}:not([inert]) main a[href]:not(.external
 const FALLBACK_DRILL_LINK_SEL = `${VIEW_SEL}:not([inert]) a[href]:not(nav a):not(header a):not(footer a):not(.external-item):not([href^="http"]):not([href^="mailto:"]):not([href="/order-online"])`;
 
 const getActiveDrillLink = async (page: any) => {
-  for (const sel of [ITEM_LINK_SEL, MAIN_DRILL_LINK_SEL, FALLBACK_DRILL_LINK_SEL]) {
+  for (const sel of [
+    ITEM_LINK_SEL,
+    MAIN_DRILL_LINK_SEL,
+    FALLBACK_DRILL_LINK_SEL,
+  ]) {
     const loc = page.locator(sel).first();
     if ((await loc.count()) > 0 && (await loc.isVisible())) {
       return loc;
     }
   }
-  return page.locator(`a.item, .item, main a[href], ${VIEW_SEL} a[href]`).first();
+  return page
+    .locator(`a.item, .item, main a[href], ${VIEW_SEL} a[href]`)
+    .first();
 };
 
 // Helper to click a link inside the currently active (non-inert) view
@@ -89,56 +105,58 @@ const clickBackButton = async (page: any) => {
 const getDeepLinkUrl = async (page: any): Promise<string> => {
   await page.goto(targetUrl);
   const link = await getActiveDrillLink(page);
-  const href = (await link.count()) > 0 ? await link.getAttribute('href') : null;
-  await page.goto('about:blank');
+  const href =
+    (await link.count()) > 0 ? await link.getAttribute("href") : null;
+  await page.goto("about:blank");
   if (href) {
-    if (href.startsWith('#')) return `${targetUrl}${href}`;
-    if (href.startsWith('/')) return `http://localhost${href}`;
+    if (href.startsWith("#")) return `${targetUrl}${href}`;
+    if (href.startsWith("/")) return `http://localhost${href}`;
   }
   return `${targetUrl}#/view/1`;
 };
 
-test.describe('Stack Drill Down', () => {
-
+test.describe("Stack Drill Down", () => {
   // --- Stack container and views ---
 
-  test('Stack container uses CSS scroll-snap mandatory', async ({ page }) => {
+  test("Stack container uses CSS scroll-snap mandatory", async ({ page }) => {
     await page.goto(targetUrl);
     const snapType = await page.evaluate((sel) => {
       const stack = document.querySelector(sel);
-      return stack ? window.getComputedStyle(stack).scrollSnapType : '';
+      return stack ? window.getComputedStyle(stack).scrollSnapType : "";
     }, STACK_SEL);
-    expect(snapType).toContain('mandatory');
+    expect(snapType).toContain("mandatory");
   });
 
-  test('Stack container has overflow-x auto or scroll', async ({ page }) => {
+  test("Stack container has overflow-x auto or scroll", async ({ page }) => {
     await page.goto(targetUrl);
     const overflowX = await page.evaluate((sel) => {
       const stack = document.querySelector(sel);
-      return stack ? window.getComputedStyle(stack).overflowX : '';
+      return stack ? window.getComputedStyle(stack).overflowX : "";
     }, STACK_SEL);
-    expect(['auto', 'scroll']).toContain(overflowX);
+    expect(["auto", "scroll"]).toContain(overflowX);
   });
 
-  test('Each view has width equal to stack width and is not absolutely positioned', async ({ page }) => {
+  test("Each view has width equal to stack width and is not absolutely positioned", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
     const viewPosition = await page.evaluate((sel) => {
       const view = document.querySelector(sel);
-      return view ? window.getComputedStyle(view).position : '';
+      return view ? window.getComputedStyle(view).position : "";
     }, VIEW_SEL);
-    expect(viewPosition).not.toBe('absolute');
+    expect(viewPosition).not.toBe("absolute");
   });
 
-  test('The stack uses overscroll-behavior-x: none', async ({ page }) => {
+  test("The stack uses overscroll-behavior-x: none", async ({ page }) => {
     await page.goto(targetUrl);
     const overscroll = await page.evaluate((sel) => {
       const stack = document.querySelector(sel);
-      return stack ? window.getComputedStyle(stack).overscrollBehaviorX : '';
+      return stack ? window.getComputedStyle(stack).overscrollBehaviorX : "";
     }, STACK_SEL);
-    expect(overscroll).toBe('none');
+    expect(overscroll).toBe("none");
   });
 
-  test('The stack uses 100dvh for height', async ({ page }) => {
+  test("The stack uses 100dvh for height", async ({ page }) => {
     await page.goto(targetUrl);
     const uses100dvh = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -148,20 +166,25 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
-      return Array.from(document.styleSheets).some(sheet => {
-        return findCSSRules(sheet).some(rule => {
-          if (rule instanceof CSSStyleRule && rule.selectorText.toLowerCase().includes('.stack')) {
-            const h = rule.style.height || '';
-            return h.replace(/\s+/g, '') === '100dvh';
+      return Array.from(document.styleSheets).some((sheet) => {
+        return findCSSRules(sheet).some((rule) => {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText.toLowerCase().includes(".stack")
+          ) {
+            const h = rule.style.height || "";
+            return h.replace(/\s+/g, "") === "100dvh";
           }
           return false;
         });
@@ -170,25 +193,25 @@ test.describe('Stack Drill Down', () => {
     expect(uses100dvh).toBe(true);
   });
 
-  test('Each view applies scroll-snap-align: start', async ({ page }) => {
+  test("Each view applies scroll-snap-align: start", async ({ page }) => {
     await page.goto(targetUrl);
     const align = await page.evaluate((sel) => {
       const view = document.querySelector(sel);
-      return view ? window.getComputedStyle(view).scrollSnapAlign : '';
+      return view ? window.getComputedStyle(view).scrollSnapAlign : "";
     }, VIEW_SEL);
-    expect(align).toContain('start');
+    expect(align).toContain("start");
   });
 
-  test('Each view applies scroll-snap-stop: always', async ({ page }) => {
+  test("Each view applies scroll-snap-stop: always", async ({ page }) => {
     await page.goto(targetUrl);
     const stop = await page.evaluate((sel) => {
       const view = document.querySelector(sel);
-      return view ? window.getComputedStyle(view).scrollSnapStop : '';
+      return view ? window.getComputedStyle(view).scrollSnapStop : "";
     }, VIEW_SEL);
-    expect(stop).toBe('always');
+    expect(stop).toBe("always");
   });
 
-  test('The visible horizontal scrollbar is hidden', async ({ page }) => {
+  test("The visible horizontal scrollbar is hidden", async ({ page }) => {
     await page.goto(targetUrl);
     const hasHiddenScrollbar = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -198,19 +221,24 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
-      return Array.from(document.styleSheets).some(sheet => {
-        return findCSSRules(sheet).some(rule => {
-          if (rule instanceof CSSStyleRule && rule.selectorText.includes('::-webkit-scrollbar')) {
-            return rule.style.display === 'none';
+      return Array.from(document.styleSheets).some((sheet) => {
+        return findCSSRules(sheet).some((rule) => {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText.includes("::-webkit-scrollbar")
+          ) {
+            return rule.style.display === "none";
           }
           return false;
         });
@@ -219,7 +247,9 @@ test.describe('Stack Drill Down', () => {
     expect(hasHiddenScrollbar).toBe(true);
   });
 
-  test('Parallax transform/animation is applied to nested inner element and NOT directly to the snap target', async ({ page }) => {
+  test("Parallax transform/animation is applied to nested inner element and NOT directly to the snap target", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
     const validParallax = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -229,12 +259,14 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
@@ -244,10 +276,22 @@ test.describe('Stack Drill Down', () => {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSStyleRule) {
             const sel = rule.selectorText.toLowerCase();
-            if (sel === '.stack-view' && (rule.style.transform || rule.style.animation || rule.style.transition)) {
+            if (
+              sel === ".stack-view" &&
+              (rule.style.transform ||
+                rule.style.animation ||
+                rule.style.transition)
+            ) {
               bad = true;
             }
-            if ((sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) && (rule.style.transform || rule.style.animation || rule.style.animationName)) {
+            if (
+              (sel.includes(".stack-viewcontent") ||
+                sel.includes(".stack-view-content") ||
+                sel.includes(".view-content")) &&
+              (rule.style.transform ||
+                rule.style.animation ||
+                rule.style.animationName)
+            ) {
               good = true;
             }
           }
@@ -260,7 +304,9 @@ test.describe('Stack Drill Down', () => {
 
   // --- Parallax / scroll-driven animation ---
 
-  test('The scroll-driven parallax effect is wrapped in @supports (animation-timeline: view())', async ({ page }) => {
+  test("The scroll-driven parallax effect is wrapped in @supports (animation-timeline: view())", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
     const supportsTimeline = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -270,12 +316,14 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
@@ -283,7 +331,10 @@ test.describe('Stack Drill Down', () => {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSSupportsRule) {
             const cond = rule.conditionText;
-            if (cond.includes('animation-timeline') || cond.includes('view()')) {
+            if (
+              cond.includes("animation-timeline") ||
+              cond.includes("view()")
+            ) {
               return true;
             }
           }
@@ -294,7 +345,9 @@ test.describe('Stack Drill Down', () => {
     expect(supportsTimeline).toBe(true);
   });
 
-  test('Parallax animation uses animation-timeline: view(inline) and animation-range confined to exit phase', async ({ page }) => {
+  test("Parallax animation uses animation-timeline: view(inline) and animation-range confined to exit phase", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
     const hasTimelineAndRange = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -304,12 +357,14 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
@@ -317,10 +372,14 @@ test.describe('Stack Drill Down', () => {
         for (const rule of findCSSRules(sheet)) {
           if (rule instanceof CSSStyleRule) {
             const sel = rule.selectorText.toLowerCase();
-            if (sel.includes('.stack-viewcontent') || sel.includes('.stack-view-content') || sel.includes('.view-content')) {
-              const timeline = (rule.style as any).animationTimeline || '';
-              const range = (rule.style as any).animationRange || '';
-              if (timeline.includes('view(inline)') && range.includes('exit')) {
+            if (
+              sel.includes(".stack-viewcontent") ||
+              sel.includes(".stack-view-content") ||
+              sel.includes(".view-content")
+            ) {
+              const timeline = (rule.style as any).animationTimeline || "";
+              const range = (rule.style as any).animationRange || "";
+              if (timeline.includes("view(inline)") && range.includes("exit")) {
                 return true;
               }
             }
@@ -332,41 +391,64 @@ test.describe('Stack Drill Down', () => {
     expect(hasTimelineAndRange).toBe(true);
   });
 
-  test('Drop-shadow is applied to drill-down views but NOT to the root view', async ({ page }) => {
+  test("Drop-shadow is applied to drill-down views but NOT to the root view", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    const rootShadow = await page.evaluate(({ viewSel, contentSel }) => {
-      const view = document.querySelector(viewSel);
-      if (!view) return 'none';
-      const target = view.querySelector(contentSel) || view;
-      return window.getComputedStyle(target).boxShadow;
-    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
-    
+    const rootShadow = await page.evaluate(
+      ({ viewSel, contentSel }) => {
+        const view = document.querySelector(viewSel);
+        if (!view) return "none";
+        const target = view.querySelector(contentSel) || view;
+        return window.getComputedStyle(target).boxShadow;
+      },
+      { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL },
+    );
+
     // Drill down to get a drill down view
     await clickActiveLink(page);
-    await page.waitForFunction(({ viewSel, contentSel }) => {
-      const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return false;
-      const target = views[1].querySelector(contentSel) || views[1];
-      const shadow = window.getComputedStyle(target).boxShadow;
-      return shadow !== 'none' && !shadow.includes('rgba(0, 0, 0, 0)') && !shadow.includes('0px 0px 0px');
-    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
-    
-    const drillDownShadow = await page.evaluate(({ viewSel, contentSel }) => {
-      const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return 'none';
-      const target = views[1].querySelector(contentSel) || views[1];
-      return window.getComputedStyle(target).boxShadow;
-    }, { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL });
+    await page.waitForFunction(
+      ({ viewSel, contentSel }) => {
+        const views = document.querySelectorAll(viewSel);
+        if (views.length < 2) return false;
+        const target = views[1].querySelector(contentSel) || views[1];
+        const shadow = window.getComputedStyle(target).boxShadow;
+        return (
+          shadow !== "none" &&
+          !shadow.includes("rgba(0, 0, 0, 0)") &&
+          !shadow.includes("0px 0px 0px")
+        );
+      },
+      { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL },
+    );
 
-    const rootHasNoShadow = rootShadow === 'none' || rootShadow.includes('rgba(0, 0, 0, 0)') || rootShadow.includes('0px 0px 0px');
-    const drillDownHasShadow = drillDownShadow !== 'none' && !drillDownShadow.includes('rgba(0, 0, 0, 0)') && !drillDownShadow.includes('0px 0px 0px');
-    
+    const drillDownShadow = await page.evaluate(
+      ({ viewSel, contentSel }) => {
+        const views = document.querySelectorAll(viewSel);
+        if (views.length < 2) return "none";
+        const target = views[1].querySelector(contentSel) || views[1];
+        return window.getComputedStyle(target).boxShadow;
+      },
+      { viewSel: VIEW_SEL, contentSel: VIEW_CONTENT_SEL },
+    );
+
+    const rootHasNoShadow =
+      rootShadow === "none" ||
+      rootShadow.includes("rgba(0, 0, 0, 0)") ||
+      rootShadow.includes("0px 0px 0px");
+    const drillDownHasShadow =
+      drillDownShadow !== "none" &&
+      !drillDownShadow.includes("rgba(0, 0, 0, 0)") &&
+      !drillDownShadow.includes("0px 0px 0px");
+
     expect(rootHasNoShadow && drillDownHasShadow).toBe(true);
   });
 
   // --- Reduced motion ---
 
-  test('scroll-behavior: smooth on the stack is declared only inside prefers-reduced-motion: no-preference', async ({ page }) => {
+  test("scroll-behavior: smooth on the stack is declared only inside prefers-reduced-motion: no-preference", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
     const hasSmoothScrollOnlyInMedia = await page.evaluate(() => {
       const findCSSRules = (sheet: CSSStyleSheet) => {
@@ -376,12 +458,14 @@ test.describe('Stack Drill Down', () => {
           for (let i = 0; i < ruleList.length; i++) {
             const rule = ruleList[i];
             rules.push(rule);
-            if ('cssRules' in rule) {
+            if ("cssRules" in rule) {
               traverse((rule as any).cssRules);
             }
           }
         };
-        try { traverse(sheet.cssRules); } catch (e) {}
+        try {
+          traverse(sheet.cssRules);
+        } catch (e) {}
         return rules;
       };
 
@@ -390,12 +474,20 @@ test.describe('Stack Drill Down', () => {
 
       for (const sheet of Array.from(document.styleSheets)) {
         for (const rule of findCSSRules(sheet)) {
-          if (rule instanceof CSSStyleRule && rule.selectorText.toLowerCase().includes('.stack')) {
-            if (rule.style.scrollBehavior === 'smooth') {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText.toLowerCase().includes(".stack")
+          ) {
+            if (rule.style.scrollBehavior === "smooth") {
               let isMedia = false;
               let currentParent = rule.parentRule;
               while (currentParent) {
-                if (currentParent instanceof CSSMediaRule && currentParent.conditionText.includes('prefers-reduced-motion: no-preference')) {
+                if (
+                  currentParent instanceof CSSMediaRule &&
+                  currentParent.conditionText.includes(
+                    "prefers-reduced-motion: no-preference",
+                  )
+                ) {
                   isMedia = true;
                   break;
                 }
@@ -415,432 +507,551 @@ test.describe('Stack Drill Down', () => {
     expect(hasSmoothScrollOnlyInMedia).toBe(true);
   });
 
-  test('Programmatic scrolls are performed and do not use hardcoded smooth behavior', async ({ page }) => {
+  test("Programmatic scrolls are performed and do not use hardcoded smooth behavior", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__scrollCalls = [];
       const originalScrollTo = Element.prototype.scrollTo;
       const originalScrollBy = Element.prototype.scrollBy;
-      Element.prototype.scrollTo = function(this: any) {
+      Element.prototype.scrollTo = function (this: any) {
         const options = arguments[0];
-        (window as any).__scrollCalls.push({ method: 'scrollTo', options });
+        (window as any).__scrollCalls.push({ method: "scrollTo", options });
         return originalScrollTo.apply(this, arguments as any);
       };
-      Element.prototype.scrollBy = function(this: any) {
+      Element.prototype.scrollBy = function (this: any) {
         const options = arguments[0];
-        (window as any).__scrollCalls.push({ method: 'scrollBy', options });
+        (window as any).__scrollCalls.push({ method: "scrollBy", options });
         return originalScrollBy.apply(this, arguments as any);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     // Drill down to trigger programmatic scroll
     await clickActiveLink(page);
-    await page.waitForFunction(() => ((window as any).__scrollCalls || []).length > 0);
-    
+    await page.waitForFunction(
+      () => ((window as any).__scrollCalls || []).length > 0,
+    );
+
     const scrollStatus = await page.evaluate(() => {
       const calls = (window as any).__scrollCalls || [];
       const hasCalls = calls.length > 0;
-      const hasSmooth = calls.some((c: any) => c.options?.behavior === 'smooth');
+      const hasSmooth = calls.some(
+        (c: any) => c.options?.behavior === "smooth",
+      );
       return { hasCalls, hasSmooth };
     });
-    
+
     expect(scrollStatus.hasCalls && !scrollStatus.hasSmooth).toBe(true);
   });
 
   // --- Active-view-change detection ---
 
-  test('Active-view-change detection uses scrollsnapchange event on the stack', async ({ page }) => {
+  test("Active-view-change detection uses scrollsnapchange event on the stack", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     // Drill down first
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
-    const result = await page.evaluate(({ stackSel, viewSel }) => {
-      const stack = document.querySelector(stackSel);
-      const views = document.querySelectorAll(viewSel);
-      if (!stack || views.length < 2) return { beforeInert: false, afterNotInert: false };
-      
-      const firstView = views[0];
-      const beforeInert = firstView.hasAttribute('inert');
-      
-      // Dispatch scrollsnapchange to go back to the first view
-      const event = new Event('scrollsnapchange');
-      Object.defineProperty(event, 'snapTargetInline', { value: firstView, writable: true });
-      stack.dispatchEvent(event);
-      
-      const afterNotInert = !firstView.hasAttribute('inert');
-      return { beforeInert, afterNotInert };
-    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
+    const result = await page.evaluate(
+      ({ stackSel, viewSel }) => {
+        const stack = document.querySelector(stackSel);
+        const views = document.querySelectorAll(viewSel);
+        if (!stack || views.length < 2)
+          return { beforeInert: false, afterNotInert: false };
+
+        const firstView = views[0];
+        const beforeInert = firstView.hasAttribute("inert");
+
+        // Dispatch scrollsnapchange to go back to the first view
+        const event = new Event("scrollsnapchange");
+        Object.defineProperty(event, "snapTargetInline", {
+          value: firstView,
+          writable: true,
+        });
+        stack.dispatchEvent(event);
+
+        const afterNotInert = !firstView.hasAttribute("inert");
+        return { beforeInert, afterNotInert };
+      },
+      { stackSel: STACK_SEL, viewSel: VIEW_SEL },
+    );
+
     expect(result.beforeInert && result.afterNotInert).toBe(true);
   });
 
-  test('An IntersectionObserver fallback is provided for browsers without scrollsnapchange', async ({ page }) => {
+  test("An IntersectionObserver fallback is provided for browsers without scrollsnapchange", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       // Delete scrollsnapchange support
       delete (HTMLElement.prototype as any).onscrollsnapchange;
-      
+
       (window as any).__intersectionObserverCalls = [];
       const originalObserver = window.IntersectionObserver;
-      (window as any).IntersectionObserver = function(callback: any, options: any) {
+      (window as any).IntersectionObserver = function (
+        callback: any,
+        options: any,
+      ) {
         (window as any).__intersectionObserverCalls.push({ options });
         return new originalObserver(callback, options);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     const observerConfig = await page.evaluate((stackSel) => {
       const calls = (window as any).__intersectionObserverCalls || [];
       const stack = document.querySelector(stackSel);
-      const matched = calls.find((c: any) => c.options?.root === stack && c.options?.threshold === 1);
+      const matched = calls.find(
+        (c: any) => c.options?.root === stack && c.options?.threshold === 1,
+      );
       return !!matched;
     }, STACK_SEL);
-    
+
     expect(observerConfig).toBe(true);
   });
 
   // --- Inert and focus management ---
 
-  test('Every view except the currently-active one carries the inert attribute', async ({ page }) => {
+  test("Every view except the currently-active one carries the inert attribute", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     // Initially at root
     const rootInertState = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
       if (views.length !== 1) return null;
-      return views[0].hasAttribute('inert');
+      return views[0].hasAttribute("inert");
     }, VIEW_SEL);
-    
+
     // Drill down
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const drillInertStates = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
       if (views.length < 2) return null;
-      return Array.from(views).map(v => v.hasAttribute('inert'));
+      return Array.from(views).map((v) => v.hasAttribute("inert"));
     }, VIEW_SEL);
 
-    expect(rootInertState === false && drillInertStates !== null && drillInertStates[0] === true && drillInertStates[1] === false).toBe(true);
+    expect(
+      rootInertState === false &&
+        drillInertStates !== null &&
+        drillInertStates[0] === true &&
+        drillInertStates[1] === false,
+    ).toBe(true);
   });
 
-  test('Focus is moved to the back button of a freshly-pushed drill-down view', async ({ page }) => {
+  test("Focus is moved to the back button of a freshly-pushed drill-down view", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     // Click first link to drill down
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const focusOnBack = await page.evaluate((backSel) => {
       const active = document.activeElement;
       if (!active) return false;
       return active.matches(backSel);
     }, BACK_SEL);
-    
+
     expect(focusOnBack).toBe(true);
   });
 
-  test('Focus is restored to the link originally clicked when navigating back', async ({ page }) => {
+  test("Focus is restored to the link originally clicked when navigating back", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     // Click first link to drill down
     const firstLink = await getActiveDrillLink(page);
-    const firstLinkText = ((await firstLink.textContent()) || '').trim();
-    
+    const firstLinkText = ((await firstLink.textContent()) || "").trim();
+
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     // Now click back
     await clickBackButton(page);
-    
+
     // Wait for back transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 1 && !views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const focusOnOriginalLink = await page.evaluate((expectedText) => {
       const active = document.activeElement;
-      return active ? (active.textContent || '').trim() === expectedText : false;
+      return active
+        ? (active.textContent || "").trim() === expectedText
+        : false;
     }, firstLinkText);
-    
+
     expect(focusOnOriginalLink).toBe(true);
   });
 
-  test('Calls to focus inside the stack pass preventScroll: true', async ({ page }) => {
+  test("Calls to focus inside the stack pass preventScroll: true", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__focusCalls = [];
       const originalFocus = HTMLElement.prototype.focus;
-      HTMLElement.prototype.focus = function(options?: FocusOptions) {
+      HTMLElement.prototype.focus = function (options?: FocusOptions) {
         (window as any).__focusCalls.push({
           tagName: this.tagName,
-          preventScroll: options?.preventScroll
+          preventScroll: options?.preventScroll,
         });
         return originalFocus.call(this, options);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     // Click link to drill down
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const focusPreventScroll = await page.evaluate(() => {
       const calls = (window as any).__focusCalls || [];
       if (calls.length === 0) return false;
       return calls.every((c: any) => c.preventScroll === true);
     });
-    
+
     expect(focusPreventScroll).toBe(true);
   });
 
   // --- History / URL integration ---
 
-  test('Drilling down calls history.pushState with depth tracking', async ({ page }) => {
+  test("Drilling down calls history.pushState with depth tracking", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__pushStateCalls = [];
       const originalPush = history.pushState;
-      history.pushState = function(state: any, title: string, url?: string | null) {
+      history.pushState = function (
+        state: any,
+        title: string,
+        url?: string | null,
+      ) {
         (window as any).__pushStateCalls.push({ state, url });
         return originalPush.call(this, state, title, url);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     await clickActiveLink(page);
-    await page.waitForFunction(() => ((window as any).__pushStateCalls || []).length > 0);
-    
+    await page.waitForFunction(
+      () => ((window as any).__pushStateCalls || []).length > 0,
+    );
+
     const pushStateCalled = await page.evaluate(() => {
       const calls = (window as any).__pushStateCalls || [];
       if (calls.length === 0) return false;
       const firstCall = calls[0];
-      return typeof firstCall.state?.depth === 'number';
+      return typeof firstCall.state?.depth === "number";
     });
-    
+
     expect(pushStateCalled).toBe(true);
   });
 
-  test('A popstate listener on window updates the visible view in response to back navigation', async ({ page }) => {
+  test("A popstate listener on window updates the visible view in response to back navigation", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const initiallyAtDrillDown = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
-      return views.length === 2 && !views[1].hasAttribute('inert');
+      return views.length === 2 && !views[1].hasAttribute("inert");
     }, VIEW_SEL);
-    
+
     await page.goBack();
     // Wait for back transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 1 && !views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const returnedToRoot = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
-      return views.length >= 1 && !views[0].hasAttribute('inert');
+      return views.length >= 1 && !views[0].hasAttribute("inert");
     }, VIEW_SEL);
-    
+
     expect(initiallyAtDrillDown && returnedToRoot).toBe(true);
   });
 
-  test('Reconciles history via history.go when a manual scroll changes active view depth', async ({ page }) => {
+  test("Reconciles history via history.go when a manual scroll changes active view depth", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__goCalls = [];
       const originalGo = history.go;
-      history.go = function(delta?: number) {
+      history.go = function (delta?: number) {
         (window as any).__goCalls.push(delta);
         return originalGo.call(this, delta);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     // Drill down first
     await clickActiveLink(page);
     // Wait for layout and transition to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
-    const goCalled = await page.evaluate(({ stackSel, viewSel }) => {
-      const stack = document.querySelector(stackSel);
-      const views = document.querySelectorAll(viewSel);
-      if (!stack || views.length < 2) return false;
-      
-      const event = new Event('scrollsnapchange');
-      Object.defineProperty(event, 'snapTargetInline', { value: views[0], writable: true });
-      stack.dispatchEvent(event);
-      
-      const calls = (window as any).__goCalls || [];
-      return calls.includes(-1);
-    }, { stackSel: STACK_SEL, viewSel: VIEW_SEL });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
+    const goCalled = await page.evaluate(
+      ({ stackSel, viewSel }) => {
+        const stack = document.querySelector(stackSel);
+        const views = document.querySelectorAll(viewSel);
+        if (!stack || views.length < 2) return false;
+
+        const event = new Event("scrollsnapchange");
+        Object.defineProperty(event, "snapTargetInline", {
+          value: views[0],
+          writable: true,
+        });
+        stack.dispatchEvent(event);
+
+        const calls = (window as any).__goCalls || [];
+        return calls.includes(-1);
+      },
+      { stackSel: STACK_SEL, viewSel: VIEW_SEL },
+    );
+
     expect(goCalled).toBe(true);
   });
 
-  test('Deep links are handled on initial load and depth-0 is seeded with replaceState', async ({ page }) => {
+  test("Deep links are handled on initial load and depth-0 is seeded with replaceState", async ({
+    page,
+  }) => {
     const deepLinkUrl = await getDeepLinkUrl(page);
 
     await page.addInitScript(() => {
       (window as any).__replaceCalls = [];
       const originalReplace = history.replaceState;
-      history.replaceState = function(state: any, title: string, url?: string | null) {
+      history.replaceState = function (
+        state: any,
+        title: string,
+        url?: string | null,
+      ) {
         (window as any).__replaceCalls.push({ state, url });
         return originalReplace.call(this, state, title, url);
       };
     });
-    
+
     await page.goto(deepLinkUrl);
-    await page.waitForFunction(() => ((window as any).__replaceCalls || []).some((c: any) => c.state?.depth === 0));
-    
+    await page.waitForFunction(() =>
+      ((window as any).__replaceCalls || []).some(
+        (c: any) => c.state?.depth === 0,
+      ),
+    );
+
     const deepLinkHandled = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
       const onlyOneView = views.length === 1;
-      
+
       const calls = (window as any).__replaceCalls || [];
       const seededDepth0 = calls.some((c: any) => c.state?.depth === 0);
-      
+
       return onlyOneView && seededDepth0;
     }, VIEW_SEL);
-    
+
     expect(deepLinkHandled).toBe(true);
   });
 
-  test('Synthesizes a root entry when Back is clicked from a deep-linked entry with no in-app history', async ({ page }) => {
+  test("Synthesizes a root entry when Back is clicked from a deep-linked entry with no in-app history", async ({
+    page,
+  }) => {
     const deepLinkUrl = await getDeepLinkUrl(page);
     await page.goto(deepLinkUrl);
     await page.waitForSelector(BACK_SEL);
-    
+
     await clickBackButton(page);
     // Wait for synthesized view to settle
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && !views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const synthesized = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
       const hasMultipleViews = views.length >= 2;
-      const rootVisible = !views[0].hasAttribute('inert');
+      const rootVisible = !views[0].hasAttribute("inert");
       return hasMultipleViews && rootVisible;
     }, VIEW_SEL);
-    
+
     expect(synthesized).toBe(true);
   });
 
   // --- Click handling ---
 
-  test('Drill-down triggers are real anchor elements with href attributes', async ({ page }) => {
+  test("Drill-down triggers are real anchor elements with href attributes", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     const realAnchors = await page.evaluate((viewSel) => {
-      const items = document.querySelectorAll('.item');
+      const items = document.querySelectorAll(".item");
       if (items.length > 0) {
-        return Array.from(items).every(item => item.tagName === 'A' && item.hasAttribute('href'));
+        return Array.from(items).every(
+          (item) => item.tagName === "A" && item.hasAttribute("href"),
+        );
       }
       const viewAnchors = document.querySelectorAll(`${viewSel} a[href]`);
       return viewAnchors.length > 0;
     }, VIEW_SEL);
-    
+
     expect(realAnchors).toBe(true);
   });
 
-  test('Click handler preserves modifier keys and middle click behavior', async ({ page }) => {
+  test("Click handler preserves modifier keys and middle click behavior", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__preventDefaultCalled = false;
       const originalPreventDefault = Event.prototype.preventDefault;
-      Event.prototype.preventDefault = function() {
+      Event.prototype.preventDefault = function () {
         (window as any).__preventDefaultCalled = true;
         return originalPreventDefault.call(this);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     const link = await getActiveDrillLink(page);
     if (await link.isVisible()) {
-      await link.click({ modifiers: ['Shift'], force: true });
-      await page.evaluate(() => new Promise(r => requestAnimationFrame(r)));
+      await link.click({ modifiers: ["Shift"], force: true });
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)));
     }
-    
+
     const preventDefaultPreserved = await page.evaluate(() => {
       return (window as any).__preventDefaultCalled === false;
     });
-    
+
     const isAnchor = await page.evaluate((viewSel) => {
-      const item = document.querySelector('.item');
-      if (item) return item.tagName === 'A';
+      const item = document.querySelector(".item");
+      if (item) return item.tagName === "A";
       return document.querySelectorAll(`${viewSel} a[href]`).length > 0;
     }, VIEW_SEL);
-    
+
     expect(isAnchor && preventDefaultPreserved).toBe(true);
   });
 
-  test('Clicks on external links do not trigger drill-down or call preventDefault', async ({ page }) => {
+  test("Clicks on external links do not trigger drill-down or call preventDefault", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__preventDefaultCalled = false;
       const originalPreventDefault = Event.prototype.preventDefault;
-      Event.prototype.preventDefault = function() {
+      Event.prototype.preventDefault = function () {
         (window as any).__preventDefaultCalled = true;
         return originalPreventDefault.call(this);
       };
 
       // Prevent actual navigation to keep context, using raw preventDefault
-      window.addEventListener('click', (e) => {
-        const link = (e.target as HTMLElement).closest('a');
-        if (link && link.classList.contains('external-item')) {
-          originalPreventDefault.call(e);
-        }
-      }, { capture: true });
+      window.addEventListener(
+        "click",
+        (e) => {
+          const link = (e.target as HTMLElement).closest("a");
+          if (link && link.classList.contains("external-item")) {
+            originalPreventDefault.call(e);
+          }
+        },
+        { capture: true },
+      );
     });
-    
+
     await page.goto(targetUrl);
-    
+
     await page.evaluate((viewSel) => {
       const firstView = document.querySelector(viewSel);
       if (firstView) {
-        const externalLink = document.createElement('a');
-        externalLink.className = 'external-item';
-        externalLink.href = 'https://example.com/external';
-        externalLink.textContent = 'External Link';
+        const externalLink = document.createElement("a");
+        externalLink.className = "external-item";
+        externalLink.href = "https://example.com/external";
+        externalLink.textContent = "External Link";
         firstView.appendChild(externalLink);
       }
     }, VIEW_SEL);
-    
-    const link = page.locator('.external-item');
+
+    const link = page.locator(".external-item");
     if (await link.isVisible()) {
       try {
         await link.click({ timeout: 1000, force: true });
@@ -848,14 +1059,16 @@ test.describe('Stack Drill Down', () => {
         // ignore navigation timeout
       }
     }
-    
+
     const preventDefaultNotCalled = await page.evaluate(() => {
       return (window as any).__preventDefaultCalled === false;
     });
-    
+
     const isScrollSnap = await page.evaluate((stackSel) => {
       const stack = document.querySelector(stackSel);
-      return stack ? window.getComputedStyle(stack).scrollSnapType !== 'none' : false;
+      return stack
+        ? window.getComputedStyle(stack).scrollSnapType !== "none"
+        : false;
     }, STACK_SEL);
 
     expect(preventDefaultNotCalled && isScrollSnap).toBe(true);
@@ -863,160 +1076,221 @@ test.describe('Stack Drill Down', () => {
 
   // --- Back button ---
 
-  test('Drill-down views have an explicit back button, but root view does not', async ({ page }) => {
+  test("Drill-down views have an explicit back button, but root view does not", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
-    const rootHasBack = await page.evaluate(({ viewSel, backSel }) => {
-      const root = document.querySelector(viewSel);
-      if (!root) return false;
-      const back = root.querySelector(backSel);
-      return !!back;
-    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
-    
+
+    const rootHasBack = await page.evaluate(
+      ({ viewSel, backSel }) => {
+        const root = document.querySelector(viewSel);
+        if (!root) return false;
+        const back = root.querySelector(backSel);
+        return !!back;
+      },
+      { viewSel: VIEW_SEL, backSel: BACK_SEL },
+    );
+
     await clickActiveLink(page);
-    await page.waitForFunction((sel: string) => document.querySelectorAll(sel).length >= 2, VIEW_SEL);
-    
-    const drillDownHasBack = await page.evaluate(({ viewSel, backSel }) => {
-      const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return false;
-      const back = views[1].querySelector(backSel);
-      return !!back;
-    }, { viewSel: VIEW_SEL, backSel: BACK_SEL });
-    
+    await page.waitForFunction(
+      (sel: string) => document.querySelectorAll(sel).length >= 2,
+      VIEW_SEL,
+    );
+
+    const drillDownHasBack = await page.evaluate(
+      ({ viewSel, backSel }) => {
+        const views = document.querySelectorAll(viewSel);
+        if (views.length < 2) return false;
+        const back = views[1].querySelector(backSel);
+        return !!back;
+      },
+      { viewSel: VIEW_SEL, backSel: BACK_SEL },
+    );
+
     expect(!rootHasBack && drillDownHasBack).toBe(true);
   });
 
   // --- Scroll behavior selection on popstate ---
 
-  test('Scroll behavior on popstate is correctly selected based on transition type', async ({ page }) => {
+  test("Scroll behavior on popstate is correctly selected based on transition type", async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__scrollCalls = [];
       const originalScrollTo = Element.prototype.scrollTo;
-      Element.prototype.scrollTo = function(this: any) {
+      Element.prototype.scrollTo = function (this: any) {
         const options = arguments[0];
         (window as any).__scrollCalls.push({ options });
         return originalScrollTo.apply(this, arguments as any);
       };
     });
-    
+
     await page.goto(targetUrl);
-    
+
     await clickActiveLink(page);
     // Wait for layout and transition to settle (first view becomes inert)
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
 
     // Reset captured scroll calls so only the popstate navigation calls are inspected
     await page.evaluate(() => {
       (window as any).__scrollCalls = [];
     });
-    
+
     await page.goBack();
     // Wait for back scroll to settle (first view loses inert)
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 1 && !views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 1 && !views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     await page.goForward();
     // Wait for forward scroll to settle (first view becomes inert again)
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const behaviors = await page.evaluate(() => {
       const calls = (window as any).__scrollCalls || [];
       if (calls.length < 2) return null;
       return calls.map((c: any) => c.options?.behavior);
     });
-    
-    expect(behaviors !== null && behaviors[0] === 'auto' && behaviors[1] === 'instant').toBe(true);
+
+    expect(
+      behaviors !== null &&
+        behaviors[0] === "auto" &&
+        behaviors[1] === "instant",
+    ).toBe(true);
   });
 
   // --- View pruning and rebuild ---
 
-  test('Views that are swiped or navigated back past are removed from the DOM', async ({ page }) => {
+  test("Views that are swiped or navigated back past are removed from the DOM", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     await clickActiveLink(page);
     // Wait for first view to become inert
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     await clickActiveLink(page);
     // Wait for second view to become inert
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 3 && views[1].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 3 && views[1].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const threeViewsInDOM = await page.evaluate((viewSel) => {
       return document.querySelectorAll(viewSel).length === 3;
     }, VIEW_SEL);
-    
+
     await page.goBack();
     await page.goBack();
     // Wait for actual pruning to complete (views after root removed)
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         return document.querySelectorAll(viewSel).length === 1;
-      }, VIEW_SEL, { timeout: 2000 });
-    
+      },
+      VIEW_SEL,
+      { timeout: 2000 },
+    );
+
     const viewsPruned = await page.evaluate((viewSel) => {
       return document.querySelectorAll(viewSel).length === 1;
     }, VIEW_SEL);
-    
+
     expect(threeViewsInDOM && viewsPruned).toBe(true);
   });
 
-  test('Pruned views are successfully rebuilt from URL on forward navigation', async ({ page }) => {
+  test("Pruned views are successfully rebuilt from URL on forward navigation", async ({
+    page,
+  }) => {
     await page.goto(targetUrl);
-    
+
     await clickActiveLink(page);
     // Wait for first view to become inert
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && views[0].hasAttribute('inert');
-      }, VIEW_SEL, { timeout: 1500 });
-    
+        return views.length >= 2 && views[0].hasAttribute("inert");
+      },
+      VIEW_SEL,
+      { timeout: 1500 },
+    );
+
     const firstDrillDownText = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return '';
+      if (views.length < 2) return "";
       const lastView = views[views.length - 1];
-      const heading = lastView.querySelector('h2, h1, h3, header');
-      return heading ? heading.textContent?.trim() || '' : '';
+      const heading = lastView.querySelector("h2, h1, h3, header");
+      return heading ? heading.textContent?.trim() || "" : "";
     }, VIEW_SEL);
-    
+
     await page.goBack();
     // Wait for pruning to settle (only 1 view left in DOM)
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         return document.querySelectorAll(viewSel).length === 1;
-      }, VIEW_SEL, { timeout: 2000 });
-    
+      },
+      VIEW_SEL,
+      { timeout: 2000 },
+    );
+
     const isPruned = await page.evaluate((viewSel) => {
       return document.querySelectorAll(viewSel).length === 1;
     }, VIEW_SEL);
-    
+
     await page.goForward();
     // Wait for view to be rebuilt and heading to be rendered
-    await page.waitForFunction((viewSel: string) => {
+    await page.waitForFunction(
+      (viewSel: string) => {
         const views = document.querySelectorAll(viewSel);
-        return views.length >= 2 && !!views[views.length - 1].querySelector('h2, h1, h3, header');
-      }, VIEW_SEL, { timeout: 2000 });
-    
+        return (
+          views.length >= 2 &&
+          !!views[views.length - 1].querySelector("h2, h1, h3, header")
+        );
+      },
+      VIEW_SEL,
+      { timeout: 2000 },
+    );
+
     const rebuiltText = await page.evaluate((viewSel) => {
       const views = document.querySelectorAll(viewSel);
-      if (views.length < 2) return '';
+      if (views.length < 2) return "";
       const lastView = views[views.length - 1];
-      const heading = lastView.querySelector('h2, h1, h3, header');
-      return heading ? heading.textContent?.trim() || '' : '';
+      const heading = lastView.querySelector("h2, h1, h3, header");
+      return heading ? heading.textContent?.trim() || "" : "";
     }, VIEW_SEL);
-    
-    expect(isPruned && rebuiltText === firstDrillDownText && rebuiltText !== '').toBe(true);
-  });
 
+    expect(
+      isPruned && rebuiltText === firstDrillDownText && rebuiltText !== "",
+    ).toBe(true);
+  });
 });

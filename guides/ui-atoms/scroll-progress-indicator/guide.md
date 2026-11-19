@@ -18,9 +18,9 @@ To create a scroll progress indicator, you need two things:
 
 Here’s how you can achieve this:
 
--   First, create an HTML element that will serve as your progress bar. This element can be styled to your liking.
--   Next, in your CSS, define a `@keyframes` animation that scales the progress bar. A common approach is to scale the element from `scaleX(0)` to `scaleX(1)`.
--   Finally, apply this animation to your progress bar element and set its `animation-timeline` to a scroll-timeline. This tells the browser to drive the animation's progress based on the scroll position of the nearest ancestor scroller.
+- First, create an HTML element that will serve as your progress bar. This element can be styled to your liking.
+- Next, in your CSS, define a `@keyframes` animation that scales the progress bar. A common approach is to scale the element from `scaleX(0)` to `scaleX(1)`.
+- Finally, apply this animation to your progress bar element and set its `animation-timeline` to a scroll-timeline. This tells the browser to drive the animation's progress based on the scroll position of the nearest ancestor scroller.
 
 ## Example code
 
@@ -30,14 +30,20 @@ This code grows the `#progress` element on scroll using an anonymous scroll-time
 @media (prefers-reduced-motion: no-preference) {
   @supports ((animation-timeline: scroll())) {
     @keyframes grow-progress {
-      from { transform: scaleX(0); }
-      to { transform: scaleX(1); }
+      from {
+        transform: scaleX(0);
+      }
+      to {
+        transform: scaleX(1);
+      }
     }
 
     #progress {
       position: fixed;
-      left: 0; top: 0;
-      width: 100%; height: 1em;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 1em;
       background: red;
 
       transform-origin: 0 50%;
@@ -62,8 +68,12 @@ This code grows the `#progress` element on scroll using a named scroll-timeline,
 @media (prefers-reduced-motion: no-preference) {
   @supports ((animation-timeline: scroll())) {
     @keyframes grow-progress {
-      from { transform: scaleX(0); }
-      to { transform: scaleX(1); }
+      from {
+        transform: scaleX(0);
+      }
+      to {
+        transform: scaleX(1);
+      }
     }
 
     :root {
@@ -72,8 +82,10 @@ This code grows the `#progress` element on scroll using a named scroll-timeline,
 
     #progress {
       position: fixed;
-      left: 0; top: 0;
-      width: 100%; height: 1em;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 1em;
       background: red;
 
       transform-origin: 0 50%;
@@ -94,7 +106,7 @@ When using scroll-driven animations, it's important to follow a few best practic
 - **DO** keep purely decorative indicators out of assistive technology reading flows: An empty element styled only with CSS needs nothing extra. If the indicator contains text or images, apply `aria-hidden="true"` to it.
 - **DO** respect user preferences: Some users prefer to have less motion on the web. Use the `prefers-reduced-motion` media query to disable or reduce your animations for these users.
 - **DO** try to animate only performant CSS properties: For the smoothest animations, stick to animating properties that can be handled by the browser's compositor thread, such as `transform` and `opacity`. Animating other properties like `width` or `height` can lead to performance issues.
-- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` *after* it to prevent the shorthand from resetting the timeline.
+- **DO** use the correct declaration order: When using the `animation` shorthand property, declare `animation-timeline` _after_ it to prevent the shorthand from resetting the timeline.
 
 When using the `scroll()` function to create a scroll-driven animation:
 
@@ -122,13 +134,14 @@ For this use-case specifically, the following script applies the fallback for br
 
 ```html
 <script>
-  if (!CSS.supports('animation-timeline', 'scroll()')) {
-    const progress = document.querySelector('#progress');
+  if (!CSS.supports("animation-timeline", "scroll()")) {
+    const progress = document.querySelector("#progress");
 
-    window.addEventListener('scroll', () => {
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    window.addEventListener("scroll", () => {
+      const scrollable =
+        document.documentElement.scrollHeight - window.innerHeight;
       const scrolled = window.scrollY;
-      const progressPercentage = (scrolled / scrollable);
+      const progressPercentage = scrolled / scrollable;
 
       progress.style.transform = `scaleX(${progressPercentage})`;
     });

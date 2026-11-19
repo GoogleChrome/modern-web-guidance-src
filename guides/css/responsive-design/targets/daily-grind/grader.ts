@@ -2,100 +2,137 @@
 // Expectation 2: TESTED - The base application uses static vh units for hero sizing instead of dynamic viewport units (dvh/dvw).
 // Expectation 3: TESTED - The base application contains a media banner container (.hero) lacking aspect-ratio definitions to prevent Cumulative Layout Shift.
 
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL } from "node:url";
 import {
   test,
   expect,
   getTargetFiles,
   getHtmlDocuments,
   getRules,
-} from '../../../../../src/grading/test-fixture.ts';
-import { CSSStyleRule, CSSContainerRule } from 'cssomnom';
+} from "../../../../../src/grading/test-fixture.ts";
+import { CSSStyleRule, CSSContainerRule } from "cssomnom";
 
-const currentUrl = typeof __filename !== 'undefined'
-  ? pathToFileURL(__filename).href
-  : pathToFileURL(process.cwd() + '/grader.ts').href;
+const currentUrl =
+  typeof __filename !== "undefined"
+    ? pathToFileURL(__filename).href
+    : pathToFileURL(process.cwd() + "/grader.ts").href;
 
 const targetFiles: string[] = getTargetFiles(currentUrl);
 
-test.describe('Responsive Design - daily-grind Grader', () => {
+test.describe("Responsive Design - daily-grind Grader", () => {
   // --- STATIC ASSERTIONS ---
 
-  test('Expectation 1: Declares container context with container-type: inline-size', () => {
+  test("Expectation 1: Declares container context with container-type: inline-size", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
 
-    const hasInlineSizeContainer = allRules.some(r => {
-      if (r instanceof CSSStyleRule) {
-        const containerType = r.style.getPropertyValue('container-type') || '';
-        const container = r.style.getPropertyValue('container') || '';
-        return /\binline-size\b/.test(containerType) || /\binline-size\b/.test(container);
-      }
-      return false;
-    }) || docs.some(d => Boolean(d.document.querySelector('[class*="@container"]')));
+    const hasInlineSizeContainer =
+      allRules.some((r) => {
+        if (r instanceof CSSStyleRule) {
+          const containerType =
+            r.style.getPropertyValue("container-type") || "";
+          const container = r.style.getPropertyValue("container") || "";
+          return (
+            /\binline-size\b/.test(containerType) ||
+            /\binline-size\b/.test(container)
+          );
+        }
+        return false;
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="@container"]')),
+      );
 
     expect(hasInlineSizeContainer).toBe(true);
   });
 
-  test('Expectation 1: Implements component-level responsive layout using @container queries', () => {
+  test("Expectation 1: Implements component-level responsive layout using @container queries", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
 
-    const hasContainerQuery = allRules.some(r => r instanceof CSSContainerRule)
-      || docs.some(d => Boolean(d.document.querySelector('[class*="@sm:"], [class*="@md:"], [class*="@lg:"], [class*="@xl:"], [class*="@min-"], [class*="@max-"]')));
+    const hasContainerQuery =
+      allRules.some((r) => r instanceof CSSContainerRule) ||
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector(
+            '[class*="@sm:"], [class*="@md:"], [class*="@lg:"], [class*="@xl:"], [class*="@min-"], [class*="@max-"]',
+          ),
+        ),
+      );
 
     expect(hasContainerQuery).toBe(true);
   });
 
-  test('Expectation 2: Uses dynamic viewport units (dvh or dvw) for viewport sizing', () => {
+  test("Expectation 2: Uses dynamic viewport units (dvh or dvw) for viewport sizing", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
 
-    const hasDynamicViewportUnits = allRules.some(r => {
-      if (r instanceof CSSStyleRule) {
-        for (let i = 0; i < r.style.length; i++) {
-          const val = r.style.getPropertyValue(r.style[i]);
-          if (/\b\d+(?:\.\d+)?dv[hw]\b/.test(val)) {
-            return true;
+    const hasDynamicViewportUnits =
+      allRules.some((r) => {
+        if (r instanceof CSSStyleRule) {
+          for (let i = 0; i < r.style.length; i++) {
+            const val = r.style.getPropertyValue(r.style[i]);
+            if (/\b\d+(?:\.\d+)?dv[hw]\b/.test(val)) {
+              return true;
+            }
           }
         }
-      }
-      return false;
-    }) || docs.some(d => Boolean(d.document.querySelector('[class*="dvh"], [class*="dvw"]')));
+        return false;
+      }) ||
+      docs.some((d) =>
+        Boolean(d.document.querySelector('[class*="dvh"], [class*="dvw"]')),
+      );
 
     expect(hasDynamicViewportUnits).toBe(true);
   });
 
-  test('Expectation 2: Replaces static vh/vw units with dynamic viewport units for full-viewport sizing', () => {
+  test("Expectation 2: Replaces static vh/vw units with dynamic viewport units for full-viewport sizing", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
 
-    const heroHasStaticViewportUnit = allRules.some(r => {
-      if (r instanceof CSSStyleRule && /\bhero\b/.test(r.selectorText)) {
-        const height = r.style.getPropertyValue('height') || '';
-        const minHeight = r.style.getPropertyValue('min-height') || '';
-        const maxHeight = r.style.getPropertyValue('max-height') || '';
-        return /\b\d+(?:\.\d+)?(vh|vw)\b/.test(height)
-          || /\b\d+(?:\.\d+)?(vh|vw)\b/.test(minHeight)
-          || /\b\d+(?:\.\d+)?(vh|vw)\b/.test(maxHeight);
-      }
-      return false;
-    }) || docs.some(d => Boolean(d.document.querySelector('.hero[class*="vh"], .hero[class*="vw"], .hero.h-screen')));
+    const heroHasStaticViewportUnit =
+      allRules.some((r) => {
+        if (r instanceof CSSStyleRule && /\bhero\b/.test(r.selectorText)) {
+          const height = r.style.getPropertyValue("height") || "";
+          const minHeight = r.style.getPropertyValue("min-height") || "";
+          const maxHeight = r.style.getPropertyValue("max-height") || "";
+          return (
+            /\b\d+(?:\.\d+)?(vh|vw)\b/.test(height) ||
+            /\b\d+(?:\.\d+)?(vh|vw)\b/.test(minHeight) ||
+            /\b\d+(?:\.\d+)?(vh|vw)\b/.test(maxHeight)
+          );
+        }
+        return false;
+      }) ||
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector(
+            '.hero[class*="vh"], .hero[class*="vw"], .hero.h-screen',
+          ),
+        ),
+      );
 
     expect(heroHasStaticViewportUnit).toBe(false);
   });
 
-  test('Expectation 3: Applies aspect-ratio to media containers or responsive media elements', () => {
+  test("Expectation 3: Applies aspect-ratio to media containers or responsive media elements", () => {
     const docs = getHtmlDocuments(targetFiles);
     const allRules = getRules(targetFiles);
 
-    const hasAspectRatio = allRules.some(r => {
-      if (r instanceof CSSStyleRule) {
-        const ar = r.style.getPropertyValue('aspect-ratio');
-        return Boolean(ar && ar.trim().length > 0 && ar.trim() !== 'auto' && ar.trim() !== 'initial');
-      }
-      return false;
-    }) || docs.some(d => Boolean(d.document.querySelector('[class*="aspect-"]')));
+    const hasAspectRatio =
+      allRules.some((r) => {
+        if (r instanceof CSSStyleRule) {
+          const ar = r.style.getPropertyValue("aspect-ratio");
+          return Boolean(
+            ar &&
+            ar.trim().length > 0 &&
+            ar.trim() !== "auto" &&
+            ar.trim() !== "initial",
+          );
+        }
+        return false;
+      }) ||
+      docs.some((d) => Boolean(d.document.querySelector('[class*="aspect-"]')));
 
     expect(hasAspectRatio).toBe(true);
   });

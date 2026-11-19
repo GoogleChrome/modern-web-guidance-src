@@ -1,9 +1,4 @@
-import {
-  Node,
-  SyntaxKind,
-  type Identifier,
-  type SourceFile,
-} from 'ts-morph';
+import { Node, SyntaxKind, type Identifier, type SourceFile } from "ts-morph";
 import {
   getAssignment,
   getMemberAccess,
@@ -14,7 +9,7 @@ import {
   resolveLexicalBinding,
   resolveLocalExpression,
   unwrapExpression,
-} from '../scanners/ast-helpers.ts';
+} from "../scanners/ast-helpers.ts";
 import type {
   AnalyzerMatch,
   AnalyzerRule,
@@ -23,60 +18,72 @@ import type {
   DomRuleMatcher,
   JsMatcherContext,
   JsRuleMatcher,
-} from '../schema.ts';
+} from "../schema.ts";
 
-export const SCROLLSPY_GUIDE_HASH = 'f7945559ec22';
+export const SCROLLSPY_GUIDE_HASH = "f7945559ec22";
 
 const SCROLLSPY_FEATURE_TOKENS = [
-  'scroll-target-group',
-  'scrollTargetGroup',
-  'target-current',
-  ':target-current',
+  "scroll-target-group",
+  "scrollTargetGroup",
+  "target-current",
+  ":target-current",
 ] as const;
 
 const scrollspyDomMatcher: DomRuleMatcher = {
-  kind: 'dom',
+  kind: "dom",
   selector:
     '[data-spy="scroll"], [data-bs-spy="scroll"], [data-spy], [data-bs-spy], [class*="scrollspy"], [data-scrollspy]',
-  fastTokens: ['data-spy', 'data-bs-spy', 'data-scrollspy', 'scrollspy', 'ScrollSpy', 'data-target', 'data-bs-target'],
+  fastTokens: [
+    "data-spy",
+    "data-bs-spy",
+    "data-scrollspy",
+    "scrollspy",
+    "ScrollSpy",
+    "data-target",
+    "data-bs-target",
+  ],
   skipIfHasSpread: true,
-  skipIfDynamicAttributes: ['data-spy', 'data-bs-spy'],
+  skipIfDynamicAttributes: ["data-spy", "data-bs-spy"],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
     if (
-      ctx.documentText.includes('scroll-target-group') ||
-      ctx.documentText.includes(':target-current')
+      ctx.documentText.includes("scroll-target-group") ||
+      ctx.documentText.includes(":target-current")
     ) {
       return null;
     }
 
-    const dataSpy = element.getAttribute('data-spy')?.toLowerCase().trim();
-    const dataBsSpy = element.getAttribute('data-bs-spy')?.toLowerCase().trim();
+    const dataSpy = element.getAttribute("data-spy")?.toLowerCase().trim();
+    const dataBsSpy = element.getAttribute("data-bs-spy")?.toLowerCase().trim();
 
-    if (dataSpy === 'scroll' || dataBsSpy === 'scroll') {
-      const attrName = dataBsSpy === 'scroll' ? 'data-bs-spy' : 'data-spy';
+    if (dataSpy === "scroll" || dataBsSpy === "scroll") {
+      const attrName = dataBsSpy === "scroll" ? "data-bs-spy" : "data-spy";
       return {
-        message:
-          `Legacy scrollspy attribute (${attrName}="scroll") tracks active sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.`,
+        message: `Legacy scrollspy attribute (${attrName}="scroll") tracks active sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.`,
       };
     }
 
-    if (element.hasAttribute('data-scrollspy')) {
+    if (element.hasAttribute("data-scrollspy")) {
       return {
         message:
-          'Legacy data-scrollspy attribute tracks active sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.',
+          "Legacy data-scrollspy attribute tracks active sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.",
       };
     }
 
-    const classAttr = element.getAttribute('class')?.toLowerCase() ?? '';
-    const hasScrollSpyClass = classAttr.includes('scrollspy');
+    const classAttr = element.getAttribute("class")?.toLowerCase() ?? "";
+    const hasScrollSpyClass = classAttr.includes("scrollspy");
     const hasTargetAttr =
-      element.hasAttribute('data-target') ||
-      element.hasAttribute('data-bs-target');
+      element.hasAttribute("data-target") ||
+      element.hasAttribute("data-bs-target");
 
-    if (hasScrollSpyClass && (hasTargetAttr || element.hasAttribute('data-spy') || element.hasAttribute('data-bs-spy'))) {
+    if (
+      hasScrollSpyClass &&
+      (hasTargetAttr ||
+        element.hasAttribute("data-spy") ||
+        element.hasAttribute("data-bs-spy"))
+    ) {
       return {
         message:
-          'Legacy scrollspy class and target attributes track navigation sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.',
+          "Legacy scrollspy class and target attributes track navigation sections imperatively; modernize with CSS scroll-target-group: auto and :target-current.",
       };
     }
 
@@ -85,8 +92,8 @@ const scrollspyDomMatcher: DomRuleMatcher = {
 };
 
 export const scrollspyRule: AnalyzerRule = {
-  id: 'scrollspy',
-  guideId: 'scrollspy',
+  id: "scrollspy",
+  guideId: "scrollspy",
   guideHash: SCROLLSPY_GUIDE_HASH,
   summary:
     'Legacy Bootstrap data-spy="scroll" or data-bs-spy="scroll" attributes should be modernized with CSS scroll-target-group: auto and :target-current.',
@@ -94,15 +101,15 @@ export const scrollspyRule: AnalyzerRule = {
   verifierRubric: {
     keepWhen: [
       'DOM element specifies legacy Bootstrap data-spy="scroll" or data-bs-spy="scroll" attribute (or scrollspy classes with data-target/data-bs-target) to highlight active navigation links based on scroll position.',
-      'JavaScript initializes a scrollspy plugin via $(...).scrollspy(...) or new bootstrap.ScrollSpy(...).',
+      "JavaScript initializes a scrollspy plugin via $(...).scrollspy(...) or new bootstrap.ScrollSpy(...).",
       'JavaScript scroll event listener measures section positions (offsetTop, getBoundingClientRect().top, scrollY, pageYOffset) to compute the active section and toggle "active" class or aria-current on navigation links.',
-      'IntersectionObserver callback tracks section visibility to toggle active or aria-current states on navigation or TOC links.',
+      "IntersectionObserver callback tracks section visibility to toggle active or aria-current states on navigation or TOC links.",
     ],
     dropWhen: [
-      'The navigation container or stylesheet already implements CSS scroll-target-group: auto and :target-current.',
-      'The scroll event listener handles unrelated scroll behaviors such as infinite scroll loading, scroll-to-top floating button visibility, parallax canvas animations, or reading progress bars.',
-      'IntersectionObserver is used for lazy loading images, infinite scrolling, or animation entry triggers without managing active navigation link state.',
-      'Complex multi-container scroll coordinators or custom interactive graph navigators with non-linear section hierarchies that cannot map to fragment links.',
+      "The navigation container or stylesheet already implements CSS scroll-target-group: auto and :target-current.",
+      "The scroll event listener handles unrelated scroll behaviors such as infinite scroll loading, scroll-to-top floating button visibility, parallax canvas animations, or reading progress bars.",
+      "IntersectionObserver is used for lazy loading images, infinite scrolling, or animation entry triggers without managing active navigation link state.",
+      "Complex multi-container scroll coordinators or custom interactive graph navigators with non-linear section hierarchies that cannot map to fragment links.",
     ],
   },
 };
@@ -119,7 +126,10 @@ function isGuardedByScrollTargetGroup(node: Node): boolean {
       const expr = unwrapExpression(curr.getExpression());
       const resolved = resolveLocalExpression(expr);
       const text = resolved.getText();
-      if (text.includes('scroll-target-group') || text.includes('scrollTargetGroup')) {
+      if (
+        text.includes("scroll-target-group") ||
+        text.includes("scrollTargetGroup")
+      ) {
         return true;
       }
     }
@@ -148,10 +158,10 @@ function getEnclosingCallable(node: Node): Node | undefined {
 function resolveScrollSpyDeclNode(idNode: Identifier): Node | undefined {
   const name = idNode.getText();
   const binding = resolveLexicalBinding(idNode, name);
-  if (binding?.kind === 'function' || binding?.kind === 'variable') {
+  if (binding?.kind === "function" || binding?.kind === "variable") {
     return binding.node;
   }
-  if (binding?.kind === 'other') {
+  if (binding?.kind === "other") {
     let curr: Node | undefined = idNode.getParent();
     while (curr) {
       if (Node.isBlock(curr) || Node.isSourceFile(curr)) {
@@ -171,27 +181,33 @@ function resolveScrollSpyDeclNode(idNode: Identifier): Node | undefined {
 function collectScrollSpyPluginDefScopes(sourceFile: SourceFile): Set<Node> {
   const scopes = new Set<Node>();
 
-  for (const decl of sourceFile.getDescendantsOfKind(SyntaxKind.ClassDeclaration)) {
+  for (const decl of sourceFile.getDescendantsOfKind(
+    SyntaxKind.ClassDeclaration,
+  )) {
     if (
-      decl.getName() === 'ScrollSpy' &&
-      (decl.getMember('_jQueryInterface') ||
-        decl.getMember('jQueryInterface') ||
-        decl.getMember('DATA_KEY') ||
-        decl.getMember('EVENT_KEY') ||
-        decl.getMember('VERSION') ||
-        (decl.getMember('refresh') && decl.getMember('activate')))
+      decl.getName() === "ScrollSpy" &&
+      (decl.getMember("_jQueryInterface") ||
+        decl.getMember("jQueryInterface") ||
+        decl.getMember("DATA_KEY") ||
+        decl.getMember("EVENT_KEY") ||
+        decl.getMember("VERSION") ||
+        (decl.getMember("refresh") && decl.getMember("activate")))
     ) {
       scopes.add(decl);
     }
   }
 
-  for (const fn of sourceFile.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
-    if (fn.getName() === 'ScrollSpy') {
+  for (const fn of sourceFile.getDescendantsOfKind(
+    SyntaxKind.FunctionDeclaration,
+  )) {
+    if (fn.getName() === "ScrollSpy") {
       scopes.add(fn);
     }
   }
 
-  for (const binExpr of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+  for (const binExpr of sourceFile.getDescendantsOfKind(
+    SyntaxKind.BinaryExpression,
+  )) {
     const assign = getAssignment(binExpr);
     if (!assign || assign.operator !== SyntaxKind.EqualsToken) {
       continue;
@@ -204,16 +220,16 @@ function collectScrollSpyPluginDefScopes(sourceFile: SourceFile): Set<Node> {
     const lowerOuter = outerName.toLowerCase();
     const innerMember = getMemberAccess(outerMember.expression);
     const isJQueryPluginAssign =
-      lowerOuter === 'scrollspy' && innerMember?.name === 'fn';
+      lowerOuter === "scrollspy" && innerMember?.name === "fn";
     const isJQueryInterfaceAssign =
-      (outerName === '_jQueryInterface' || outerName === 'jQueryInterface') &&
-      unwrapExpression(outerMember.expression).getText().endsWith('ScrollSpy');
+      (outerName === "_jQueryInterface" || outerName === "jQueryInterface") &&
+      unwrapExpression(outerMember.expression).getText().endsWith("ScrollSpy");
     const isScrollSpyPrototypeAssign =
-      innerMember?.name === 'prototype' &&
-      unwrapExpression(innerMember.expression).getText().endsWith('ScrollSpy');
+      innerMember?.name === "prototype" &&
+      unwrapExpression(innerMember.expression).getText().endsWith("ScrollSpy");
     const isScrollSpyConstructorAssign =
-      (outerName === 'Constructor' || outerName === 'noConflict') &&
-      innerMember?.name.toLowerCase() === 'scrollspy';
+      (outerName === "Constructor" || outerName === "noConflict") &&
+      innerMember?.name.toLowerCase() === "scrollspy";
 
     if (
       isJQueryPluginAssign ||
@@ -264,7 +280,7 @@ function isPluginDataApiAutoInit(
   if (!Node.isCallExpression(firstArg)) {
     return false;
   }
-  if (getMemberAccess(firstArg.getExpression())?.name !== 'data') {
+  if (getMemberAccess(firstArg.getExpression())?.name !== "data") {
     return false;
   }
 
@@ -275,9 +291,13 @@ function isPluginDataApiAutoInit(
       const receiver = Node.isPropertyAccessExpression(expr)
         ? unwrapExpression(expr.getExpression())
         : undefined;
-      const selectorCall = receiver && Node.isCallExpression(receiver) ? receiver : curr;
+      const selectorCall =
+        receiver && Node.isCallExpression(receiver) ? receiver : curr;
       const selectorStr = getStaticStringValue(selectorCall.getArguments()[0]);
-      if (selectorStr && /\[data-(?:bs-)?spy=['"]scroll['"]\]/.test(selectorStr)) {
+      if (
+        selectorStr &&
+        /\[data-(?:bs-)?spy=['"]scroll['"]\]/.test(selectorStr)
+      ) {
         return true;
       }
     }
@@ -312,7 +332,7 @@ function handlerPerformsImperativeScroll(handlerArg: Node): boolean {
     const assign = getAssignment(desc);
     if (assign) {
       const targetProp = getMemberAccess(assign.left)?.name;
-      if (targetProp === 'scrollTop' || targetProp === 'scrollLeft') {
+      if (targetProp === "scrollTop" || targetProp === "scrollLeft") {
         hasScrollEffect = true;
         traversal.stop();
         return;
@@ -323,16 +343,17 @@ function handlerPerformsImperativeScroll(handlerArg: Node): boolean {
       if (Node.isPropertyAccessExpression(expr)) {
         const name = expr.getName();
         if (
-          name === 'scrollIntoView' ||
-          name === 'scrollTo' ||
-          name === 'scrollBy' ||
-          ((name === 'scrollTop' || name === 'scrollLeft') && desc.getArguments().length >= 1)
+          name === "scrollIntoView" ||
+          name === "scrollTo" ||
+          name === "scrollBy" ||
+          ((name === "scrollTop" || name === "scrollLeft") &&
+            desc.getArguments().length >= 1)
         ) {
           hasScrollEffect = true;
           traversal.stop();
           return;
         }
-        if (name === 'animate') {
+        if (name === "animate") {
           const firstArg = desc.getArguments()[0];
           if (firstArg && /\bscroll(?:Top|Left)\b/.test(firstArg.getText())) {
             hasScrollEffect = true;
@@ -366,7 +387,7 @@ function hasImperativeScrollSpyActivationSideEffects(node: Node): boolean {
       return;
     }
     const methodName = expr.getName();
-    if (methodName !== 'on' && methodName !== 'addEventListener') {
+    if (methodName !== "on" && methodName !== "addEventListener") {
       return;
     }
     const args = desc.getArguments();
@@ -374,10 +395,10 @@ function hasImperativeScrollSpyActivationSideEffects(node: Node): boolean {
       return;
     }
     const evStr = getStaticStringValue(args[0]);
-    if (!evStr || !evStr.toLowerCase().includes('activate.bs.scrollspy')) {
+    if (!evStr || !evStr.toLowerCase().includes("activate.bs.scrollspy")) {
       return;
     }
-    const handlerArg = methodName === 'on' ? args[args.length - 1] : args[1];
+    const handlerArg = methodName === "on" ? args[args.length - 1] : args[1];
     if (handlerArg && handlerPerformsImperativeScroll(handlerArg)) {
       hasSideEffects = true;
       traversal.stop();
@@ -387,7 +408,10 @@ function hasImperativeScrollSpyActivationSideEffects(node: Node): boolean {
   return hasSideEffects;
 }
 
-function isScrollSpyPluginInvocation(node: Node, pluginDefScopes: ReadonlySet<Node>): boolean {
+function isScrollSpyPluginInvocation(
+  node: Node,
+  pluginDefScopes: ReadonlySet<Node>,
+): boolean {
   if (isInsideAnyScope(node, pluginDefScopes)) {
     return false;
   }
@@ -396,12 +420,12 @@ function isScrollSpyPluginInvocation(node: Node, pluginDefScopes: ReadonlySet<No
     if (Node.isPropertyAccessExpression(expr)) {
       const callerText = unwrapExpression(expr.getExpression()).getText();
       // Exclude UIkit.scrollspy
-      if (callerText.includes('UIkit')) {
+      if (callerText.includes("UIkit")) {
         return false;
       }
 
       const name = expr.getName().toLowerCase();
-      if (name === 'scrollspy') {
+      if (name === "scrollspy") {
         const args = node.getArguments();
         if (args.length > 0) {
           const firstArg = unwrapExpression(args[0]);
@@ -413,10 +437,10 @@ function isScrollSpyPluginInvocation(node: Node, pluginDefScopes: ReadonlySet<No
             const text = firstArg.getText();
             // Reject non-nav plugins like thesmart jquery-scrollspy with min/max/onEnter/onLeave
             if (
-              text.includes('onEnter') ||
-              text.includes('onLeave') ||
-              (text.includes('min:') && text.includes('max:')) ||
-              text.includes('cls:')
+              text.includes("onEnter") ||
+              text.includes("onLeave") ||
+              (text.includes("min:") && text.includes("max:")) ||
+              text.includes("cls:")
             ) {
               return false;
             }
@@ -432,10 +456,10 @@ function isScrollSpyPluginInvocation(node: Node, pluginDefScopes: ReadonlySet<No
     const expr = unwrapExpression(node.getExpression());
     const text = expr.getText();
     if (
-      text === 'ScrollSpy' ||
-      text.endsWith('.ScrollSpy') ||
-      text === 'scrollspy' ||
-      text.endsWith('.scrollspy')
+      text === "ScrollSpy" ||
+      text.endsWith(".ScrollSpy") ||
+      text === "scrollspy" ||
+      text.endsWith(".scrollspy")
     ) {
       return !hasImperativeScrollSpyActivationSideEffects(node);
     }
@@ -455,15 +479,15 @@ function isHandlerMeasuringSections(handlerNode: Node): boolean {
   const mutatesDomActiveState = DOM_ACTIVE_MUTATION_RE.test(handlerText);
 
   const modifiesActiveNav =
-    (handlerText.includes('active') ||
-      handlerText.includes('aria-current') ||
-      handlerText.includes('current')) &&
-    (handlerText.includes('nav') ||
-      handlerText.includes('link') ||
-      handlerText.includes('section') ||
-      handlerText.includes('menu') ||
-      handlerText.includes('toc') ||
-      handlerText.includes('href'));
+    (handlerText.includes("active") ||
+      handlerText.includes("aria-current") ||
+      handlerText.includes("current")) &&
+    (handlerText.includes("nav") ||
+      handlerText.includes("link") ||
+      handlerText.includes("section") ||
+      handlerText.includes("menu") ||
+      handlerText.includes("toc") ||
+      handlerText.includes("href"));
 
   return measuresSectionGeometry && mutatesDomActiveState && modifiesActiveNav;
 }
@@ -481,26 +505,26 @@ function isScrollEventListenerMeasuringSections(node: Node): boolean {
   let isScroll = false;
   let handlerArg: Node | undefined;
 
-  if (methodName === 'addEventListener') {
+  if (methodName === "addEventListener") {
     const args = node.getArguments();
     if (args.length >= 2) {
       const evStr = getStaticStringValue(args[0]);
-      if (evStr !== null && evStr.toLowerCase() === 'scroll') {
+      if (evStr !== null && evStr.toLowerCase() === "scroll") {
         isScroll = true;
         handlerArg = args[1];
       }
     }
-  } else if (methodName === 'on') {
+  } else if (methodName === "on") {
     const args = node.getArguments();
     if (args.length >= 2) {
       const evStr = getStaticStringValue(args[0]);
       if (evStr !== null) {
         const eventTokens = evStr.toLowerCase().trim().split(/\s+/);
         const hasScrollToken = eventTokens.some(
-          (tok) => tok === 'scroll' || tok.startsWith('scroll.'),
+          (tok) => tok === "scroll" || tok.startsWith("scroll."),
         );
         const hasResizeToken = eventTokens.some(
-          (tok) => tok === 'resize' || tok.startsWith('resize.'),
+          (tok) => tok === "resize" || tok.startsWith("resize."),
         );
         if (hasScrollToken && !hasResizeToken) {
           isScroll = true;
@@ -508,7 +532,7 @@ function isScrollEventListenerMeasuringSections(node: Node): boolean {
         }
       }
     }
-  } else if (methodName === 'scroll') {
+  } else if (methodName === "scroll") {
     const args = node.getArguments();
     if (args.length >= 1) {
       isScroll = true;
@@ -530,8 +554,8 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
   const expr = unwrapExpression(node.getExpression());
   const exprText = expr.getText();
   if (
-    exprText !== 'IntersectionObserver' &&
-    !exprText.endsWith('.IntersectionObserver')
+    exprText !== "IntersectionObserver" &&
+    !exprText.endsWith(".IntersectionObserver")
   ) {
     return false;
   }
@@ -543,50 +567,80 @@ function isIntersectionObserverScrollSpy(node: Node): boolean {
   const cbText = getHandlerText(cb);
 
   // Reject simple image lazy loaders
-  if (cbText.includes('lazy') || cbText.includes('.src =') || cbText.includes('dataset.src')) {
+  if (
+    cbText.includes("lazy") ||
+    cbText.includes(".src =") ||
+    cbText.includes("dataset.src")
+  ) {
     return false;
   }
 
   const togglesActive =
     DOM_ACTIVE_MUTATION_RE.test(cbText) &&
-    (cbText.includes('active') ||
-      cbText.includes('aria-current') ||
-      cbText.includes('target-current'));
+    (cbText.includes("active") ||
+      cbText.includes("aria-current") ||
+      cbText.includes("target-current"));
   const targetsNavigation =
-    cbText.includes('nav') ||
-    cbText.includes('toc') ||
-    cbText.includes('menu') ||
-    cbText.includes('link') ||
-    cbText.includes('href') ||
-    cbText.includes('section');
+    cbText.includes("nav") ||
+    cbText.includes("toc") ||
+    cbText.includes("menu") ||
+    cbText.includes("link") ||
+    cbText.includes("href") ||
+    cbText.includes("section");
 
   return togglesActive && targetsNavigation;
 }
 
 export const scrollspyJsMatcher: JsRuleMatcher = {
-  kind: 'js',
+  kind: "js",
   fastTokens: [
-    ['scrollspy', 'ScrollSpy', 'IntersectionObserver', 'offsetTop', 'getBoundingClientRect'],
-    ['scrollspy', 'ScrollSpy', 'active', 'aria-current', 'current', 'target-current'],
-    ['scrollspy', 'ScrollSpy', 'nav', 'toc', 'menu', 'link', 'href', 'section'],
-    ['scrollspy', 'ScrollSpy', 'classList', 'addClass', 'toggleClass', 'className', 'setAttribute', 'aria-current'],
+    [
+      "scrollspy",
+      "ScrollSpy",
+      "IntersectionObserver",
+      "offsetTop",
+      "getBoundingClientRect",
+    ],
+    [
+      "scrollspy",
+      "ScrollSpy",
+      "active",
+      "aria-current",
+      "current",
+      "target-current",
+    ],
+    ["scrollspy", "ScrollSpy", "nav", "toc", "menu", "link", "href", "section"],
+    [
+      "scrollspy",
+      "ScrollSpy",
+      "classList",
+      "addClass",
+      "toggleClass",
+      "className",
+      "setAttribute",
+      "aria-current",
+    ],
   ],
-  matchFile: (sourceFile: SourceFile, ctx: JsMatcherContext): AnalyzerMatch[] => {
+  matchFile: (
+    sourceFile: SourceFile,
+    ctx: JsMatcherContext,
+  ): AnalyzerMatch[] => {
     const matches: AnalyzerMatch[] = [];
     const hasPluginOrObserver =
-      ctx.fileContent.includes('scrollspy') ||
-      ctx.fileContent.includes('ScrollSpy') ||
-      ctx.fileContent.includes('IntersectionObserver');
+      ctx.fileContent.includes("scrollspy") ||
+      ctx.fileContent.includes("ScrollSpy") ||
+      ctx.fileContent.includes("IntersectionObserver");
     const hasScrollActiveLoop =
-      ctx.fileContent.includes('scroll') &&
-      (ctx.fileContent.includes('active') ||
-        ctx.fileContent.includes('aria-current') ||
-        ctx.fileContent.includes('target-current'));
+      ctx.fileContent.includes("scroll") &&
+      (ctx.fileContent.includes("active") ||
+        ctx.fileContent.includes("aria-current") ||
+        ctx.fileContent.includes("target-current"));
     if (!hasPluginOrObserver && !hasScrollActiveLoop) {
       return matches;
     }
     const pluginDefScopes =
-      ctx.fileContent.includes('scrollspy') || ctx.fileContent.includes('ScrollSpy')
+      ctx.fileContent.includes("scrollspy") ||
+      ctx.fileContent.includes("ScrollSpy")
         ? collectScrollSpyPluginDefScopes(sourceFile)
         : new Set<Node>();
     const visitedLines = new Set<number>();
@@ -612,7 +666,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
         matches.push({
           line,
           message:
-            'Legacy scrollspy plugin invocation tracks active section imperatively; modernize with CSS scroll-target-group: auto and :target-current.',
+            "Legacy scrollspy plugin invocation tracks active section imperatively; modernize with CSS scroll-target-group: auto and :target-current.",
         });
         return;
       }
@@ -629,7 +683,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
         matches.push({
           line,
           message:
-            'Manual scroll listener calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.',
+            "Manual scroll listener calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.",
         });
         return;
       }
@@ -646,7 +700,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
         matches.push({
           line,
           message:
-            'IntersectionObserver navigation callback toggles active link on section intersection; modernize with CSS scroll-target-group: auto and :target-current.',
+            "IntersectionObserver navigation callback toggles active link on section intersection; modernize with CSS scroll-target-group: auto and :target-current.",
         });
         return;
       }
@@ -657,7 +711,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
           const left = unwrapExpression(node.getLeft());
           if (
             Node.isPropertyAccessExpression(left) &&
-            left.getName().toLowerCase() === 'onscroll'
+            left.getName().toLowerCase() === "onscroll"
           ) {
             const right = node.getRight();
             if (isHandlerMeasuringSections(right)) {
@@ -672,7 +726,7 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
               matches.push({
                 line,
                 message:
-                  'Manual onscroll assignment calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.',
+                  "Manual onscroll assignment calculates section positions to toggle active navigation state; modernize with CSS scroll-target-group: auto and :target-current.",
               });
             }
           }
@@ -685,28 +739,31 @@ export const scrollspyJsMatcher: JsRuleMatcher = {
 };
 
 export const scrollspyJsRule: AnalyzerRule = {
-  id: 'scrollspy/js',
-  guideId: 'scrollspy',
+  id: "scrollspy/js",
+  guideId: "scrollspy",
   guideHash: SCROLLSPY_GUIDE_HASH,
   summary:
-    'Imperative scrollspy plugin calls, IntersectionObserver section watchers, and manual position scroll listeners should be modernized with CSS scroll-target-group: auto and :target-current.',
+    "Imperative scrollspy plugin calls, IntersectionObserver section watchers, and manual position scroll listeners should be modernized with CSS scroll-target-group: auto and :target-current.",
   matcher: scrollspyJsMatcher,
   verifierRubric: {
     keepWhen: [
       'DOM element specifies legacy Bootstrap data-spy="scroll" or data-bs-spy="scroll" attribute (or scrollspy classes with data-target/data-bs-target) to highlight active navigation links based on scroll position.',
-      'JavaScript initializes a scrollspy plugin via $(...).scrollspy(...) or new bootstrap.ScrollSpy(...).',
+      "JavaScript initializes a scrollspy plugin via $(...).scrollspy(...) or new bootstrap.ScrollSpy(...).",
       'JavaScript scroll event listener measures section positions (offsetTop, getBoundingClientRect().top, scrollY, pageYOffset) to compute the active section and toggle "active" class or aria-current on navigation links.',
-      'IntersectionObserver callback tracks section visibility to toggle active or aria-current states on navigation or TOC links.',
+      "IntersectionObserver callback tracks section visibility to toggle active or aria-current states on navigation or TOC links.",
     ],
     dropWhen: [
-      'The navigation container or stylesheet already implements CSS scroll-target-group: auto and :target-current.',
-      'The scroll event listener handles unrelated scroll behaviors such as infinite scroll loading, scroll-to-top floating button visibility, parallax canvas animations, or reading progress bars.',
-      'IntersectionObserver is used for lazy loading images, infinite scrolling, or animation entry triggers without managing active navigation link state.',
-      'Third-party or bundled ScrollSpy plugin definitions (e.g. $.fn.scrollspy = ..., ScrollSpy.prototype, or ScrollSpy._jQueryInterface) rather than application usage.',
-      'ScrollSpy setups that hook activate.bs.scrollspy or section-activation events to imperatively scroll a TOC container (e.g. setting scrollTop or calling scrollIntoView/scrollTo).',
-      'Complex multi-container scroll coordinators or custom interactive graph navigators with non-linear section hierarchies that cannot map to fragment links.',
+      "The navigation container or stylesheet already implements CSS scroll-target-group: auto and :target-current.",
+      "The scroll event listener handles unrelated scroll behaviors such as infinite scroll loading, scroll-to-top floating button visibility, parallax canvas animations, or reading progress bars.",
+      "IntersectionObserver is used for lazy loading images, infinite scrolling, or animation entry triggers without managing active navigation link state.",
+      "Third-party or bundled ScrollSpy plugin definitions (e.g. $.fn.scrollspy = ..., ScrollSpy.prototype, or ScrollSpy._jQueryInterface) rather than application usage.",
+      "ScrollSpy setups that hook activate.bs.scrollspy or section-activation events to imperatively scroll a TOC container (e.g. setting scrollTop or calling scrollIntoView/scrollTo).",
+      "Complex multi-container scroll coordinators or custom interactive graph navigators with non-linear section hierarchies that cannot map to fragment links.",
     ],
   },
 };
 
-export default [scrollspyRule, scrollspyJsRule] satisfies readonly AnalyzerRule[];
+export default [
+  scrollspyRule,
+  scrollspyJsRule,
+] satisfies readonly AnalyzerRule[];

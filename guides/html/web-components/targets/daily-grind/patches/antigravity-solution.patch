@@ -8,7 +8,7 @@ index 66c9173..8f4b63c 100644
    </style>
 +  <script type="module" src="./src/coffee-favorite.js"></script>
  </head>
- 
+
  <body>
 @@ -182,16 +183,19 @@
            <h3>Maple Oat Latte</h3>

@@ -11,7 +11,7 @@ web-feature-ids:
 Standard paint and responsiveness metrics leave a measurement gap after the initial page load:
 
 - **`LargestContentfulPaint` (`largest-contentful-paint`)** only measures the initial ("hard") document load and stops emitting entries as soon as the user first interacts with the page.
-- **`PerformanceEventTiming` and `event` / Interaction to Next Paint (INP)** measures input responsiveness up to the *very next frame* (such as a button active state or loading spinner), but does not track subsequent asynchronous paints—such as new content rendered after a `fetch()` resolves, or a client-side route transition completes.
+- **`PerformanceEventTiming` and `event` / Interaction to Next Paint (INP)** measures input responsiveness up to the _very next frame_ (such as a button active state or loading spinner), but does not track subsequent asynchronous paints—such as new content rendered after a `fetch()` resolves, or a client-side route transition completes.
 - Observing route changes in a Single Page App (SPA) can be difficult outside of framework code. Just monitoring URL updates can over report URL changes that are not linked to route changes (for example, anchor link changes, multiple "redirects" for a single route change).
 
 The `InteractionContentfulPaint` (`interaction-contentful-paint`) and `PerformanceSoftNavigation` (`soft-navigation`) performance entry types fill this gap. They propagate interaction causality across asynchronous tasks (`fetch`, `await`, `setTimeout`) to attribute new contentful paints and Single-Page Application (SPA) route transitions directly back to the user interaction that triggered them.
@@ -23,6 +23,7 @@ The `InteractionContentfulPaint` (`interaction-contentful-paint`) and `Performan
 Use a `PerformanceObserver` with `type: 'interaction-contentful-paint'` and `buffered: true` to observe progressively larger contentful paints attributable to any user interaction.
 
 Each `InteractionContentfulPaint` entry provides:
+
 - `interactionId`: The unique identifier of the initiating user interaction (matching `PerformanceEventTiming.interactionId` and `PerformanceSoftNavigation.interactionId`).
 - `startTime`: The timestamp when the initiating user interaction started, relative to the initial hard navigation time origin.
 - `paintTime` and `presentationTime`: When the rendering phase ended and when the painted pixels were drawn on screen.
@@ -40,8 +41,10 @@ export function observeInteractionPaints(onInteractionPaint) {
   // Feature-detect support before calling observe() so unsupported browsers
   // do not throw or log console warnings.
   if (
-    typeof PerformanceObserver === 'undefined' ||
-    !PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint')
+    typeof PerformanceObserver === "undefined" ||
+    !PerformanceObserver.supportedEntryTypes?.includes(
+      "interaction-contentful-paint",
+    )
   ) {
     return null;
   }
@@ -56,7 +59,7 @@ export function observeInteractionPaints(onInteractionPaint) {
 
   // MANDATORY: Pass buffered: true to capture interaction paints that occurred
   // before this observer was registered.
-  observer.observe({ type: 'interaction-contentful-paint', buffered: true });
+  observer.observe({ type: "interaction-contentful-paint", buffered: true });
   return observer;
 }
 ```
@@ -66,7 +69,7 @@ export function observeInteractionPaints(onInteractionPaint) {
 A soft navigation is emitted by the browser when a trusted user interaction causes both a visible URL change and a contentful paint. To calculate LCP for each soft navigation:
 
 1. Observe both `'soft-navigation'` and `'interaction-contentful-paint'` entries with `buffered: true`.
-2. **MANDATORY:** When a `'soft-navigation'` entry is received, seed its initial LCP candidate by calling `softNavEntry.getLargestInteractionContentfulPaint()`. If the application painted content *before* updating the URL (for example, rendering a view and then calling `history.pushState()`), those early `interaction-contentful-paint` entries were emitted before the `soft-navigation` entry and still carry the *previous* `navigationId`.
+2. **MANDATORY:** When a `'soft-navigation'` entry is received, seed its initial LCP candidate by calling `softNavEntry.getLargestInteractionContentfulPaint()`. If the application painted content _before_ updating the URL (for example, rendering a view and then calling `history.pushState()`), those early `interaction-contentful-paint` entries were emitted before the `soft-navigation` entry and still carry the _previous_ `navigationId`.
 3. **MANDATORY:** Correlate subsequent `'interaction-contentful-paint'` entries to the active soft navigation by matching `entry.interactionId === softNavEntry.interactionId`, **DO NOT** match by `entry.navigationId`. Using `interactionId` ensures you include paints that occurred before the URL update and exclude paints from later, unrelated interactions on the new route.
 
 ```javascript
@@ -86,9 +89,11 @@ A soft navigation is emitted by the browser when a trusted user interaction caus
  */
 export function trackSoftNavigationLCP(onSoftNavReport) {
   const supported =
-    typeof PerformanceObserver !== 'undefined' &&
-    PerformanceObserver.supportedEntryTypes?.includes('soft-navigation') &&
-    PerformanceObserver.supportedEntryTypes?.includes('interaction-contentful-paint');
+    typeof PerformanceObserver !== "undefined" &&
+    PerformanceObserver.supportedEntryTypes?.includes("soft-navigation") &&
+    PerformanceObserver.supportedEntryTypes?.includes(
+      "interaction-contentful-paint",
+    );
 
   if (!supported) {
     return null;
@@ -135,18 +140,21 @@ export function trackSoftNavigationLCP(onSoftNavReport) {
     for (const icpEntry of list.getEntries()) {
       // MANDATORY: Match by interactionId (not navigationId) so only paints caused
       // by the soft navigation's initiating interaction update the route's LCP.
-      if (activeSoftNav && icpEntry.interactionId === activeSoftNav.interactionId) {
+      if (
+        activeSoftNav &&
+        icpEntry.interactionId === activeSoftNav.interactionId
+      ) {
         activeLcpEntry = icpEntry;
       }
     }
   });
 
-  softNavObserver.observe({ type: 'soft-navigation', buffered: true });
-  icpObserver.observe({ type: 'interaction-contentful-paint', buffered: true });
+  softNavObserver.observe({ type: "soft-navigation", buffered: true });
+  icpObserver.observe({ type: "interaction-contentful-paint", buffered: true });
 
   // Finalize the active route's LCP when the page is backgrounded or unloaded.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
       finalizeCurrentSoftNav();
     }
   });
@@ -160,12 +168,12 @@ export function trackSoftNavigationLCP(onSoftNavReport) {
 If your goal is to report standard Core Web Vitals (LCP, CLS, and INP) across both hard and soft navigations to an analytics endpoint, use the `web-vitals` library (v6.0.0+) with `{ reportSoftNavs: true }` rather than manually slicing every metric timeline.
 
 ```javascript
-import { onLCP, onFCP, onCLS, onINP } from 'web-vitals';
+import { onLCP, onFCP, onCLS, onINP } from "web-vitals";
 
 function sendToAnalytics(metric) {
   // Example-only endpoint; replace with your real telemetry URL.
   navigator.sendBeacon(
-    '/analytics',
+    "/analytics",
     JSON.stringify({
       name: metric.name,
       value: metric.value,

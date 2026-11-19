@@ -7,7 +7,7 @@
    </style>
 +  <script type="module" src="./src/coffee-favorite.js"></script>
  </head>
- 
+
  <body>
 @@ -182,16 +183,19 @@
            <h3>Maple Oat Latte</h3>

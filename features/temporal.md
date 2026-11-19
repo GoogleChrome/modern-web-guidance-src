@@ -9,9 +9,9 @@ Note that importing `temporal-polyfill` does not automatically assign the `Tempo
 ```javascript
 // Check if Temporal is supported natively
 (async () => {
-  if (typeof Temporal === 'undefined') {
+  if (typeof Temporal === "undefined") {
     // Load the polyfill conditionally
-    const module = await import('https://esm.sh/temporal-polyfill');
+    const module = await import("https://esm.sh/temporal-polyfill");
     globalThis.Temporal = module.Temporal;
     // Extend Date.prototype if needed
     Date.prototype.toTemporalInstant = module.toTemporalInstant;

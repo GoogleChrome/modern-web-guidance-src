@@ -4,8 +4,8 @@ import {
   getTargetFiles,
   getCssStyleSheet,
   getHtmlDocuments,
-} from '../../../../../src/grading/test-fixture.ts';
-import type { Document } from 'linkedom';
+} from "../../../../../src/grading/test-fixture.ts";
+import type { Document } from "linkedom";
 import {
   CSSStyleRule,
   CSSMediaRule,
@@ -14,7 +14,7 @@ import {
   type CSSRule,
   type CSSStyleDeclaration,
   type CSSStyleSheet,
-} from 'cssomnom';
+} from "cssomnom";
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
@@ -30,7 +30,9 @@ function getAllRules(rules: Iterable<CSSRule>): CSSRule[] {
   return result;
 }
 
-function getAllStyleDeclarations(rules: Iterable<CSSRule>): CSSStyleDeclaration[] {
+function getAllStyleDeclarations(
+  rules: Iterable<CSSRule>,
+): CSSStyleDeclaration[] {
   const decls: CSSStyleDeclaration[] = [];
   for (const rule of getAllRules(rules)) {
     if (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations) {
@@ -40,75 +42,104 @@ function getAllStyleDeclarations(rules: Iterable<CSSRule>): CSSStyleDeclaration[
   return decls;
 }
 
-test.describe('progress Target Grader', () => {
-  test('Uses the semantic <progress> element', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const progressElements = docs.flatMap((d) => Array.from(d.document.querySelectorAll('progress')));
+test.describe("progress Target Grader", () => {
+  test("Uses the semantic <progress> element", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const progressElements = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("progress")),
+    );
     expect(progressElements.length).toBeGreaterThan(0);
   });
 
-  test('Determinate progress bar sets the value attribute and a valid scale', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const determinateBars = docs.flatMap((d) => Array.from(d.document.querySelectorAll('progress[value]')));
+  test("Determinate progress bar sets the value attribute and a valid scale", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const determinateBars = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("progress[value]")),
+    );
     const hasValidDeterminate =
       determinateBars.length > 0 &&
       determinateBars.every((el) => {
-        const val = Number(el.getAttribute('value'));
-        const maxAttr = el.getAttribute('max');
+        const val = Number(el.getAttribute("value"));
+        const maxAttr = el.getAttribute("max");
         const max = maxAttr !== null ? Number(maxAttr) : 1;
-        return !Number.isNaN(val) && !Number.isNaN(max) && max > 0 && val >= 0 && val <= max;
+        return (
+          !Number.isNaN(val) &&
+          !Number.isNaN(max) &&
+          max > 0 &&
+          val >= 0 &&
+          val <= max
+        );
       });
     expect(hasValidDeterminate).toBe(true);
   });
 
-  test('Indeterminate progress bar state is achieved by omitting the value attribute', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const indeterminateBars = docs.flatMap((d) => Array.from(d.document.querySelectorAll('progress:not([value])')));
+  test("Indeterminate progress bar state is achieved by omitting the value attribute", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const indeterminateBars = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("progress:not([value])")),
+    );
     expect(indeterminateBars.length).toBeGreaterThan(0);
   });
 
-  test('Each progress bar is associated with a descriptive label', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+  test("Each progress bar is associated with a descriptive label", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
     const progressWithDocs = docs.flatMap((d) =>
       Array.from(
-        d.document.querySelectorAll('progress, [role="progressbar"], [role~="progressbar" i]'),
+        d.document.querySelectorAll(
+          'progress, [role="progressbar"], [role~="progressbar" i]',
+        ),
       ).map((el) => ({ el, doc: d.document })),
     );
     const allLabeled =
       progressWithDocs.length > 0 &&
       progressWithDocs.every(({ el, doc }) => {
-        const ariaLabel = el.getAttribute('aria-label')?.trim();
+        const ariaLabel = el.getAttribute("aria-label")?.trim();
         if (ariaLabel) return true;
 
-        const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim();
+        const ariaLabelledBy = el.getAttribute("aria-labelledby")?.trim();
         if (ariaLabelledBy) {
           const ids = ariaLabelledBy.split(/\s+/);
           if (
             ids.some((id) => {
               const target = doc.getElementById(id);
-              return Boolean(target?.textContent?.trim() || target?.getAttribute('aria-label')?.trim());
+              return Boolean(
+                target?.textContent?.trim() ||
+                target?.getAttribute("aria-label")?.trim(),
+              );
             })
           ) {
             return true;
           }
         }
 
-        const id = el.getAttribute('id')?.trim();
+        const id = el.getAttribute("id")?.trim();
         if (id) {
-          const explicitLabels = Array.from(doc.querySelectorAll('label[for]')).filter(
-            (l) => l.getAttribute('for') === id,
-          );
+          const explicitLabels = Array.from(
+            doc.querySelectorAll("label[for]"),
+          ).filter((l) => l.getAttribute("for") === id);
           if (
-            explicitLabels.some(
-              (l) => Boolean(l.textContent?.trim() || l.getAttribute('aria-label')?.trim()),
+            explicitLabels.some((l) =>
+              Boolean(
+                l.textContent?.trim() || l.getAttribute("aria-label")?.trim(),
+              ),
             )
           ) {
             return true;
           }
         }
 
-        const parentLabel = el.closest('label');
-        if (parentLabel && Boolean(parentLabel.textContent?.trim() || parentLabel.getAttribute('aria-label')?.trim())) {
+        const parentLabel = el.closest("label");
+        if (
+          parentLabel &&
+          Boolean(
+            parentLabel.textContent?.trim() ||
+            parentLabel.getAttribute("aria-label")?.trim(),
+          )
+        ) {
           return true;
         }
 
@@ -117,73 +148,103 @@ test.describe('progress Target Grader', () => {
     expect(allLabeled).toBe(true);
   });
 
-  test('<progress> element does not include fallback text content inside the element', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const progressElements = docs.flatMap((d) => Array.from(d.document.querySelectorAll('progress')));
+  test("<progress> element does not include fallback text content inside the element", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const progressElements = docs.flatMap((d) =>
+      Array.from(d.document.querySelectorAll("progress")),
+    );
     const hasNoFallbackText =
-      progressElements.length > 0 && progressElements.every((el) => (el.textContent ?? '').trim() === '');
+      progressElements.length > 0 &&
+      progressElements.every((el) => (el.textContent ?? "").trim() === "");
     expect(hasNoFallbackText).toBe(true);
   });
 
-  test('Custom styles normalize the element using appearance: none and border: 0', () => {
+  test("Custom styles normalize the element using appearance: none and border: 0", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+    const styleRules = allRules.filter(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule,
+    );
 
     const hasAppearanceNone =
-      styleRules.some((r) => /\bnone\b/i.test(r.style.getPropertyValue('appearance'))) ||
-      docs.some((d) => Boolean(d.document.querySelector('progress.appearance-none, progress[class*="appearance-none"]')));
+      styleRules.some((r) =>
+        /\bnone\b/i.test(r.style.getPropertyValue("appearance")),
+      ) ||
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector(
+            'progress.appearance-none, progress[class*="appearance-none"]',
+          ),
+        ),
+      );
 
     const hasZeroBorder =
       styleRules.some((r) => {
-        const border = r.style.getPropertyValue('border');
-        const borderWidth = r.style.getPropertyValue('border-width');
-        const borderStyle = r.style.getPropertyValue('border-style');
+        const border = r.style.getPropertyValue("border");
+        const borderWidth = r.style.getPropertyValue("border-width");
+        const borderStyle = r.style.getPropertyValue("border-style");
         return (
           /\b(0(px|rem|em)?|none)\b/i.test(border) ||
           /\b0(px|rem|em)?\b/i.test(borderWidth) ||
           /\bnone\b/i.test(borderStyle)
         );
       }) ||
-      docs.some((d) => Boolean(d.document.querySelector('progress.border-0, progress.border-none')));
+      docs.some((d) =>
+        Boolean(
+          d.document.querySelector("progress.border-0, progress.border-none"),
+        ),
+      );
 
     expect(hasAppearanceNone && hasZeroBorder).toBe(true);
   });
 
-  test('Custom styles are provided for browser-specific pseudo-elements using separate -webkit- and -moz- selector rules', () => {
+  test("Custom styles are provided for browser-specific pseudo-elements using separate -webkit- and -moz- selector rules", () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const allRules = getAllRules(stylesheet.cssRules);
-    const styleRules = allRules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
+    const styleRules = allRules.filter(
+      (r): r is CSSStyleRule => r instanceof CSSStyleRule,
+    );
 
     const hasWebkitBar = styleRules.some(
       (r) =>
-        r.selectorText.includes('::-webkit-progress-bar') &&
-        !r.selectorText.includes('-moz-') &&
+        r.selectorText.includes("::-webkit-progress-bar") &&
+        !r.selectorText.includes("-moz-") &&
         r.style.length > 0,
     );
     const hasWebkitValue = styleRules.some(
       (r) =>
-        r.selectorText.includes('::-webkit-progress-value') &&
-        !r.selectorText.includes('-moz-') &&
+        r.selectorText.includes("::-webkit-progress-value") &&
+        !r.selectorText.includes("-moz-") &&
         r.style.length > 0,
     );
     const hasMozBar = styleRules.some(
       (r) =>
-        r.selectorText.includes('::-moz-progress-bar') &&
-        !r.selectorText.includes('-webkit-') &&
+        r.selectorText.includes("::-moz-progress-bar") &&
+        !r.selectorText.includes("-webkit-") &&
         r.style.length > 0,
     );
     const hasNoGroupedVendorRules = styleRules.every(
-      (r) => !(r.selectorText.includes('-webkit-') && r.selectorText.includes('-moz-')),
+      (r) =>
+        !(
+          r.selectorText.includes("-webkit-") &&
+          r.selectorText.includes("-moz-")
+        ),
     );
 
-    expect(hasWebkitBar && hasWebkitValue && hasMozBar && hasNoGroupedVendorRules).toBe(true);
+    expect(
+      hasWebkitBar && hasWebkitValue && hasMozBar && hasNoGroupedVendorRules,
+    ).toBe(true);
   });
 
-  test('Custom indeterminate animation respects prefers-reduced-motion: reduce by slowing down or dampening rather than disabling', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    const hasProgress = docs.some((d) => Boolean(d.document.querySelector('progress')));
+  test("Custom indeterminate animation respects prefers-reduced-motion: reduce by slowing down or dampening rather than disabling", () => {
+    const docs: Array<{ file: string; document: Document }> =
+      getHtmlDocuments(targetFiles);
+    const hasProgress = docs.some((d) =>
+      Boolean(d.document.querySelector("progress")),
+    );
     if (!hasProgress) {
       expect(hasProgress).toBe(true);
       return;
@@ -194,8 +255,8 @@ test.describe('progress Target Grader', () => {
     const mediaRules = allRules.filter(
       (r): r is CSSMediaRule =>
         r instanceof CSSMediaRule &&
-        r.conditionText.includes('prefers-reduced-motion') &&
-        r.conditionText.includes('reduce'),
+        r.conditionText.includes("prefers-reduced-motion") &&
+        r.conditionText.includes("reduce"),
     );
 
     const adjustsAnimationWithoutDisabling = mediaRules.some((mediaRule) => {
@@ -213,8 +274,11 @@ test.describe('progress Target Grader', () => {
           const prop = style.item(i);
           const val = style.getPropertyValue(prop).trim();
           const isAnimationRelated =
-            prop.includes('animation') || prop.includes('duration') || prop.startsWith('--');
-          const hasPositiveDuration = /[1-9]\d*(\.\d+)?m?s\b|0\.\d*[1-9]\d*m?s\b/i.test(val);
+            prop.includes("animation") ||
+            prop.includes("duration") ||
+            prop.startsWith("--");
+          const hasPositiveDuration =
+            /[1-9]\d*(\.\d+)?m?s\b|0\.\d*[1-9]\d*m?s\b/i.test(val);
           const isDisabled = /\bnone\b/i.test(val) || /^0(m?s)?$/i.test(val);
           if (isAnimationRelated && hasPositiveDuration && !isDisabled) {
             return true;
@@ -230,7 +294,10 @@ test.describe('progress Target Grader', () => {
         for (let i = 0; i < style.length; i++) {
           const prop = style.item(i);
           const val = style.getPropertyValue(prop).trim().toLowerCase();
-          if (prop.includes('animation') && (val === 'none' || val === '0s' || val.includes('none'))) {
+          if (
+            prop.includes("animation") &&
+            (val === "none" || val === "0s" || val.includes("none"))
+          ) {
             return true;
           }
         }
@@ -241,27 +308,29 @@ test.describe('progress Target Grader', () => {
     const noPreferenceRules = allRules.filter(
       (r): r is CSSMediaRule =>
         r instanceof CSSMediaRule &&
-        r.conditionText.includes('prefers-reduced-motion') &&
-        r.conditionText.includes('no-preference'),
+        r.conditionText.includes("prefers-reduced-motion") &&
+        r.conditionText.includes("no-preference"),
     );
-    const gatesAnimationUnderNoPreference = noPreferenceRules.some((mediaRule) => {
-      const decls = getAllStyleDeclarations(mediaRule.cssRules);
-      return decls.some((style) => {
-        for (let i = 0; i < style.length; i++) {
-          const prop = style.item(i);
-          if (prop.includes('animation')) return true;
-        }
-        return false;
-      });
-    });
+    const gatesAnimationUnderNoPreference = noPreferenceRules.some(
+      (mediaRule) => {
+        const decls = getAllStyleDeclarations(mediaRule.cssRules);
+        return decls.some((style) => {
+          for (let i = 0; i < style.length; i++) {
+            const prop = style.item(i);
+            if (prop.includes("animation")) return true;
+          }
+          return false;
+        });
+      },
+    );
 
     const allDecls = getAllStyleDeclarations(stylesheet.cssRules);
     const hasCustomIndeterminateAnimation = allDecls.some((style) => {
       for (let i = 0; i < style.length; i++) {
         const prop = style.item(i);
-        if (prop === 'animation' || prop === 'animation-name') {
+        if (prop === "animation" || prop === "animation-name") {
           const val = style.getPropertyValue(prop).trim().toLowerCase();
-          if (val !== '' && val !== 'none') return true;
+          if (val !== "" && val !== "none") return true;
         }
       }
       return false;

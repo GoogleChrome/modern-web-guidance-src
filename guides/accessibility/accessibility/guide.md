@@ -119,7 +119,9 @@ Contents:
 ```html
 <!-- Good: Semantic landmarks, heading hierarchy, skip link -->
 <header>
-  <a href="#platform-dashboard" class="skip-link visually-hidden">Skip to content</a>
+  <a href="#platform-dashboard" class="skip-link visually-hidden"
+    >Skip to content</a
+  >
   <nav aria-label="Primary">
     <ul>
       <li><a href="/">Home</a></li>
@@ -131,7 +133,9 @@ Contents:
   <section>
     <h2>User Statistics</h2>
     <table>
-      <caption>Monthly active users</caption>
+      <caption>
+        Monthly active users
+      </caption>
       <thead>
         <tr>
           <th scope="col">Month</th>
@@ -271,13 +275,13 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 ```html
 <!-- Good: Distinct title and language declaration -->
 <html lang="en">
-<head>
-  <title>Analytics Reports | Guidance Platform</title>
-</head>
-<body>
-  <p>The motto is <span lang="la">"Carpe diem"</span>.</p>
-  <iframe title="Interactive Sales Chart" src="/chart"></iframe>
-</body>
+  <head>
+    <title>Analytics Reports | Guidance Platform</title>
+  </head>
+  <body>
+    <p>The motto is <span lang="la">"Carpe diem"</span>.</p>
+    <iframe title="Interactive Sales Chart" src="/chart"></iframe>
+  </body>
 </html>
 ```
 
@@ -306,25 +310,25 @@ When the hidden content is focusable (skip links, focus-receiving wrappers), the
 // NOTE: This pattern applies ONLY to non-standard UI where no native HTML tag exists.
 // Always prioritize native <button> or <input> elements for standard interactions.
 // Elements MUST have the appropriate ARIA role (e.g., role="treeitem" or role="tab").
-customWidget.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
+customWidget.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
     toggleWidgetState();
   }
-  if (e.key === ' ') {
+  if (e.key === " ") {
     e.preventDefault(); // Prevent page scrolling on Spacebar keydown
   }
 });
 
-customWidget.addEventListener('keyup', (e) => {
-  if (e.key === ' ') {
+customWidget.addEventListener("keyup", (e) => {
+  if (e.key === " ") {
     toggleWidgetState();
   }
 });
 
 function toggleWidgetState() {
   // E.g., Manage toggle/expanded states for custom controls
-  const isExpanded = customWidget.getAttribute('aria-expanded') === 'true';
-  customWidget.setAttribute('aria-expanded', !isExpanded);
+  const isExpanded = customWidget.getAttribute("aria-expanded") === "true";
+  customWidget.setAttribute("aria-expanded", !isExpanded);
 }
 ```
 
@@ -367,11 +371,11 @@ function toggleWidgetState() {
 
 ```html
 <!-- Decorative -->
-<img src="divider.png" alt="">
+<img src="divider.png" alt="" />
 
 <!-- Informative (Functional) -->
 <a href="/search">
-  <img src="glass.png" alt="Search the platform">
+  <img src="glass.png" alt="Search the platform" />
 </a>
 ```
 
@@ -389,7 +393,7 @@ function toggleWidgetState() {
 <!-- Inline non-decorative SVG: example that uses the <title> element -->
 <svg role="img" viewBox="0 0 24 24">
   <title>Home</title>
-  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
 </svg>
 ```
 
@@ -398,7 +402,7 @@ function toggleWidgetState() {
 ```html
 <!-- Inline non-decorative SVG: example that uses the aria-label attribute -->
 <svg role="img" viewBox="0 0 24 24" aria-label="Home">
-  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
 </svg>
 ```
 
@@ -407,7 +411,7 @@ function toggleWidgetState() {
 ```html
 <!-- Inline Decorative SVG (hide from assistive technologies) -->
 <svg aria-hidden="true" viewBox="0 0 24 24">
-  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+  <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
 </svg>
 ```
 
@@ -421,7 +425,7 @@ function toggleWidgetState() {
 ```html
 <!-- Complex graph with figcaption -->
 <figure>
-  <img src="chart.png" alt="Sales growth graph 2024.">
+  <img src="chart.png" alt="Sales growth graph 2024." />
   <figcaption>Sales grew 20% in Q3 due to new platform launch.</figcaption>
 </figure>
 ```
@@ -439,17 +443,15 @@ function toggleWidgetState() {
 ```html
 <!-- Video with Captions tracks -->
 <video controls>
-  <source src="intro.mp4" type="video/mp4">
-  <track src="caps.vtt" kind="captions" srclang="en" label="English">
+  <source src="intro.mp4" type="video/mp4" />
+  <track src="caps.vtt" kind="captions" srclang="en" label="English" />
 </video>
 
 <!-- Audio with expandable transcript details -->
 <audio controls src="podcast.mp3" aria-details="podcast-transcript"></audio>
 <details id="podcast-transcript">
   <summary>View Transcript</summary>
-  <div class="transcript-content">
-    Welcome to the show...
-  </div>
+  <div class="transcript-content">Welcome to the show...</div>
 </details>
 ```
 
@@ -459,12 +461,12 @@ function toggleWidgetState() {
 
 ### Content Visibility Decision Matrix
 
-| Intent | Visual | Screen Reader | Focusable | Structural Pattern |
-| :--- | :--- | :--- | :--- | :--- |
-| **Visible to all** | Yes | Yes | Yes | Standard rendering |
-| **Screen Reader only** | No | Yes | Yes (if interactive) | Visually hidden utility (e.g. `.visually-hidden`) |
-| **Visual only** | Yes | No | No | `aria-hidden="true"` |
-| **Hidden for all** | No | No | No | `hidden` attribute / `display: none` |
+| Intent                 | Visual | Screen Reader | Focusable            | Structural Pattern                                |
+| :--------------------- | :----- | :------------ | :------------------- | :------------------------------------------------ |
+| **Visible to all**     | Yes    | Yes           | Yes                  | Standard rendering                                |
+| **Screen Reader only** | No     | Yes           | Yes (if interactive) | Visually hidden utility (e.g. `.visually-hidden`) |
+| **Visual only**        | Yes    | No            | No                   | `aria-hidden="true"`                              |
+| **Hidden for all**     | No     | No            | No                   | `hidden` attribute / `display: none`              |
 
 **Heuristic Rule:** If an element can receive keyboard focus, it must not be hidden via `aria-hidden="true"`.
 
@@ -476,7 +478,7 @@ function toggleWidgetState() {
 
 - **Mandatory - Provide a label for all form controls:** Do not rely on the currently selected input or value as a way of labeling the control. (3.3.2 Labels or Instructions (Level A))
 - **Connect Labels Programmatically:** Use `<label for="id">` linked to `<input id="id">`. (1.3.1 Info and Relationships (Level A))
-- **Don't use placeholders as primary labels:** Placeholders are not persistent labels. Only use placeholders to provide  brief hints, such as an example of an appropriate input. (3.3.2 Labels or Instructions (Level A))
+- **Don't use placeholders as primary labels:** Placeholders are not persistent labels. Only use placeholders to provide brief hints, such as an example of an appropriate input. (3.3.2 Labels or Instructions (Level A))
 - **Link hints to inputs via `aria-describedby`:** Associate help text with inputs, and place the hint above the input so autocomplete popovers don't cover it during editing. (1.3.1 Info and Relationships (Level A))
 
 #### Code Example: A labeled form control with a hint for passwords
@@ -486,7 +488,13 @@ function toggleWidgetState() {
 <form>
   <label for="pwd">Password:</label>
   <span id="pwd-hint">Must contain at least 8 characters.</span>
-  <input id="pwd" type="password" aria-describedby="pwd-hint" autocomplete="current-password" required>
+  <input
+    id="pwd"
+    type="password"
+    aria-describedby="pwd-hint"
+    autocomplete="current-password"
+    required
+  />
 </form>
 ```
 
@@ -502,11 +510,11 @@ Live regions let assistive tech announce content updates that aren't tied to nav
 
 ### Live Region Urgency Table
 
-| Urgency | Visual Analogue | `aria-live` Value | Behavioral Impact | Example |
-| :--- | :--- | :--- | :--- | :--- |
-| **Critical** | Modal / Alert | `assertive` (or `role="alert"`) | Interrupts immediately, clears speech queue | Session timeout, API failure |
-| **Standard**| Toast / Banner | `polite` | Announces at next graceful break | Search results, "Saved" status |
-| **Passive**  | Silent text | `off` | Only if user navigates to it | Live character count |
+| Urgency      | Visual Analogue | `aria-live` Value               | Behavioral Impact                           | Example                        |
+| :----------- | :-------------- | :------------------------------ | :------------------------------------------ | :----------------------------- |
+| **Critical** | Modal / Alert   | `assertive` (or `role="alert"`) | Interrupts immediately, clears speech queue | Session timeout, API failure   |
+| **Standard** | Toast / Banner  | `polite`                        | Announces at next graceful break            | Search results, "Saved" status |
+| **Passive**  | Silent text     | `off`                           | Only if user navigates to it                | Live character count           |
 
 **Heuristic Rule:** Use `assertive` only for critical, time-sensitive updates that require immediate attention or prevent safe continuation (e.g., data loss, session timeouts, or network drops).
 
@@ -565,8 +573,8 @@ Modern browsers provide native solutions for creating modal dialogs which avoid 
 </dialog>
 
 <script>
-  document.getElementById('open-btn').addEventListener('click', () => {
-    document.getElementById('accessible-modal').showModal();
+  document.getElementById("open-btn").addEventListener("click", () => {
+    document.getElementById("accessible-modal").showModal();
   });
 </script>
 ```
