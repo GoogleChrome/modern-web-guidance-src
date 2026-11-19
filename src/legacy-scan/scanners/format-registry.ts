@@ -1,3 +1,5 @@
+import { posix } from 'node:path';
+
 export type FormatEngine = 'dom' | 'js' | 'css' | 'dependency';
 export type FormatStatus = 'supported' | 'expected-skip' | 'unsupported';
 
@@ -295,10 +297,34 @@ const ENGINES_BY_EXTENSION: ReadonlyMap<string, ReadonlySet<FormatEngine>> = (()
   return map;
 })();
 
+const PACKAGE_JSON_ENGINES: ReadonlySet<FormatEngine> = new Set(
+  SUPPORTED_ENTRIES.find((entry) => entry.id === 'package.json')?.engines ?? ['dependency'],
+);
+
+/**
+ * Returns `true` if `relPath` refers to a `package.json` manifest.
+ */
+export function isPackageJsonPath(relPath: string): boolean {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  return normalized === 'package.json' || normalized.endsWith('/package.json');
+}
+
 /**
  * Returns the set of supported scanner engines for a source file extension
  * (e.g. `.ts` -> `{'js', 'css'}`), or `undefined` if unsupported.
  */
 export function getEnginesForSourceExtension(ext: string): ReadonlySet<FormatEngine> | undefined {
   return ENGINES_BY_EXTENSION.get(ext.toLowerCase());
+}
+
+/**
+ * Returns the supported scanner engines for a file path (`package.json` or supported
+ * source extension via `posix.extname`), or `undefined` if unsupported.
+ */
+export function getEnginesForPath(relPath: string): ReadonlySet<FormatEngine> | undefined {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  if (isPackageJsonPath(normalized)) {
+    return PACKAGE_JSON_ENGINES;
+  }
+  return ENGINES_BY_EXTENSION.get(posix.extname(normalized));
 }

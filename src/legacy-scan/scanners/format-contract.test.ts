@@ -12,6 +12,7 @@ import type {
 import { shouldScanFile } from './file-filter.ts';
 import {
   FORMAT_REGISTRY,
+  getEnginesForPath,
   getEnginesForSourceExtension,
   type FormatEngine,
 } from './format-registry.ts';
@@ -436,6 +437,14 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
     for (const unsupportedExt of ['.sass', '.styl', '.mdx', '.pug', '.md', '.json', '.png']) {
       assert.equal(getEnginesForSourceExtension(unsupportedExt), undefined);
     }
+
+    assert.deepEqual([...(getEnginesForPath('package.json') ?? [])], ['dependency']);
+    assert.deepEqual([...(getEnginesForPath('apps/web/package.json') ?? [])], ['dependency']);
+    assert.equal(getEnginesForPath('not-package.json'), undefined);
+    assert.deepEqual([...(getEnginesForPath('.eslintrc.js') ?? [])].sort(), ['css', 'js']);
+    assert.deepEqual([...(getEnginesForPath('src/App.vue') ?? [])].sort(), ['css', 'dom', 'js']);
+    assert.equal(getEnginesForPath('src/.vue'), undefined);
+    assert.equal(getEnginesForPath('src\\.vue'), undefined);
   });
 
   describe('expected-skip formats produce 0 findings', () => {

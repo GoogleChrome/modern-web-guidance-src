@@ -948,14 +948,31 @@ describe('runLegacyScanCli', () => {
         activeGuideCount: 38,
         isDefaultQualifiedMode: true,
         color: false,
-        scannedFileCount: 5000,
-        eligibleFileCount: 64120,
-        truncatedByMaxFiles: true,
+        truncation: { scannedFileCount: 5000, eligibleFileCount: 64120 },
       });
       assert.match(
         largeOutput,
         /Scanned 5,000 of 64,120 eligible files \(--max-files cap\)\. Re-run with --max-files 0 or target a subdirectory for full coverage\./,
       );
+
+      // Single-file edge cases: unsupported extension and empty custom rule list both report scannedFileCount: 0
+      await withTempDir(async (edgeDir) => {
+        const mdPath = join(edgeDir, 'README.md');
+        await writeFile(mdPath, '# readme\n', 'utf8');
+        const resMd = await runLegacyScanCli([mdPath, '--json'], { rules: [] });
+        assert.equal(resMd.exitCode, 0);
+        assert.equal(resMd.data?.scannedFileCount, 0);
+
+        const htmlPath = join(edgeDir, 'page.html');
+        await writeFile(htmlPath, '<p>ok</p>\n', 'utf8');
+        const resEmptyRules = await runLegacyScanCli([htmlPath, '--json'], { rules: [] });
+        assert.equal(resEmptyRules.exitCode, 0);
+        assert.equal(resEmptyRules.data?.scannedFileCount, 0);
+
+        const resDirEmptyRules = await runLegacyScanCli([edgeDir, '--json'], { rules: [] });
+        assert.equal(resDirEmptyRules.exitCode, 0);
+        assert.equal(resDirEmptyRules.data?.scannedFileCount, 0);
+      });
     });
   });
 });

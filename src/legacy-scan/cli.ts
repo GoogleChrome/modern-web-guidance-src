@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import {
-  canScanFileForRules,
   DEFAULT_MAX_FILES,
   MAX_SOURCE_FILE_BYTES,
   resolveMaxFiles,
@@ -68,14 +67,17 @@ export interface CliResult {
   readonly data?: ScanJsonOutput;
 }
 
+export interface TruncationInfo {
+  readonly scannedFileCount: number;
+  readonly eligibleFileCount: number;
+}
+
 export interface FormatHumanReadableOptions {
   readonly activeGuideCount?: number;
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
   readonly skippedDocsAndTestsCount?: number;
-  readonly scannedFileCount?: number;
-  readonly eligibleFileCount?: number;
-  readonly truncatedByMaxFiles?: boolean;
+  readonly truncation?: TruncationInfo;
 }
 
 export type TextStyle = Parameters<typeof styleText>[0];
@@ -88,18 +90,40 @@ function formatCount(count: number): string {
   return count.toLocaleString('en-US');
 }
 
+function formatTruncationNotice(scannedFileCount: number, eligibleFileCount: number): string {
+  return (
+    `Scanned ${formatCount(scannedFileCount)} of ${formatCount(eligibleFileCount)} eligible files (--max-files cap). ` +
+    'Re-run with --max-files 0 or target a subdirectory for full coverage.'
+  );
+}
+
 const MAX_FILES_CLI_RE = /^(?:0|[1-9]\d*)$/;
 
 function parseMaxFilesCliOption(raw: string): number | null {
   if (!MAX_FILES_CLI_RE.test(raw)) {
     return null;
   }
-  const parsed = Number(raw);
-  if (!Number.isSafeInteger(parsed)) {
+  try {
+    return resolveMaxFiles(Number(raw));
+  } catch {
     return null;
   }
-  return parsed === 0 ? Number.POSITIVE_INFINITY : parsed;
 }
+
+const CLI_PARSE_OPTIONS = {
+  json: { type: 'boolean' },
+  guide: { type: 'string' },
+  'include-docs-and-tests': { type: 'boolean' },
+  'max-files': { type: 'string' },
+  help: { type: 'boolean', short: 'h' },
+  'skill-version': { type: 'string' },
+} as const;
+
+const STRING_OPTION_FLAGS: ReadonlySet<string> = new Set(
+  Object.entries(CLI_PARSE_OPTIONS)
+    .filter(([, cfg]) => cfg.type === 'string')
+    .map(([name]) => `--${name}`),
+);
 
 export function shouldEnableColor(optionsColor?: boolean): boolean {
   if (optionsColor !== undefined) return optionsColor;
@@ -196,21 +220,15 @@ export function formatHumanReadable(
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
   const skippedDocsAndTestsCount = formatOptions?.skippedDocsAndTestsCount ?? 0;
-  const truncatedByMaxFiles = Boolean(formatOptions?.truncatedByMaxFiles);
+  const truncation = formatOptions?.truncation;
   const colorEnabled = shouldEnableColor(formatOptions?.color);
 
   const fmt = (style: TextStyle, text: string): string =>
     colorEnabled ? styleText(style, text, { validateStream: false }) : text;
 
-  const truncationNotice =
-    truncatedByMaxFiles &&
-    formatOptions?.scannedFileCount !== undefined &&
-    formatOptions?.eligibleFileCount !== undefined
-      ? fmt(
-          'yellow',
-          `Scanned ${formatCount(formatOptions.scannedFileCount)} of ${formatCount(formatOptions.eligibleFileCount)} eligible files (--max-files cap). Re-run with --max-files 0 or target a subdirectory for full coverage.`,
-        )
-      : undefined;
+  const truncationNotice = truncation
+    ? fmt('yellow', formatTruncationNotice(truncation.scannedFileCount, truncation.eligibleFileCount))
+    : undefined;
 
   const skippedNotice =
     skippedDocsAndTestsCount > 0
@@ -224,7 +242,7 @@ export function formatHumanReadable(
     const lines = isDefaultMode
       ? [
           `${fmt('bold', 'Modern Web Guidance legacy-scan')} — ${targetDir}`,
-          truncatedByMaxFiles
+          truncation
             ? `0 findings in scanned subset across ${plural(activeGuideCount, 'qualified guide')}.`
             : `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
           ...(truncationNotice ? [truncationNotice] : []),
@@ -237,7 +255,7 @@ export function formatHumanReadable(
       : [
           ...(truncationNotice ? [truncationNotice] : []),
           ...(skippedNotice ? [skippedNotice] : []),
-          truncatedByMaxFiles
+          truncation
             ? `No modernization opportunities found in scanned files under ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`
             : `No modernization opportunities found in ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`,
         ];
@@ -337,46 +355,6 @@ function groupFindingsByGuide(
     });
 }
 
-function buildJsonNote(params: {
-  readonly isDefaultQualifiedMode: boolean;
-  readonly totalFindings: number;
-  readonly activeGuideCount: number;
-  readonly activeRuleCount: number;
-  readonly scannedFileCount: number;
-  readonly eligibleFileCount: number;
-  readonly truncatedByMaxFiles: boolean;
-}): string | undefined {
-  const {
-    isDefaultQualifiedMode,
-    totalFindings,
-    activeGuideCount,
-    activeRuleCount,
-    scannedFileCount,
-    eligibleFileCount,
-    truncatedByMaxFiles,
-  } = params;
-
-  if (truncatedByMaxFiles) {
-    const truncationHint =
-      `Partial scan only: scanned ${formatCount(scannedFileCount)} of ${formatCount(eligibleFileCount)} eligible files (--max-files cap). ` +
-      'Re-run with --max-files 0 or target a subdirectory for full coverage.';
-    if (!isDefaultQualifiedMode) {
-      return truncationHint;
-    }
-    return totalFindings === 0
-      ? `${truncationHint} Found 0 legacy patterns in the scanned subset across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`
-      : `${truncationHint} Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`;
-  }
-
-  if (!isDefaultQualifiedMode) {
-    return undefined;
-  }
-
-  return totalFindings === 0
-    ? `No legacy patterns found across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`
-    : `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
-}
-
 /**
  * Deterministic CLI runner for modern-web-guidance legacy-scan.
  * Supports human-readable output, --json structured output, --guide filtering, and --max-files cap.
@@ -391,14 +369,7 @@ export async function runLegacyScanCli(
   try {
     parsed = parseArgs({
       args: [...cleanArgs],
-      options: {
-        json: { type: 'boolean' },
-        guide: { type: 'string' },
-        'include-docs-and-tests': { type: 'boolean' },
-        'max-files': { type: 'string' },
-        help: { type: 'boolean', short: 'h' },
-        'skill-version': { type: 'string' },
-      },
+      options: CLI_PARSE_OPTIONS,
       allowPositionals: true,
       strict: true,
     });
@@ -406,13 +377,8 @@ export async function runLegacyScanCli(
     const error = err instanceof Error ? err.message : String(err);
     const isJson = cleanArgs.includes('--json');
     const targetDir =
-      cleanArgs.find(
-        (a, i) =>
-          !a.startsWith('-') &&
-          cleanArgs[i - 1] !== '--skill-version' &&
-          cleanArgs[i - 1] !== '--guide' &&
-          cleanArgs[i - 1] !== '--max-files',
-      ) || '.';
+      cleanArgs.find((a, i) => !a.startsWith('-') && !STRING_OPTION_FLAGS.has(cleanArgs[i - 1] ?? '')) ||
+      '.';
     return errorCliResult(error, isJson, targetDir);
   }
 
@@ -462,35 +428,27 @@ export async function runLegacyScanCli(
   }
 
   const scanStats: RepoScanStats = {};
-  let findings: ScanFinding[] = [];
+  let findings: ScanFinding[];
 
-  if (activeRuleCount > 0) {
-    if (dirStat.isFile()) {
-      const files = new Map<string, string>();
-      if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
-        return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
-      }
-      const content = await readFile(resolvedDir, 'utf8');
-      const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
-      const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
-      files.set(fileKey, content);
-      findings = scanFiles(files, activeRules, { includeDocsAndTests: true });
-      const singleScanned = canScanFileForRules(fileKey, content, activeRules, {
-        includeDocsAndTests: true,
-      })
-        ? 1
-        : 0;
-      scanStats.scannedFileCount = singleScanned;
-      scanStats.eligibleFileCount = singleScanned;
-      scanStats.truncatedByMaxFiles = false;
-    } else {
-      findings = await scanRepoFiles(resolvedDir, activeRules, {
-        maxFiles: effectiveMaxFiles,
-        includeDocsAndTests,
-        stats: scanStats,
-      });
+  if (dirStat.isFile()) {
+    if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
+      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
     }
+    const content = await readFile(resolvedDir, 'utf8');
+    const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
+    const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
+    findings = scanFiles(new Map([[fileKey, content]]), activeRules, {
+      includeDocsAndTests: true,
+      stats: scanStats,
+    });
+  } else {
+    findings = await scanRepoFiles(resolvedDir, activeRules, {
+      maxFiles: effectiveMaxFiles,
+      includeDocsAndTests,
+      stats: scanStats,
+    });
   }
+
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
   const scannedFileCount = scanStats.scannedFileCount ?? 0;
   const eligibleFileCount = scanStats.eligibleFileCount ?? scannedFileCount;
@@ -498,15 +456,23 @@ export async function runLegacyScanCli(
 
   const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
-  const note = buildJsonNote({
-    isDefaultQualifiedMode,
-    totalFindings,
-    activeGuideCount,
-    activeRuleCount,
-    scannedFileCount,
-    eligibleFileCount,
-    truncatedByMaxFiles,
-  });
+
+  const truncationHint = truncatedByMaxFiles
+    ? `Partial scan only: ${formatTruncationNotice(scannedFileCount, eligibleFileCount).replace(/^Scanned/, 'scanned')}`
+    : undefined;
+  let corpusHint: string | undefined;
+  if (isDefaultQualifiedMode) {
+    if (totalFindings === 0) {
+      corpusHint = truncatedByMaxFiles
+        ? `Found 0 legacy patterns in the scanned subset across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`
+        : `No legacy patterns found across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+    } else {
+      corpusHint = truncatedByMaxFiles
+        ? `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
+        : `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
+    }
+  }
+  const note = [truncationHint, corpusHint].filter(Boolean).join(' ') || undefined;
 
   const data: ScanJsonOutput = {
     targetDir,
@@ -534,9 +500,9 @@ export async function runLegacyScanCli(
     activeGuideCount,
     isDefaultQualifiedMode,
     skippedDocsAndTestsCount,
-    scannedFileCount,
-    eligibleFileCount,
-    truncatedByMaxFiles,
+    ...(truncatedByMaxFiles
+      ? { truncation: { scannedFileCount, eligibleFileCount } }
+      : {}),
   });
   return { exitCode: 0, output, stdout: output, stderr: '', data };
 }

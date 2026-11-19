@@ -38,6 +38,14 @@ const ALL_OPTIONS = {
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
+const FLAG_ARG_PLACEHOLDER: Partial<Record<OptionName, string>> = {
+  config: ' <path>',
+  limit: ' <n>',
+  targets: ' <apps>',
+  guide: ' <id>',
+  'max-files': ' <count>',
+};
+
 const COMMAND_METADATA = {
   'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests', 'max-files'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
@@ -234,7 +242,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : flagName === 'guide' ? ' <id>' : flagName === 'max-files' ? ' <count>' : '';
+          const arg = FLAG_ARG_PLACEHOLDER[flagName] ?? '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }

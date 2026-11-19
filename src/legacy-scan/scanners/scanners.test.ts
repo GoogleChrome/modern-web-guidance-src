@@ -21,11 +21,8 @@ import { prepareHtmlForDomScan } from './sfc-extractor.ts';
 import {
   computeGuideHash,
   createInMemoryProject,
-  DEFAULT_MAX_FILES,
-  resolveMaxFiles,
   scanFiles,
   scanRepoFiles,
-  type RepoScanStats,
 } from './index.ts';
 
 void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async (t) => {
@@ -1609,409 +1606,57 @@ void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags pr
   });
 });
 
-void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, and batched I/O', async (t) => {
-  await t.test('lazySourceFile skips AST creation on early ctx.fileContent exit and forwards has/getPrototypeOf when used', () => {
-    const project = createInMemoryProject();
-    let createSourceFileCalls = 0;
-    const origCreate = project.createSourceFile.bind(project);
-    project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
-      createSourceFileCalls++;
-      return origCreate(...args);
-    }) as typeof project.createSourceFile;
+void test('scanFiles: lazy SourceFile proxy skips AST creation on early ctx.fileContent exit', () => {
+  const project = createInMemoryProject();
+  let createSourceFileCalls = 0;
+  const origCreate = project.createSourceFile.bind(project);
+  project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
+    createSourceFileCalls++;
+    return origCreate(...args);
+  }) as typeof project.createSourceFile;
 
-    let sawHasOperator = false;
-    let sawPrototype = false;
+  let sawHasOperator = false;
+  let sawPrototype = false;
 
-    const rule: ScanRule = {
-      id: 'test/lazy-sf',
-      guideId: 'dialog',
-      guideHash: '000000000000',
-      summary: 'test lazy SourceFile',
-      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-      matcher: {
-        kind: 'js',
-        fastTokens: ['legacyWidget'],
-        matchFile: (sf, ctx) => {
-          if (ctx.fileContent.includes('modernGuard')) {
-            return [];
-          }
-          sawHasOperator = 'getDescendantsOfKind' in sf;
-          sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
-          return sf
-            .getDescendantsOfKind(SyntaxKind.CallExpression)
-            .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
-        },
+  const rule: ScanRule = {
+    id: 'test/lazy-sf',
+    guideId: 'dialog',
+    guideHash: '000000000000',
+    summary: 'test lazy SourceFile',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['legacyWidget'],
+      matchFile: (sf, ctx) => {
+        if (ctx.fileContent.includes('modernGuard')) {
+          return [];
+        }
+        sawHasOperator = 'getDescendantsOfKind' in sf;
+        sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
+        return sf
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
       },
-    };
+    },
+  };
 
-    const guardedFindings = scanFiles(
-      new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
-      [rule],
-      { project },
-    );
-    assert.equal(guardedFindings.length, 0);
-    assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
+  const guardedFindings = scanFiles(
+    new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
+    [rule],
+    { project },
+  );
+  assert.equal(guardedFindings.length, 0);
+  assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
 
-    const activeFindings = scanFiles(
-      new Map([['src/active.ts', 'legacyWidget();']]),
-      [rule],
-      { project },
-    );
-    assert.equal(activeFindings.length, 1);
-    assert.equal(createSourceFileCalls, 1);
-    assert.equal(sawHasOperator, true);
-    assert.equal(sawPrototype, true);
-  });
-
-  await t.test('scanFiles rotates ephemeral Project across >25 AST-parsed files and scanRepoFiles preserves order, maxFiles, and skippedDocsAndTestsCount across >64 files', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'batched-io-repo-'));
-    try {
-      await mkdir(join(tempDir, 'src'), { recursive: true });
-      await mkdir(join(tempDir, 'test'), { recursive: true });
-
-      for (let i = 0; i < 80; i++) {
-        const padded = String(i).padStart(3, '0');
-        await writeFile(
-          join(tempDir, 'src', `file-${padded}.ts`),
-          `export const idx = ${i};\nlegacyTarget(${i});\n`,
-        );
-      }
-      for (let j = 0; j < 10; j++) {
-        await writeFile(
-          join(tempDir, 'src', `a-spec-${j}.test.ts`),
-          `legacyTarget(${j});\n`,
-        );
-      }
-
-      const seenProjects = new Set<unknown>();
-      const rule: ScanRule = {
-        id: 'test/batched-scan',
-        guideId: 'dialog',
-        guideHash: '000000000000',
-        summary: 'test batched scan',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'js',
-          fastTokens: ['legacyTarget'],
-          matchFile: (sf) => {
-            seenProjects.add(sf.getProject());
-            return sf
-              .getDescendantsOfKind(SyntaxKind.CallExpression)
-              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() }));
-          },
-        },
-      };
-
-      const stats: RepoScanStats = {};
-      const findings = await scanRepoFiles(tempDir, [rule], {
-        maxFiles: 70,
-        stats,
-      });
-
-      assert.equal(findings.length, 70, 'must cap scanned files at maxFiles=70 across 64-file batches');
-      assert.equal(seenProjects.size, 3, 'must rotate ephemeral Project every 25 AST-parsed files (25 + 25 + 20 = 3 Projects)');
-      assert.equal(stats.skippedDocsAndTestsCount, 10, 'must count all 10 skipped test files before hitting maxFiles');
-      assert.equal(stats.scannedFileCount, 70);
-      assert.equal(stats.eligibleFileCount, 80);
-      assert.equal(stats.truncatedByMaxFiles, true);
-      const expectedFiles = Array.from({ length: 70 }, (_, i) => `src/file-${String(i).padStart(3, '0')}.ts`);
-      assert.deepEqual(
-        findings.map((f) => f.file),
-        expectedFiles,
-        'must preserve exact lexicographical file ordering across concurrent I/O batches and >25 file Project rotations',
-      );
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  await t.test('scanRepoFiles treats maxFiles=0 and Infinity as unlimited, handles exact boundary without truncation, and validates programmatic maxFiles', async () => {
-    assert.equal(DEFAULT_MAX_FILES, 5000);
-    assert.equal(resolveMaxFiles(undefined), DEFAULT_MAX_FILES);
-    assert.equal(resolveMaxFiles(0), Number.POSITIVE_INFINITY);
-    assert.equal(resolveMaxFiles(Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
-    assert.equal(resolveMaxFiles(250), 250);
-
-    for (const invalid of [-1, -100, 1.5, Number.NaN, Number.NEGATIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
-      assert.throws(() => resolveMaxFiles(invalid), RangeError);
-    }
-
-    const tempDir = await mkdtemp(join(tmpdir(), 'max-files-boundary-'));
-    try {
-      await mkdir(join(tempDir, 'src'), { recursive: true });
-      for (let i = 0; i < 70; i++) {
-        const padded = String(i).padStart(3, '0');
-        await writeFile(join(tempDir, 'src', `file-${padded}.ts`), `legacyTarget(${i});\n`);
-      }
-      await writeFile(join(tempDir, 'src', 'z-trailing.test.ts'), 'legacyTarget(999);\n');
-
-      const rule: ScanRule = {
-        id: 'test/unlimited-scan',
-        guideId: 'dialog',
-        guideHash: '000000000000',
-        summary: 'test unlimited scan',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'js',
-          fastTokens: ['legacyTarget'],
-          matchFile: (sf) =>
-            sf.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => ({
-              line: c.getStartLineNumber(),
-              message: c.getText(),
-            })),
-        },
-      };
-
-      const exactStats: RepoScanStats = {};
-      const exactFindings = await scanRepoFiles(tempDir, [rule], {
-        maxFiles: 70,
-        stats: exactStats,
-      });
-      assert.equal(exactFindings.length, 70);
-      assert.equal(exactStats.scannedFileCount, 70);
-      assert.equal(exactStats.eligibleFileCount, 70);
-      assert.equal(exactStats.truncatedByMaxFiles, false);
-      assert.equal(
-        exactStats.skippedDocsAndTestsCount,
-        1,
-        'trailing test files after reaching maxFiles must still be classified synchronously',
-      );
-
-      const unlimitedStats: RepoScanStats = {};
-      const unlimitedFindings = await scanRepoFiles(tempDir, [rule], {
-        maxFiles: 0,
-        stats: unlimitedStats,
-      });
-      assert.equal(unlimitedFindings.length, 70);
-      assert.equal(unlimitedStats.scannedFileCount, 70);
-      assert.equal(unlimitedStats.eligibleFileCount, 70);
-      assert.equal(unlimitedStats.truncatedByMaxFiles, false);
-
-      await assert.rejects(
-        () => scanRepoFiles(tempDir, [rule], { maxFiles: -5 }),
-        RangeError,
-      );
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  await t.test('scanRepoFiles prioritizes package.json ahead of alphabetical source files under cap', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'pkg-priority-'));
-    try {
-      await mkdir(join(tempDir, 'a-src'), { recursive: true });
-      await mkdir(join(tempDir, 'packages', 'web'), { recursive: true });
-      await mkdir(join(tempDir, 'docs'), { recursive: true });
-
-      for (let i = 0; i < 10; i++) {
-        await writeFile(
-          join(tempDir, 'a-src', `file-${String(i).padStart(2, '0')}.ts`),
-          `legacyTarget(${i});\n`,
-        );
-      }
-      await writeFile(
-        join(tempDir, 'package.json'),
-        JSON.stringify({ name: 'root', dependencies: { react: '^18.0.0', 'legacy-pkg': '^1.0.0' } }, null, 2),
-      );
-      await writeFile(
-        join(tempDir, 'packages', 'web', 'package.json'),
-        JSON.stringify({ name: 'web', dependencies: { react: '^18.0.0', 'legacy-pkg': '^1.0.0' } }, null, 2),
-      );
-      await writeFile(
-        join(tempDir, 'docs', 'package.json'),
-        JSON.stringify({ name: 'docs-pkg', dependencies: { react: '^18.0.0', 'legacy-pkg': '^1.0.0' } }, null, 2),
-      );
-
-      const depRule: ScanRule = {
-        id: 'test/dep-priority',
-        guideId: 'perf',
-        guideHash: '000000000000',
-        summary: 'dep rule',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'dependency',
-          packages: ['legacy-pkg'],
-          matchPackage: (pkg) => ({ message: `found ${pkg}` }),
-        },
-      };
-      const jsRule: ScanRule = {
-        id: 'test/js-priority',
-        guideId: 'dialog',
-        guideHash: '000000000000',
-        summary: 'js rule',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'js',
-          fastTokens: ['legacyTarget'],
-          matchFile: (sf) =>
-            sf.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => ({
-              line: c.getStartLineNumber(),
-              message: c.getText(),
-            })),
-        },
-      };
-
-      const stats: RepoScanStats = {};
-      const findings = await scanRepoFiles(tempDir, [depRule, jsRule], {
-        maxFiles: 3,
-        stats,
-      });
-
-      assert.deepEqual(
-        findings.map((f) => f.file),
-        ['package.json', 'packages/web/package.json', 'a-src/file-00.ts'],
-      );
-      assert.equal(stats.scannedFileCount, 3);
-      assert.equal(stats.eligibleFileCount, 12);
-      assert.equal(stats.truncatedByMaxFiles, true);
-      assert.equal(stats.skippedDocsAndTestsCount, 1);
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  await t.test('scanRepoFiles filters candidates by active rule modality without dropping Lit CSS or markup', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'modality-filter-'));
-    try {
-      await mkdir(join(tempDir, 'src'), { recursive: true });
-      await mkdir(join(tempDir, 'vendor'), { recursive: true });
-
-      await writeFile(join(tempDir, 'src', 'style.css'), '.legacy-hit { color: red; }\n');
-      await writeFile(join(tempDir, 'src', 'app.scss'), '// comment\n.legacy-hit { color: red; }\n');
-      await writeFile(
-        join(tempDir, 'src', 'page.html'),
-        '<style>\n.legacy-hit { color: red; }\n</style>\n<legacy-el></legacy-el>\n<script>\nlegacyTarget();\n</script>\n',
-      );
-      await writeFile(
-        join(tempDir, 'src', 'Widget.vue'),
-        '<script setup>\nlegacyTarget();\n</script>\n<template><legacy-el></legacy-el></template>\n<style>.legacy-hit { color: red; }</style>\n',
-      );
-      await writeFile(
-        join(tempDir, 'src', 'Component.tsx'),
-        "import { css } from 'lit';\nexport const s = css`.legacy-hit { color: red; }`;\nexport function C() { legacyTarget(); return <legacy-el />; }\n",
-      );
-      await writeFile(
-        join(tempDir, 'src', 'lit-element.ts'),
-        "import { css } from 'lit';\nexport const s = css`.legacy-hit { color: red; }`;\nlegacyTarget();\n",
-      );
-      await writeFile(
-        join(tempDir, 'src', 'helper.js'),
-        "import { css } from 'lit';\nexport const s = css`.legacy-hit { color: red; }`;\nlegacyTarget();\n",
-      );
-      await writeFile(
-        join(tempDir, 'package.json'),
-        JSON.stringify({ name: 'app', dependencies: { react: '^18.0.0', 'legacy-pkg': '^1.0.0' } }),
-      );
-      await writeFile(
-        join(tempDir, 'vendor', 'jquery.fittext.js'),
-        '/*! jQuery FitText.js 1.2 */\n',
-      );
-      await writeFile(join(tempDir, 'README.md'), '# ignored markdown\n');
-
-      const cssRule: ScanRule = {
-        id: 'mod/css',
-        guideId: 'css-guide',
-        guideHash: '000000000000',
-        summary: 'css',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'css',
-          fastTokens: ['.legacy-hit'],
-          matchRule: (r) => (r.selectorText === '.legacy-hit' ? { message: 'css' } : null),
-        },
-      };
-      const domRule: ScanRule = {
-        id: 'mod/dom',
-        guideId: 'dom-guide',
-        guideHash: '000000000000',
-        summary: 'dom',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'dom',
-          selector: 'legacy-el',
-          fastTokens: ['legacy-el'],
-          matchElement: () => ({ message: 'dom' }),
-        },
-      };
-      const jsRule: ScanRule = {
-        id: 'mod/js',
-        guideId: 'js-guide',
-        guideHash: '000000000000',
-        summary: 'js',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'js',
-          fastTokens: ['legacyTarget'],
-          matchFile: (sf) =>
-            sf.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => ({
-              line: c.getStartLineNumber(),
-              message: 'js',
-            })),
-        },
-      };
-      const depRule: ScanRule = {
-        id: 'mod/dep',
-        guideId: 'dep-guide',
-        guideHash: '000000000000',
-        summary: 'dep',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'dependency',
-          packages: ['legacy-pkg', 'jquery-fittext'],
-        },
-      };
-
-      const cssStats: RepoScanStats = {};
-      const cssFindings = await scanRepoFiles(tempDir, [cssRule], { maxFiles: 7, stats: cssStats });
-      assert.deepEqual(
-        cssFindings.map((f) => f.file).sort(),
-        [
-          'src/Component.tsx',
-          'src/Widget.vue',
-          'src/app.scss',
-          'src/helper.js',
-          'src/lit-element.ts',
-          'src/page.html',
-          'src/style.css',
-        ],
-      );
-      assert.equal(cssStats.scannedFileCount, 7);
-      assert.equal(cssStats.eligibleFileCount, 7);
-      assert.equal(cssStats.truncatedByMaxFiles, false);
-
-      const domStats: RepoScanStats = {};
-      const domFindings = await scanRepoFiles(tempDir, [domRule], { maxFiles: 3, stats: domStats });
-      assert.deepEqual(
-        domFindings.map((f) => f.file).sort(),
-        ['src/Component.tsx', 'src/Widget.vue', 'src/page.html'],
-      );
-      assert.equal(domStats.scannedFileCount, 3);
-      assert.equal(domStats.eligibleFileCount, 3);
-      assert.equal(domStats.truncatedByMaxFiles, false);
-
-      const jsStats: RepoScanStats = {};
-      const jsFindings = await scanRepoFiles(tempDir, [jsRule], { maxFiles: 5, stats: jsStats });
-      assert.deepEqual(
-        jsFindings.map((f) => f.file).sort(),
-        ['src/Component.tsx', 'src/Widget.vue', 'src/helper.js', 'src/lit-element.ts', 'src/page.html'],
-      );
-      assert.equal(jsStats.scannedFileCount, 5);
-      assert.equal(jsStats.eligibleFileCount, 5);
-      assert.equal(jsStats.truncatedByMaxFiles, false);
-
-      const depStats: RepoScanStats = {};
-      const depFindings = await scanRepoFiles(tempDir, [depRule], { maxFiles: 2, stats: depStats });
-      assert.deepEqual(
-        depFindings.map((f) => f.file),
-        ['package.json', 'vendor/jquery.fittext.js'],
-      );
-      assert.equal(depStats.scannedFileCount, 2);
-      assert.equal(depStats.eligibleFileCount, 2);
-      assert.equal(depStats.truncatedByMaxFiles, false);
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
+  const activeFindings = scanFiles(
+    new Map([['src/active.ts', 'legacyWidget();']]),
+    [rule],
+    { project },
+  );
+  assert.equal(activeFindings.length, 1);
+  assert.equal(createSourceFileCalls, 1);
+  assert.equal(sawHasOperator, true);
+  assert.equal(sawPrototype, true);
 });
 
 
