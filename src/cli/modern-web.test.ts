@@ -228,6 +228,48 @@ describe('modern-web CLI', () => {
     }
   });
 
+  it('forwards --max-files to legacy-scan and exposes it in gd --help', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-max-files-test-'));
+    try {
+      for (let i = 1; i <= 4; i++) {
+        fs.writeFileSync(
+          path.join(tempDir, `form${i}.html`),
+          `<form action="/login"><input type="password" name="p${i}"></form>`,
+        );
+      }
+
+      const cappedRes = runCLI(['legacy-scan', tempDir, '--max-files', '2', '--json']);
+      assert.strictEqual(cappedRes.status, 0);
+      const cappedData = JSON.parse(cappedRes.stdout);
+      assert.strictEqual(cappedData.totalFindings, 2);
+      assert.strictEqual(cappedData.scannedFileCount, 2);
+      assert.strictEqual(cappedData.eligibleFileCount, 4);
+      assert.strictEqual(cappedData.truncatedByMaxFiles, true);
+
+      const unlimitedRes = runCLI(['legacy-scan', tempDir, '--max-files', '0', '--json']);
+      assert.strictEqual(unlimitedRes.status, 0);
+      const unlimitedData = JSON.parse(unlimitedRes.stdout);
+      assert.strictEqual(unlimitedData.totalFindings, 4);
+      assert.strictEqual(unlimitedData.scannedFileCount, 4);
+      assert.strictEqual(unlimitedData.truncatedByMaxFiles, undefined);
+
+      const badRes = runCLI(['legacy-scan', tempDir, '--max-files', 'abc', '--json']);
+      assert.strictEqual(badRes.status, 1);
+      const badData = JSON.parse(badRes.stdout);
+      assert.match(badData.error ?? '', /Invalid --max-files value/);
+
+      const gdPath = path.resolve(import.meta.dirname, '../../bin/gd.ts');
+      const gdHelp = spawnSync('node', [gdPath, '--help'], {
+        encoding: 'utf8',
+        env: { ...process.env, NO_COLOR: '1' },
+      });
+      assert.strictEqual(gdHelp.status, 0);
+      assert.match(gdHelp.stdout, /--max-files <count>/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));

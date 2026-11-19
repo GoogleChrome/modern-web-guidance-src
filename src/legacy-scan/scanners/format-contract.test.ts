@@ -12,6 +12,7 @@ import type {
 import { shouldScanFile } from './file-filter.ts';
 import {
   FORMAT_REGISTRY,
+  getEnginesForSourceExtension,
   type FormatEngine,
 } from './format-registry.ts';
 import { scanFiles } from './index.ts';
@@ -415,6 +416,27 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
       }
     }
   }
+
+  test('getEnginesForSourceExtension matches FORMAT_REGISTRY supported entries and excludes unsupported extensions', () => {
+    for (const entry of supportedEntries) {
+      for (const ext of entry.extensions) {
+        if (!ext.startsWith('.')) {
+          assert.equal(getEnginesForSourceExtension(ext), undefined);
+          continue;
+        }
+        const engines = getEnginesForSourceExtension(ext);
+        assert.ok(engines, `Expected engine set for ${ext}`);
+        assert.deepEqual([...engines].sort(), [...entry.engines].sort());
+        assert.deepEqual(
+          [...(getEnginesForSourceExtension(ext.toUpperCase()) ?? [])].sort(),
+          [...entry.engines].sort(),
+        );
+      }
+    }
+    for (const unsupportedExt of ['.sass', '.styl', '.mdx', '.pug', '.md', '.json', '.png']) {
+      assert.equal(getEnginesForSourceExtension(unsupportedExt), undefined);
+    }
+  });
 
   describe('expected-skip formats produce 0 findings', () => {
     for (const entry of expectedSkipEntries) {

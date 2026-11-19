@@ -71,6 +71,14 @@ function normalizePath(relPath: string): string {
   return relPath.replace(/\\/g, '/').toLowerCase();
 }
 
+/**
+ * Returns `true` if `relPath` refers to a `package.json` manifest.
+ */
+export function isPackageJsonPath(relPath: string): boolean {
+  const normalized = normalizePath(relPath);
+  return normalized === 'package.json' || normalized.endsWith('/package.json');
+}
+
 function splitPathSegments(relPath: string): string[] {
   return normalizePath(relPath)
     .split('/')
@@ -412,7 +420,7 @@ export function shouldScanFile(
   }
 
   const normalized = normalizePath(relPath);
-  if (!normalized.endsWith('package.json')) {
+  if (!isPackageJsonPath(normalized)) {
     const dotIdx = normalized.lastIndexOf('.');
     if (dotIdx === -1 || !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))) {
       return false;

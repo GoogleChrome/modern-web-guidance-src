@@ -276,3 +276,29 @@ export const DOM_RULE_EXTENSIONS: readonly string[] = [
 ];
 
 export const DEPENDENCY_RULE_FILENAMES = ['package.json'] as const;
+
+const ENGINES_BY_EXTENSION: ReadonlyMap<string, ReadonlySet<FormatEngine>> = (() => {
+  const map = new Map<string, Set<FormatEngine>>();
+  for (const entry of SUPPORTED_ENTRIES) {
+    for (const ext of entry.extensions) {
+      if (!ext.startsWith('.')) continue;
+      let set = map.get(ext);
+      if (!set) {
+        set = new Set();
+        map.set(ext, set);
+      }
+      for (const engine of entry.engines) {
+        set.add(engine);
+      }
+    }
+  }
+  return map;
+})();
+
+/**
+ * Returns the set of supported scanner engines for a source file extension
+ * (e.g. `.ts` -> `{'js', 'css'}`), or `undefined` if unsupported.
+ */
+export function getEnginesForSourceExtension(ext: string): ReadonlySet<FormatEngine> | undefined {
+  return ENGINES_BY_EXTENSION.get(ext.toLowerCase());
+}
