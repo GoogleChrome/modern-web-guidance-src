@@ -41,7 +41,7 @@ ul::before {
 }
 ```
 
-Position the underline with logical insets and `anchor(self-start)` or `anchor(self-end)`. These keywords follow the underline's writing direction, including when only the tab list uses right-to-left layout.
+Position the underline with logical insets and `anchor(self-start)` or `anchor(self-end)`. Unlike `start` and `end`, these keywords use the underline's own writing mode rather than its containing block's. This keeps the anchor sides consistent with the logical insets when an RTL tab list is inside an LTR page and no ancestor of the underline establishes a containing block within the RTL section.
 
 ```css
 ul::before {
