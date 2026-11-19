@@ -130,7 +130,7 @@ await document.modelContext.registerTool({
 Since Chrome 159, a tool definition accepts an optional `outputSchema`: a JSON Schema object describing the value `execute` returns.
 
 * **Separate intent from structure**: Keep `description` focused on what the tool does and when to call it. **DO NOT** list returned property names, types, or chaining IDs in `description`; declare them in `outputSchema` instead.
-* **Use `outputSchema` selectively**: Add it to consolidated read or search tools that return multiple fields, and to tools that return IDs consumed by other tools. Omit it on narrow reads with obvious outputs (e.g. a single number), mutating actions, and UI navigation tools, since every schema costs prompt tokens.
+* **Use `outputSchema` selectively**: Add it to consolidated read or search tools that return multiple fields, to mutating actions that return updated state (e.g. `{ items, subtotal, total }` after a cart update), and to tools that return IDs consumed by other tools. Omit it on narrow reads with obvious outputs (e.g. a single number), actions that return only a status or confirmation, and UI navigation tools, since every schema costs prompt tokens.
 * **Keep `execute()` aligned with `outputSchema`**: Return a JSON-serializable value that matches the schema. Agents can validate results against `outputSchema` and send the model a tool error instead of the result when it doesn't match. This includes structured error payloads: if `execute` can return `{ error: "..." }`, allow that shape in `outputSchema` (e.g. with `anyOf`), or the agent may never see your error message.
 
 ```javascript
@@ -484,7 +484,7 @@ All the rules in this guide still apply when you use these integrations:
     *   **exposedTo**: (Optional) An array of secure origin strings controlling which documents in the document tree are allowed to discover and execute the tool across frame boundaries.
 *   **Tool Discovery Options (`ModelContextGetToolOptions`)**:
     *   **fromOrigins**: (Optional) An array of secure origin strings to query in accessible frames. Calling `getTools()` without `fromOrigins` queries only same-origin documents.
-*   **outputSchema**: (Optional, Chrome 159+) A JSON Schema object describing the value `execute` returns. Add it selectively to multi-field read/search tools and tools returning IDs for chaining.
+*   **outputSchema**: (Optional, Chrome 159+) A JSON Schema object describing the value `execute` returns. Add it selectively to multi-field read/search tools, mutating actions that return updated state, and tools returning IDs for chaining.
 *   **Return Format**: The `execute` function can return any JSON-serializable value (object, array, string, number, boolean). The message of an exception thrown from `execute` is not forwarded to the agent, so return actionable errors as structured error payloads (e.g. `{ error: "..." }`) via the tool's return value so the agent can read and act on them.
 *   **Secure Context**: WebMCP requires HTTPS. All origins in `exposedTo` and `fromOrigins` must also be potentially trustworthy.
 *   **Deprecated/Removed**: `navigator.modelContext` (deprecated in Chromium 150), `unregisterTool()`, `provideContext()`, and `clearContext()` are no longer supported.
