@@ -34,7 +34,7 @@ Shape the element itself with CSS instead of nesting extra elements, using image
 
 ## Change corner geometry
 
-Keep a non-zero `border-radius` and set `corner-shape` to `squircle`, `bevel`, `scoop`, `notch`, or `superellipse(<number>)`. Borders, shadows, and outlines follow the corners. Keep the `border-radius` meaningful on its own, because it is the shape unsupported browsers render. Logical corner radii such as `border-start-start-radius` combined with `bevel` give slanted tags.
+Keep a non-zero `border-radius` and set `corner-shape` to `squircle`, `bevel`, `scoop`, `notch`, or `superellipse(<number>)`. Borders, shadows, and outlines follow the corners. Keep the `border-radius` meaningful on its own, because it is the shape unsupported browsers render. Asymmetric corner radii (via `border-radius` shorthand or corner properties such as `border-start-start-radius`) combined with `bevel` give slanted tags.
 
 ## Shape the box with border-shape
 
