@@ -182,30 +182,29 @@
     const render = () => {
       const q = input.value.trim();
       const found = matches();
+      const re = q && new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       listbox.replaceChildren(...found.map((o, i) => {
         const li = document.createElement('li');
         li.role = 'option';
         li.id = `city-opt-${i}`;
         li.dataset.value = o.value;
-        const at = q ? o.value.toLowerCase().indexOf(q.toLowerCase()) : -1;
+        const m = !CSS.highlights && re ? new RegExp(re.source, 'i').exec(o.value) : null;
         li.textContent = o.value;
-        if (at >= 0 && !CSS.highlights) {
+        if (m) {
           const mark = document.createElement('mark');
-          mark.textContent = o.value.slice(at, at + q.length);
-          li.replaceChildren(o.value.slice(0, at), mark, o.value.slice(at + q.length));
+          mark.textContent = m[0];
+          li.replaceChildren(o.value.slice(0, m.index), mark, o.value.slice(m.index + m[0].length));
         }
         return li;
       }));
       if (CSS.highlights) {
         const ranges = [];
-        const lowerQ = q.toLowerCase();
         const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
-        for (let text = lowerQ && walker.nextNode(); text; text = walker.nextNode()) {
-          const lower = text.data.toLowerCase();
-          for (let at = lower.indexOf(lowerQ); at >= 0; at = lower.indexOf(lowerQ, at + lowerQ.length)) {
+        for (let text = re && walker.nextNode(); text; text = walker.nextNode()) {
+          for (const m of text.data.matchAll(re)) {
             const range = new Range();
-            range.setStart(text, at);
-            range.setEnd(text, at + lowerQ.length);
+            range.setStart(text, m.index);
+            range.setEnd(text, m.index + m[0].length);
             ranges.push(range);
           }
         }

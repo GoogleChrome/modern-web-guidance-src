@@ -111,14 +111,13 @@ Highlight the matched substring of each option label with the Custom Highlight A
 // After rendering the options, create one Range per match, across every text node and every occurrence.
 // Setting the same highlight name again replaces the previous ranges, so there is nothing to clean up.
 const ranges = [];
-const q = query.toLowerCase();
+const re = query && new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
 const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
-for (let text = q && walker.nextNode(); text; text = walker.nextNode()) {
-  const lower = text.data.toLowerCase();
-  for (let at = lower.indexOf(q); at >= 0; at = lower.indexOf(q, at + q.length)) {
+for (let text = re && walker.nextNode(); text; text = walker.nextNode()) {
+  for (const m of text.data.matchAll(re)) {
     const range = new Range();
-    range.setStart(text, at);
-    range.setEnd(text, at + q.length);
+    range.setStart(text, m.index);
+    range.setEnd(text, m.index + m[0].length);
     ranges.push(range);
   }
 }
