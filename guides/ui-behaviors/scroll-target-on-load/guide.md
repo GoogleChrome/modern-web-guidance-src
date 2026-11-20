@@ -4,6 +4,7 @@ description: Build a scrollable list of elements (e.g. a carousel of images or a
 web-feature-ids:
   - scroll-initial-target
   - scroll-into-view
+  - focusgroup
 ---
 
 # Set a scroll target for the initial render
@@ -39,6 +40,17 @@ In this example, a feed starts scrolled to a specific "featured" item rather tha
 - **DO** provide dimensions for media. Since the scroll position is calculated during initial layout, ensure images or videos have `aspect-ratio` or fixed `height`/`width` to prevent the target from shifting after the media loads.
 - **DO** account for the **Precedence Hierarchy**: A URL fragment (e.g., `example.com/#top`) and the container-level `scroll-start` property both take precedence over `scroll-initial-target`.
 
+## Accessibility considerations
+
+Because `scroll-initial-target` only updates the visual scroll offset, give keyboard and screen reader users a direct way to move focus to the visually prioritized content. Do not call `focus()` automatically on initial page load when preceding page content (such as a header or navigation) exists, as doing so bypasses earlier landmarks.
+
+Choose the focus pattern that matches the component's semantics:
+
+* **Composite widgets** (such as a date picker strip starting on today, a thumbnail `toolbar`, or a selectable `listbox` or `tablist`): apply `focusgroup` with the matching behavior token (for example, `focusgroup="listbox"` or `focusgroup="toolbar"`, adding `nomemory` and moving `focusgroupstart` if the active item can change externally) and set `focusgroupstart` on the `scroll-initial-target` control. Tabbing into the widget then lands directly on the prioritized item without needing a skip link, and users can move between items with the arrow keys.
+* **Content feeds and message streams** (such as a live chat thread or media feed, whether embedded in a larger page or serving as the primary view): do not apply `focusgroup` or a roving `tabindex` to static prose items that lack a composite widget role. Instead, make the prioritized item programmatically focusable with `tabindex="-1"` (or target its heading or first control) and provide either a skip link before the feed or a jump control alongside surrounding navigation UI to move focus to it while preserving normal sequential `Tab` order.
+
+If the prioritized content is not the expected starting point (for example, an older pinned message rather than the latest message in a chat thread), indicate why it is shown first using visible or accessible text—such as a "Pinned message" label rather than an unlabeled pin icon alone.
+
 ## Fallback Strategy
 
 {{ BASELINE_STATUS("scroll-initial-target") }}
@@ -60,3 +72,5 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 ```
+
+{{ FEATURE_FALLBACKS("focusgroup") }}
