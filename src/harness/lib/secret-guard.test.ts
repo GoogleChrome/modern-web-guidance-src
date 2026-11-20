@@ -90,6 +90,27 @@ describe('loadAllowedEnvFile', () => {
       assert.deepStrictEqual(res.ignored, ['MODEL_API_KEY', 'UNLISTED_KEY']);
     });
   });
+
+  test('loads GCP and Vertex non-secret config keys without treating project IDs as host secrets', () => {
+    withTempDir((dir) => {
+      const envFile = path.join(dir, '.env');
+      fs.writeFileSync(
+        envFile,
+        'GOOGLE_CLOUD_PROJECT=my-sixteen-char-project-id\nGCLOUD_PROJECT=my-backup-gcp-project\nVERTEX_EMBED_LOCATION=global\n',
+        'utf8',
+      );
+      const targetEnv: NodeJS.ProcessEnv = {};
+      const res = loadAllowedEnvFile(envFile, targetEnv);
+      assert.strictEqual(targetEnv.GOOGLE_CLOUD_PROJECT, 'my-sixteen-char-project-id');
+      assert.strictEqual(targetEnv.GCLOUD_PROJECT, 'my-backup-gcp-project');
+      assert.strictEqual(targetEnv.VERTEX_EMBED_LOCATION, 'global');
+      assert.deepStrictEqual(res.ignored, []);
+
+      const secrets = collectHostSecrets({ rootDir: dir, homeDir: dir, env: targetEnv });
+      assert.ok(!secrets.includes('my-sixteen-char-project-id'));
+      assert.ok(!secrets.includes('my-backup-gcp-project'));
+    });
+  });
 });
 
 describe('sanitizeNpmrc & copySanitizedNpmrc', () => {

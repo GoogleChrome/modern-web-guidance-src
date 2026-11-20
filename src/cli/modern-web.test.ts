@@ -218,11 +218,11 @@ describe('modern-web CLI', () => {
       assert.strictEqual(resJson.status, 1);
       const data = JSON.parse(resJson.stdout);
       assert.strictEqual(data.totalFindings, 0);
-      assert.match(data.error ?? '', /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+      assert.match(data.error ?? '', /Unknown or unsupported legacy-scan guide ID: nonexistent-guide-id/);
 
       const resHuman = runCLI(['legacy-scan', tempDir, '--guide', 'nonexistent-guide-id']);
       assert.strictEqual(resHuman.status, 1);
-      assert.match(resHuman.stderr, /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+      assert.match(resHuman.stderr, /Unknown or unsupported legacy-scan guide ID: nonexistent-guide-id/);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -257,22 +257,22 @@ describe('modern-web CLI', () => {
       assert.strictEqual(failGuideRes.status, 1);
       assert.strictEqual(fs.existsSync(logPath), false, 'Failed analyze run with unknown guide must not log');
 
-      // 3. Successful analyze call -> exit code 0, SHOULD log to modern-web.log
+      // 3. Successful analyze alias call -> exit code 0, SHOULD log tool: 'legacy-scan' to modern-web.log
       const okRes = runCLIWithLogging(['analyze', tempDir, '--json']);
       assert.strictEqual(okRes.status, 0);
       assert.strictEqual(fs.existsSync(logPath), true, 'Successful analyze run should create modern-web.log');
       const logContent = fs.readFileSync(logPath, 'utf8');
       const parsedLog = JSON.parse(logContent.trim());
-      assert.strictEqual(parsedLog.tool, 'analyze');
+      assert.strictEqual(parsedLog.tool, 'legacy-scan');
       assert.ok(Array.isArray(parsedLog.result));
 
-      // 4. Successful legacy-scan call -> exit code 0, SHOULD also log tool: 'analyze' to modern-web.log
+      // 4. Successful legacy-scan call -> exit code 0, SHOULD also log tool: 'legacy-scan' to modern-web.log
       fs.rmSync(logPath, { force: true });
       const okLegacyScanRes = runCLIWithLogging(['legacy-scan', tempDir, '--json']);
       assert.strictEqual(okLegacyScanRes.status, 0);
       assert.strictEqual(fs.existsSync(logPath), true, 'Successful legacy-scan run should create modern-web.log');
       const legacyScanLog = JSON.parse(fs.readFileSync(logPath, 'utf8').trim());
-      assert.strictEqual(legacyScanLog.tool, 'analyze');
+      assert.strictEqual(legacyScanLog.tool, 'legacy-scan');
       assert.ok(Array.isArray(legacyScanLog.result));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });

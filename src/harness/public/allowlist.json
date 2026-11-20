@@ -2,8 +2,12 @@
   "$schema": "./allowlist.schema.json",
   "include": [
     "nightly-*-claude_code",
+    "nightly-*-claude_code-claude-*",
     "nightly-*-codex_cli",
+    "nightly-*-codex_cli-gpt-*",
     "nightly-*-antigravity_cli",
+    "nightly-*-antigravity_cli-gemini-*",
+    "nightly-*-antigravity_cli-gpt-*",
     "opus-medium-1.0-rc-2026-11-08",
     "flash-medium-1.0-2026-11-08b",
     "sonnet-medium-1.0-2026-11-08",

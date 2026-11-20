@@ -356,4 +356,112 @@ describe("guide-chunk-cache", () => {
       fs.rmSync(tmpRoot, { recursive: true, force: true });
     }
   });
+
+  it("embedGuideChunks falls back to Vertex AI ADC with single-instance predict calls when GEMINI_API_KEY is absent", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-vertex-"));
+    const prevGeminiKey = process.env.GEMINI_API_KEY;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      let seenUrl = "";
+      const seenBodies: unknown[] = [];
+      let seenHeaders: Record<string, string> | undefined;
+
+      const res = await embedGuideChunks({
+        cacheDir: path.join(tmpRoot, "cache"),
+        envPath: null,
+        vertexAuth: async () => ({
+          projectId: "test-gcp-project",
+          location: "us-central1",
+          headers: { Authorization: "Bearer mock-vertex-token" },
+        }),
+        scanChunks: () => [
+          { guideId: "css-guide", category: "css", embeddedText: "vertex chunk 1", hash: "hash-vtx-1" },
+          { guideId: "js-guide", category: "js", embeddedText: "vertex chunk 2", hash: "hash-vtx-2" },
+        ],
+        postBatch: async (url, body, headers) => {
+          seenUrl = url;
+          seenBodies.push(body);
+          seenHeaders = headers;
+          return {
+            predictions: [
+              {
+                embeddings: {
+                  values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 2 ? 1 : 0)),
+                },
+              },
+            ],
+          };
+        },
+      });
+
+      assert.strictEqual(res.newEmbeds, 2);
+      assert.strictEqual(
+        seenUrl,
+        `https://us-central1-aiplatform.googleapis.com/v1/projects/test-gcp-project/locations/us-central1/publishers/google/models/${TEACHER_MODEL}:predict`,
+      );
+      assert.deepStrictEqual(seenHeaders, { Authorization: "Bearer mock-vertex-token" });
+      // gemini-embedding-001 on Vertex AI restricts :predict to 1 instance per request
+      assert.strictEqual(seenBodies.length, 2);
+      assert.deepStrictEqual(seenBodies[0], {
+        instances: [{ content: "vertex chunk 1", task_type: TASK_TYPE }],
+        parameters: { outputDimensionality: TEACHER_DIM },
+      });
+      assert.deepStrictEqual(seenBodies[1], {
+        instances: [{ content: "vertex chunk 2", task_type: TASK_TYPE }],
+        parameters: { outputDimensionality: TEACHER_DIM },
+      });
+
+      const cached = loadChunkCache(path.join(tmpRoot, "cache"));
+      assert.strictEqual(cached.size, 2);
+      const vec = cached.get("hash-vtx-1");
+      assert.ok(vec && vec.length === STATIC_DIMS);
+      assert.ok(Math.abs(vec[2] - 1) < 0.01);
+    } finally {
+      if (prevGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = prevGeminiKey;
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("embedGuideChunks uses bare aiplatform.googleapis.com when Vertex location is global", async () => {
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "chunk-cache-vertex-global-"));
+    const prevGeminiKey = process.env.GEMINI_API_KEY;
+    try {
+      delete process.env.GEMINI_API_KEY;
+      let seenUrl = "";
+      await embedGuideChunks({
+        cacheDir: path.join(tmpRoot, "cache"),
+        envPath: null,
+        vertexAuth: async () => ({
+          projectId: "test-gcp-project",
+          location: "global",
+          headers: { Authorization: "Bearer mock-vertex-token" },
+        }),
+        scanChunks: () => [
+          { guideId: "css-guide", category: "css", embeddedText: "global chunk", hash: "hash-global" },
+        ],
+        postBatch: async (url) => {
+          seenUrl = url;
+          return {
+            predictions: [
+              {
+                embeddings: {
+                  values: Array.from({ length: TEACHER_DIM }, (_, idx) => (idx === 0 ? 1 : 0)),
+                },
+              },
+            ],
+          };
+        },
+      });
+
+      assert.strictEqual(
+        seenUrl,
+        `https://aiplatform.googleapis.com/v1/projects/test-gcp-project/locations/global/publishers/google/models/${TEACHER_MODEL}:predict`,
+      );
+    } finally {
+      if (prevGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = prevGeminiKey;
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
 });

@@ -2,6 +2,7 @@
 - The `<dialog>` element should have an accessible name using `aria-labelledby`, `aria-label`, or similar.
 - It `<dialog>` element should either have no `closedby` attribute or a `closedby` attribute set to `any`.
 - The `<dialog>` element is imperatively opened with `showModal()` with JavaScript or, if supported, declaratively opened with the `show-modal` invoker command.
+- There must be a close control visible, to provide people with a clear way of closing the modal dialog.
 - No fallback mechanism is provided for dismissing with the <kbd>Esc</kbd> key.
 - No fallback mechanism is provided for the mobile back button/gesture.
 - No fallback mechanism is provided for light dismiss when using `closedby=any`.

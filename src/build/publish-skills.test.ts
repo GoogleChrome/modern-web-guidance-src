@@ -60,6 +60,7 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
   const embedCalls: Array<{ check?: boolean } | undefined> = [];
   const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean }> = [];
   let distTestsRan = 0;
+  let ragBenchRan = 0;
 
   await validate('0.0.198', {
     dryRun: true,
@@ -90,20 +91,26 @@ test('validate dry-run checks without throwing and allows uncached chunk fallbac
     runDistTests: () => {
       distTestsRan++;
     },
+    runRagBenchmark: () => {
+      ragBenchRan++;
+    },
   });
 
   assert.deepStrictEqual(embedCalls, [{ check: true }]);
   assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: false }]);
   assert.strictEqual(distTestsRan, 1);
+  assert.strictEqual(ragBenchRan, 0);
 });
 
 test('validate release embeds missing chunks with prune: true and enforces failOnMissingVectors', async () => {
   const embedCalls: Array<{ check?: boolean; prune?: boolean } | undefined> = [];
   const buildCalls: Array<{ version?: string; failOnMissingVectors?: boolean }> = [];
+  const callOrder: string[] = [];
 
   await validate('0.0.198', {
     dryRun: false,
     embedChunks: async (opts) => {
+      callOrder.push('embedChunks');
       embedCalls.push(opts);
       return {
         totalChunks: 10,
@@ -114,17 +121,24 @@ test('validate release embeds missing chunks with prune: true and enforces failO
       };
     },
     runBuildDist: async (opts) => {
+      callOrder.push('runBuildDist');
       buildCalls.push({
         version: opts.version,
         failOnMissingVectors: opts.failOnMissingVectors,
       });
       return { skillsCount: 1, skillNames: ['modern-web-guidance'] };
     },
-    runDistTests: () => {},
+    runDistTests: () => {
+      callOrder.push('runDistTests');
+    },
+    runRagBenchmark: () => {
+      callOrder.push('runRagBenchmark');
+    },
   });
 
   assert.deepStrictEqual(embedCalls, [{ prune: true }]);
   assert.deepStrictEqual(buildCalls, [{ version: '0.0.198', failOnMissingVectors: true }]);
+  assert.deepStrictEqual(callOrder, ['embedChunks', 'runBuildDist', 'runDistTests', 'runRagBenchmark']);
 });
 
 test('GH_CLAUDE_PUBLISH_PATTERNS strips disallowed file types and non-Claude manifests', () => {

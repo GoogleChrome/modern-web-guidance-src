@@ -1,6 +1,6 @@
 # Evaluation & Benchmark Lexicon
 
-The canonical domain language for Modern Web Guidance evaluation datasets, benchmark execution, grading, and reporting (`src/harness/`, `src/grading/`, `src/authoring/`, `src/dashboard/`). Distinct from the analyzer domain vocabulary in [`src/analyzing/LEXICON.md`](../src/analyzing/LEXICON.md).
+The canonical domain language for Modern Web Guidance evaluation datasets, benchmark execution, grading, and reporting (`src/harness/`, `src/grading/`, `src/authoring/`, `src/dashboard/`). Distinct from the `legacy-scan` domain vocabulary in [`src/legacy-scan/LEXICON.md`](../src/legacy-scan/LEXICON.md).
 
 This lexicon governs documentation, CLI help, and dashboard UI terminology first; legacy internal symbols, flags, and artifact paths cited in `_Reference_` remain unchanged until follow-up code migrations.
 
@@ -8,7 +8,7 @@ This lexicon governs documentation, CLI help, and dashboard UI terminology first
 
 ### Dataset
 
-The repository's complete collection of evaluation **Tasks** across guides (authored in guide `targets/` and legacy `tasks/` directories). Distinct from a **Job**, which executes a configured selection of tasks at a point in time, and from an analyzer **Grading Deck** (`src/analyzing/LEXICON.md`).
+The repository's complete collection of evaluation **Tasks** across guides (authored in guide `targets/` and legacy `tasks/` directories). Distinct from a **Job**, which executes a configured selection of tasks at a point in time, and from a `legacy-scan` **Grading Deck** (`src/legacy-scan/LEXICON.md`).
 
 * _Reference_: `src/core/guide-validation.ts#getTaskMap`
 * _AKA_: Evaluation Suite — `Agentic Benchmarks + Evals` / Anthropic eval terminology
@@ -77,10 +77,10 @@ The normalized structured execution history of a **Trial**, parsed from raw agen
 
 ### Grader
 
-A Playwright test file (`grader.ts`, authored from `expectations.md`) that verifies a **Task** workspace by inspecting built artifacts, DOM state, computed styles, and browser runtime behavior. Distinct from an individual **Check** inside it and from an analyzer **Detection Eval Judge** (`src/analyzing/LEXICON.md`).
+A Playwright test file (`grader.ts`, authored from `expectations.md`) that verifies a **Task** workspace by inspecting built artifacts, DOM state, computed styles, and browser runtime behavior. Distinct from an individual **Check** inside it and from a `legacy-scan` **Detection Eval Judge** (`src/legacy-scan/LEXICON.md`).
 
 * _Reference_: `src/grading/run-grader.ts`, `guides/<category>/<slug>/targets/<base_app>/grader.ts`
-* _Avoid_: Spec (outside Playwright internals), LLM Judge (reserved for `src/analyzing/`)
+* _Avoid_: Spec (outside Playwright internals), LLM Judge (reserved for `src/legacy-scan/`)
 
 ### Check
 

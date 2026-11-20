@@ -7,12 +7,12 @@
  */
 
 import child_process from 'node:child_process';
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseBooleanEnv } from '../core/env.ts';
 import { gitExec, readGitObjectsBatch } from '../core/git-utils.ts';
+import { DEFAULT_INFRA_OWNERS, EVAL_OWNERS } from './reviewer-routing.ts';
 import {
   classifyGuide,
   detectEvals,
@@ -1111,30 +1111,8 @@ function fetchIssueBody(issueNumber: number): string {
   );
 }
 
-function loadInfraOwnersFromCodeowners(): { catchAllOwners: Set<string>; evalOwners: Set<string> } {
-  const catchAllOwners = new Set<string>();
-  const evalOwners = new Set<string>();
-  const content = fs.readFileSync(path.join(rootDir, 'CODEOWNERS'), 'utf8');
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    const [pattern, ...owners] = line.split(/\s+/);
-    const handles = owners.filter(o => o.startsWith('@')).map(o => o.slice(1));
-    if (pattern === '*') {
-      for (const h of handles) catchAllOwners.add(h);
-    } else if (
-      pattern.includes('grader.ts') ||
-      pattern.includes('targets/') ||
-      pattern.includes('tasks/') ||
-      pattern.includes('src/grading/')
-    ) {
-      for (const h of handles) evalOwners.add(h);
-    }
-  }
-  return { catchAllOwners, evalOwners };
-}
-
-const { catchAllOwners: CATCHALL_INFRA_OWNERS, evalOwners: EVAL_CODEOWNERS } = loadInfraOwnersFromCodeowners();
+const CATCHALL_INFRA_OWNERS = new Set<string>(DEFAULT_INFRA_OWNERS);
+const EVAL_CODEOWNERS = new Set<string>(EVAL_OWNERS);
 
 export function filterCatchAllReviewers(reviewers: string[], stage: 'guidance' | 'evals'): string[] {
   if (reviewers.length <= 1) return reviewers;
