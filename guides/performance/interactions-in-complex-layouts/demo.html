@@ -214,6 +214,9 @@
 
   <script>
     const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
+    // Darker text shades for the tag chips so each label meets WCAG 1.4.3 (4.5:1)
+    // against its 20% tint background. Verified ratios: 4.99, 6.10, 4.54, 5.32, 5.51, 4.70.
+    const TEXT_COLORS = ['#b91c1c', '#92400e', '#047857', '#1d4ed8', '#6d28d9', '#be185d'];
     const LABELS = ['Frontend', 'Backend', 'Design', 'Urgent', 'Bug', 'Feature'];
 
     // Generate the complex DOM
@@ -240,7 +243,7 @@
           const numTags = Math.floor(Math.random() * 3) + 1;
           const tagsHtml = Array(numTags).fill(0).map(() => {
             const idx = Math.floor(Math.random() * LABELS.length);
-            return `<span class="tag" style="background-color:${COLORS[idx]}33; color:${COLORS[idx]}">${LABELS[idx]}</span>`;
+            return `<span class="tag" style="background-color:${COLORS[idx]}33; color:${TEXT_COLORS[idx]}">${LABELS[idx]}</span>`;
           }).join('');
 
           const numMembers = Math.floor(Math.random() * 4);

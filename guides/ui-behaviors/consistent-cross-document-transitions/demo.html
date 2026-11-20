@@ -209,7 +209,7 @@
       const cards = [
         { id: '1', title: 'Card One', color: '#e8453c' },
         { id: '2', title: 'Card Two', color: '#188038' },
-        { id: '3', title: 'Card Three', color: '#f9ab00' },
+        { id: '3', title: 'Card Three', color: '#f9ab00', text: '#202124' },
       ];
 
       if (selected) {
@@ -218,7 +218,7 @@
           <a class="back-link" href="${location.pathname}">&larr; Back to list</a>
           <h1>${card.title}</h1>
           <div class="detail">
-            <div class="banner" style="background: ${card.color}">${card.title}</div>
+            <div class="banner" style="background: ${card.color}; color: ${card.text || '#fff'}">${card.title}</div>
             <p>This is the detail view for ${card.title}. The transition from the list used <code>pageswap</code> and <code>pagereveal</code> to morph the card title into this heading.</p>
           </div>
         `);
@@ -229,7 +229,7 @@
           <div class="card-grid">
             ${cards.map(c => `
               <a class="card" href="?selected=${c.id}">
-                <div class="thumbnail" style="background: ${c.color}">${c.title}</div>
+                <div class="thumbnail" style="background: ${c.color}; color: ${c.text || '#fff'}">${c.title}</div>
                 <h2>${c.title}</h2>
               </a>
             `).join('')}
