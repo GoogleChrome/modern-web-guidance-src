@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <title>Action Demo</title>
+  <style>
+    body {
+      padding: 50px;
+      text-align: center;
+    }
+    #box {
+      width: 100px;
+      height: 100px;
+      background: red;
+      margin: 20px auto;
+      transition: 0.5s;
+    }
+  </style>
+</head>
+<body>
+
+  <button id="btn1" onclick="spin()">Spin</button>
+  <button id="btn2" onclick="grow()">Grow</button>
+  <button id="btn3" onclick="round()">Make Round</button>
+  <button id="btn4" onclick="reset()">Reset All</button>
+
+  <div id="box"></div>
+
+  <script>
+    let s = 0;
+    let g = false;
+    let r = false;
+
+    function spin() {
+      s += 180;
+      document.getElementById('box').style.transform = 'rotate(' + s + 'deg)' + (g ? ' scale(1.5)' : '');
+    }
+
+    function grow() {
+      g = !g;
+      document.getElementById('box').style.transform = (g ? 'scale(1.5)' : 'scale(1)') + ' rotate(' + s + 'deg)';
+    }
+
+    function round() {
+      r = !r;
+      document.getElementById('box').style.borderRadius = r ? '50%' : '0px';
+    }
+
+    function reset() {
+      s = 0;
+      g = false;
+      r = false;
+      const b = document.getElementById('box');
+      b.style.transform = 'none';
+      b.style.borderRadius = '0px';
+    }
+  </script>
+
+</body>
+</html>

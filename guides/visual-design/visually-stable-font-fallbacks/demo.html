@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+    <meta charset="utf-8" />
+    <title>Visually Stable Font Fallbacks Demo</title>
+    <style>
+      body {
+        font-family: Verdana, Times, sans-serif;
+        line-height: 1.5;
+        padding: 1rem;
+        max-width: 800px;
+        margin: 0 auto;
+        font-size: 1.5rem;
+      }
+
+      /*
+      * Setting font-size-adjust to from-font automatically standardizes
+      * the metrics based on the first font provided in the list.
+      */
+      .font-swap{
+        /*
+           Refer to this calculator to find the value for your font:
+           https://philipwalton.github.io/demos/font-size-adjust-calculator/
+         */
+        font-size-adjust: 0.5454;
+      }
+      .font-swap:hover {
+        font-family: Times, sans-serif;
+      }
+
+    </style>
+  </head>
+  <body>
+    <h1>Visually Stable Font Fallbacks</h1>
+    <p class="font-swap">
+      This demo illustrates how to use <code>font-size-adjust</code> to keep
+      text visually stable when the preferred font is unavailable and the
+      browser swaps to a fallback font. By using <code>font-size-adjust</code>,
+      the fallback font is automatically scaled so its lowercase characters
+      match the target size of the preferred font, preventing drastic layout
+      shifts.
+    </p>
+  </body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <title>Load Shared Resources Declaratively Demo</title>
+
+  <!--
+    Declarative HTML integration: an unrecognized `crossoriginstorage`
+    attribute is simply ignored by browsers that don't understand it, per
+    ordinary HTML attribute-parsing rules -- the element still loads via
+    its plain href/src either way. No feature detection needed for this form.
+
+    `crossorigin` is unrelated to `crossoriginstorage` despite the similar
+    name -- it controls the CORS request mode and is required whenever the
+    resource is genuinely cross-origin, same as with plain `integrity` today.
+  -->
+  <link
+    rel="stylesheet"
+    href="/assets/shared-widget.css"
+    integrity="sha256-mXPhVm4mG5NhYQge+hY7V7c9Uy2mejppXiKq24un6AA="
+    crossorigin="anonymous"
+    crossoriginstorage="*"
+  />
+  <script
+    src="/assets/shared-widget.js"
+    integrity="sha256-NDFkFtKeZCKtK3XKGa58d0kJVjCIrfdQGvPCW9HXt4s="
+    crossorigin="anonymous"
+    crossoriginstorage="*"
+    defer
+  ></script>
+</head>
+
+<body>
+  <h1>Load a shared widget via markup</h1>
+  <p>The stylesheet and script above load a popular, unmodified widget from Cross-Origin Storage using markup
+    alone -- no imperative JavaScript required for the &lt;link&gt;/&lt;script&gt; form.</p>
+
+  <div id="module-status">Loading configuration module...</div>
+
+  <script type="module">
+    // The declarative JS form identifies a module the same way: an
+    // integrity hash plus a crossOriginStorage import attribute.
+    //
+    //   import config from "/assets/shared-config.js" with {
+    //     integrity: "sha256-...",
+    //     crossOriginStorage: "*",
+    //   };
+    //
+    // A static import written that way can't degrade: an import
+    // attribute key a browser doesn't recognize fails the whole module at
+    // parse time. A dynamic import() with it rejects before fetching
+    // anything, even when navigator.crossOriginStorage exists (for example,
+    // added by an extension), so catch that rejection and import the same
+    // URL without the attribute.
+    const statusEl = document.getElementById('module-status');
+
+    try {
+      let mod;
+      try {
+        mod = await import('/assets/shared-config.js', {
+          with: {
+            integrity: 'sha256-YKd8aU4ILF6re6EiM6lTEdAiGTFjVgVk9867zPSCAhs=',
+            crossOriginStorage: '*',
+          },
+        });
+      } catch {
+        mod = await import('/assets/shared-config.js');
+      }
+
+      statusEl.textContent = `Configuration module ready: ${JSON.stringify(mod.default)}`;
+    } catch (err) {
+      statusEl.textContent = `Could not load the configuration module: ${err.message}`;
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Language Model Demo</title>
+  <style>
+    /* Let the inputs and output reflow at narrow widths and high zoom. */
+    textarea {
+      inline-size: 100%;
+      box-sizing: border-box;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    /* Dims only the text, so the focus indicator keeps its full contrast. */
+    [aria-disabled="true"] {
+      color: GrayText;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Language Model (Prompt API)</h1>
+
+  <section>
+    <h2 id="download-heading">Download Progress</h2>
+    <!-- <progress> exposes its value on demand without announcing every change. -->
+    <progress id="download-bar" aria-labelledby="download-heading" max="1" value="0" hidden></progress>
+    <!-- A polite live region for the download's start and end, not each percentage.
+         tabindex="-1" lets focus move here when the Download model button hides. -->
+    <p id="download-progress" tabindex="-1" aria-live="polite">Checking…</p>
+    <!-- create() starts a download only from a user gesture, such as this click. -->
+    <button id="download-btn" hidden>Download model</button>
+  </section>
+
+  <section>
+    <h2>Availability</h2>
+    <p id="availability">Checking…</p>
+  </section>
+
+  <section>
+    <h2>Streaming Prompt</h2>
+    <label for="prompt-input">Prompt</label>
+    <textarea id="prompt-input" rows="3" cols="60">Write a short poem about the ocean.</textarea>
+    <br>
+    <!-- aria-disabled until the session exists (see the Download Progress text). -->
+    <button id="prompt-btn" aria-disabled="true">Send (streaming)</button>
+    <button id="stop-btn" hidden>Stop</button>
+    <pre id="prompt-output" aria-live="polite" aria-busy="false"></pre>
+  </section>
+
+  <section>
+    <h2>Structured Output (Sentiment)</h2>
+    <label for="sentiment-input">Feedback to analyze</label>
+    <textarea id="sentiment-input" rows="2" cols="60">The pizza was absolutely amazing!</textarea>
+    <br>
+    <button id="sentiment-btn" aria-disabled="true">Analyze sentiment</button>
+    <pre id="sentiment-output" aria-live="polite"></pre>
+  </section>
+
+  <section>
+    <h2>Session Clone</h2>
+    <button id="clone-btn" aria-disabled="true">Ask both clones a question</button>
+    <pre id="clone-output" aria-live="polite"></pre>
+  </section>
+
+  <script type="module">
+    const availabilityEl = document.getElementById('availability');
+    const downloadProgressEl = document.getElementById('download-progress');
+    const downloadBar = document.getElementById('download-bar');
+    const downloadBtn = document.getElementById('download-btn');
+    const promptInput = document.getElementById('prompt-input');
+    const promptBtn = document.getElementById('prompt-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const promptOutput = document.getElementById('prompt-output');
+    const sentimentInput = document.getElementById('sentiment-input');
+    const sentimentBtn = document.getElementById('sentiment-btn');
+    const sentimentOutput = document.getElementById('sentiment-output');
+    const cloneBtn = document.getElementById('clone-btn');
+    const cloneOutput = document.getElementById('clone-output');
+
+    // Without the API, or when the model can't run here, the prompt buttons
+    // stay aria-disabled and the page says why.
+    const supported = 'LanguageModel' in window;
+    // availability() and create() take the same options, so availability
+    // reflects the languages the session uses.
+    const languageOptions = {
+      expectedInputs: [{type: 'text', languages: ['en']}],
+      expectedOutputs: [{type: 'text', languages: ['en']}],
+    };
+    const availability = supported ? await LanguageModel.availability(languageOptions) : 'unavailable';
+
+    if (!supported) {
+      availabilityEl.textContent = 'LanguageModel API not available in this browser.';
+      downloadProgressEl.textContent = 'No model to download in this browser.';
+    } else {
+      availabilityEl.textContent = `Status: ${availability}`;
+      if (availability === 'unavailable') {
+        downloadProgressEl.textContent = 'The model can\'t run on this device.';
+      }
+    }
+
+    const needsDownload = availability !== 'available';
+    let session;
+
+    function updateTokenDisplay() {
+      availabilityEl.textContent = `Status: ready (context ${session.contextUsage}/${session.contextWindow} tokens used)`;
+    }
+
+    async function createSession() {
+      try {
+        session = await LanguageModel.create({
+          ...languageOptions,
+          monitor(m) {
+            m.addEventListener('downloadprogress', (e) => {
+              downloadBar.value = e.loaded;
+            });
+          },
+        });
+      } catch (error) {
+        downloadBar.hidden = true;
+        downloadProgressEl.textContent = `The model couldn't be loaded: ${error.message}`;
+        availabilityEl.textContent = 'Status: failed to load';
+        return false;
+      }
+      downloadBar.hidden = true;
+      downloadProgressEl.textContent = needsDownload ? 'Model downloaded' : 'No download needed';
+      updateTokenDisplay();
+      for (const button of [promptBtn, sentimentBtn, cloneBtn]) button.removeAttribute('aria-disabled');
+      return true;
+    }
+
+    if (availability === 'available') {
+      await createSession();
+    } else if (availability !== 'unavailable') {
+      // create() rejects with NotAllowedError when it would start a download
+      // without a user gesture, so the download starts from this button.
+      downloadProgressEl.textContent = 'Download the model to use the prompts below.';
+      downloadBtn.hidden = false;
+      downloadBtn.addEventListener('click', async () => {
+        downloadBar.value = 0;
+        downloadBar.hidden = false;
+        downloadProgressEl.textContent = 'Downloading model…';
+        // Focus moves to the progress text, which reads the new state, so it
+        // doesn't fall to <body> when the button hides.
+        downloadProgressEl.focus();
+        downloadBtn.hidden = true;
+        if (!(await createSession())) {
+          // Show the button again so the user can retry.
+          downloadBtn.hidden = false;
+          if (document.activeElement === downloadProgressEl) downloadBtn.focus();
+        }
+      });
+    }
+
+    // Streaming prompt
+    let controller = null;
+    promptBtn.addEventListener('click', async () => {
+      // aria-disabled keeps the busy button focusable, so keyboard focus stays
+      // on it; this check ignores activation until the task finishes.
+      if (promptBtn.getAttribute('aria-disabled') === 'true') return;
+      promptOutput.textContent = '';
+      promptBtn.setAttribute('aria-disabled', 'true');
+      controller = new AbortController();
+      stopBtn.hidden = false;
+      // aria-busy lets assistive technologies wait for the whole answer rather than
+      // announcing each chunk.
+      promptOutput.setAttribute('aria-busy', 'true');
+      try {
+        const stream = session.promptStreaming(promptInput.value, {signal: controller.signal});
+        for await (const chunk of stream) {
+          promptOutput.append(chunk)
+        }
+      } catch (error) {
+        // A stop keeps the partial answer.
+        if (error.name !== 'AbortError') {
+          promptOutput.textContent = `The answer couldn't be generated: ${error.message}`;
+        }
+      } finally {
+        promptOutput.setAttribute('aria-busy', 'false');
+        promptBtn.removeAttribute('aria-disabled');
+        // Return focus to Send before hiding a focused Stop button, so focus
+        // doesn't fall to <body>.
+        if (document.activeElement === stopBtn) promptBtn.focus();
+        stopBtn.hidden = true;
+        controller = null;
+        updateTokenDisplay();
+      }
+    });
+
+    stopBtn.addEventListener('click', () => controller?.abort());
+
+    // Structured output: sentiment analysis
+    const sentimentSchema = {
+      type: 'object',
+      properties: {
+        rating: { type: 'number', minimum: 1, maximum: 5 },
+        is_positive: { type: 'boolean' },
+        summary: { type: 'string' },
+      },
+      required: ['rating', 'is_positive', 'summary'],
+    };
+
+    sentimentBtn.addEventListener('click', async () => {
+      if (sentimentBtn.getAttribute('aria-disabled') === 'true') return;
+      sentimentOutput.textContent = 'Analyzing…';
+      sentimentBtn.setAttribute('aria-disabled', 'true');
+      try {
+        const result = await session.prompt(
+          `Rate this feedback: "${sentimentInput.value}"`,
+          { responseConstraint: sentimentSchema },
+        );
+        sentimentOutput.textContent = JSON.stringify(JSON.parse(result), null, 2);
+      } catch (error) {
+        sentimentOutput.textContent = `The sentiment couldn't be analyzed: ${error.message}`;
+      } finally {
+        sentimentBtn.removeAttribute('aria-disabled');
+        updateTokenDisplay();
+      }
+    });
+
+    // Session cloning: two personas share the same base context
+    cloneBtn.addEventListener('click', async () => {
+      if (cloneBtn.getAttribute('aria-disabled') === 'true') return;
+      cloneOutput.textContent = 'Asking both clones…';
+      cloneBtn.setAttribute('aria-disabled', 'true');
+      try {
+        const base = await LanguageModel.create({
+          expectedInputs: [{type: 'text', languages: ['en']}],
+          expectedOutputs: [{type: 'text', languages: ['en']}],
+          initialPrompts: [
+            { role: 'system', content: 'You are a helpful assistant. Keep answers to one sentence.' },
+          ],
+        });
+
+        const optimist = await base.clone();
+        const pessimist = await base.clone();
+        base.destroy();
+
+        const [a, b] = await Promise.all([
+          optimist.prompt('What do you think about AI?'),
+          pessimist.prompt('What do you think about AI? Answer as a pessimist.'),
+        ]);
+
+        optimist.destroy();
+        pessimist.destroy();
+
+        cloneOutput.textContent = `Optimist: ${a}\n\nPessimist: ${b}`;
+      } catch (error) {
+        cloneOutput.textContent = `The clones couldn't answer: ${error.message}`;
+      } finally {
+        cloneBtn.removeAttribute('aria-disabled');
+      }
+    });
+  </script>
+</body>
+
+</html>

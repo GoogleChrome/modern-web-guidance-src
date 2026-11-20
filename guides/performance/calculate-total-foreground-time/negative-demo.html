@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incorrect Foreground Time Calculation (Negative Demo)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; }
+    .error { color: #991b1b; background: #fee2e2; padding: 1rem; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="error">
+    <h1>Total Foreground Time (Incorrect)</h1>
+    <p>This demo incorrectly calculates foreground time by just using <code>performance.now()</code>, failing to exclude time spent in the background.</p>
+    <div id="time">0ms</div>
+  </div>
+
+  <script>
+    // INCORRECT: This function just returns total elapsed time,
+    // ignoring whether the tab was actually in the foreground.
+    function getTotalForegroundTime() {
+      return performance.now();
+    }
+
+    function updateUI() {
+      document.getElementById('time').textContent = `${Math.round(getTotalForegroundTime())}ms`;
+    }
+
+    setInterval(updateUI, 100);
+  </script>
+</body>
+</html>

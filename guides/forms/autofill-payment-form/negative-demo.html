@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <title>Payment Setup</title>
+</head>
+<body>
+  <h1>Payment Info</h1>
+  <div id="payment-details">
+    <section>
+      <span>Email Address</span>
+      <input type="text" id="email_input" name="email_input">
+    </section>
+
+    <section>
+      <span>Phone Number</span>
+      <input type="text" id="phone_area" name="phone_area" maxlength="3">
+      <input type="text" id="phone_prefix" name="phone_prefix" maxlength="3">
+      <input type="text" id="phone_line" name="phone_line" maxlength="4">
+    </section>
+
+    <section>
+      <span>First Name</span>
+      <input type="text" id="fname" name="fname" pattern="[a-zA-Z]+" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Last Name</span>
+      <input type="text" id="lname" name="lname" pattern="[a-zA-Z]+" autocomplete="off">
+    </section>
+
+    <section>
+      <span>Card number</span>
+      <input type="number" id="cc_part1" name="cc_part1">
+      <input type="number" id="cc_part2" name="cc_part2">
+      <input type="number" id="cc_part3" name="cc_part3">
+      <input type="number" id="cc_part4" name="cc_part4">
+    </section>
+
+    <section>
+      <span>Expiry date</span>
+      <input type="number" id="exp_month" name="exp_month" placeholder="MM">
+      <input type="number" id="exp_year" name="exp_year" placeholder="YY">
+    </section>
+
+    <section>
+      <span>Security code</span>
+      <input type="password" id="cvv" name="cvv">
+    </section>
+
+    <div onclick="submit()">Continue</div>
+  </div>
+</body>
+</html>

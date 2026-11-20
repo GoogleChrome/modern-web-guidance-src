@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teaser - Paywall Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      line-height: 1.6;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: start;
+      gap: 30px;
+      margin: 0;
+      padding: 40px 20px;
+      /* Not a solid color, to show that the faded content becomes transparent */
+      background: linear-gradient(to right, #eef, #fee);
+      color: #333;
+    }
+
+    .card {
+      box-sizing: border-box;
+      max-width: 350px;
+      background-color: rgb(255 255 255 / .6);
+      border-radius: 12px;
+      padding: 30px;
+      border: 1px solid #eaeaea;
+    }
+
+    h2 {
+      margin-block: 0 .5em;
+      font-size: 1.1rem;
+    }
+
+    p {
+      margin-block: 0 1lh;
+    }
+
+    /* Only the excerpt is in the markup */
+    .paywall-container {
+      position: relative;
+    }
+
+    .paywall-container .content {
+      /* Sized in lines, so a longer excerpt is not mostly faded */
+      mask-image: linear-gradient(to top, rgb(0 0 0 / .1), black 9lh);
+    }
+
+    /* Blurs the end of the text, after the fade has started.
+       On the parent of the masked element: backdrop-filter does not blur the text from inside it. */
+    .paywall-container::after {
+      /* A small radius is enough, because the text also fades out */
+      --blur: .1em;
+      /* Extends past the text, so the blurred text is not cut off at its edges */
+      --bleed: calc(2 * var(--blur));
+      content: "";
+      position: absolute;
+      inset-inline: calc(-1 * var(--bleed));
+      inset-block-end: calc(-1 * var(--bleed));
+      block-size: calc(5lh + var(--bleed));
+      backdrop-filter: blur(var(--blur));
+      /* Ramps the blur in from the end of the text. Shorter than the fade, which starts first. */
+      mask-image: linear-gradient(to top, black 5lh, transparent);
+    }
+
+    .cta-section {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .cta-button {
+      background-color: #0070f3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .cta-button:hover {
+      background-color: #0051a2;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h2>Paywalled teaser</h2>
+    <div class="paywall-container">
+      <div class="content">
+        <p>This is the free excerpt of a member-only story. In a real application, the server sends only this
+          part of the text, and the rest stays behind the paywall until the reader subscribes.</p>
+        <p>Obscuring the end of the excerpt with a blur and a transparency gradient is an elegant way to tease
+          premium content without fully exposing it, encouraging reader sign-ups.</p>
+      </div>
+    </div>
+    <!-- After the masked element, so it is not faded too -->
+    <div class="cta-section">
+      <button class="cta-button" type="button">Subscribe to Read Full Story</button>
+    </div>
+  </div>
+
+</body>
+
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User-Triggered Dynamic Sort Demo</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    select,
+    button {
+      font: inherit;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .button-group {
+      display: inline-flex;
+    }
+
+    button[aria-pressed="true"] {
+      background: #005fcc;
+      color: #fff;
+      border-color: #005fcc;
+    }
+
+    section + section {
+      margin-top: 3rem;
+    }
+
+    #list {
+      list-style: none;
+      padding: 0;
+      margin: 1.5rem 0 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .item {
+      view-transition-name: match-element;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 1rem;
+      background: #fff;
+      content-visibility: auto;
+      contain-intrinsic-size: auto 110px;
+    }
+
+    .item h2 {
+      font-size: 1rem;
+      margin: 0 0 0.5rem;
+    }
+
+    .item p {
+      margin: 0;
+      color: #444;
+    }
+
+    table {
+      border-collapse: collapse;
+      min-width: 300px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #ccc;
+    }
+
+    tbody tr {
+      view-transition-name: match-element;
+      background: #fff;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      ::view-transition-group(*),
+      ::view-transition-old(*),
+      ::view-transition-new(*) {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Dynamic sort</h1>
+
+  <!-- Demo only: two independent examples on one page. Each control sorts only its own group. -->
+  <section>
+    <h2>Select controls the card grid</h2>
+    <div class="controls">
+      <label for="sort">Sort by
+        <select id="sort">
+          <option value="name-asc">Name (A to Z)</option>
+          <option value="name-desc">Name (Z to A)</option>
+          <option value="price-asc">Price (low to high)</option>
+          <option value="price-desc">Price (high to low)</option>
+        </select>
+      </label>
+    </div>
+
+    <p id="grid-status" role="status" class="visually-hidden"></p>
+
+    <ul id="list"></ul>
+  </section>
+
+  <section>
+    <h2>Buttons control the table rows</h2>
+    <div class="controls">
+      <!-- aria-pressed marks the active key. -->
+      <div class="button-group" role="group" aria-label="Sort by">
+        <button type="button" data-key="name" aria-pressed="true">Name</button>
+        <button type="button" data-key="price" aria-pressed="false">Price</button>
+      </div>
+      <!-- The label states the current direction, not the action. -->
+      <button type="button" id="direction" aria-pressed="false">Ascending</button>
+    </div>
+
+    <p id="table-status" role="status" class="visually-hidden"></p>
+
+    <table id="table">
+      <thead>
+        <tr><th scope="col">Name</th><th scope="col">Price</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <script type="module">
+    const items = [
+      { id: 1, name: 'Widget 10', price: 25 },
+      { id: 2, name: 'Widget 2', price: 9 },
+      { id: 3, name: 'Éclair mold', price: 14 },
+      { id: 4, name: 'Anvil', price: 120 },
+      { id: 5, name: 'Zipper', price: 3 },
+      { id: 6, name: 'Bucket', price: 10 },
+      { id: 7, name: 'Cable', price: 10 },
+      { id: 8, name: 'Lamp', price: 45 },
+    ];
+
+    const collator = new Intl.Collator(document.documentElement.lang || undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    });
+
+    const comparators = {
+      'name-asc': (a, b) => collator.compare(a.name, b.name),
+      'name-desc': (a, b) => collator.compare(b.name, a.name),
+      'price-asc': (a, b) => a.price - b.price || collator.compare(a.name, b.name),
+      'price-desc': (a, b) => b.price - a.price || collator.compare(a.name, b.name),
+    };
+
+    const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
+
+    // Demo only: any source of order works. This one sorts the data and maps it to nodes.
+    function orderedNodes(nodesById, key) {
+      return items.toSorted(comparators[key]).map((item) => nodesById.get(item.id));
+    }
+
+    function reorder(container, nodes) {
+      const move = 'moveBefore' in Element.prototype
+        ? (node) => container.moveBefore(node, null)
+        : (node) => container.append(node);
+      for (const node of nodes) move(node);
+    }
+
+    // Scope element is the group being sorted, so the other group is unaffected.
+    function sortWithTransition(scope, update) {
+      if (scope.startViewTransition) {
+        scope.startViewTransition(update);
+      } else if (document.startViewTransition) {
+        document.startViewTransition(update);
+      } else {
+        update();
+      }
+    }
+
+    // Card grid, driven by the select.
+    const list = document.getElementById('list');
+    const sortSelect = document.getElementById('sort');
+    const gridStatus = document.getElementById('grid-status');
+    const cardsById = new Map();
+    for (const item of items) {
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.innerHTML = '<h2></h2><p></p>';
+      li.querySelector('h2').textContent = item.name;
+      li.querySelector('p').textContent = currency.format(item.price);
+      cardsById.set(item.id, li);
+      list.append(li);
+    }
+
+    sortSelect.addEventListener('change', () => {
+      sortWithTransition(list, () => reorder(list, orderedNodes(cardsById, sortSelect.value)));
+      // One message per change, describing the result.
+      gridStatus.textContent = `Sorted by ${sortSelect.selectedOptions[0].text}, ${items.length} items`;
+    });
+
+    // Table rows, driven by the buttons.
+    const table = document.getElementById('table');
+    const tbody = document.getElementById('rows');
+    const tableStatus = document.getElementById('table-status');
+    const keyButtons = document.querySelectorAll('.button-group button');
+    const directionButton = document.getElementById('direction');
+    const rowsById = new Map();
+    for (const item of items) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td></td><td></td>';
+      tr.cells[0].textContent = item.name;
+      tr.cells[1].textContent = currency.format(item.price);
+      rowsById.set(item.id, tr);
+      tbody.append(tr);
+    }
+
+    let sortKey = 'name';
+    let descending = false;
+
+    function commitButtons() {
+      for (const button of keyButtons) {
+        button.setAttribute('aria-pressed', String(button.dataset.key === sortKey));
+      }
+      directionButton.setAttribute('aria-pressed', String(descending));
+      directionButton.textContent = descending ? 'Descending' : 'Ascending';
+
+      const value = `${sortKey}-${descending ? 'desc' : 'asc'}`;
+      sortWithTransition(table, () => reorder(tbody, orderedNodes(rowsById, value)));
+      tableStatus.textContent =
+        `Sorted by ${sortKey}, ${descending ? 'descending' : 'ascending'}, ${items.length} items`;
+    }
+
+    for (const button of keyButtons) {
+      button.addEventListener('click', () => {
+        sortKey = button.dataset.key;
+        commitButtons();
+      });
+    }
+
+    directionButton.addEventListener('click', () => {
+      descending = !descending;
+      commitButtons();
+    });
+
+    reorder(list, orderedNodes(cardsById, sortSelect.value));
+    reorder(tbody, orderedNodes(rowsById, 'name-asc'));
+  </script>
+</body>
+
+</html>

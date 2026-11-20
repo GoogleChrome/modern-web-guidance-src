@@ -1,0 +1,7 @@
+Here's what I changed in `index.html:80-94` — two CSS properties added to the `.card` rule:
+
+1. **`content-visibility: auto`** — This tells the browser to skip layout, paint, and rendering work for cards that are off-screen. Only the cards visible in the viewport get fully rendered on initial load. As the user scrolls, cards are rendered just before they come into view.
+
+2. **`contain-intrinsic-size: auto 350px`** — This gives off-screen cards an estimated intrinsic height of 350px so the browser can calculate proper scrollbar size and page height without actually rendering each card. The `auto` keyword means once a card has been rendered, the browser remembers its real size.
+
+These two lines are the standard approach for this exact problem — a long list of expensive-to-render elements. The browser still creates all 500 DOM nodes, but it only does the expensive rendering work (the SVG filters, drop-shadows, blur, mix-blend-mode, etc.) for the handful of cards visible in the viewport.

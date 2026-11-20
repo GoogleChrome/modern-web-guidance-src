@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>await Element.scrollIntoView()</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+    }
+
+    nav {
+      padding: 1rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    section {
+      width: 80%;
+      max-width: 600px;
+      height: min(80vh, 100vh - 250px);
+      flex-shrink: 0;
+      margin: 2rem auto;
+      padding: 2rem;
+      border: 2px solid #ccc;
+      transition: background-color 0.4s ease-out, border-color 0.4s ease-out, transform 0.4s ease-out;
+    }
+
+    section.highlight {
+      background-color: #fffae6;
+      border-color: #ffd700;
+      transform: scale(1.03);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-link" href="#section-1">Go to Section 1</a>
+    <a class="nav-link" href="#section-2">Go to Section 2</a>
+    <a class="nav-link" href="#section-3">Go to Section 3</a>
+  </nav>
+
+  <main>
+    <section id="#section-1">
+      <h2 class="focus-target" tabindex="-1">Section 1: The Basics</h2>
+      <p>This is the first section. When you click the button above, the page will smooth-scroll down here.</p>
+    </section>
+
+    <section id="#section-2">
+      <h2 class="focus-target" tabindex="-1">Section 2: The Middle</h2>
+      <p>Notice how the highlight effect doesn't trigger until the scrolling has completely stopped. This guarantees the user actually sees the flash of color, rather than it happening off-screen.</p>
+    </section>
+
+    <section id="#section-3">
+      <h2 class="focus-target" tabindex="-1">Section 3: The End</h2>
+      <p>With older APIs, you'd have to guess the scroll duration with a setTimeout, which often fired too early on slow devices or too late on fast ones.</p>
+    </section>
+  </main>
+
+  <script>
+    function scrollIntoViewAsync(element, options, scroller = window) {
+      const result = element.scrollIntoView(options);
+
+      // Feature detect: in supporting browsers, scrollIntoView() returns a Promise
+      if (result instanceof Promise) {
+        return result;
+      }
+
+      // Fallback for browsers where scrollIntoView() returns undefined
+      return new Promise((resolve) => {
+        let timeoutId;
+
+        const finish = () => {
+          clearTimeout(timeoutId);
+          scroller.removeEventListener('scrollend', finish);
+          scroller.removeEventListener('scroll', onScroll);
+          resolve();
+        };
+
+        const onScroll = () => {
+          // Restart the idle timer on every scroll event. If scrollend never fires
+          // (browsers without scrollend support), this resolves once scrolling goes idle.
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(finish, 100);
+        };
+
+        scroller.addEventListener('scrollend', finish, { once: true });
+        scroller.addEventListener('scroll', onScroll, { passive: true });
+
+        // If no scroll event fires within the idle window (e.g., already in view), resolve.
+        // 100ms is an example value; it only needs to exceed the gap between scroll events.
+        timeoutId = setTimeout(finish, 100);
+      });
+    }
+
+    const scrollCompletionLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('section');
+
+    scrollCompletionLinks.forEach(scrollCompletionLink => {
+      scrollCompletionLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const targetId = scrollCompletionLink.getAttribute('href');
+        const targetElement = document.getElementById(targetId);
+
+        sections.forEach(sec => sec.classList.remove('highlight'));
+
+        await scrollIntoViewAsync(targetElement, {
+          behavior: 'smooth', // Smoothly scroll into view
+          block: 'center' // Centers the element in the viewport
+        });
+
+        targetElement.classList.add('highlight');
+        // Ensures that focus moves to a suitable place in the target element without affecting the scroll animation
+        targetElement.querySelector('.focus-target').focus({ preventScroll: true });
+      });
+    });
+  </script>
+</body>
+</html>

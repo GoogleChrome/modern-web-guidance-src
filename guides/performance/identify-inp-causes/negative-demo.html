@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+    <title>Performance Monitor</title>
+</head>
+<body>
+    <button id="btn">Click</button>
+    <script>
+        const observer = new PerformanceObserver((list) => {
+            const entries = list.getEntries();
+            entries.forEach(entry => {
+                if (entry.entryType === 'event') {
+                    const delay = entry.processingStart - entry.startTime;
+                    const duration = entry.duration;
+                    
+                    const profiler = new Profiler({ sampleInterval: 10, maxBufferSize: 10000 });
+                    
+                    setTimeout(async () => {
+                        const trace = await profiler.stop();
+                        console.log(trace.frames[0].name);
+                        console.log("Interaction detected: " + (delay + duration));
+                    }, 500);
+                }
+            });
+        });
+
+        observer.observe({ type: 'event', buffered: true });
+
+        document.getElementById('btn').onclick = () => {
+            const end = Date.now() + 200;
+            while (Date.now() < end) {}
+        };
+    </script>
+</body>
+</html>
