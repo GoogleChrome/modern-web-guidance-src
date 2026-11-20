@@ -43,8 +43,6 @@ Use `view-transition-name: match-element` so you do not need to generate a name 
 
 MANDATORY: Always respect user preferences for reduced motion using the `prefers-reduced-motion` media query.
 
-{{ BASELINE_STATUS("view-transitions") }}
-
 ```css
 .item {
   /* Derives a unique name from each element's identity. */
@@ -120,9 +118,17 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 
 ## Fallbacks
 
+### View transitions
+
+{{ BASELINE_STATUS("view-transitions") }}
+
+### Element-scoped view transitions
+
 {{ BASELINE_STATUS("view-transitions-element-scoped") }}
 
 If your Baseline target does not support `element.startViewTransition()`, use `document.startViewTransition()`. If it does not support that either, reorder without animation. The list still sorts correctly and the announcement is unchanged, so this is graceful degradation: the animation enhances the use case but is not core to it.
+
+### `moveBefore()`
 
 {{ BASELINE_STATUS("move-before") }}
 
@@ -130,7 +136,7 @@ If your Baseline target does not support `moveBefore()`, use `append()`. DOM ord
 
 ```javascript
 function reorder(container, orderedNodes) {
-  const move = Object.hasOwn(Element.prototype, 'moveBefore')
+  const move = 'moveBefore' in container
     ? (node) => container.moveBefore(node, null)
     : (node) => container.append(node);
 
