@@ -650,15 +650,14 @@
         .shape-box,
         .tooltip-bubble,
         .ribbon-badge,
-        .shape-button {
-          border-color: ButtonText;
-          forced-color-adjust: auto;
-        }
-
-        .poly-shape,
+        .shape-button,
         .wave-ticket,
         .masked-orb {
-          outline: var(--stroke-medium) solid ButtonText;
+          clip-path: none;
+          -webkit-mask-image: none;
+          mask-image: none;
+          border: var(--stroke-medium) solid ButtonText;
+          forced-color-adjust: auto;
         }
       }
     }
