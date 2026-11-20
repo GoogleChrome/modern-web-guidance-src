@@ -322,8 +322,8 @@
       tbody.append(tr);
     }
 
-    let sortKey = 'name';
-    let descending = false;
+    let sortKey = document.querySelector('input[name="key"]:checked')?.value ?? 'name';
+    let descending = document.querySelector('input[name="direction"]:checked')?.value === 'desc';
 
     function commitRadios() {
       const value = `${sortKey}-${descending ? 'desc' : 'asc'}`;
@@ -347,7 +347,7 @@
     }
 
     reorder(list, orderedNodes(cardsById, sortSelect.value));
-    reorder(tbody, orderedNodes(rowsById, 'name-asc'));
+    reorder(tbody, orderedNodes(rowsById, `${sortKey}-${descending ? 'desc' : 'asc'}`));
   </script>
 </body>
 
