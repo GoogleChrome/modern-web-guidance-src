@@ -6,3 +6,4 @@
 - Clicking the close or cancel button inside the dialog must close the dialog.
 - Clicking inside the dialog content (but not on the backdrop) should NOT close the dialog.
 - The implementation should include a fallback mechanism for light-dismiss in browsers where the `closedby` attribute is not supported.
+- When `closedby` is unsupported, backdrop dismissal fires a cancelable `cancel` event before closing, and preventing that event keeps the dialog open.

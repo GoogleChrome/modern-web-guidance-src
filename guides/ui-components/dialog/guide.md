@@ -175,7 +175,11 @@ if (!('closedBy' in HTMLDialogElement.prototype)) {
     let pressedOutside = false;
     dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e, dialog); });
     // Require the press and the release outside, so a text-selection drag that ends on the backdrop does not dismiss
-    dialog.addEventListener('pointerup', (e) => { if (pressedOutside && outside(e, dialog)) dialog.close(); });
+    dialog.addEventListener('pointerup', (e) => {
+      if (!pressedOutside || !outside(e, dialog)) return;
+      // Let cancel handlers veto dismissal, just as they can for native light dismiss.
+      if (dialog.dispatchEvent(new Event('cancel', { cancelable: true }))) dialog.close();
+    });
   }
 }
 ```
