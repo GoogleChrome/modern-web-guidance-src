@@ -15,10 +15,10 @@ export const DEMO_FILE = 'demo.html';
 
 export const SME_CONTENT_FILENAMES = new Set([GUIDE_FILE, DEMO_FILE, EXPECTATIONS_FILE, SKILL_FILE]);
 
-export const DEFAULT_INFRA_OWNERS = ['paulirish', 'micahjo7', 'lusayaa'] as const;
-export const CONFIG_OWNERS = ['paulirish', 'rviscomi', 'micahjo7', 'lusayaa'] as const;
-export const PUBLIC_HARNESS_OWNERS = ['paulirish', 'micahjo7', 'TravenReese'] as const;
-export const EVAL_OWNERS = ['TravenReese', 'micahjo7', 'lusayaa'] as const;
+export const DEFAULT_INFRA_OWNERS = ['paulirish', 'lusayaa'] as const;
+export const CONFIG_OWNERS = ['paulirish', 'rviscomi', 'lusayaa'] as const;
+export const PUBLIC_HARNESS_OWNERS = ['paulirish', 'TravenReese', 'lusayaa'] as const;
+export const EVAL_OWNERS = ['TravenReese', 'lusayaa'] as const;
 
 const NON_CATEGORY_DIRS = new Set(['lib', 'node_modules', 'modern-web-guidance']);
 const CONTENT_ISSUE_LABELS = new Set(['new-feature', 'new-use-case', 'content', 'gd-dev-content']);

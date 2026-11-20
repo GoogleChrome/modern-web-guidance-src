@@ -516,8 +516,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
     assert.equal(report.needsGuidanceIssues[0]?.issueNumber, 1742);
-    assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
-    assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'micahjo7', 'paulirish'], 'guidance'), ['TravenReese']);
+    assert.deepEqual(filterCatchAllReviewers(['paulirish', 'lusayaa', 'LeaVerou'], 'guidance'), ['LeaVerou']);
+    assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'lusayaa', 'paulirish'], 'guidance'), ['TravenReese']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'paulirish'], 'evals'), ['TravenReese']);
   });
 
