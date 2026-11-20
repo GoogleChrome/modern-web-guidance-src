@@ -52,6 +52,8 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
 - Put a value in a custom property only when it is reused or tuned per instance.
 - Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
+- `clip-path` clips the focus outline and ignores pointer events outside the shape, while `border-shape` keeps both.
+- Don't translate a shaped element on hover, because the moving hit area causes missed clicks.
 
 ## Clip with rounded polygons and shape()
 
@@ -59,13 +61,6 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 - Round polygon vertices with `polygon(round <length>, ...)` in `clip-path`.
 - For a responsive curved cutout, use `clip-path: shape()` with percentage coordinates and reset `border-radius: 0` alongside the `shape()` declaration so fallback rounded corners don't interfere with the cutout.
 - Express the outline's dimensions (tail height, notch size, wave depth) as custom properties so the shape is easy to customize.
-
-## Keep shaped interactive elements usable
-
-- `clip-path` and `border-shape` make clipped-away corners ignore pointer events, so a click on the empty corner reaches whatever is behind and does not trigger the click handler. Do not enlarge the hit area with extra elements.
-- Give every shaped interactive element a visible `:focus-visible` indicator. A plain `outline` with an offset works for `border-shape`; with `clip-path` the outline is clipped, so draw the indicator inside the shape or on the wrapper.
-- Under `@media (forced-colors: active)`, set a visible border color (such as `ButtonText`) on shaped elements that rely on a background fill, since fills are removed.
-- Do not translate shaped interactive elements on `:hover` or `:active`, because moving a clipped hitbox under the pointer causes missed clicks; disable any remaining hover transitions under `@media (prefers-reduced-motion: reduce)`.
 
 ## Fallbacks
 
