@@ -2,7 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import 'colors';
+import { cBold, cCyan, cGreen, cRed, cYellow } from '../core/colors.ts';
 import { collectResults } from './lib/collection.ts';
 import { calculateMetrics } from './lib/metrics.ts';
 import { generateMarkdownReport, generateJsonReport, saveReports } from './lib/reporting.ts';
@@ -50,11 +50,11 @@ function inferSuiteConfig(suiteResultsDir: string): SuiteConfig {
 }
 
 export async function evaluateSuite(suiteResultsDir: string, suiteName: string, suiteStartTime?: number) {
-  console.log(`Evaluating suite: ${suiteName}`.cyan);
-  console.log(`Results directory: ${suiteResultsDir}`.cyan);
+  console.log(cCyan(`Evaluating suite: ${suiteName}`));
+  console.log(cCyan(`Results directory: ${suiteResultsDir}`));
 
   if (!fs.existsSync(suiteResultsDir)) {
-    console.error(`Results directory not found at ${suiteResultsDir}!`.red);
+    console.error(cRed(`Results directory not found at ${suiteResultsDir}!`));
     return;
   }
 
@@ -64,24 +64,24 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
     try {
       suiteConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     } catch {
-      console.warn(`⚠️ Failed to parse suite_config.json in ${suiteResultsDir}`.yellow);
+      console.warn(cYellow(`⚠️ Failed to parse suite_config.json in ${suiteResultsDir}`));
     }
   }
 
   if (!suiteConfig) {
-    console.warn(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`.yellow);
+    console.warn(cYellow(`⚠️ No suite_config.json found in ${suiteResultsDir}. Inferring config...`));
     suiteConfig = inferSuiteConfig(suiteResultsDir);
-    console.log(`Inferred: agent=${suiteConfig.agent}`.cyan);
+    console.log(cCyan(`Inferred: agent=${suiteConfig.agent}`));
   }
 
   if (!suiteConfig) {
-    console.error(`⚠️ Failed to infer suite config for ${suiteResultsDir}. Aborting evaluation.`.red);
+    console.error(cRed(`⚠️ Failed to infer suite config for ${suiteResultsDir}. Aborting evaluation.`));
     return;
   }
 
   try {
     const { allResults, numRuns, model, reasoningEffort, totalRuntime: fallbackRuntime } = await collectResults(suiteResultsDir, suiteConfig);
-    console.log(`Found ${numRuns} test run(s)`.cyan);
+    console.log(cCyan(`Found ${numRuns} test run(s)`));
 
     const metrics = calculateMetrics(allResults, numRuns);
     const mdReport = generateMarkdownReport(metrics, allResults);
@@ -109,22 +109,22 @@ export async function evaluateSuite(suiteResultsDir: string, suiteName: string, 
 
     saveReports(suiteResultsDir, mdReport, jsonReport);
 
-    console.log(`\nReport generated: ${path.resolve(path.join(suiteResultsDir, 'evals.md'))}`.green.bold);
-    console.log(`JSON Report generated: ${path.resolve(path.join(suiteResultsDir, 'evals.json'))}`.green.bold);
-    console.log(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`.cyan);
+    console.log(cBold(cGreen(`\nReport generated: ${path.resolve(path.join(suiteResultsDir, 'evals.md'))}`)));
+    console.log(cBold(cGreen(`JSON Report generated: ${path.resolve(path.join(suiteResultsDir, 'evals.json'))}`)));
+    console.log(cCyan(`Pass Rate - Unguided: ${metrics.summary.unguidedPassRate}%, Guided: ${metrics.summary.guidedPassRate}%`));
 
   } catch (error: any) {
-    console.error(`Evaluation failed: ${error.message}`.red);
+    console.error(cRed(`Evaluation failed: ${error.message}`));
   }
 }
 
 export async function evaluate() {
-  console.log('Starting Evaluation...'.cyan.bold);
+  console.log(cBold(cCyan('Starting Evaluation...')));
 
   let suiteName = process.argv[2];
 
   if (!suiteName) {
-    console.error('❌ No suite name provided!'.red);
+    console.error(cRed('❌ No suite name provided!'));
     process.exit(1);
   }
 
