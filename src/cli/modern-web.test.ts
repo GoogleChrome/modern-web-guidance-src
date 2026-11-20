@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { USE_CASES } from '../rag/guides.ts';
+import { DETECTED_AGENT_ENV_VARS } from './telemetry/detect-agent.ts';
 
 const scriptPath = path.resolve(import.meta.dirname, './modern-web.ts');
 const smallUngated = USE_CASES.find(
@@ -12,10 +13,10 @@ const smallUngated = USE_CASES.find(
 )?.id ?? 'accessible-generated-content';
 
 describe('modern-web CLI', () => {
-  const runCLI = (args: string[]) => {
+  const runCLI = (args: string[], envOverrides?: Record<string, string | undefined>) => {
     const result = spawnSync('node', [scriptPath, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', DISABLE_TELEMETRY: '1' }
+      env: { ...process.env, NO_COLOR: '1', DISABLE_TELEMETRY: '1', ...envOverrides }
     });
     return result;
   };
@@ -179,13 +180,32 @@ describe('modern-web CLI', () => {
 
   it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
-    fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
+    const clearedAgentEnv = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map((k) => [k, undefined]));
+    fs.writeFileSync(versionPath, '2026_11_12-latest12\n');
     try {
-      const res = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help']);
-      assert.strictEqual(res.status, 0);
-      assert.ok(res.stdout.includes('Usage: modern-web-guidance legacy-scan'));
-      assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
-      assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      const nonClaudeRes = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help'], clearedAgentEnv);
+      assert.strictEqual(nonClaudeRes.status, 0);
+      assert.ok(nonClaudeRes.stdout.includes('Usage: modern-web-guidance legacy-scan'));
+      assert.ok(nonClaudeRes.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.ok(nonClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.strictEqual(nonClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
+
+      const frozenClaudeRes = runCLI(
+        ['--skill-version', '2026_10_12-dacb5911', 'legacy-scan', '--help'],
+        { ...clearedAgentEnv, CLAUDECODE: '1' },
+      );
+      assert.strictEqual(frozenClaudeRes.status, 0);
+      assert.ok(frozenClaudeRes.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'));
+      assert.ok(frozenClaudeRes.stderr.includes('/plugin install modern-web-guidance@googlechrome'));
+
+      const recentClaudeRes = runCLI(
+        ['--skill-version', '2026_11_01-newsha', 'legacy-scan', '--help'],
+        { ...clearedAgentEnv, CLAUDECODE: '1' },
+      );
+      assert.strictEqual(recentClaudeRes.status, 0);
+      assert.ok(recentClaudeRes.stderr.includes('Warning: a new SKILL.md is available'));
+      assert.strictEqual(recentClaudeRes.stderr.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'), false);
     } finally {
       fs.rmSync(versionPath, { force: true });
     }
@@ -198,11 +218,11 @@ describe('modern-web CLI', () => {
       assert.strictEqual(resJson.status, 1);
       const data = JSON.parse(resJson.stdout);
       assert.strictEqual(data.totalFindings, 0);
-      assert.match(data.error ?? '', /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+      assert.match(data.error ?? '', /Unknown or unsupported legacy-scan guide ID: nonexistent-guide-id/);
 
       const resHuman = runCLI(['legacy-scan', tempDir, '--guide', 'nonexistent-guide-id']);
       assert.strictEqual(resHuman.status, 1);
-      assert.match(resHuman.stderr, /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+      assert.match(resHuman.stderr, /Unknown or unsupported legacy-scan guide ID: nonexistent-guide-id/);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -237,22 +257,22 @@ describe('modern-web CLI', () => {
       assert.strictEqual(failGuideRes.status, 1);
       assert.strictEqual(fs.existsSync(logPath), false, 'Failed analyze run with unknown guide must not log');
 
-      // 3. Successful analyze call -> exit code 0, SHOULD log to modern-web.log
+      // 3. Successful analyze alias call -> exit code 0, SHOULD log tool: 'legacy-scan' to modern-web.log
       const okRes = runCLIWithLogging(['analyze', tempDir, '--json']);
       assert.strictEqual(okRes.status, 0);
       assert.strictEqual(fs.existsSync(logPath), true, 'Successful analyze run should create modern-web.log');
       const logContent = fs.readFileSync(logPath, 'utf8');
       const parsedLog = JSON.parse(logContent.trim());
-      assert.strictEqual(parsedLog.tool, 'analyze');
+      assert.strictEqual(parsedLog.tool, 'legacy-scan');
       assert.ok(Array.isArray(parsedLog.result));
 
-      // 4. Successful legacy-scan call -> exit code 0, SHOULD also log tool: 'analyze' to modern-web.log
+      // 4. Successful legacy-scan call -> exit code 0, SHOULD also log tool: 'legacy-scan' to modern-web.log
       fs.rmSync(logPath, { force: true });
       const okLegacyScanRes = runCLIWithLogging(['legacy-scan', tempDir, '--json']);
       assert.strictEqual(okLegacyScanRes.status, 0);
       assert.strictEqual(fs.existsSync(logPath), true, 'Successful legacy-scan run should create modern-web.log');
       const legacyScanLog = JSON.parse(fs.readFileSync(logPath, 'utf8').trim());
-      assert.strictEqual(legacyScanLog.tool, 'analyze');
+      assert.strictEqual(legacyScanLog.tool, 'legacy-scan');
       assert.ok(Array.isArray(legacyScanLog.result));
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });

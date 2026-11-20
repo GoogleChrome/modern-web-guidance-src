@@ -4,6 +4,7 @@ description: Provide real-time visual feedback in linked UI elements while a use
 web-feature-ids:
   - scroll-snap-events
   - scroll-snap
+  - focusgroup
 ---
 
 # Scroll Snap Real-Time Feedback
@@ -126,7 +127,7 @@ For browsers that do not support `scrollsnapchanging`, the UI will not provide e
 **DO** simulate the real-time nature of `scrollsnapchanging` with a `scroll` event listener coupled with `requestAnimationFrame` and geometric distance calculations to determine the closest snap target while the user is actively scrolling.
 
 ```javascript
-if ('onscrollsnapchanging' in Element.prototype) {
+if ('onscrollsnapchanging' in HTMLElement.prototype) {
   // Use native scroll snap events
 } else {
   // Fallback: use scroll + requestAnimationFrame for eager feedback

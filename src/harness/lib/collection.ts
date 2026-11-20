@@ -235,12 +235,23 @@ function getTaskRunContext(
     return null;
   }
 
+  // run-suite pre-creates every task dir (with run.mjs and package.json) before any agent runs.
+  // In a stopped or partial suite, a dir that has no runtime.json, generation_failed.json, or grader results
+  // never had an agent run. Grading it would score the untouched base app.
+  const graderResults = path.join(dir, `${guide}_results.json`);
+  const agentRan = ['runtime.json', 'generation_failed.json'].some(f => fs.existsSync(path.join(dir, f)));
+  if (!agentRan && !fs.existsSync(graderResults)) {
+    if (warnIfMissing) {
+      console.warn(`Skipping ${relPath}: agent never ran`);
+    }
+    return null;
+  }
+
   const targetModifiedFile = extractTargetModifiedFile(dir, taskInfo.prompt);
   const targetFile = path.join(dir, targetModifiedFile || 'index.html');
   const targetPkgJson = path.join(dir, 'package.json');
   const targetPatchFile = path.join(dir, 'agent.patch');
   const graderPath = resolveTaskGraderPath(taskInfo, taskName);
-  const graderResults = path.join(dir, `${guide}_results.json`);
   const targetAppExists = isTargetAppPresent(targetFile, targetPkgJson, targetPatchFile);
 
   return {
@@ -575,13 +586,9 @@ function prepareGradersForRuns(
 
 async function collectTaskRunEntry(
   dir: string,
-  runPath: string,
-  runNumber: number,
-  taskMap: Map<string, any>
-): Promise<{ testName: string; payload: any } | null> {
-  const ctx = getTaskRunContext(dir, runPath, taskMap, true);
-  if (!ctx) return null;
-
+  ctx: TaskRunContext,
+  runNumber: number
+): Promise<{ testName: string; payload: any }> {
   const usage = await collectGuideUsage(dir, ctx.runType, ctx.guide);
 
   const taskCategory = path.basename(path.dirname(ctx.taskInfo.guideDir));
@@ -640,6 +647,11 @@ async function collectAllResults(
   let hasAnySummary = false;
 
   for (const { dir, runPath, runDir } of getTaskDirsForRuns(resultsDir, runDirs)) {
+    // Skip never-run dirs before touching their trajectory summaries or suite-level metadata.
+    const ctx = getTaskRunContext(dir, runPath, taskMap, true);
+    if (!ctx) continue;
+
+    // Runs first: it may regenerate a stale trajectory_summary.json that collectTaskRunEntry reads.
     const extractedEffort = extractReasoningEffortFromResults(dir);
     if (extractedEffort) {
       bestEffort = pickHigherPrecedenceEffort(bestEffort, extractedEffort);
@@ -655,8 +667,7 @@ async function collectAllResults(
       }
     }
 
-    const entry = await collectTaskRunEntry(dir, runPath, parseInt(runDir), taskMap);
-    if (!entry) continue;
+    const entry = await collectTaskRunEntry(dir, ctx, parseInt(runDir));
 
     if (!allResults[entry.testName]) {
       allResults[entry.testName] = [];

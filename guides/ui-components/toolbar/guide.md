@@ -190,7 +190,7 @@ Where the Clipboard API is unavailable, `navigator.clipboard` is undefined and t
 
 ### Fallbacks & browser support for Anchor positioning
 
-{{ BASELINE_STATUS("anchor-positioning") }}
+{{ BASELINE_STATUS("anchor-positioning", "css.properties.position-area") }}
 
 Without anchor positioning, a popover is placed by the UA at the center of the viewport. Tooltips need no fallback: the `title` upgrade above is skipped without anchor positioning. For the overflow menu, position it from script so it stays attached to its trigger. Keep the CSS inside `@supports not (position-area: block-end)` so supporting browsers are unaffected.
 

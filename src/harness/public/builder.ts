@@ -27,9 +27,10 @@ import type { SuiteRef, SuiteStore } from './suite-store.ts';
 
 /**
  * Builds the public copy of eval suites: `public-evals/<suiteId>/evals.json`
- * plus, per run, `agent.patch` and `modern-web.log`, and a `suites.gen.json`
- * manifest over everything built. Each suite is independent; one failing suite
- * is reported and skipped without affecting the others.
+ * plus `artifacts.json`, which holds every run's `agent.patch` and
+ * `modern-web.log`, and a `suites.gen.json` manifest over everything built.
+ * Each suite is independent; one failing suite is reported and skipped without
+ * affecting the others.
  *
  * Builds are incremental: `build-state.json` records which raw generation and
  * overrides each published suite was built from, and unchanged suites are left
@@ -45,11 +46,20 @@ import type { SuiteRef, SuiteStore } from './suite-store.ts';
 export const PUBLIC_EVALS_DIR = 'public-evals';
 
 /**
- * Bump when output-shaping *logic* changes (scrubbing replacements, patch
- * preparation) in a way that should rebuild every suite. Field lists and
- * patterns are hashed in automatically below.
+ * Per-suite file mapping each run artifact's suite-relative path
+ * (`<run>/<guide>/<task>/<mode>/agent.patch`) to its text. One file rather than
+ * one per artifact: a suite has ~600 of them, and the Pages deploy handles
+ * every published file on every deploy. The dashboard reads it as
+ * `PUBLIC_ARTIFACTS_FILE` in `src/dashboard/data-source.js`.
  */
-const OUTPUT_REVISION = 1;
+export const ARTIFACTS_FILE = 'artifacts.json';
+
+/**
+ * Bump when output-shaping *logic* changes (scrubbing replacements, patch
+ * preparation, the file layout) in a way that should rebuild every suite.
+ * Field lists and patterns are hashed in automatically below.
+ */
+const OUTPUT_REVISION = 2;
 
 /**
  * Identifies the per-suite public output contract. Derived from the rules that
@@ -354,13 +364,9 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
     for (const user of harvestUserSegmentsIn(raw)) {
       suiteTokens.add(user);
     }
-    const extraArtifactTokens = new Set<string>();
     const harvestArtifact = (text: string): void => {
       for (const user of harvestUserSegments(text)) {
-        if (!suiteTokens.has(user)) {
-          suiteTokens.add(user);
-          extraArtifactTokens.add(user);
-        }
+        suiteTokens.add(user);
       }
     };
     const currentTokens = (): string[] => [...suiteTokens];
@@ -380,12 +386,10 @@ export async function buildSuite(suiteId: string, options: BuildOptions, preload
       publicRuns.map((publicRun, i) => ({ publicRun, rawRun: raw.results[key][i], runPath: runRelativePath(key, raw.results[key][i].runNumber) })),
     );
     await mapWithConcurrency(runs, RUN_CONCURRENCY, async ({ publicRun, rawRun, runPath }) => {
-      publicRun.files = await writeRunArtifacts(suiteId, runPath, rawRun, options, harvestArtifact, writer);
+      publicRun.files = await collectRunArtifacts(suiteId, runPath, rawRun, options, harvestArtifact, writer);
     });
 
-    if (extraArtifactTokens.size > 0) {
-      writer.recheck([...extraArtifactTokens]);
-    }
+    writer.writeArtifacts();
     writer.writeJson('evals.json', evals);
     fs.rmSync(suiteDir, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(suiteDir), { recursive: true });
@@ -618,8 +622,8 @@ function summarizeFromDisk(root: string, suiteId: string): SuiteSummary | null {
 
 // --- Per-run artifacts ---
 
-/** Writes the per-run public artifacts and returns their names. */
-async function writeRunArtifacts(
+/** Hands a run's public artifacts to the writer and returns their names. */
+async function collectRunArtifacts(
   suiteId: string,
   runPath: string,
   rawRun: RunResult,
@@ -631,7 +635,7 @@ async function writeRunArtifacts(
 
   const patch = await publicPatchFor(suiteId, runPath, rawRun, options, harvestArtifact);
   if (patch && patch.text.length > 0) {
-    writer.writeText(`${runPath}/agent.patch`, patch.text, patch.truncated);
+    writer.addArtifact(`${runPath}/agent.patch`, patch.text, patch.truncated);
     files.push('agent.patch');
   }
 
@@ -639,7 +643,7 @@ async function writeRunArtifacts(
   if (log !== undefined) {
     const rawLog = log.toString('utf8');
     harvestArtifact(rawLog);
-    writer.writeText(`${runPath}/modern-web.log`, rawLog, false);
+    writer.addArtifact(`${runPath}/modern-web.log`, rawLog, false);
     files.push('modern-web.log');
   }
   return files;
@@ -710,7 +714,8 @@ function readBaseAppFile(baseAppsDir: string, baseApp: string, targetFile: strin
 class SuiteWriter {
   private readonly suiteDir: string;
   private readonly forbiddenTokens: () => readonly string[];
-  private readonly writtenTextPaths: string[] = [];
+  /** Scrubbed run artifacts by suite-relative path, checked and written together by `writeArtifacts`. */
+  private readonly artifacts = new Map<string, string>();
   private files = 0;
   private bytes = 0;
   private truncatedPatches = 0;
@@ -720,22 +725,20 @@ class SuiteWriter {
     this.forbiddenTokens = forbiddenTokens;
   }
 
-  writeText(relPath: string, text: string, truncated: boolean): void {
-    const clean = scrubString(text);
-    assertClean(clean, `${path.basename(this.suiteDir)}/${relPath}`, { forbiddenTokens: this.forbiddenTokens() });
-    this.write(relPath, clean);
-    this.writtenTextPaths.push(relPath);
+  addArtifact(relPath: string, text: string, truncated: boolean): void {
+    this.artifacts.set(relPath, scrubString(text));
     if (truncated) {
       this.truncatedPatches++;
     }
   }
 
-  /** Re-checks already-written text artifacts against tokens harvested later in the same suite. */
-  recheck(extraTokens: readonly string[]): void {
-    for (const relPath of this.writtenTextPaths) {
-      const clean = fs.readFileSync(path.join(this.suiteDir, relPath), 'utf8');
-      assertClean(clean, `${path.basename(this.suiteDir)}/${relPath}`, { forbiddenTokens: extraTokens });
-    }
+  /**
+   * Writes the collected artifacts as `ARTIFACTS_FILE`, keys sorted so the same inputs give the
+   * same bytes. The leak check runs here, over all of them at once, rather than as each is added:
+   * a username can be harvested from one artifact after another that names it was collected.
+   */
+  writeArtifacts(): void {
+    this.writeJson(ARTIFACTS_FILE, Object.fromEntries([...this.artifacts].sort(([a], [b]) => (a < b ? -1 : 1))));
   }
 
   writeJson(relPath: string, value: unknown): void {

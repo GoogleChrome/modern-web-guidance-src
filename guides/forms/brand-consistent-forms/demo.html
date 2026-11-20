@@ -279,7 +279,7 @@
     </form>
     <script>
       // Fallback for older browsers without accent-color
-      if (!CSS.supports('accent-color')) {
+      if (!CSS.supports('accent-color', 'auto')) {
         const volumeSlider = document.getElementById('volume');
         const updateProgress = (val) => {
           volumeSlider.style.setProperty('--progress', `${val}%`);
