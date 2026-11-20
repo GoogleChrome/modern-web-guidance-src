@@ -40,11 +40,9 @@ Keep a non-zero `border-radius` and set `corner-shape` to `squircle`, `bevel`, `
 
 Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, ribbons, and diamonds. It reshapes the background, border, `box-shadow`, outline, and hit-testing together, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`, and set `border-radius: 0`.
 
-Keep an element clipped with `clip-path` free of its own `box-shadow`, because the clip cuts it off.
-
 ## Clip with rounded polygons and shape()
 
-- An element clipped with `clip-path` must not carry its own `box-shadow`. Put `filter: drop-shadow()` on a wrapping ancestor instead.
+- An element clipped with `clip-path` must not carry its own `box-shadow` because the clip cuts it off; put `filter: drop-shadow()` on a wrapping ancestor instead (`border-shape` reshapes `box-shadow` directly, and `filter: drop-shadow()` works on it too).
 - Round polygon vertices with `polygon(round <length>, ...)` in `clip-path`.
 - For a responsive curved cutout, use `clip-path: shape()` with percentage coordinates (`from`, `line`, `curve`, `smooth`, `arc`, `vline`, `hline`, `close`), and set `border-radius: 0` when it applies.
 - Express the outline's dimensions (tail height, notch size, wave depth) as custom properties, so the fallback outline and the primary one stay in sync.
