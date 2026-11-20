@@ -13,7 +13,9 @@ guides:
 
 Use this pattern when a user action reorders a list, card grid or table, with no item mid-interaction. It covers only applying the new order to the DOM (moving nodes, animating, announcing, performance), not how the order is computed or what triggers it.
 
-{# Column header semantics (`<button>` in `<th>`, `aria-sort`) belong to a sortable-table guide. This guide does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder. #}
+For sortable table column headers (`<button>` in `<th>`, `aria-sort`), see {{ GUIDE_REF("sortable-table") }}.
+
+{# This guide does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder. #}
 
 ## Reorder the existing nodes
 
@@ -85,7 +87,7 @@ Reordering moves many nodes, but the user performed one action. **DO NOT** put `
 * Add one visually hidden `role="status"` element and set its text once per reorder, after starting the update. It must already be in the DOM before its text changes.
 * Name the result, not the mechanism: "Sorted by price, low to high, 24 items".
 * Keep focus on the control that triggered the change. Do not move focus into the list.
-* Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Use native controls (`<select>`, or radios in a `<fieldset>` with a `<legend>`), which do this already. **DO NOT** use `aria-pressed` buttons for mutually exclusive choices or for a button whose label changes.
+* Make the current order readable from the control that triggers it, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, or radios in a `<fieldset>` with a `<legend>`) do this already.
 
 ```html
 <p id="reorder-status" role="status" class="visually-hidden"></p>
