@@ -27,6 +27,15 @@ Caveats when using the polyfill:
 }
 ```
 
+The polyfill patches `querySelector`, `querySelectorAll`, `matches` and `closest` to match the `.\:popover-open` class when `:popover-open` is queried, so you do not need to list both.
+
+```js
+// Good:
+const isOpen = element.matches(':popover-open');
+// Bad:
+const isOpen = element.matches(':popover-open, .\:popover-open');
+```
+
 To prevent popovers from showing before the polyfill loads, hide them with CSS:
 
 ```css
