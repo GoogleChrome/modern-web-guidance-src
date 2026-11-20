@@ -93,7 +93,7 @@ const matches = options.filter(o => o.value.toLowerCase().includes(query));
 
 ### 4. Announce results
 
-Visible filtering is invisible to screen reader users unless announced. Keep a visually hidden `role="status"` (`aria-live="polite"`) element and update its text after each filter, such as "3 suggestions available" or "No suggestions". When nothing matches, show an in-popup message with `role="presentation"` rather than an option, so it is not counted as a choice.
+Visible filtering is invisible to screen reader users unless announced. Keep a visually hidden `role="status"` (`aria-live="polite"`) element and debounce its update after a short pause in typing (e.g., 300ms), such as "3 suggestions available" or "No suggestions". When nothing matches, show an in-popup message with `role="presentation"` rather than an option, so it is not counted as a choice.
 
 ### 5. Let users add a new item
 
@@ -101,7 +101,7 @@ Add this when the value is a record users build up over time (tags, destinations
 
 * When the trimmed input is non-empty and no option matches it exactly (case-insensitive), append a final `<li role="option">` labeled `Add "<typed text>"`. It is a normal option for `aria-activedescendant`, keyboard, and click handling.
 * Selecting it pushes the typed value into your options source and fills the input with it, so it appears in later filters.
-* With this option present, the "no suggestions" message below is only needed when the input is empty and there are no options at all.
+* With this option present, the "no suggestions" message from step 4 is only needed when the input is empty and there are no options at all.
 
 ### 6. Match highlighting
 

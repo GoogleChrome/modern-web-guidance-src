@@ -156,6 +156,7 @@
     const options = [...datalist.options].map(o => ({ value: o.value, region: o.dataset.region }));
     let items = [];
     let active = -1;
+    let statusTimer;
 
     input.removeAttribute('list');
     datalist.remove();
@@ -228,7 +229,10 @@
         listbox.append(li);
       }
       setActive(-1);
-      status.textContent = found.length ? `${found.length} suggestion${found.length === 1 ? '' : 's'} available` : 'No suggestions';
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => {
+        status.textContent = found.length ? `${found.length} suggestion${found.length === 1 ? '' : 's'} available` : 'No suggestions';
+      }, 300);
     };
 
     const setActive = (i) => {
@@ -249,6 +253,7 @@
     };
 
     const close = () => {
+      clearTimeout(statusTimer);
       if (listbox.matches(':popover-open')) listbox.hidePopover();
       input.setAttribute('aria-expanded', 'false');
       setActive(-1);
