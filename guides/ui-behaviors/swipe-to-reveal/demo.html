@@ -447,7 +447,7 @@
     for (const reveal of document.querySelectorAll('.SwipeReveal')) {
       setActionTabIndexes(reveal, false);
 
-      if ('onscrollsnapchanging' in Element.prototype) {
+      if ('onscrollsnapchanging' in HTMLElement.prototype) {
         reveal.addEventListener('scrollsnapchanging', () => syncRevealStateFromScroll(reveal));
         reveal.addEventListener('scrollsnapchange', () => syncRevealStateFromScroll(reveal));
       } else {

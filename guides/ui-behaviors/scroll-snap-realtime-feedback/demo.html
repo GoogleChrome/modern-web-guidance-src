@@ -141,7 +141,7 @@
       return closestIndex;
     };
 
-    if ('onscrollsnapchanging' in Element.prototype) {
+    if ('onscrollsnapchanging' in HTMLElement.prototype) {
       // Eagerly highlight the thumbnail for the pending snap target
       // while the user is still mid-scroll. This gives immediate feedback
       // before the gesture completes.
