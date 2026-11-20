@@ -162,7 +162,10 @@ Third-party scripts and resources are a common source of privacy leaks. You are 
 document.getElementById('play-btn').addEventListener('click', function() {
   const container = document.getElementById('video-container');
   const videoId = container.dataset.videoId;
-  container.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" allowfullscreen></iframe>`;
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`;
+  iframe.allowFullscreen = true;
+  container.replaceChildren(iframe);
 });
 </script>
 ```
