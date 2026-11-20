@@ -180,6 +180,6 @@ export function formatClaHoldComment(prAuthor: string): string {
     `1. Sign the [Google CLA](https://cla.developers.google.com/) using the **exact email address** in your commit (\`git log -1 --format='%ae'\`; GitHub \`@users.noreply.github.com\` emails fail unless registered on your CLA).`,
     `2. Strip any AI \`Co-Authored-By:\` trailers from your commits and force-push if needed.`,
     '',
-    `Reviewers will be requested automatically once \`cla/google\` turns green.`
+    `Reviewers will be requested automatically once \`cla/google\` turns green (immediately on your next push, or within an hour after signing).`
   ].join('\n');
 }

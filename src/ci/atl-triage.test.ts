@@ -354,7 +354,7 @@ describe('triagePullRequest orchestration', () => {
   });
 });
 
-describe('githubApi wrappers & main() check_run wakeup', () => {
+describe('githubApi wrappers & main() scheduled CLA sweep', () => {
   it('splits --remove-reviewer from --add-reviewer in editItem and discriminates 404/410 vs 5xx errors', t => {
     const ghArgs: string[][] = [];
     t.mock.method(child_process, 'execFileSync', (_cmd: unknown, args?: readonly string[]) => {
@@ -377,10 +377,7 @@ describe('githubApi wrappers & main() check_run wakeup', () => {
         throw Object.assign(new Error('422'), { stderr: 'gh: HTTP 422' });
       }
       if (list[0] === 'pr' && list[1] === 'list') {
-        return JSON.stringify([
-          { number: 11, headRefOid: 'sha-match' },
-          { number: 12, headRefOid: 'sha-other' }
-        ]);
+        return JSON.stringify([{ number: 11 }, { number: 12 }]);
       }
       return '';
     });
@@ -401,37 +398,41 @@ describe('githubApi wrappers & main() check_run wakeup', () => {
     assert.equal(githubApi.getLinkedIssueInfo(404), null);
     assert.equal(githubApi.getLinkedIssueInfo(999), null);
     assert.equal(githubApi.getCommitAuthorLogin('deadbeef'), null);
-    assert.deepEqual(githubApi.findOpenAwaitingClaPrsForSha('sha-match'), [11]);
+    assert.deepEqual(githubApi.listOpenAwaitingClaPrs(), [11, 12]);
   });
 
-  it('wakes open awaiting-cla PRs matching check_run head_sha in main()', t => {
-    const tmpEvent = path.join(os.tmpdir(), `mwg-check-run-${process.pid}.json`);
-    fs.writeFileSync(
-      tmpEvent,
-      JSON.stringify({
-        check_run: { name: 'cla/google', conclusion: 'success', head_sha: 'abc1234' }
-      }),
-      'utf8'
-    );
+  it('sweeps open awaiting-cla PRs on schedule in main() and continues past single-PR errors', t => {
+    const tmpEvent = path.join(os.tmpdir(), `mwg-schedule-${process.pid}.json`);
+    fs.writeFileSync(tmpEvent, JSON.stringify({ schedule: '0 * * * *' }), 'utf8');
     const prevEventPath = process.env.GITHUB_EVENT_PATH;
+    const prevEventName = process.env.GITHUB_EVENT_NAME;
+    const prevExitCode = process.exitCode;
     process.env.GITHUB_EVENT_PATH = tmpEvent;
+    process.env.GITHUB_EVENT_NAME = 'schedule';
 
     try {
       const calls = setupPrMocks(t, {
         meta: { labels: ['awaiting-cla'], headRefOid: 'abc1234' },
         issues: { 500: { number: 500, state: 'open', author: 'LeaVerou', labels: ['pr-welcome'], assignees: [] } }
       });
-      t.mock.method(githubApi, 'findOpenAwaitingClaPrsForSha', (sha: string) =>
-        sha === 'abc1234' ? [3700] : []
-      );
+      t.mock.method(githubApi, 'listOpenAwaitingClaPrs', () => [3699, 3700]);
+      const baseMeta = githubApi.getPrIntakeMetadata;
+      t.mock.method(githubApi, 'getPrIntakeMetadata', (prNumber: number) => {
+        if (prNumber === 3699) throw new Error('HTTP 502 Bad Gateway');
+        return baseMeta(prNumber);
+      });
 
       main();
+      assert.equal(process.exitCode, 1);
       assert.equal(calls.prEdits.length, 1);
       assert.deepEqual(calls.prEdits[0].removeLabels, ['awaiting-cla']);
       assert.deepEqual(calls.prEdits[0].addReviewers, ['LeaVerou']);
     } finally {
+      process.exitCode = prevExitCode;
       if (prevEventPath === undefined) delete process.env.GITHUB_EVENT_PATH;
       else process.env.GITHUB_EVENT_PATH = prevEventPath;
+      if (prevEventName === undefined) delete process.env.GITHUB_EVENT_NAME;
+      else process.env.GITHUB_EVENT_NAME = prevEventName;
       fs.rmSync(tmpEvent, { force: true });
     }
   });

@@ -7,8 +7,9 @@ on:
   pull_request_target:
     types: [opened, reopened, synchronize, labeled, ready_for_review]
     branches: [main]
-  check_run:
-    types: [completed]
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 permissions:
   issues: write
@@ -16,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: atl-triage-${{ github.event.pull_request.head.sha || github.event.check_run.head_sha || github.event.issue.number || github.run_id }}
+  group: atl-triage-${{ github.event.pull_request.number || github.event.issue.number || github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +26,6 @@ jobs:
     if: >-
       github.repository == 'GoogleChrome/modern-web-guidance-src' &&
       (github.event_name != 'issues' || github.event.issue.state != 'closed') &&
-      (github.event_name != 'check_run' || (github.event.check_run.name == 'cla/google' && github.event.check_run.conclusion == 'success')) &&
       (!contains(github.event.issue.body, '<!-- no-atl-triage -->') || contains(github.event.issue.body, '`<!-- no-atl-triage -->`'))
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

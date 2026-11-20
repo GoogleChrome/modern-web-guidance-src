@@ -264,7 +264,7 @@ export function triagePullRequest(
         if (decision.claState === 'failure' && !alreadyCommented) {
           githubApi.addPrComment(prNumber, formatClaHoldComment(meta.author));
         }
-        // Guard against a fork check_run completing while pull_request_target was applying awaiting-cla:
+        // Guard against cla/google completing while pull_request_target was applying awaiting-cla:
         if (needLabel && decision.claState !== 'failure' && !options?._recheckedCla) {
           if (githubApi.getPrIntakeMetadata(prNumber).claState === 'success') {
             return triagePullRequest(prNumber, atlConfig, { ...options, _recheckedCla: true });
@@ -392,19 +392,22 @@ export function main(): void {
       handleIssue(event.issue.number, labels, event.issue.body || '', atlConfig, { dryRun: isDryRun });
     } else if (event.pull_request) {
       triagePullRequest(event.pull_request.number, atlConfig, { dryRun: isDryRun });
-    } else if (event.check_run) {
-      const checkName: string = event.check_run.name ?? '';
-      const conclusion = String(event.check_run.conclusion ?? '').toLowerCase();
-      const headSha: string = event.check_run.head_sha ?? '';
-      if (checkName === 'cla/google' && conclusion === 'success' && headSha) {
-        const waitingPrs = githubApi.findOpenAwaitingClaPrsForSha(headSha);
-        console.log(`cla/google succeeded for ${headSha}; waking ${waitingPrs.length} awaiting-cla PR(s).`);
-        for (const prNumber of waitingPrs) {
+    } else if (
+      process.env.GITHUB_EVENT_NAME === 'schedule' ||
+      process.env.GITHUB_EVENT_NAME === 'workflow_dispatch'
+    ) {
+      const waitingPrs = githubApi.listOpenAwaitingClaPrs();
+      console.log(`Scheduled CLA sweep: checking ${waitingPrs.length} awaiting-cla PR(s).`);
+      for (const prNumber of waitingPrs) {
+        try {
           triagePullRequest(prNumber, atlConfig, { dryRun: isDryRun });
+        } catch (err) {
+          console.error(`Failed to sweep awaiting-cla PR #${prNumber}:`, err);
+          process.exitCode = 1;
         }
       }
     } else {
-      console.log('Event is not a supported issue, pull_request, or check_run event. Skipping.');
+      console.log('Event is not a supported issue, pull_request, or scheduled sweep event. Skipping.');
     }
     return;
   }

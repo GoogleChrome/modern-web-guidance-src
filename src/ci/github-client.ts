@@ -355,15 +355,14 @@ export const githubApi = {
     child_process.execFileSync('gh', ['pr', 'close', String(prNumber)], { stdio: 'inherit' });
   },
 
-  findOpenAwaitingClaPrsForSha(headSha: string): number[] {
-    if (!headSha) return [];
+  listOpenAwaitingClaPrs(): number[] {
     const raw = child_process.execFileSync(
       'gh',
-      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '200', '--json', 'number,headRefOid'],
+      ['pr', 'list', '--state', 'open', '--label', AWAITING_CLA_LABEL, '--limit', '200', '--json', 'number'],
       { encoding: 'utf8' }
     );
-    const items: Array<{ number: number; headRefOid?: string }> = JSON.parse(raw);
-    return items.filter(i => i.headRefOid === headSha).map(i => i.number);
+    const items: Array<{ number: number }> = JSON.parse(raw);
+    return items.map(i => i.number);
   },
 
   getGuideBlamePorcelain(guideAbsPath: string): string | null {
