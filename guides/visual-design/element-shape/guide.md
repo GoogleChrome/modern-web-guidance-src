@@ -17,7 +17,7 @@ guides:
 
 Shape the element itself with CSS instead of nesting extra elements, using images, or drawing SVG backgrounds. Pick the simplest tool that produces the outline, because only some tools also reshape the border, shadow, focus ring, and hit-testing.
 
-## Choose the tool
+## Choose the tool (simplest to most complex)
 
 - Circles, ellipses, pills, and blobs: `border-radius`.
 - Different corner geometry (squircle, bevel, scoop, notch): `corner-shape` on top of `border-radius`.
