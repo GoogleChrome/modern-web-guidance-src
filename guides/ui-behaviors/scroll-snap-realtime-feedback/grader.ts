@@ -71,11 +71,7 @@ test.describe('Scroll Snap Realtime Feedback', () => {
       if (thumbnails.length < 3 || items.length < 3 || !gallery) {
         return { error: 'Insufficient elements or missing gallery' };
       }
-
-      // Let the browser report the initial snap target first. Otherwise its scrollsnapchange
-      // for item 0 can arrive after the events below and reset the active thumbnail.
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
+      
       // Dispatch scrollsnapchange to target item 2
       const event = new Event('scrollsnapchange') as any;
       event.snapTargetInline = items[2];
@@ -137,8 +133,8 @@ test.describe('Scroll Snap Realtime Feedback', () => {
     const context2 = await page.context().browser()!.newContext();
     const page2 = await context2.newPage();
     await page2.addInitScript(() => {
-      delete (HTMLElement.prototype as any).onscrollsnapchanging;
-      delete (HTMLElement.prototype as any).onscrollsnapchange;
+      delete (Element.prototype as any).onscrollsnapchanging;
+      delete (Element.prototype as any).onscrollsnapchange;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
@@ -267,8 +263,8 @@ test.describe('Scroll Snap Realtime Feedback', () => {
   test('When scrollsnapchanging is unsupported, the fallback toggles pending on the thumbnail corresponding to the gallery-item nearest the viewport center during scrolling', async ({ page }) => {
     // Disable native scrollsnapchanging support
     await page.addInitScript(() => {
-      delete (HTMLElement.prototype as any).onscrollsnapchanging;
-      delete (HTMLElement.prototype as any).onscrollsnapchange;
+      delete (Element.prototype as any).onscrollsnapchanging;
+      delete (Element.prototype as any).onscrollsnapchange;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
@@ -308,7 +304,7 @@ test.describe('Scroll Snap Realtime Feedback', () => {
   test('When scrollsnapchanging is unsupported, the fallback promotes the thumbnail to active when scrolling settles', async ({ page }) => {
     // Disable native scrollsnapchanging support
     await page.addInitScript(() => {
-      delete (HTMLElement.prototype as any).onscrollsnapchanging;
+      delete (Element.prototype as any).onscrollsnapchanging;
       if ('onscrollsnapchanging' in window) {
         delete (window as any).onscrollsnapchanging;
       }
