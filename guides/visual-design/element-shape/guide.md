@@ -46,7 +46,12 @@ Set a non-zero `border-radius` and add `corner-shape` (`squircle`, `bevel`, `sco
 
 ## Shape the box with border-shape
 
-Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, ribbons, and diamonds. It reshapes the background, border, `box-shadow`, outline, and hit-testing together, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`, and set `border-radius: 0`.
+Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, and ribbons. It reshapes the background, border, `box-shadow`, outline, and hit-testing together, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`, and set `border-radius: 0`. For diamonds, `corner-shape` is simpler.
+
+- Straight edges only (chevrons, ribbons, arrows): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
+- Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
+- Put a value in a custom property only when it is reused (such as by the outline and its fallback) or tuned per instance.
+- Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
 
 ## Clip with rounded polygons and shape()
 
