@@ -33,13 +33,14 @@ const form = document.getElementById('chat-form');
 
 textarea.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
-    // Prevent the default action (newline in a textarea, implicit form submission in an input)
-    event.preventDefault();
-
-    // If the user is composing text, return early.
-    if (event.isComposing) {
+    // If the user is composing text or the keyCode is 229, return early
+    // before preventing the default action.
+    if (event.isComposing || event.keyCode === 229) {
       return;
     }
+
+    // Prevent the default action (newline in a textarea, implicit form submission in an input)
+    event.preventDefault();
 
     form.requestSubmit();
   }
@@ -74,13 +75,12 @@ During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead
 ```js
 textarea.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-
-    // Block submission if composing natively or if keyCode is 229
+    // Block submission if composing natively or if keyCode is 229, before preventing the default
     if (event.isComposing || event.keyCode === 229) {
       return;
     }
 
+    event.preventDefault();
     form.requestSubmit();
   }
 });
@@ -103,8 +103,6 @@ textarea.addEventListener('compositionend', (event) => {
 
 textarea.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-
     if (event.isComposing) {
       return;
     }
@@ -118,6 +116,7 @@ textarea.addEventListener('keydown', (event) => {
       return;
     }
 
+    event.preventDefault();
     form.requestSubmit();
   }
 });

@@ -87,14 +87,14 @@
 
     chatInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
-        // Prevent default newline behavior
-        event.preventDefault();
-
-        // IME composition active check
+        // IME composition active check: return before preventing the default
         if (event.isComposing || event.keyCode === 229) {
           // Do not submit while composition is active
           return;
         }
+
+        // Prevent default newline behavior
+        event.preventDefault();
 
         chatForm.requestSubmit();
       }
