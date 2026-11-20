@@ -50,7 +50,7 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 
 - Straight edges only (chevrons, ribbons, arrows): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
-- Put a value in a custom property only when it is reused (such as by the outline and its fallback) or tuned per instance.
+- Put a value in a custom property only when it is reused or tuned per instance.
 - Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
 
 ## Clip with rounded polygons and shape()
@@ -58,7 +58,7 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 - An element clipped with `clip-path` must not carry its own `box-shadow` because the clip cuts it off; put `filter: drop-shadow()` on a wrapping ancestor instead (`border-shape` reshapes `box-shadow` directly, and `filter: drop-shadow()` works on it too).
 - Round polygon vertices with `polygon(round <length>, ...)` in `clip-path`.
 - For a responsive curved cutout, use `clip-path: shape()` with percentage coordinates and reset `border-radius: 0` alongside the `shape()` declaration so fallback rounded corners don't interfere with the cutout.
-- Express the outline's dimensions (tail height, notch size, wave depth) as custom properties, so the fallback outline and the primary one stay in sync.
+- Express the outline's dimensions (tail height, notch size, wave depth) as custom properties so the shape is easy to customize.
 
 ## Keep shaped interactive elements usable
 
@@ -69,6 +69,8 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 - Do not translate shaped interactive elements on `:hover` or `:active`, because moving a clipped hitbox under the pointer causes missed clicks; disable any remaining hover transitions under `@media (prefers-reduced-motion: reduce)`.
 
 ## Fallbacks
+
+Store the full outline in one custom property (for example `--badge-shape: polygon(...)`) and reuse it in both `border-shape` and the `clip-path` fallback so the two can't drift apart.
 
 {{ BASELINE_STATUS("corner-shape") }}
 
