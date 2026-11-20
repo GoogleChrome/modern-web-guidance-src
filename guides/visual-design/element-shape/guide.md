@@ -5,7 +5,7 @@ web-feature-ids:
   - border-shape
   - corner-shape
   - border-radius
-  # - shapes-polygon-round (not yet in web-features; re-enable once published)
+  - shapes-polygon-round
   - clip-path
   - shape-function
 guides:
@@ -92,6 +92,8 @@ If your Baseline target does not support `border-shape`, declare the `border-sha
 
 If your Baseline target does not support `shape()`, gate the `shape()` cutout with `@supports (clip-path: shape(from 0% 0%, line to 100% 100%))` and use a `polygon()` with the same overall outline (straight edges instead of curves) outside it.
 
-If your Baseline target does not support rounded polygons, declare the plain `polygon()` first and the `polygon(round <length>, ...)` version inside `@supports (clip-path: polygon(round 10px, 0 0, 100% 0, 50% 100%))`. Unsupported browsers render sharp vertices as graceful degradation; if rounded vertices are required and `shape()` is supported, insert a `clip-path: shape()` fallback (using `curve` or `arc` corner segments) inside `@supports (clip-path: shape(from 0% 0%, line to 100% 100%))` before the `polygon(round ...)` rule.
+{{ BASELINE_STATUS("shapes-polygon-round") }}
+
+If your Baseline target does not support rounded polygons, declare the plain `polygon()` first and the `polygon(round <length>, ...)` version inside `@supports (clip-path: polygon(round 10px, 0 0, 100% 0, 50% 100%))`. Unsupported browsers render sharp vertices as graceful degradation; if rounded vertices are required, use `clip-path: shape()` as a higher-fidelity fallback where supported.
 
 For `calc(infinity * 1px)` pill radii, keep a large pixel value in a custom property as the default and override it inside `@supports (width: calc(infinity * 1px))`.
