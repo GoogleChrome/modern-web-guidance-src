@@ -39,3 +39,6 @@
 - The implementation MUST use dynamic viewport units (`dvh`, `dvw`, `dvb`, or `dvi`) for full-height mobile layout containers instead of `vh`.
 - The implementation MUST NOT use `100vw` for full-width layout containers.
 - When implementing masonry-style galleries, the implementation MUST use multi-column (`columns`) with `break-inside: avoid`, or grid with `grid-auto-flow: dense` when the items are not interactive, and MUST gate any `grid-template-rows: masonry` or `display: grid-lanes` usage behind an `@supports` block.
+- The implementation MUST NOT cause the document to scroll horizontally at a viewport width of 320 CSS pixels.
+- The implementation MUST NOT clip text, or make text overlap other text, when line height is set to 1.5 times the font size, spacing after paragraphs to 2 times the font size, letter spacing to 0.12 times the font size, and word spacing to 0.16 times the font size.
+- When the page has a sticky or fixed header, the implementation MUST set `scroll-padding-block-start` (or `scroll-padding-top`) on the scroll container to at least the header's height.
