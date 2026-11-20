@@ -34,9 +34,15 @@ Text inside `clip-path`, `mask-image`, and `border-shape` is still laid out in a
 - Pill: `border-radius: calc(infinity * 1px)`, never a large fixed pixel value.
 - Ellipse or organic blob: `border-radius` with slash syntax (`horizontal radii / vertical radii`) so each corner gets separate horizontal and vertical radii.
 
-## Change corner geometry
+## Corner-based shapes
 
-Keep a non-zero `border-radius` and set `corner-shape` to `squircle`, `bevel`, `scoop`, `notch`, or `superellipse(<number>)`. Borders, shadows, and outlines follow the corners. Keep the `border-radius` meaningful on its own, because it is the shape unsupported browsers render. Asymmetric corner radii (via `border-radius` shorthand or corner properties such as `border-start-start-radius`) combined with `bevel` give slanted tags.
+Set a non-zero `border-radius` and add `corner-shape` (`squircle`, `bevel`, `scoop`, `notch`, or `superellipse(<number>)`) to reshape the corners. Borders, shadows, and outlines follow the corners.
+
+- Slanted tag or slanted rectangle: asymmetric radii on opposite corners (via `border-radius` shorthand or corner properties such as `border-start-start-radius` and `border-end-end-radius`) with `corner-shape: bevel`.
+- Diamond: `border-radius: 50%` with `corner-shape: bevel`.
+- Octagon or chamfered box: a fixed `border-radius` with `corner-shape: bevel`.
+- Ticket or coupon edges: `corner-shape: scoop` or `notch` with a fixed `border-radius`.
+- Soft, iOS-style rounded corners: `corner-shape: squircle`.
 
 ## Shape the box with border-shape
 
@@ -61,7 +67,7 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 
 {{ BASELINE_STATUS("corner-shape") }}
 
-Declare `corner-shape` directly after `border-radius` without an `@supports` wrapper. For `squircle` and `superellipse()`, unsupported browsers ignore `corner-shape` and keep the plain rounded corners as an acceptable graceful degradation.
+Declare `corner-shape` directly after `border-radius` without an `@supports` wrapper, and keep the `border-radius` meaningful on its own because it is the shape unsupported browsers render. For `squircle` and `superellipse()`, plain rounded corners are an acceptable graceful degradation. If they are not acceptable (for example a diamond that would render as a circle), use the `corner` shorthand or gate the shape-specific `border-radius` inside `@supports (corner-shape: bevel)` so unsupported browsers keep a safe default.
 
 When a design depends on distinct non-rounded silhouettes (`bevel`, `notch`, or `scoop`), recreate them inside `@supports not (corner-shape: squircle)`: reset `border-radius: 0`, set `border-color: transparent`, and clear `box-shadow: none` so the cutout doesn't slice them off without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip or mask a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). Parameterize horizontal and vertical corner radii with custom properties clamped via `min(<radius>, 50%)` so the primary `border-radius` and fallback match:
 
