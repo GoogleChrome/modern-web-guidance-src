@@ -401,6 +401,19 @@ describe('runLegacyScanCli', () => {
     assert.ok(resNoDir.data);
     const parsedNoDir = JSON.parse(resNoDir.output) as ScanJsonOutput;
     assert.equal(parsedNoDir.targetDir, '.');
+
+    const resMaxFiles = await runLegacyScanCli([
+      '--max-files',
+      '250',
+      '--unknown-flag',
+      'capped/dir',
+      '--json',
+    ]);
+    assert.equal(resMaxFiles.exitCode, 1);
+    assert.ok(resMaxFiles.data);
+    const parsedMaxFiles = JSON.parse(resMaxFiles.output) as ScanJsonOutput;
+    assert.equal(parsedMaxFiles.targetDir, 'capped/dir');
+    assert.match(parsedMaxFiles.error ?? '', /Unknown option '--unknown-flag'/);
   });
 
   it('caps terminal findings at 5 per guide and renders overflow summary line', async () => {
@@ -749,7 +762,230 @@ describe('runLegacyScanCli', () => {
       assert.ok(resClean.data, 'Expected JSON data in result');
       const parsedClean = JSON.parse(resClean.output) as ScanJsonOutput;
       assert.equal(parsedClean.totalFindings, 0);
+      assert.equal(parsedClean.scannedFileCount, 1);
       assert.deepEqual(parsedClean.guides, []);
+    });
+  });
+
+  describe('--max-files option, precedence, validation, and truncation reporting', () => {
+    it('documents --max-files <count> in CLI_HELP', () => {
+      assert.match(CLI_HELP, /--max-files <count>\s+Maximum eligible files to scan \(default: 5000; 0 for unlimited\)/);
+    });
+
+    it('rejects invalid --max-files values before filesystem access with exit code 1', async () => {
+      const nonExistentDir = join(tmpdir(), `never-touched-${Date.now()}`);
+      const invalidValues = [
+        '-1',
+        '1.5',
+        'abc',
+        '',
+        '+1',
+        '1e3',
+        '0x10',
+        ' 5',
+        '5 ',
+        '   ',
+        String(Number.MAX_SAFE_INTEGER + 1),
+      ];
+
+      for (const bad of invalidValues) {
+        // `--max-files=<val>` always reaches parseMaxFilesCliOption (even when `<val>` starts with `-`)
+        const resHumanEq = await runLegacyScanCli([nonExistentDir, `--max-files=${bad}`]);
+        assert.equal(resHumanEq.exitCode, 1, `Expected exitCode 1 for --max-files=${JSON.stringify(bad)}`);
+        assert.match(resHumanEq.output, /Error: Invalid --max-files value/);
+        assert.doesNotMatch(resHumanEq.output, /Target path not found/);
+
+        const resJsonEq = await runLegacyScanCli([nonExistentDir, `--max-files=${bad}`, '--json']);
+        assert.equal(resJsonEq.exitCode, 1);
+        assert.ok(resJsonEq.data);
+        assert.equal(resJsonEq.data.targetDir, nonExistentDir);
+        assert.equal(resJsonEq.data.totalFindings, 0);
+        assert.match(resJsonEq.data.error ?? '', /Invalid --max-files value/);
+
+        // Space-separated `--max-files <val>` also fails with exitCode 1 before filesystem access
+        const resHumanSpace = await runLegacyScanCli([nonExistentDir, '--max-files', bad]);
+        assert.equal(resHumanSpace.exitCode, 1);
+        assert.doesNotMatch(resHumanSpace.output, /Target path not found/);
+
+        const resJsonSpace = await runLegacyScanCli([nonExistentDir, '--max-files', bad, '--json']);
+        assert.equal(resJsonSpace.exitCode, 1);
+        assert.equal(resJsonSpace.data?.targetDir, nonExistentDir);
+        assert.doesNotMatch(resJsonSpace.data?.error ?? '', /Target path not found/);
+      }
+
+      const missingVal = await runLegacyScanCli([nonExistentDir, '--max-files', '--json']);
+      assert.equal(missingVal.exitCode, 1);
+      assert.ok(missingVal.data?.error);
+    });
+
+    it('enforces precedence: --max-files CLI > programmatic options.maxFiles > default, and supports 0 as unlimited', async () => {
+      await withTempDir(async (testDir) => {
+        for (let i = 1; i <= 5; i++) {
+          await writeFile(
+            join(testDir, `form${i}.html`),
+            `<form action="/login"><input type="password" name="p${i}"></form>`,
+            'utf8',
+          );
+        }
+
+        // Programmatic options.maxFiles applies when --max-files is omitted
+        const resOptCap = await runLegacyScanCli([testDir, '--json'], { maxFiles: 2 });
+        assert.equal(resOptCap.exitCode, 0);
+        assert.equal(resOptCap.data?.totalFindings, 2);
+        assert.equal(resOptCap.data?.scannedFileCount, 2);
+        assert.equal(resOptCap.data?.eligibleFileCount, 5);
+        assert.equal(resOptCap.data?.truncatedByMaxFiles, true);
+
+        // Explicit --max-files overrides programmatic options.maxFiles (raising or lowering)
+        const resCliOverrides = await runLegacyScanCli([testDir, '--max-files', '4', '--json'], {
+          maxFiles: 2,
+        });
+        assert.equal(resCliOverrides.exitCode, 0);
+        assert.equal(resCliOverrides.data?.totalFindings, 4);
+        assert.equal(resCliOverrides.data?.scannedFileCount, 4);
+        assert.equal(resCliOverrides.data?.eligibleFileCount, 5);
+        assert.equal(resCliOverrides.data?.truncatedByMaxFiles, true);
+
+        // --max-files 0 overrides programmatic cap and scans all files without truncation
+        const resCliUnlimited = await runLegacyScanCli([testDir, '--max-files', '0', '--json'], {
+          maxFiles: 2,
+        });
+        assert.equal(resCliUnlimited.exitCode, 0);
+        assert.equal(resCliUnlimited.data?.totalFindings, 5);
+        assert.equal(resCliUnlimited.data?.scannedFileCount, 5);
+        assert.equal(resCliUnlimited.data?.truncatedByMaxFiles, undefined);
+        assert.equal(resCliUnlimited.data?.eligibleFileCount, undefined);
+
+        // Programmatic maxFiles: 0 is also unlimited
+        const resOptUnlimited = await runLegacyScanCli([testDir, '--json'], { maxFiles: 0 });
+        assert.equal(resOptUnlimited.exitCode, 0);
+        assert.equal(resOptUnlimited.data?.totalFindings, 5);
+        assert.equal(resOptUnlimited.data?.scannedFileCount, 5);
+        assert.equal(resOptUnlimited.data?.truncatedByMaxFiles, undefined);
+
+        // Exact boundary (--max-files 5 on 5 eligible files) must NOT report truncation
+        const resExact = await runLegacyScanCli([testDir, '--max-files', '5', '--json']);
+        assert.equal(resExact.exitCode, 0);
+        assert.equal(resExact.data?.totalFindings, 5);
+        assert.equal(resExact.data?.scannedFileCount, 5);
+        assert.equal(resExact.data?.truncatedByMaxFiles, undefined);
+        assert.equal(resExact.data?.eligibleFileCount, undefined);
+        assert.doesNotMatch(resExact.data?.note ?? '', /Partial scan only/);
+
+        // Invalid programmatic options.maxFiles fails fast
+        await assert.rejects(() => runLegacyScanCli([testDir], { maxFiles: -1 }), RangeError);
+        await assert.rejects(() => runLegacyScanCli([testDir], { maxFiles: 1.5 }), RangeError);
+      });
+    });
+
+    it('reports honest partial-coverage diagnostics in --json and human output when truncated', async () => {
+      await withTempDir(async (testDir) => {
+        // First 2 alphabetical files are clean; 3rd-5th have legacy pattern
+        await writeFile(join(testDir, 'a-clean.html'), '<p>clean</p>', 'utf8');
+        await writeFile(join(testDir, 'b-clean.html'), '<p>clean</p>', 'utf8');
+        for (let i = 3; i <= 5; i++) {
+          await writeFile(
+            join(testDir, `c-legacy-${i}.html`),
+            `<form><input type="password" name="p${i}"></form>`,
+            'utf8',
+          );
+        }
+
+        // Default qualified mode, 0 findings in scanned subset (truncated)
+        const zeroTruncJson = await runLegacyScanCli([testDir, '--max-files', '2', '--json']);
+        assert.equal(zeroTruncJson.exitCode, 0);
+        assert.equal(zeroTruncJson.data?.totalFindings, 0);
+        assert.equal(zeroTruncJson.data?.scannedFileCount, 2);
+        assert.equal(zeroTruncJson.data?.eligibleFileCount, 5);
+        assert.equal(zeroTruncJson.data?.truncatedByMaxFiles, true);
+        assert.doesNotMatch(zeroTruncJson.data?.note ?? '', /No legacy patterns found/);
+        assert.match(zeroTruncJson.data?.note ?? '', /Partial scan only: scanned 2 of 5 eligible files/);
+        assert.match(zeroTruncJson.data?.note ?? '', /--max-files 0/);
+        assert.match(zeroTruncJson.data?.note ?? '', /subdirectory/);
+
+        const zeroTruncHuman = await runLegacyScanCli([testDir, '--max-files', '2']);
+        assert.equal(zeroTruncHuman.exitCode, 0);
+        assert.doesNotMatch(zeroTruncHuman.output, /0 findings from \d+ qualified guides/);
+        assert.match(zeroTruncHuman.output, /0 findings in scanned subset across \d+ qualified guides\./);
+        assert.match(
+          zeroTruncHuman.output,
+          /Scanned 2 of 5 eligible files \(--max-files cap\)\. Re-run with --max-files 0 or target a subdirectory for full coverage\./,
+        );
+
+        // --guide mode with 0 findings in scanned subset (truncated) must still warn via note
+        const guideTruncJson = await runLegacyScanCli([
+          testDir,
+          '--guide',
+          'autofill-sign-in-form',
+          '--max-files',
+          '2',
+          '--json',
+        ]);
+        assert.equal(guideTruncJson.exitCode, 0);
+        assert.equal(guideTruncJson.data?.truncatedByMaxFiles, true);
+        assert.match(guideTruncJson.data?.note ?? '', /Partial scan only: scanned 2 of 5 eligible files/);
+        assert.match(guideTruncJson.data?.note ?? '', /--max-files 0/);
+
+        const guideTruncHuman = await runLegacyScanCli([
+          testDir,
+          '--guide',
+          'autofill-sign-in-form',
+          '--max-files',
+          '2',
+        ]);
+        assert.equal(guideTruncHuman.exitCode, 0);
+        assert.match(
+          guideTruncHuman.output,
+          /Scanned 2 of 5 eligible files \(--max-files cap\)\. Re-run with --max-files 0 or target a subdirectory for full coverage\./,
+        );
+
+        // >0 findings when truncated (--max-files 3 hits 1 finding out of 5 files)
+        const hitTruncJson = await runLegacyScanCli([testDir, '--max-files', '3', '--json']);
+        assert.equal(hitTruncJson.exitCode, 0);
+        assert.equal(hitTruncJson.data?.totalFindings, 1);
+        assert.equal(hitTruncJson.data?.scannedFileCount, 3);
+        assert.equal(hitTruncJson.data?.eligibleFileCount, 5);
+        assert.equal(hitTruncJson.data?.truncatedByMaxFiles, true);
+        assert.match(hitTruncJson.data?.note ?? '', /Partial scan only: scanned 3 of 5 eligible files/);
+
+        const hitTruncHuman = await runLegacyScanCli([testDir, '--max-files', '3']);
+        assert.equal(hitTruncHuman.exitCode, 0);
+        assert.match(
+          hitTruncHuman.output,
+          /Scanned 3 of 5 eligible files \(--max-files cap\)\. Re-run with --max-files 0 or target a subdirectory for full coverage\./,
+        );
+      });
+
+      // Formatted large counts in human output
+      const largeOutput = formatHumanReadable('/big-repo', 0, [], undefined, {
+        activeGuideCount: 38,
+        isDefaultQualifiedMode: true,
+        color: false,
+        truncation: { scannedFileCount: 5000, eligibleFileCount: 64120 },
+      });
+      assert.match(
+        largeOutput,
+        /Scanned 5,000 of 64,120 eligible files \(--max-files cap\)\. Re-run with --max-files 0 or target a subdirectory for full coverage\./,
+      );
+
+      // Single-file edge cases: unsupported extension and empty custom rule list both report scannedFileCount: 0
+      await withTempDir(async (edgeDir) => {
+        const mdPath = join(edgeDir, 'README.md');
+        await writeFile(mdPath, '# readme\n', 'utf8');
+        const resMd = await runLegacyScanCli([mdPath, '--json'], { rules: [] });
+        assert.equal(resMd.exitCode, 0);
+        assert.equal(resMd.data?.scannedFileCount, 0);
+
+        const htmlPath = join(edgeDir, 'page.html');
+        await writeFile(htmlPath, '<p>ok</p>\n', 'utf8');
+        const resEmptyRules = await runLegacyScanCli([htmlPath, '--json'], { rules: [] });
+        assert.equal(resEmptyRules.exitCode, 0);
+        assert.equal(resEmptyRules.data?.scannedFileCount, 0);
+
+        const resDirEmptyRules = await runLegacyScanCli([edgeDir, '--json'], { rules: [] });
+        assert.equal(resDirEmptyRules.exitCode, 0);
+        assert.equal(resDirEmptyRules.data?.scannedFileCount, 0);
+      });
     });
   });
 });

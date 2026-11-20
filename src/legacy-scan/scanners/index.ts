@@ -1,9 +1,5 @@
-import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import type { Dirent } from 'node:fs';
-import { open, readdir } from 'node:fs/promises';
-import { extname, join, relative, resolve } from 'node:path';
-import { promisify } from 'node:util';
+import { posix } from 'node:path';
 import type { Node, Project, SourceFile, SyntaxKind } from 'ts-morph';
 import type {
   ScanFinding,
@@ -24,26 +20,25 @@ import {
 } from './dependency-scanner.ts';
 import { scanHtmlRules, scanJsxRules } from './dom-scanner.ts';
 import {
-  BUILD_OR_INSTALL_DIR_SEGMENTS,
-  CORPUS_NON_APP_DIR_SEGMENTS,
-  isBuildOrInstallPath,
   isCandidateVendoredFile,
-  isCorpusNonAppPath,
   isDocsOrTestsPath,
   isMinifiedContent,
-  MAX_SOURCE_FILE_BYTES,
+  isPackageJsonPath,
   shouldScanFile,
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
+  getEnginesForPath,
   JS_EXTENSIONS,
   JSX_EXTENSIONS,
   STYLESHEET_EXTENSIONS,
+  type FormatEngine,
 } from './format-registry.ts';
 import {
   createInMemoryProject,
   matchesFastTokens,
 } from './js-scanner.ts';
+import type { RepoScanStats } from './repo-scanner.ts';
 import {
   extractScriptBlocks,
   extractStyleBlocks,
@@ -60,6 +55,13 @@ export * from './dom-scanner.ts';
 export * from './file-filter.ts';
 export * from './js-scanner.ts';
 export * from './sfc-extractor.ts';
+export {
+  DEFAULT_MAX_FILES,
+  resolveMaxFiles,
+  scanRepoFiles,
+  type RepoScanOptions,
+  type RepoScanStats,
+} from './repo-scanner.ts';
 
 export const CARD_ID_HEX_LENGTH = 12;
 
@@ -93,11 +95,7 @@ export interface ScanOptions extends FileFilterOptions {
   readonly commit?: string;
   readonly fileFilterOptions?: FileFilterOptions;
   readonly project?: Project;
-}
-
-export interface RepoScanOptions extends ScanOptions {
-  readonly maxFiles?: number;
-  readonly stats?: { skippedDocsAndTestsCount?: number };
+  readonly stats?: RepoScanStats;
 }
 
 type RuleWith<M extends RuleMatcher> = ScanRule & { readonly matcher: M };
@@ -191,7 +189,7 @@ function memoizeSourceFileQueries(sourceFile: SourceFile): void {
 }
 
 interface JsProjectPool {
-  project: Project;
+  project: Project | undefined;
   readonly isExternalProject: boolean;
   parsedCount: number;
 }
@@ -199,7 +197,10 @@ interface JsProjectPool {
 const EPHEMERAL_PROJECT_ROTATION_INTERVAL = 25;
 
 function acquireProjectForFile(pool: JsProjectPool): Project {
-  if (!pool.isExternalProject && pool.parsedCount >= EPHEMERAL_PROJECT_ROTATION_INTERVAL) {
+  if (
+    !pool.project ||
+    (!pool.isExternalProject && pool.parsedCount >= EPHEMERAL_PROJECT_ROTATION_INTERVAL)
+  ) {
     pool.project = createInMemoryProject();
     pool.parsedCount = 0;
   }
@@ -354,6 +355,175 @@ function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | un
   };
 }
 
+interface CompiledRuleBundle extends FileRuleBundle {
+  readonly dep: readonly RuleWith<DependencyRuleMatcher>[];
+}
+
+export interface ScanSession {
+  readonly repo: string;
+  readonly commit: string;
+  readonly rules: CompiledRuleBundle;
+  readonly activeEngines: ReadonlySet<FormatEngine>;
+  readonly filterOpts: FileFilterOptions | undefined;
+  readonly docsFilterOpts: FileFilterOptions;
+  readonly pool: JsProjectPool;
+}
+
+export function createScanSession(rules: readonly ScanRule[], options?: ScanOptions): ScanSession {
+  const js = rules.filter((r): r is RuleWith<JsRuleMatcher> => r.matcher.kind === 'js');
+  const dom = rules.filter((r): r is RuleWith<DomRuleMatcher> => r.matcher.kind === 'dom');
+  const css = rules.filter((r): r is RuleWith<CssRuleMatcher> => r.matcher.kind === 'css');
+  const dep = rules.filter(
+    (r): r is RuleWith<DependencyRuleMatcher> => r.matcher.kind === 'dependency',
+  );
+
+  const activeEngines = new Set<FormatEngine>();
+  if (dom.length > 0) activeEngines.add('dom');
+  if (js.length > 0) activeEngines.add('js');
+  if (css.length > 0) activeEngines.add('css');
+  if (dep.length > 0) activeEngines.add('dependency');
+
+  const filterOpts = resolveFileFilterOptions(options);
+  const docsFilterOpts: FileFilterOptions = filterOpts
+    ? { ...filterOpts, includeDocsAndTests: true }
+    : { includeDocsAndTests: true };
+
+  return {
+    repo: options?.repo ?? 'unknown',
+    commit: options?.commit ?? 'unknown',
+    rules: { dom, js, css, dep },
+    activeEngines,
+    filterOpts,
+    docsFilterOpts,
+    pool: {
+      project: options?.project,
+      isExternalProject: Boolean(options?.project),
+      parsedCount: 0,
+    },
+  };
+}
+
+function pathMatchesActiveEngines(
+  relPath: string,
+  activeEngines: ReadonlySet<FormatEngine>,
+): boolean {
+  const engines = getEnginesForPath(relPath);
+  if (!engines) {
+    return false;
+  }
+  for (const engine of activeEngines) {
+    if (engines.has(engine)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export type FileDisposition = 'source' | 'vendored' | 'skipped-docs-tests' | 'skip';
+
+/**
+ * Classifies a file (with optional content) against active rule modalities and path/content filters.
+ */
+export function classifyFile(
+  relPath: string,
+  content: string | undefined,
+  session: ScanSession,
+): FileDisposition {
+  if (session.activeEngines.size === 0) {
+    return 'skip';
+  }
+
+  if (!session.filterOpts?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
+    if (
+      shouldScanFile(relPath, content, session.docsFilterOpts) &&
+      pathMatchesActiveEngines(relPath, session.activeEngines)
+    ) {
+      return 'skipped-docs-tests';
+    }
+    return 'skip';
+  }
+
+  // Dependency-only scans match package.json and path-recognizable vendored files
+  // (isCandidateVendoredFile) rather than reading arbitrary first-party .js/.css files.
+  if (shouldScanFile(relPath, content, session.filterOpts)) {
+    return pathMatchesActiveEngines(relPath, session.activeEngines) ? 'source' : 'skip';
+  }
+
+  if (
+    session.activeEngines.has('dependency') &&
+    isCandidateVendoredFile(relPath, content, session.filterOpts)
+  ) {
+    return 'vendored';
+  }
+
+  return 'skip';
+}
+
+export function scanLoadedFile(
+  session: ScanSession,
+  relPath: string,
+  content: string,
+  kind: 'source' | 'vendored',
+): ScanFinding[] {
+  try {
+    const ctx: FileContext = {
+      relPath,
+      content,
+      repo: session.repo,
+      commit: session.commit,
+    };
+
+    if (kind === 'vendored') {
+      return session.rules.dep.length > 0
+        ? materializeRuleMatches(ctx, scanVendoredLibraryRules(relPath, content, session.rules.dep))
+        : [];
+    }
+
+    const lowerPath = relPath.replace(/\\/g, '/').toLowerCase();
+
+    if (isPackageJsonPath(lowerPath)) {
+      return session.rules.dep.length > 0
+        ? materializeRuleMatches(ctx, scanPackageJsonRules(relPath, content, session.rules.dep))
+        : [];
+    }
+
+    const ext = posix.extname(lowerPath);
+
+    if (STYLESHEET_EXTENSIONS.has(ext)) {
+      if (session.rules.css.length === 0) {
+        return [];
+      }
+      // Strip SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
+      const cssContent =
+        ext === '.scss' || ext === '.less'
+          ? stripPreprocessorLineComments(content)
+          : content;
+      return materializeRuleMatches(
+        ctx,
+        scanCssRules(relPath, cssContent, session.rules.css, content),
+      );
+    }
+
+    if (isMarkupPath(lowerPath)) {
+      return processMultiBlockFile(ctx, session.rules, session.pool);
+    }
+
+    if (JS_EXTENSIONS.has(ext)) {
+      const activeDom = JSX_EXTENSIONS.has(ext) ? session.rules.dom : [];
+      return [
+        ...scanJsAst(ctx, relPath, content, session.rules.js, activeDom, session.pool),
+        ...scanExtractedStyles(ctx, session.rules.css),
+      ];
+    }
+
+    return [];
+  } catch {
+    // Per-file exception boundary: an unexpected parser/AST exception on one malformed
+    // file must not abort the entire repository scan.
+    return [];
+  }
+}
+
 /**
  * Scans an in-memory map of files (relPath -> content) against a suite of ScanRules.
  */
@@ -362,316 +532,30 @@ export function scanFiles(
   rules: readonly ScanRule[],
   options?: ScanOptions,
 ): ScanFinding[] {
-  const repo = options?.repo ?? 'unknown';
-  const commit = options?.commit ?? 'unknown';
-
-  const jsRules = rules.filter((r): r is RuleWith<JsRuleMatcher> => r.matcher.kind === 'js');
-  const domRules = rules.filter((r): r is RuleWith<DomRuleMatcher> => r.matcher.kind === 'dom');
-  const cssRules = rules.filter((r): r is RuleWith<CssRuleMatcher> => r.matcher.kind === 'css');
-  const depRules = rules.filter(
-    (r): r is RuleWith<DependencyRuleMatcher> => r.matcher.kind === 'dependency',
-  );
-
-  const ruleBundle: FileRuleBundle = { dom: domRules, js: jsRules, css: cssRules };
+  const session = createScanSession(rules, options);
   const findings: ScanFinding[] = [];
-  const pool: JsProjectPool = {
-    project: options?.project ?? createInMemoryProject(),
-    isExternalProject: Boolean(options?.project),
-    parsedCount: 0,
-  };
-  const filterOpts = resolveFileFilterOptions(options);
+  let skippedDocsAndTestsCount = 0;
+  let scannedFileCount = 0;
 
   for (const [relPath, content] of files) {
-    try {
-      if (!filterOpts?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
-        continue;
-      }
-
-      const ctx: FileContext = { relPath, content, repo, commit };
-
-      if (!shouldScanFile(relPath, content, filterOpts)) {
-        if (
-          depRules.length > 0 &&
-          !isBuildOrInstallPath(relPath) &&
-          !(filterOpts?.excludeCorpusNonAppDirs && isCorpusNonAppPath(relPath))
-        ) {
-          findings.push(
-            ...materializeRuleMatches(ctx, scanVendoredLibraryRules(relPath, content, depRules)),
-          );
-        }
-        continue;
-      }
-
-      const lowerPath = relPath.toLowerCase();
-
-      if (lowerPath.endsWith('package.json')) {
-        if (depRules.length > 0) {
-          findings.push(
-            ...materializeRuleMatches(ctx, scanPackageJsonRules(relPath, content, depRules)),
-          );
-        }
-        continue;
-      }
-
-      const ext = extname(lowerPath);
-
-      if (STYLESHEET_EXTENSIONS.has(ext)) {
-        if (cssRules.length > 0) {
-          // Strip SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
-          const cssContent =
-            ext === '.scss' || ext === '.less'
-              ? stripPreprocessorLineComments(content)
-              : content;
-          findings.push(
-            ...materializeRuleMatches(
-              ctx,
-              scanCssRules(relPath, cssContent, cssRules, content),
-            ),
-          );
-        }
-        continue;
-      }
-
-      if (isMarkupPath(lowerPath)) {
-        findings.push(...processMultiBlockFile(ctx, ruleBundle, pool));
-        continue;
-      }
-
-      if (JS_EXTENSIONS.has(ext)) {
-        const activeDom = JSX_EXTENSIONS.has(ext) ? ruleBundle.dom : [];
-        findings.push(...scanJsAst(ctx, relPath, content, ruleBundle.js, activeDom, pool));
-        findings.push(...scanExtractedStyles(ctx, ruleBundle.css));
-      }
-    } catch {
-      // Per-file exception boundary: an unexpected parser/AST exception on one malformed
-      // file must not abort the entire repository scan.
-    }
-  }
-
-  return findings;
-}
-
-interface ScanRepoState {
-  readonly repoDirPath: string;
-  readonly fileMap: Map<string, string>;
-  readonly maxFiles: number;
-  readonly fileFilterOptions?: FileFilterOptions;
-  readonly hasDependencyRules: boolean;
-  skippedDocsAndTestsCount: number;
-}
-
-const execFileAsync = promisify(execFile);
-
-/**
- * Classifies a candidate path synchronously without disk I/O.
- * Returns 'candidate' if the file should be read and scanned, or 'skip' otherwise.
- * Accurately increments skippedDocsAndTestsCount for test/doc files.
- */
-function classifyCandidatePath(
-  relPath: string,
-  state: ScanRepoState,
-): 'candidate' | 'skip' {
-  if (!state.fileFilterOptions?.includeDocsAndTests && isDocsOrTestsPath(relPath)) {
-    if (
-      shouldScanFile(relPath, undefined, {
-        ...state.fileFilterOptions,
-        includeDocsAndTests: true,
-      })
-    ) {
-      state.skippedDocsAndTestsCount++;
-    }
-    return 'skip';
-  }
-
-  if (
-    shouldScanFile(relPath, undefined, state.fileFilterOptions) ||
-    (state.hasDependencyRules && isCandidateVendoredFile(relPath))
-  ) {
-    return 'candidate';
-  }
-
-  return 'skip';
-}
-
-/**
- * Reads a single candidate file from disk atomically, validating file type, size cap, and content filters.
- */
-async function tryReadFileContent(
-  fullPath: string,
-  relPath: string,
-  state: ScanRepoState,
-): Promise<string | undefined> {
-  try {
-    const handle = await open(fullPath, 'r');
-    try {
-      const fileStat = await handle.stat();
-      if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
-        return undefined;
-      }
-      const content = await handle.readFile('utf8');
-      if (
-        shouldScanFile(relPath, content, state.fileFilterOptions) ||
-        (state.hasDependencyRules && isCandidateVendoredFile(relPath, content))
-      ) {
-        return content;
-      }
-      return undefined;
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    // Missing/deleted file (ENOENT), unreadable, or binary file
-    return undefined;
-  }
-}
-
-const FILE_READ_CONCURRENCY = 64;
-
-/**
- * Classifies and reads candidate paths in bounded concurrent batches while preserving
- * exact deterministic fileMap insertion order and skippedDocsAndTestsCount.
- */
-async function readCandidatePathsIntoState(
-  repoRoot: string,
-  rawPaths: readonly string[],
-  state: ScanRepoState,
-): Promise<void> {
-  let idx = 0;
-  while (idx < rawPaths.length && state.fileMap.size < state.maxFiles) {
-    const batchLimit = Math.min(FILE_READ_CONCURRENCY, state.maxFiles - state.fileMap.size);
-    const batch: string[] = [];
-    while (idx < rawPaths.length && batch.length < batchLimit) {
-      const rawPath = rawPaths[idx++];
-      if (!rawPath) continue;
-      const relPath = rawPath.replace(/\\/g, '/');
-      if (classifyCandidatePath(relPath, state) === 'candidate') {
-        batch.push(relPath);
-      }
-    }
-    if (batch.length === 0) {
-      break;
-    }
-
-    const contents = await Promise.all(
-      batch.map((relPath) =>
-        tryReadFileContent(join(repoRoot, relPath), relPath, state),
-      ),
-    );
-    for (let i = 0; i < batch.length; i++) {
-      const relPath = batch[i];
-      const content = contents[i];
-      if (relPath !== undefined && content !== undefined) {
-        state.fileMap.set(relPath, content);
-      }
-    }
-  }
-}
-
-async function collectDirectoryPaths(
-  currentDir: string,
-  state: ScanRepoState,
-  outPaths: string[],
-): Promise<void> {
-  let entries: Dirent[];
-  try {
-    entries = await readdir(currentDir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-
-  entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
-
-  for (const entry of entries) {
-    const fullPath = join(currentDir, entry.name);
-    const relPath = relative(state.repoDirPath, fullPath).replace(/\\/g, '/');
-
-    if (entry.isDirectory()) {
-      const dirLower = entry.name.toLowerCase();
-      if (
-        (dirLower !== '.' && dirLower !== '..' && dirLower.startsWith('.')) ||
-        BUILD_OR_INSTALL_DIR_SEGMENTS.has(dirLower) ||
-        state.fileFilterOptions?.customIgnoredDirs?.has(dirLower) ||
-        (state.fileFilterOptions?.excludeCorpusNonAppDirs &&
-          CORPUS_NON_APP_DIR_SEGMENTS.has(dirLower))
-      ) {
-        continue;
-      }
-      await collectDirectoryPaths(fullPath, state, outPaths);
+    const disposition = classifyFile(relPath, content, session);
+    if (disposition === 'skipped-docs-tests') {
+      skippedDocsAndTestsCount++;
       continue;
     }
-
-    if (entry.isFile()) {
-      outPaths.push(relPath);
+    if (disposition === 'skip') {
+      continue;
     }
-  }
-}
-
-async function walkDirectory(currentDir: string, state: ScanRepoState): Promise<void> {
-  const relPaths: string[] = [];
-  await collectDirectoryPaths(currentDir, state, relPaths);
-  await readCandidatePathsIntoState(state.repoDirPath, relPaths, state);
-}
-
-async function tryEnumerateGitFiles(
-  repoDirPath: string,
-  state: ScanRepoState,
-): Promise<boolean> {
-  const resolvedRepoDir = resolve(repoDirPath);
-  let stdout: string;
-  try {
-    const res = await execFileAsync(
-      'git',
-      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-      {
-        cwd: resolvedRepoDir,
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: 10_000,
-      },
-    );
-    stdout = res.stdout;
-  } catch {
-    return false;
-  }
-
-  const rawPaths = stdout.split('\0').filter(Boolean);
-  if (rawPaths.length === 0) {
-    return false;
-  }
-
-  await readCandidatePathsIntoState(resolvedRepoDir, rawPaths, state);
-  return true;
-}
-
-/**
- * Traverses a repository directory on disk and scans all eligible files against ScanRules.
- */
-export async function scanRepoFiles(
-  repoDirPath: string,
-  rules: readonly ScanRule[],
-  options?: RepoScanOptions,
-): Promise<ScanFinding[]> {
-  const fileMap = new Map<string, string>();
-  const fileFilterOptions = resolveFileFilterOptions(options);
-  const state: ScanRepoState = {
-    repoDirPath,
-    fileMap,
-    maxFiles: options?.maxFiles ?? 5000,
-    fileFilterOptions,
-    hasDependencyRules: rules.some((r) => r.matcher.kind === 'dependency'),
-    skippedDocsAndTestsCount: 0,
-  };
-
-  const gitEnumerated = await tryEnumerateGitFiles(repoDirPath, state);
-  if (!gitEnumerated) {
-    await walkDirectory(repoDirPath, state);
+    scannedFileCount++;
+    findings.push(...scanLoadedFile(session, relPath, content, disposition));
   }
 
   if (options?.stats) {
-    options.stats.skippedDocsAndTestsCount = state.skippedDocsAndTestsCount;
+    options.stats.skippedDocsAndTestsCount = skippedDocsAndTestsCount;
+    options.stats.scannedFileCount = scannedFileCount;
+    options.stats.eligibleFileCount = scannedFileCount;
+    options.stats.truncatedByMaxFiles = false;
   }
 
-  return scanFiles(fileMap, rules, {
-    ...options,
-    fileFilterOptions,
-  });
+  return findings;
 }

@@ -136,6 +136,7 @@ import {
   CSS_RULE_EXTENSIONS,
   DEPENDENCY_RULE_FILENAMES,
   DOM_RULE_EXTENSIONS,
+  isPackageJsonPath,
   JS_RULE_EXTENSIONS,
   SUPPORTED_SOURCE_EXTENSIONS,
 } from './format-registry.ts';
@@ -144,6 +145,7 @@ export {
   CSS_RULE_EXTENSIONS,
   DEPENDENCY_RULE_FILENAMES,
   DOM_RULE_EXTENSIONS,
+  isPackageJsonPath,
   JS_RULE_EXTENSIONS,
   SUPPORTED_SOURCE_EXTENSIONS,
 };
@@ -412,9 +414,8 @@ export function shouldScanFile(
   }
 
   const normalized = normalizePath(relPath);
-  if (!normalized.endsWith('package.json')) {
-    const dotIdx = normalized.lastIndexOf('.');
-    if (dotIdx === -1 || !SUPPORTED_SOURCE_EXTENSIONS.has(normalized.slice(dotIdx))) {
+  if (!isPackageJsonPath(normalized)) {
+    if (!SUPPORTED_SOURCE_EXTENSIONS.has(posix.extname(normalized))) {
       return false;
     }
   }
@@ -458,13 +459,13 @@ export function isCheckedInVendorPath(relPath: string): boolean {
 export function isCandidateVendoredFile(
   relPath: string,
   content?: string,
+  options?: FileFilterOptions,
 ): boolean {
   const normalized = normalizePath(relPath);
-  const dotIndex = normalized.lastIndexOf('.');
   if (
-    dotIndex === -1 ||
-    !CANDIDATE_VENDORED_EXTENSIONS.has(normalized.slice(dotIndex)) ||
-    isBuildOrInstallPath(normalized)
+    !CANDIDATE_VENDORED_EXTENSIONS.has(posix.extname(normalized)) ||
+    isBuildOrInstallPath(normalized) ||
+    (options?.excludeCorpusNonAppDirs === true && isCorpusNonAppPath(normalized))
   ) {
     return false;
   }

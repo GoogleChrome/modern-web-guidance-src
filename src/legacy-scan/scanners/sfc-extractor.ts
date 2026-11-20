@@ -1,3 +1,4 @@
+import { posix } from 'node:path';
 import { SyntaxKind, ts } from 'ts-morph';
 import { MARKUP_EXTENSIONS } from './format-registry.ts';
 
@@ -24,8 +25,8 @@ const TAG_ATTR_REGEX = /([a-zA-Z0-9_:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>
 const GLIMMER_COMMENT_REGEX = /\{\{~?!--[\s\S]*?--~?\}\}|\{\{~?![\s\S]*?\}\}/g;
 
 export function isGlimmerPath(relPath: string): boolean {
-  const lowerPath = relPath.toLowerCase();
-  return lowerPath.endsWith('.gts') || lowerPath.endsWith('.gjs');
+  const ext = posix.extname(relPath.replace(/\\/g, '/').toLowerCase());
+  return ext === '.gts' || ext === '.gjs';
 }
 
 interface GlimmerTemplateRange {
@@ -408,13 +409,7 @@ function extractLitCssBlocks(relPath: string, content: string): readonly string[
 }
 
 export function isMarkupPath(relPath: string): boolean {
-  const lowerPath = relPath.toLowerCase();
-  for (const ext of MARKUP_EXTENSIONS) {
-    if (lowerPath.endsWith(ext)) {
-      return true;
-    }
-  }
-  return false;
+  return MARKUP_EXTENSIONS.has(posix.extname(relPath.replace(/\\/g, '/').toLowerCase()));
 }
 
 const PREPROCESSOR_STYLE_LANGS: ReadonlySet<string> = new Set(['scss', 'less']);

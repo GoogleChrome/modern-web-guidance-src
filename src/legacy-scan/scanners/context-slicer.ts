@@ -1,4 +1,5 @@
 import { Node, type SourceFile } from 'ts-morph';
+import { isPackageJsonPath } from './format-registry.ts';
 
 const MAX_CONTEXT_LINES = 120;
 const CODE_SNIPPET_RADIUS = 15;
@@ -367,11 +368,8 @@ export function sliceStructuredContext(
     }
   }
   const codeSnippet = extractCompactSnippet(fileContent, targetLine);
-  const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
-  const isPackageJson =
-    normalizedPath === 'package.json' || normalizedPath.endsWith('/package.json');
 
-  const contextSlice = isPackageJson
+  const contextSlice = isPackageJsonPath(filePath)
     ? slicePackageJsonContext(fileContent, targetLine)
     : sourceFile
       ? sliceJsAstContext(sourceFile, targetLine, fileContent)

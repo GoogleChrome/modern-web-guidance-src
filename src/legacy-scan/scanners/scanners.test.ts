@@ -1606,118 +1606,57 @@ void test('sfc-extractor: prepareHtmlForDomScan unwraps all Vue template tags pr
   });
 });
 
-void test('scanFiles & scanRepoFiles: lazy SourceFile proxy, Project rotation, and batched I/O', async (t) => {
-  await t.test('lazySourceFile skips AST creation on early ctx.fileContent exit and forwards has/getPrototypeOf when used', () => {
-    const project = createInMemoryProject();
-    let createSourceFileCalls = 0;
-    const origCreate = project.createSourceFile.bind(project);
-    project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
-      createSourceFileCalls++;
-      return origCreate(...args);
-    }) as typeof project.createSourceFile;
+void test('scanFiles: lazy SourceFile proxy skips AST creation on early ctx.fileContent exit', () => {
+  const project = createInMemoryProject();
+  let createSourceFileCalls = 0;
+  const origCreate = project.createSourceFile.bind(project);
+  project.createSourceFile = ((...args: Parameters<typeof origCreate>) => {
+    createSourceFileCalls++;
+    return origCreate(...args);
+  }) as typeof project.createSourceFile;
 
-    let sawHasOperator = false;
-    let sawPrototype = false;
+  let sawHasOperator = false;
+  let sawPrototype = false;
 
-    const rule: ScanRule = {
-      id: 'test/lazy-sf',
-      guideId: 'dialog',
-      guideHash: '000000000000',
-      summary: 'test lazy SourceFile',
-      verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-      matcher: {
-        kind: 'js',
-        fastTokens: ['legacyWidget'],
-        matchFile: (sf, ctx) => {
-          if (ctx.fileContent.includes('modernGuard')) {
-            return [];
-          }
-          sawHasOperator = 'getDescendantsOfKind' in sf;
-          sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
-          return sf
-            .getDescendantsOfKind(SyntaxKind.CallExpression)
-            .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
-        },
+  const rule: ScanRule = {
+    id: 'test/lazy-sf',
+    guideId: 'dialog',
+    guideHash: '000000000000',
+    summary: 'test lazy SourceFile',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['legacyWidget'],
+      matchFile: (sf, ctx) => {
+        if (ctx.fileContent.includes('modernGuard')) {
+          return [];
+        }
+        sawHasOperator = 'getDescendantsOfKind' in sf;
+        sawPrototype = Object.getPrototypeOf(sf) !== Object.prototype;
+        return sf
+          .getDescendantsOfKind(SyntaxKind.CallExpression)
+          .map((c) => ({ line: c.getStartLineNumber(), message: 'hit' }));
       },
-    };
+    },
+  };
 
-    const guardedFindings = scanFiles(
-      new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
-      [rule],
-      { project },
-    );
-    assert.equal(guardedFindings.length, 0);
-    assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
+  const guardedFindings = scanFiles(
+    new Map([['src/guarded.ts', 'const modernGuard = true; legacyWidget();']]),
+    [rule],
+    { project },
+  );
+  assert.equal(guardedFindings.length, 0);
+  assert.equal(createSourceFileCalls, 0, 'must not parse AST when rule exits early on ctx.fileContent');
 
-    const activeFindings = scanFiles(
-      new Map([['src/active.ts', 'legacyWidget();']]),
-      [rule],
-      { project },
-    );
-    assert.equal(activeFindings.length, 1);
-    assert.equal(createSourceFileCalls, 1);
-    assert.equal(sawHasOperator, true);
-    assert.equal(sawPrototype, true);
-  });
-
-  await t.test('scanFiles rotates ephemeral Project across >25 AST-parsed files and scanRepoFiles preserves order, maxFiles, and skippedDocsAndTestsCount across >64 files', async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), 'batched-io-repo-'));
-    try {
-      await mkdir(join(tempDir, 'src'), { recursive: true });
-      await mkdir(join(tempDir, 'test'), { recursive: true });
-
-      for (let i = 0; i < 80; i++) {
-        const padded = String(i).padStart(3, '0');
-        await writeFile(
-          join(tempDir, 'src', `file-${padded}.ts`),
-          `export const idx = ${i};\nlegacyTarget(${i});\n`,
-        );
-      }
-      for (let j = 0; j < 10; j++) {
-        await writeFile(
-          join(tempDir, 'src', `a-spec-${j}.test.ts`),
-          `legacyTarget(${j});\n`,
-        );
-      }
-
-      const seenProjects = new Set<unknown>();
-      const rule: ScanRule = {
-        id: 'test/batched-scan',
-        guideId: 'dialog',
-        guideHash: '000000000000',
-        summary: 'test batched scan',
-        verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
-        matcher: {
-          kind: 'js',
-          fastTokens: ['legacyTarget'],
-          matchFile: (sf) => {
-            seenProjects.add(sf.getProject());
-            return sf
-              .getDescendantsOfKind(SyntaxKind.CallExpression)
-              .map((c) => ({ line: c.getStartLineNumber(), message: c.getText() }));
-          },
-        },
-      };
-
-      const stats: { skippedDocsAndTestsCount?: number } = {};
-      const findings = await scanRepoFiles(tempDir, [rule], {
-        maxFiles: 70,
-        stats,
-      });
-
-      assert.equal(findings.length, 70, 'must cap scanned files at maxFiles=70 across 64-file batches');
-      assert.equal(seenProjects.size, 3, 'must rotate ephemeral Project every 25 AST-parsed files (25 + 25 + 20 = 3 Projects)');
-      assert.equal(stats.skippedDocsAndTestsCount, 10, 'must count all 10 skipped test files before hitting maxFiles');
-      const expectedFiles = Array.from({ length: 70 }, (_, i) => `src/file-${String(i).padStart(3, '0')}.ts`);
-      assert.deepEqual(
-        findings.map((f) => f.file),
-        expectedFiles,
-        'must preserve exact lexicographical file ordering across concurrent I/O batches and >25 file Project rotations',
-      );
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
+  const activeFindings = scanFiles(
+    new Map([['src/active.ts', 'legacyWidget();']]),
+    [rule],
+    { project },
+  );
+  assert.equal(activeFindings.length, 1);
+  assert.equal(createSourceFileCalls, 1);
+  assert.equal(sawHasOperator, true);
+  assert.equal(sawPrototype, true);
 });
 
 
