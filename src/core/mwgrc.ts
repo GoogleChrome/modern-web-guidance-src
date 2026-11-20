@@ -79,7 +79,7 @@ function readMwgrcFile(filePath: string): MwgConfig {
  * `resolveMwgrcPath()` never reaches the home config from inside a git repo. Fails closed: a
  * `telemetry` value other than `true`, or an unreadable config, opts out.
  */
-export function isTelemetryDisabledByMwgrc(startDir = process.cwd(), homeDir?: string): boolean {
+export function isTelemetryDisabledByMwgrc(startDir?: string, homeDir?: string): boolean {
   try {
     const candidates = new Set([
       resolveMwgrcPath(startDir),

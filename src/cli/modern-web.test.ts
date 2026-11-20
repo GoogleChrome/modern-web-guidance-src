@@ -331,7 +331,7 @@ describe('modern-web CLI', () => {
   it('rejects --telemetry values other than true or false', () => {
     const { status, stderr } = runCLI(['list', '--telemetry=off']);
     assert.strictEqual(status, 1);
-    assert.match(stderr, /Invalid value for --telemetry: "off"/);
+    assert.match(stderr, /Invalid option "--telemetry=off"/);
 
     for (const args of [['list', '--telemetry'], ['list', '--telemetry', 'false']]) {
       const res = runCLI(args);
@@ -365,14 +365,25 @@ describe('modern-web CLI', () => {
       `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ args: process.argv.slice(2), disableTelemetry: process.env.DISABLE_TELEMETRY ?? null }))' "${logFile}" "$@"\n`,
       { mode: 0o755 }
     );
+    // Run from a temp project and home so the developer's own `.mwgrc` files cannot opt out.
+    const projectDir = path.join(tempBinDir, 'project');
+    fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
     // Pin NODE_TEST_CONTEXT so no telemetry is sent while DISABLE_TELEMETRY is unset.
     const recordNpxCall = (args: string[]): { args: string[]; disableTelemetry: string | null } => {
       fs.rmSync(logFile, { force: true });
-      const result = runCLI(args, {
-        PATH: `${tempBinDir}${path.delimiter}${process.env.PATH}`,
-        DISABLE_TELEMETRY: undefined,
-        NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? 'child-v8',
-        npm_config_user_agent: undefined,
+      const result = spawnSync('node', [scriptPath, ...args], {
+        encoding: 'utf8',
+        cwd: projectDir,
+        env: {
+          ...process.env,
+          NO_COLOR: '1',
+          PATH: `${tempBinDir}${path.delimiter}${process.env.PATH}`,
+          HOME: tempBinDir,
+          USERPROFILE: tempBinDir,
+          DISABLE_TELEMETRY: undefined,
+          NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? 'child-v8',
+          npm_config_user_agent: undefined,
+        },
       });
       assert.strictEqual(result.status, 0, `${args.join(' ')}: ${result.stderr}`);
       return JSON.parse(fs.readFileSync(logFile, 'utf8'));
@@ -403,6 +414,9 @@ describe('modern-web CLI', () => {
       const afterTerminator = recordNpxCall(['install', '--', '--telemetry=false']);
       assert.deepStrictEqual(afterTerminator.args.slice(-2), ['--', '--telemetry=false']);
       assert.strictEqual(afterTerminator.disableTelemetry, null);
+
+      fs.writeFileSync(path.join(projectDir, '.mwgrc'), JSON.stringify({ telemetry: false }));
+      assert.strictEqual(recordNpxCall(['uninstall']).disableTelemetry, '1', '.mwgrc opt-out reaches the skills runner');
     } finally {
       fs.rmSync(tempBinDir, { recursive: true, force: true });
     }

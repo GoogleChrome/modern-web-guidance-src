@@ -472,7 +472,7 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 | `npx modern-web-guidance@latest set-allow-origin-trials` | `"allowOriginTrials": true` | Unlocks guides for experimental Origin Trial APIs. |
 | `npx modern-web-guidance@latest set-allow-volatile-features` | `"allowVolatileFeatures": true` | Unlocks guides for volatile single-engine features. |
 
-Set `"telemetry": false` in either file to opt out of usage telemetry (see Telemetry & Privacy below).
+Set `"telemetry": false` in the project `.mwgrc` or `~/.mwgrc` (both are checked) to opt out of usage telemetry (see [Telemetry & Privacy](#-telemetry--privacy)).
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 

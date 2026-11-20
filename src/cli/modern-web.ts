@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
-import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
+import { isTelemetryDisabledByMwgrc, normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -23,39 +23,24 @@ import { determineAgent, KNOWN_AGENTS } from "./telemetry/detect-agent.ts";
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
-/**
- * Pulls `--telemetry=<bool>` out of the args that come before a `--` terminator, so no
- * subcommand or child process has to know the flag. A bare `--telemetry` yields an empty value.
- */
-function extractTelemetryFlag(args: string[]): { rest: string[]; telemetryValues: string[] } {
-  const rest: string[] = [];
-  const telemetryValues: string[] = [];
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--") {
-      rest.push(...args.slice(i));
-      break;
-    }
-    if (arg === "--telemetry" || arg.startsWith("--telemetry=")) {
-      telemetryValues.push(arg.slice("--telemetry=".length));
-    } else {
-      rest.push(arg);
-    }
-  }
-  return { rest, telemetryValues };
-}
+const rawArgs = process.argv.slice(2);
+const terminatorIdx = rawArgs.indexOf("--");
+// Only `--telemetry` args before a `--` terminator count as the flag. They are removed so no
+// subcommand or child process has to know about it.
+const isTelemetryFlag = (arg: string, i: number) =>
+  (terminatorIdx === -1 || i < terminatorIdx) && /^--telemetry(=|$)/.test(arg);
+const telemetryFlags = rawArgs.filter(isTelemetryFlag);
+const cliArgs = rawArgs.filter((arg, i) => !isTelemetryFlag(arg, i));
 
-const { rest: cliArgs, telemetryValues } = extractTelemetryFlag(process.argv.slice(2));
-
-const invalidTelemetryValue = telemetryValues.find(v => v !== "true" && v !== "false");
-if (invalidTelemetryValue !== undefined) {
-  console.error(`Invalid value for --telemetry: ${JSON.stringify(invalidTelemetryValue)}. Use --telemetry=true or --telemetry=false.`);
+const invalidTelemetryFlag = telemetryFlags.find(f => f !== "--telemetry=true" && f !== "--telemetry=false");
+if (invalidTelemetryFlag !== undefined) {
+  console.error(`Invalid option ${JSON.stringify(invalidTelemetryFlag)}. Use --telemetry=true or --telemetry=false.`);
   process.exit(1);
 }
 
-// `--telemetry=true` cannot undo another opt-out. The env var is the switch the logger reads,
-// and the `npx skills` child processes inherit it.
-if (telemetryValues.includes("false")) {
+// `--telemetry=true` cannot undo another opt-out. Setting the env var also passes the opt-out
+// on to the skills runner child processes.
+if (telemetryFlags.includes("--telemetry=false") || isTelemetryDisabledByMwgrc()) {
   process.env.DISABLE_TELEMETRY = "1";
 }
 
@@ -273,9 +258,7 @@ async function main() {
   } else if (command === "install") {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
-    const extraArgs = cliArgs.filter(a => a !== "--choose");
-    const cmdIdx = extraArgs.indexOf(command);
-    if (cmdIdx !== -1) extraArgs.splice(cmdIdx, 1);
+    const extraArgs = cliArgs.toSpliced(cliArgs.indexOf(command), 1).filter(a => a !== "--choose");
     const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
