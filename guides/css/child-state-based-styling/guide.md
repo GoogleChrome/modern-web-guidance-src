@@ -70,7 +70,13 @@ To build a component that changes its styling based on a child's state:
 </div>
 ```
 
-**Performance tip**: When using `:has()`, scope the selector to the most specific container possible (like `.theme-card`). Avoid anchoring it to very high-level elements like `body:has(...)` if the styling changes are localized, as broad `:has()` queries can trigger more layout recalculations.
+**Performance tips**:
+
+- Scope the selector to the most specific container possible (like `.theme-card`). Avoid anchoring it to very high-level elements like `body:has(...)` if the styling changes are localized, as broad `:has()` queries can trigger more style recalculations.
+- **DO** put `:has()` on the element you are styling, and reach descendants by setting custom properties there that they inherit, as in the example above. **DO NOT** follow `:has()` with a descendant or sibling combinator (like `.theme-card:has(.theme-toggle:checked) p` or `nav:has(#toggle:checked) ~ section li`) when other form controls share the container: browsers can then restyle every element the rule reaches whenever any input in the container changes state, even ones the `:has()` argument doesn't name. A more specific argument (an `id`, a `>` combinator) doesn't prevent this.
+- If you can't keep `:has()` on the styled element, for example because the rule must reach a large part of the page next to a group of other controls, toggle a class with JavaScript instead.
+
+{# Measured with Chromium's trace (UpdateLayoutTree elementCount), 300 rows, 4 clicks on an unrelated radio in the anchor: `.card:has(#t:checked) { --c: red }` + inheritance restyled ~19 elements, `.card:has(#t:checked) li` and `nav:has(> #t:checked) ~ section li` ~1,215, the class equivalent ~15. See https://github.com/GoogleChrome/modern-web-guidance-src/issues/3511. #}
 
 ## Fallback strategies
 
