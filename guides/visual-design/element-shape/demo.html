@@ -38,7 +38,7 @@
         --radius-tag-slant: 1rem;
         --radius-elliptical: 1.25rem / 2.5rem;
         --radius-organic: 62% 38% 46% 54% / 44% 58% 42% 56%;
-        --radius-pill: 999px;
+        --radius-pill: calc(infinity * 1px);
         --radius-polygon-vertex: 14px;
 
         --stroke-thin: 1px;
@@ -59,10 +59,6 @@
         --ticket-notch: 12px;
         --duration-fast: 160ms;
         --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
-
-        @supports (width: calc(infinity * 1px)) {
-          --radius-pill: calc(infinity * 1px);
-        }
       }
     }
 

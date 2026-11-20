@@ -95,5 +95,3 @@ If your Baseline target does not support `shape()`, gate the `shape()` cutout wi
 {{ BASELINE_STATUS("shapes-polygon-round") }}
 
 If your Baseline target does not support rounded polygons, declare the plain `polygon()` first and the `polygon(round <length>, ...)` version inside `@supports (clip-path: polygon(round 10px, 0 0, 100% 0, 50% 100%))`. Unsupported browsers render sharp vertices as graceful degradation; if rounded vertices are required, use `clip-path: shape()` as a higher-fidelity fallback where supported.
-
-For `calc(infinity * 1px)` pill radii, keep a large pixel value in a custom property as the default and override it inside `@supports (width: calc(infinity * 1px))`.
