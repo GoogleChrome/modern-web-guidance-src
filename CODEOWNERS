@@ -1,25 +1,6 @@
-# Default owners for implementation and infra
-* @paulirish @lusayaa
-
-# Blanket ownerless overrides for content (rely entirely on atl-triage bot instead)
-guides/
-features/
-skills-src/
-
-# CODEOWNERS config
-CODEOWNERS @paulirish @rviscomi @lusayaa
-
-# Critical infra & workflow files (redundant but the explicitness is nice)
-.github/ @paulirish @lusayaa
-package.json @paulirish @lusayaa
-pnpm-lock.yaml @paulirish @lusayaa
-.github/atls.json @rviscomi @paulirish @lusayaa
-
-# Public eval pipeline: scrubs and gates what leaves the private bucket
-src/harness/public/ @paulirish @TravenReese @lusayaa
-
-# Eval files
-src/grading/ @TravenReese @lusayaa
-**/targets/ @TravenReese @lusayaa
-**/grader.ts @TravenReese @lusayaa
-**/tasks/task.md @TravenReese @lusayaa
+# All reviewer requests (both Content ATLs in .github/atls.json and infra/eval
+# owners in src/ci/reviewer-routing.ts) are routed by src/ci/atl-triage.ts AFTER PR
+# intake checks pass (approved issue + Google CLA), so external drive-by PRs do
+# not page maintainers at PR creation time.
+#
+# Note: require_code_owner_review is disabled in the `main` branch ruleset.

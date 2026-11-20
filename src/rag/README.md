@@ -86,6 +86,7 @@ The release script (`node src/build/publish-skills.ts`) automatically ensures ve
 2. `build-dist.ts` and `build-guides.ts` enforce `--fail-on-missing-vectors` during release builds.
 3. On `--dry-run` (used by PR CI), `publish-skills.ts` warns on uncached chunks and builds with `vector: []` (`failOnMissingVectors: false`) so guide PRs do not need `GEMINI_API_KEY` or `embed-guide-chunks.ts`.
 4. Distribution tests (`src/build/dist.test.ts`) assert that cached chunks contain valid 256-d teacher vectors (`>= 90%` coverage during PR `--dry-run`, `100%` on release via `--fail-on-missing-vectors`).
+5. On real releases, `publish-skills.ts` runs `bench-rag.ts --ci` after `dist.test.ts` so retrieval quality (`nDCG@5 >= 0.80`, `Hit@1 >= 75%`, `Unjudged% <= 10%`) is gated on a 100%-embedded corpus, while PR CI runs `benchmark:rag --public-only` purely as an informational summary check.
 
 There are no silent fallbacks.
 

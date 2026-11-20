@@ -264,6 +264,7 @@ export interface ValidateDeps {
   embedChunks?: typeof embedGuideChunks;
   runBuildDist?: typeof buildDist;
   runDistTests?: () => void;
+  runRagBenchmark?: () => void;
 }
 
 export async function validate(newVersion: string, deps: ValidateDeps = {}) {
@@ -276,6 +277,11 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
         cwd: ROOT_DIR,
         stdio: 'inherit',
         env: { ...process.env, TEST_REPORTER: 'spec' },
+      }),
+    runRagBenchmark = () =>
+      execSync('node src/rag/benchmarks/bench-rag.ts --ci', {
+        cwd: ROOT_DIR,
+        stdio: 'inherit',
       }),
   } = deps;
   const publishCliDir = path.join(DIST_DIR, "skills-cli");
@@ -311,6 +317,11 @@ export async function validate(newVersion: string, deps: ValidateDeps = {}) {
 
   console.log(`\nVerifying built distribution with dist.test.ts suite...`);
   runDistTests();
+
+  if (!dryRun) {
+    console.log(`\nVerifying retrieval quality on public RAG benchmarks...`);
+    runRagBenchmark();
+  }
 
   return result;
 }
