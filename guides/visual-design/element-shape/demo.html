@@ -129,6 +129,10 @@
         border: var(--stroke-thin) solid var(--border-subtle);
         border-radius: var(--radius-card);
         background-color: var(--surface-card);
+
+        &:empty {
+          display: none;
+        }
       }
 
       .support-item {
@@ -263,21 +267,6 @@
           border-radius: var(--corner-x) / var(--corner-y);
         }
 
-        .corner-bevel {
-          --corner-x: min(var(--radius-corner-demo-x, var(--radius-corner-demo)), 50%);
-          --corner-y: min(var(--radius-corner-demo-y, var(--radius-corner-demo)), 50%);
-          border-radius: var(--corner-x) / var(--corner-y);
-          corner-shape: bevel;
-        }
-
-        .corner-scoop {
-          corner-shape: scoop;
-        }
-
-        .corner-notch {
-          corner-shape: notch;
-        }
-
         .corner-tag-slant {
           inline-size: auto;
           block-size: auto;
@@ -355,7 +344,7 @@
           }
         }
 
-        /* 4. Dual-shape border-shape and custom ribbon */
+        /* 4. border-shape ribbon */
         .ribbon-badge {
           inline-size: auto;
           block-size: auto;
@@ -822,7 +811,7 @@
       const li = document.createElement('li');
       li.className = 'support-item';
       li.dataset.supported = String(check());
-      li.textContent = label;
+      li.textContent = `${label}: ${check() ? 'supported' : 'not supported'}`;
       supportList.append(li);
     }
 
