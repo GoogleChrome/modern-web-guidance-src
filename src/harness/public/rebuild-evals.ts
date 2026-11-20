@@ -31,6 +31,7 @@ export const PUBLIC_AGENTS: ReadonlySet<string> = new Set<string>([
   Agents.CLAUDE_CODE,
   Agents.CODEX_CLI,
   Agents.ANTIGRAVITY_CLI,
+  Agents.PI,
 ]);
 
 /** Suite-level fields copied from `evals.json`. `summary` and `stats` are recomputed, not copied. */

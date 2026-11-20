@@ -165,6 +165,20 @@ describe('findLeaks', () => {
     assert.deepEqual(findLeaks('~/.npm/_npx and ~/.cache/ms-playwright'), []);
   });
 
+  test('permits Emscripten documented ~/emsdk SDK paths while rejecting other ~/emsdk paths', () => {
+    for (const s of [
+      'EMSDK=~/emsdk ./build.sh',
+      'git clone https://github.com/emscripten-core/emsdk.git ~/emsdk',
+      '~/emsdk/emsdk install latest && ~/emsdk/emsdk activate latest',
+      'source ~/emsdk/emsdk_env.sh',
+    ]) {
+      assert.deepEqual(findLeaks(s), [], s);
+    }
+    for (const bad of ['~/emsdk/secret', '~/emsdk-fork/x', scrubString('GET /Users/42/emsdk/profile')]) {
+      assert.deepEqual(findLeaks(bad).map(leak => leak.name), ['home-relative non-dotfile'], bad);
+    }
+  });
+
   test('does not mistake regex syntax for a home-relative path', () => {
     // JSON Pointer escaping as agents write it: a negated class and a global replace.
     assert.deepEqual(findLeaks(String.raw`/^(?:[^~/]|~0|~1)*$/.test(p) && s.replace(/~/g, '~0')`), []);

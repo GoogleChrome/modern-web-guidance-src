@@ -24,7 +24,7 @@ describe('preparePatch', () => {
   });
 
   test('drops secrets and agent-local config', () => {
-    const files = ['.env', '.env.local', 'config/.env.production', 'certs/server.pem', 'deploy/id_rsa.key', '.claude/settings.json', '.codex/x', '.gemini/x', '.antigravity/x'];
+    const files = ['.env', '.env.local', 'config/.env.production', 'certs/server.pem', 'deploy/id_rsa.key', '.claude/settings.json', '.codex/x', '.gemini/x', '.antigravity/x', '.pi/settings.json'];
     const out = preparePatch(files.map(file => section(file)).join(''));
     assert.equal(out.text, '');
     assert.deepEqual(out.droppedFiles, files);
@@ -122,7 +122,7 @@ describe('patchFromFiles', () => {
   });
 
   test('drops excluded targets the same way preparePatch does', () => {
-    for (const relPath of ['.env', 'config/.env.local', 'server.key', 'pnpm-lock.yaml', 'dist/app.js', '.claude/settings.json']) {
+    for (const relPath of ['.env', 'config/.env.local', 'server.key', 'pnpm-lock.yaml', 'dist/app.js', '.claude/settings.json', '.pi/settings.json']) {
       const out = patchFromFiles(relPath, text('old\n'), text('SECRET=abc\n'));
       assert.equal(out.text, '', relPath);
       assert.deepEqual(out.droppedFiles, [relPath]);

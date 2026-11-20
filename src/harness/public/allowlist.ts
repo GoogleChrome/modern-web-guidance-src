@@ -174,13 +174,14 @@ export function selectSuites(allowlist: PublicAllowlist, candidates: readonly st
  * them when unset). `maxSuites` is applied after the agent/model gate so
  * "keep 30" means 30 publishable suites rather than 30 minus unreleased runs.
  */
-export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAllowlist, suites: readonly T[], now = new Date()): T[] {
+export function withinMaxAge<T extends { suiteId?: string; id?: string; createdAt: Date }>(allowlist: PublicAllowlist, suites: readonly T[], now = new Date()): T[] {
   const { maxAgeDays } = allowlist.retention ?? {};
   if (maxAgeDays === undefined) {
     return [...suites];
   }
+  const curatedIds = new Set(allowlist.include.filter(id => isCuratedSuite(id, allowlist)));
   const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
-  return suites.filter(suite => suite.createdAt.getTime() >= cutoff);
+  return suites.filter(suite => curatedIds.has(suite.suiteId ?? suite.id ?? '') || suite.createdAt.getTime() >= cutoff);
 }
 
 /**
@@ -193,6 +194,7 @@ export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent
   const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
   const perAgent = new Map<string, number>();
   const kept: T[] = [];
+  let rollingKept = 0;
   const curatedIds = new Set(allowlist.include.filter(id => isCuratedSuite(id, allowlist)));
   for (const suite of newestFirstSuites) {
     const id = suite.suiteId ?? suite.id ?? '';
@@ -200,8 +202,8 @@ export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent
       kept.push(suite);
       continue;
     }
-    if (maxSuites !== undefined && kept.length >= maxSuites) {
-      break;
+    if (maxSuites !== undefined && rollingKept >= maxSuites) {
+      continue;
     }
     const agent = suite.agent ?? '';
     const seen = perAgent.get(agent) ?? 0;
@@ -209,6 +211,7 @@ export function withinSuiteCaps<T extends { suiteId?: string; id?: string; agent
       continue;
     }
     perAgent.set(agent, seen + 1);
+    rollingKept++;
     kept.push(suite);
   }
   return kept;

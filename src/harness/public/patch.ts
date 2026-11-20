@@ -24,7 +24,7 @@ export const EXCLUDED_PATH_RE = new RegExp([
   String.raw`^(?:dist|build|\.next)/`,
   String.raw`(?:^|/)\.env(?:\.[^/]+)?$`,
   String.raw`\.(?:pem|key)$`,
-  String.raw`^\.(?:claude|codex|gemini|antigravity)/`,
+  String.raw`^\.(?:claude|codex|gemini|antigravity|pi)/`,
 ].join('|'));
 
 export interface PreparedPatch {
