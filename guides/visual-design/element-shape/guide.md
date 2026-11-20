@@ -13,12 +13,6 @@ guides:
   - shaped-cutouts
 ---
 
-{#
-Add separate guides for nontrivial shapes and link to them here.
-Trivial shapes (e.g. 1-3 loc) can just be described inline.
-TBD: Update complex-shapes or keep it masking-only and discuss here when to use masking vs shaping?
-#}
-
 # Shape elements with CSS
 
 Shape the element itself with CSS instead of nesting extra elements, using images, or drawing SVG backgrounds. Pick the simplest tool that produces the outline, because only some tools also reshape the border, shadow, focus ring, and hit-testing.
@@ -29,10 +23,8 @@ Shape the element itself with CSS instead of nesting extra elements, using image
 - Different corner geometry (squircle, bevel, scoop, notch): `corner-shape` on top of `border-radius`.
 - Custom outline that must keep its border, shadow, and hit area: `border-shape`.
 - Custom outline without a border, where a clipped fill is enough: `clip-path` with `polygon()`, rounded `polygon()`, or `shape()`.
-- Soft or feathered edges: masking (see {{ GUIDE_REF("complex-shapes") }}).
-- Custom paths longer than a few lines (speech bubbles, tickets): see {{ GUIDE_REF("shaped-cutouts") }}.
-
-For cutouts with curves that must scale with the element, see {{ GUIDE_REF("shaped-cutouts") }}.
+- Soft, feathered, or free-form textured edges: masking with `mask-image`, which does not reshape borders, `box-shadow`, or pointer hit-testing (see {{ GUIDE_REF("complex-shapes") }}).
+- Masked notches or knockout cutouts using SVG or CSS gradient masks: see {{ GUIDE_REF("shaped-cutouts") }}.
 
 ## Circles, ellipses, pills, and blobs
 
