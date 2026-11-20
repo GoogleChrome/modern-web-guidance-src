@@ -858,7 +858,9 @@ window.__featuresMapping = {
   "context-menu": [
     "popover",
     "anchor-positioning",
-    "menu"
+    "focusgroup",
+    "invoker-commands",
+    "toggleevent-source"
   ],
   "copy-button": [
     "invoker-commands",
@@ -904,6 +906,7 @@ window.__featuresMapping = {
   "menu": [
     "popover",
     "invoker-commands",
+    "toggleevent-source",
     "anchor-positioning",
     "focusgroup",
     "has",

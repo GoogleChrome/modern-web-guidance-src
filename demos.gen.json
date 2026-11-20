@@ -2881,6 +2881,29 @@
       ]
     },
     {
+      "id": "context-menu",
+      "category": "ui-components",
+      "title": "Context Menu",
+      "description": "Build a context menu component that displays a list of options or actions for interacting with an element or specific context (e.g. by right clicking).",
+      "features": [
+        "popover",
+        "anchor-positioning",
+        "focusgroup",
+        "invoker-commands",
+        "toggleevent-source"
+      ],
+      "demos": [
+        {
+          "id": "demo",
+          "path": "guides/ui-components/context-menu/demo.html"
+        },
+        {
+          "id": "demo-modern",
+          "path": "guides/ui-components/context-menu/demo-modern.html"
+        }
+      ]
+    },
+    {
       "id": "copy-button",
       "category": "ui-components",
       "title": "Copy button",
@@ -2949,6 +2972,7 @@
       "features": [
         "popover",
         "invoker-commands",
+        "toggleevent-source",
         "anchor-positioning",
         "focusgroup",
         "has",
@@ -3796,6 +3820,7 @@
     "tmp-long-animation-frames-style-layout",
     "tmp-text-decoration-inset",
     "tmp-webcrypto-modern-algos",
+    "toggleevent-source",
     "top-level-await",
     "touch-action",
     "transition-behavior",
