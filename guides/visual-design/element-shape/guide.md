@@ -26,6 +26,8 @@ Shape the element itself with CSS instead of nesting extra elements, using image
 - Soft, feathered, or free-form textured edges: masking with `mask-image`, which does not reshape borders, `box-shadow`, or pointer hit-testing (see {{ GUIDE_REF("complex-shapes") }}).
 - Masked notches or knockout cutouts using SVG or CSS gradient masks: see {{ GUIDE_REF("shaped-cutouts") }}.
 
+Text inside `clip-path`, `mask-image`, and `border-shape` is still laid out in a rectangular box and does not wrap to the shape—give the shape enough padding to clear cutouts/tapered corners, or apply `clip-path`/`mask-image` to a pseudo-element or adjacent decorative element (see {{ GUIDE_REF("shaped-cutouts") }}) while keeping readable text in an unclipped container.
+
 ## Circles, ellipses, pills, and blobs
 
 - Circle: `border-radius: 50%` with `aspect-ratio: 1`, so the computed width equals the height.
