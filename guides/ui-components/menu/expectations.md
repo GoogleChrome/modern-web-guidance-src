@@ -5,7 +5,7 @@
 - Each trigger is a `<button type="button">` with `aria-haspopup="menu"`, `commandfor`, and `command="toggle-popover"`, and has no `popovertarget` or `popovertargetaction` attribute.
 - Each popover is the immediate next sibling of its trigger (and each submenu is a `popover="auto"` placed after its trigger inside the parent menu's focusgroup), so no `aria-details` relation is exposed on the trigger and closed submenus are not rendered inline.
 - Focusing a submenu trigger previews its submenu and sets `aria-expanded="true"` without moving focus into the submenu, and moving focus to a sibling item closes that submenu and sets `aria-expanded="false"`.
-- Pressing `Enter` or `Space` on a previewed submenu trigger closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
+- Pressing `Enter` or `Space` on a previewed submenu trigger button (that does not have a role of `menuitemradio` or `menuitemcheckbox`) closes that preview and sets `aria-expanded="false"` without moving focus from the trigger.
 - Pressing `Enter` or `Space` on a closed trigger opens its menu, sets `aria-expanded="true"`, and moves focus to the first enabled item.
 - Pressing `ArrowDown` on a top-level trigger opens its menu if it is closed and moves focus to the first enabled item, including when the menu was opened by pointer and focus is still on the trigger.
 - Inside an open menu, `ArrowUp` and `ArrowDown` move focus between enabled items, and `Home` and `End` move focus to the first and last enabled item.
