@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { generateJsonReport, generateMarkdownReport } from './reporting.ts';
-import type { Metrics, RunResult } from './metrics.ts';
+import type { Metrics, TrialResult } from './metrics.ts';
 
 const dummyMetrics: Metrics = {
   summary: {
@@ -59,7 +59,7 @@ test('generateMarkdownReport renders combined unguided and guided columns for pa
     ],
   };
 
-  const allResults: Record<string, RunResult[]> = {
+  const allResults: Record<string, TrialResult[]> = {
     'daily-grind - size-aware-styling - unguided': [
       {
         runNumber: 1,
@@ -86,14 +86,14 @@ test('generateMarkdownReport renders combined unguided and guided columns for pa
   assert.ok(md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING'));
   assert.ok(!md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING - UNGUIDED'));
   assert.ok(!md.includes('## DAILY-GRIND - SIZE-AWARE-STYLING - GUIDED'));
-  assert.ok(!md.includes('**Pass rates across runs:**'));
+  assert.ok(!md.includes('**Pass rates across trials:**'));
   assert.ok(md.includes('| Unguided (1/2) | Guided (2/2) | Expectation |'));
   assert.ok(md.includes('| ✅ | ✅ | Check 1 |'));
   assert.ok(md.includes('| ❌ | ✅ | Check 2 &lt;with angle brackets&gt; |'));
 });
 
-test('generateMarkdownReport renders pass rates across runs when runsPerTest > 1', () => {
-  const multiRunMetrics: Metrics = {
+test('generateMarkdownReport renders pass rates across trials when runsPerTest > 1', () => {
+  const multiTrialMetrics: Metrics = {
     summary: {
       unguidedMedian: 50,
       guidedMedian: 100,
@@ -125,7 +125,7 @@ test('generateMarkdownReport renders pass rates across runs when runsPerTest > 1
     ],
   };
 
-  const allResults: Record<string, RunResult[]> = {
+  const allResults: Record<string, TrialResult[]> = {
     'daily-grind - size-aware-styling - unguided': [
       { runNumber: 1, results: [{ id: '1', passed: false, message: 'Check 1' }, { id: '2', passed: false, message: 'Check 2' }] },
       { runNumber: 2, results: [{ id: '1', passed: true, message: 'Check 1' }, { id: '2', passed: false, message: 'Check 2' }] },
@@ -138,15 +138,15 @@ test('generateMarkdownReport renders pass rates across runs when runsPerTest > 1
     ],
   };
 
-  const md = generateMarkdownReport(multiRunMetrics, allResults);
-  assert.ok(md.includes('**Pass rates across runs:** Unguided: 0%, 50%, 100% (Median: 50%) | Guided: 50%, 100%, 100% (Median: 100%)'));
+  const md = generateMarkdownReport(multiTrialMetrics, allResults);
+  assert.ok(md.includes('**Pass rates across trials:** Unguided: 0%, 50%, 100% (Median: 50%) | Guided: 50%, 100%, 100% (Median: 100%)'));
   assert.ok(md.includes('| Unguided (1/2) | Guided (2/2) | Expectation |'));
   assert.ok(md.includes('| ✅ | ✅ | Check 1 |'));
   assert.ok(md.includes('| ❌ | ✅ | Check 2 |'));
 });
 
 test('generateMarkdownReport renders summary table, tools used, guides consumed, and checks', () => {
-  const allResults: Record<string, RunResult[]> = {
+  const allResults: Record<string, TrialResult[]> = {
     'daily-grind - size-aware-styling - guided': [
       {
         runNumber: 1,
@@ -161,7 +161,7 @@ test('generateMarkdownReport renders summary table, tools used, guides consumed,
   };
 
   const md = generateMarkdownReport(dummyMetrics, allResults);
-  assert.ok(md.includes('| Group | Pass Rate | Test Runs |'));
+  assert.ok(md.includes('| Group | Pass Rate | Trials |'));
   assert.ok(md.includes('**Guides Consumed:** size-aware-styling'));
   assert.ok(md.includes('**Tools Used:** modern-web-guidance'));
   assert.ok(md.includes('| Guided (1/2) | Expectation |'));
@@ -193,7 +193,7 @@ test('generateMarkdownReport renders N/A when runPassRates is empty due to infra
     sortedKeys: ['daily-grind - size-aware-styling - guided'],
   };
 
-  const allResults: Record<string, RunResult[]> = {
+  const allResults: Record<string, TrialResult[]> = {
     'daily-grind - size-aware-styling - guided': [
       {
         runNumber: 1,
@@ -205,8 +205,8 @@ test('generateMarkdownReport renders N/A when runPassRates is empty due to infra
   };
 
   const md = generateMarkdownReport(metricsWithEmptyRuns, allResults);
-  assert.ok(md.includes('**Pass rates across runs:** N/A'));
-  assert.ok(!md.includes('**Pass rates across runs:** %'));
+  assert.ok(md.includes('**Pass rates across trials:** N/A'));
+  assert.ok(!md.includes('**Pass rates across trials:** %'));
 });
 
 test('generateJsonReport includes skillVersion and cliVersion when provided', () => {

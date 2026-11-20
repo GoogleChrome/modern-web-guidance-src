@@ -104,8 +104,8 @@ export function exportPiTrajectories(workDir: string, targetDir: string): void {
  * Executes the Pi CLI command and captures output.
  */
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('pi-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.PI, templateDir, runType);
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('pi-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.PI, baseAppDir, condition);
 
   if (!workDir) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -125,7 +125,7 @@ async function run() {
         workDir,
         targetDir,
         'Pi',
-        runType,
+        condition,
         getPiEnvOverrides(path.dirname(workDir)),
       );
     } finally {

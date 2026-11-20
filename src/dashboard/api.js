@@ -271,7 +271,7 @@ export class ApiClient {
     /**
      * Resolves the correct base path for specific trial details, parsing legacy logic.
      * @param {string} jobId
-     * @param {import('../harness/lib/metrics.ts').RunResult} trial
+     * @param {import('../harness/lib/metrics.ts').TrialResult} trial
      * @param {string} resultKey
      * @returns {Promise<{ setupPath: string, resultPath: string, usedBasePath: string } | null>}
      */

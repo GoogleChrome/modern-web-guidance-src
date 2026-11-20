@@ -8,9 +8,9 @@ import {
   guideOfResultKey,
   NotPublishableError,
   OverrideError,
-  PUBLIC_ASSERTION_FIELDS,
-  PUBLIC_RUN_FIELDS,
-  PUBLIC_SUITE_FIELDS,
+  PUBLIC_CHECK_FIELDS,
+  PUBLIC_JOB_FIELDS,
+  PUBLIC_TRIAL_FIELDS,
   rebuildEvals,
   withoutGuides,
 } from './rebuild-evals.ts';
@@ -34,8 +34,8 @@ function allChecks(evals: ReturnType<typeof rebuildEvals>) {
 }
 
 /** Fields present in the raw fixture that must never appear in public output. */
-const PRIVATE_SUITE_FIELDS = ['serving', 'skillVersion', 'cliVersion', 'runCount'];
-const PRIVATE_RUN_FIELDS = ['targetFile', 'files'];
+const PRIVATE_JOB_FIELDS = ['serving', 'skillVersion', 'cliVersion', 'runCount'];
+const PRIVATE_TRIAL_FIELDS = ['targetFile', 'files'];
 const PRIVATE_RUNTIME_FIELDS = ['agentStatus', 'graderStatus'];
 
 describe('rebuildEvals: gating', () => {
@@ -51,23 +51,23 @@ describe('rebuildEvals: gating', () => {
   test('throws on an excludeGuides typo instead of publishing everything', () => {
     assert.throws(
       () => build(loadFixture(), { excludeGuides: ['securty'] }),
-      (err: unknown) => err instanceof OverrideError && /not present in this suite/.test(err.message),
+      (err: unknown) => err instanceof OverrideError && /not present in this job/.test(err.message),
     );
   });
 });
 
 describe('rebuildEvals: field allowlists', () => {
-  test('keeps only allowlisted suite-level fields', () => {
+  test('keeps only allowlisted job-level fields', () => {
     const raw = loadFixture();
     const out = build(raw);
 
-    const allowed = new Set<string>([...PUBLIC_SUITE_FIELDS, 'reasoningEffort', 'curated', 'summary', 'stats', 'results']);
+    const allowed = new Set<string>([...PUBLIC_JOB_FIELDS, 'reasoningEffort', 'curated', 'summary', 'stats', 'results']);
     for (const key of Object.keys(out)) {
-      assert.ok(allowed.has(key), `unexpected suite field: ${key}`);
+      assert.ok(allowed.has(key), `unexpected job field: ${key}`);
     }
-    assert.ok(!('reasoningEffort' in out), 'older suites without reasoningEffort must keep omitting it');
-    assert.ok(!('curated' in out), 'regular suites must omit curated');
-    for (const field of PRIVATE_SUITE_FIELDS) {
+    assert.ok(!('reasoningEffort' in out), 'older jobs without reasoningEffort must keep omitting it');
+    assert.ok(!('curated' in out), 'regular jobs must omit curated');
+    for (const field of PRIVATE_JOB_FIELDS) {
       assert.ok(field in raw, `fixture should contain ${field} so this test is meaningful`);
       assert.ok(!(field in out), `${field} leaked into public evals`);
     }
@@ -108,52 +108,52 @@ describe('rebuildEvals: field allowlists', () => {
     assert.ok(!('reasoningEffort' in withInvalidLevel));
   });
 
-  test('keeps only allowlisted run, runtime, tokenUsage and assertion fields', () => {
+  test('keeps only allowlisted trial, runtime, tokenUsage and check fields', () => {
     const raw = loadFixture();
     const out = build(raw);
-    const runAllowed = new Set<string>([...PUBLIC_RUN_FIELDS, 'results', 'runtime', 'tokenUsage']);
-    const checkAllowed = new Set<string>(PUBLIC_ASSERTION_FIELDS);
+    const trialAllowed = new Set<string>([...PUBLIC_TRIAL_FIELDS, 'results', 'runtime', 'tokenUsage']);
+    const checkAllowed = new Set<string>(PUBLIC_CHECK_FIELDS);
 
-    const rawRuns = Object.values(raw.results).flat();
-    for (const field of PRIVATE_RUN_FIELDS) {
-      assert.ok(rawRuns.some(r => field in r), `fixture runs should contain ${field} so this test is meaningful`);
+    const rawTrials = Object.values(raw.results).flat();
+    for (const field of PRIVATE_TRIAL_FIELDS) {
+      assert.ok(rawTrials.some(r => field in r), `fixture trials should contain ${field} so this test is meaningful`);
     }
-    const rawRuntime = rawRuns.find(r => r.runtime)?.runtime as Record<string, unknown>;
+    const rawRuntime = rawTrials.find(r => r.runtime)?.runtime as Record<string, unknown>;
     for (const field of PRIVATE_RUNTIME_FIELDS) {
       assert.ok(field in rawRuntime, `fixture runtime should contain ${field} so this test is meaningful`);
     }
 
-    let runs = 0;
+    let trials = 0;
     let checks = 0;
-    for (const runList of Object.values(out.results)) {
-      for (const run of runList) {
-        runs++;
-        for (const key of Object.keys(run)) {
-          assert.ok(runAllowed.has(key), `unexpected run field: ${key}`);
+    for (const trialList of Object.values(out.results)) {
+      for (const trial of trialList) {
+        trials++;
+        for (const key of Object.keys(trial)) {
+          assert.ok(trialAllowed.has(key), `unexpected trial field: ${key}`);
         }
-        for (const field of PRIVATE_RUN_FIELDS) {
-          assert.ok(!(field in run), `${field} leaked into public run`);
+        for (const field of PRIVATE_TRIAL_FIELDS) {
+          assert.ok(!(field in trial), `${field} leaked into public trial`);
         }
         // Per-guide views group charts by discipline; without it everything shows as "Uncategorized".
-        assert.ok(typeof run.discipline === 'string' && run.discipline.length > 0, 'discipline must be published');
-        if (run.runtime) {
-          assert.deepEqual(Object.keys(run.runtime).sort(), ['agentRuntime', 'graderRuntime'].filter(k => k in run.runtime!));
+        assert.ok(typeof trial.discipline === 'string' && trial.discipline.length > 0, 'discipline must be published');
+        if (trial.runtime) {
+          assert.deepEqual(Object.keys(trial.runtime).sort(), ['agentRuntime', 'graderRuntime'].filter(k => k in trial.runtime!));
           for (const field of PRIVATE_RUNTIME_FIELDS) {
-            assert.ok(!(field in run.runtime), `${field} leaked into public runtime`);
+            assert.ok(!(field in trial.runtime), `${field} leaked into public runtime`);
           }
         }
-        if (run.tokenUsage) {
-          assert.deepEqual(Object.keys(run.tokenUsage).sort(), ['cached', 'total']);
+        if (trial.tokenUsage) {
+          assert.deepEqual(Object.keys(trial.tokenUsage).sort(), ['cached', 'total']);
         }
-        for (const check of run.results) {
+        for (const check of trial.results) {
           checks++;
           for (const key of Object.keys(check)) {
-            assert.ok(checkAllowed.has(key), `unexpected assertion field: ${key}`);
+            assert.ok(checkAllowed.has(key), `unexpected check field: ${key}`);
           }
         }
       }
     }
-    assert.ok(runs > 0 && checks > 0, 'fixture should contain runs and checks');
+    assert.ok(trials > 0 && checks > 0, 'fixture should contain trials and checks');
   });
 
   test('drops null values rather than publishing them', () => {
@@ -196,7 +196,7 @@ describe('rebuildEvals: metrics', () => {
 
     const keys = Object.keys(out.results);
     assert.ok(keys.length > 0);
-    assert.ok(keys.every(k => !k.includes(' - security - ')), 'security scenarios should be gone');
+    assert.ok(keys.every(k => !k.includes(' - security - ')), 'security tasks should be gone');
     assert.ok(Object.keys(out.stats).every(k => !k.includes(' - security - ')), 'security stats should be gone');
 
     const droppedChecks = Object.entries(raw.results)
@@ -279,7 +279,7 @@ describe('guideOfResultKey', () => {
 });
 
 describe('withoutGuides', () => {
-  test('removes both guided and unguided scenarios for the guide', () => {
+  test('removes both guided and unguided tasks for the guide', () => {
     const kept = withoutGuides(results, ['security']);
     assert.deepEqual(Object.keys(kept).sort(), [
       'daily-grind - long-task - guided',
@@ -298,10 +298,10 @@ describe('withoutGuides', () => {
     assert.notEqual(kept, results);
   });
 
-  test('throws when an excluded guide is not in the suite', () => {
+  test('throws when an excluded guide is not in the job', () => {
     assert.throws(
       () => withoutGuides(results, ['securty']),
-      (err: unknown) => err instanceof OverrideError && /not present in this suite: securty/.test(err.message),
+      (err: unknown) => err instanceof OverrideError && /not present in this job: securty/.test(err.message),
     );
   });
 

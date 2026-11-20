@@ -1,27 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "allowlist.schema.json",
-  "title": "Public eval suites allowlist",
-  "description": "Decides which raw eval suites in gs://guidance-evals are rebuilt into the public copy. Changed by pull request only. This file documents the shape for editors; src/harness/public/allowlist.ts enforces the same rules natively at load time and before every write, plus the rules a schema cannot express (wildcard include patterns must start with nightly-; each suite has at most one overrides entry).",
+  "title": "Public eval jobs allowlist",
+  "description": "Decides which raw eval jobs in gs://guidance-evals are rebuilt into the public copy. Changed by pull request only. This file documents the shape for editors; src/harness/public/allowlist.ts enforces the same rules natively at load time and before every write, plus the rules a schema cannot express (wildcard include patterns must start with nightly-; each job has at most one overrides entry).",
   "type": "object",
   "additionalProperties": false,
   "required": ["include", "exclude", "overrides", "releasedModels"],
   "properties": {
     "$schema": { "type": "string" },
     "include": {
-      "description": "Suite IDs or glob patterns (* and ? only) that are eligible for publishing, e.g. nightly-*-codex_cli.",
+      "description": "Job IDs or glob patterns (* and ? only) that are eligible for publishing, e.g. nightly-*-codex_cli.",
       "type": "array",
       "items": { "type": "string", "pattern": "^\\S+$" },
       "uniqueItems": true
     },
     "exclude": {
-      "description": "Exact suite IDs that must not be published even if they match include.",
+      "description": "Exact job IDs that must not be published even if they match include.",
       "type": "array",
       "items": { "type": "string", "pattern": "^[^*?\\s]+$" },
       "uniqueItems": true
     },
     "overrides": {
-      "description": "Per-suite guide-level exclusions.",
+      "description": "Per-job guide-level exclusions.",
       "type": "array",
       "items": {
         "type": "object",
@@ -45,13 +45,13 @@
       "uniqueItems": true
     },
     "retention": {
-      "description": "How much history stays published. Older or surplus suites are dropped from the public copy on the next build; their raw data is untouched.",
+      "description": "How much history stays published. Older or surplus jobs are dropped from the public copy on the next build; their raw data is untouched.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "maxAgeDays": { "type": "integer", "minimum": 1, "description": "Drop suites whose raw evals.json is older than this many days." },
-        "maxSuites": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable suites in total (unreleased runs do not count)." },
-        "maxSuitesPerAgent": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable suites per agent, applied before maxSuites, so one agent cannot age the others out." }
+        "maxAgeDays": { "type": "integer", "minimum": 1, "description": "Drop jobs whose raw evals.json is older than this many days." },
+        "maxSuites": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable jobs in total (unreleased jobs do not count)." },
+        "maxSuitesPerAgent": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable jobs per agent, applied before maxSuites, so one agent cannot age the others out." }
       }
     }
   }

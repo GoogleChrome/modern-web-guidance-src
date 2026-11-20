@@ -31,7 +31,7 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 | Release a model | Add it to `releasedModels` |
 | Publish a job the patterns do not cover | Add its exact id to `include` |
 | Hide a whole job | Add its id to `exclude` |
-| Hide one guide inside a job | Add `{ "id": "<suite-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per job; list several guides in it) |
+| Hide one guide inside a job | Add `{ "id": "<job-id>", "excludeGuides": ["<guide>"] }` to `overrides` (one entry per job; list several guides in it) |
 | Restore a hidden job or guide | Remove the `exclude` entry or the override |
 | Keep the site small | Set `retention.maxSuitesPerAgent` / `retention.maxSuites` / `retention.maxAgeDays` |
 
@@ -55,7 +55,7 @@ published treats every job as changed and rebuilds all of them with its own rule
 
 Usernames are scrubbed from two sources: the names the builder harvests from
 each job's own paths, plus your OS user. To add more (other operators whose
-runs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
+jobs are in the bucket), set `PUBLIC_EVALS_FORBIDDEN_TOKENS=alice,bob`; in CI,
 where the OS user is just `runner`, that variable is required.
 
 It checks out the published `public-evals/` from `gh-pages`, rebuilds it from

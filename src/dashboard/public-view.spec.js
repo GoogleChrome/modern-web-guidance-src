@@ -2,8 +2,8 @@ import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ARTIFACTS_FILE, buildSuite, writeManifest } from '../harness/public/builder.ts';
-import { LocalSuiteStore } from '../harness/public/suite-store.ts';
+import { ARTIFACTS_FILE, buildJob, writeManifest } from '../harness/public/builder.ts';
+import { LocalJobStore } from '../harness/public/suite-store.ts';
 import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore, SECURITY_RUN } from '../harness/public/fixtures/make-store.ts';
 
 /**
@@ -32,8 +32,8 @@ test.beforeAll(async () => {
   rawEvalsJson = fs.readFileSync(path.join(root, SUITE, 'evals.json'), 'utf8');
 
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'public-view-out-'));
-  const result = await buildSuite(SUITE, {
-    store: new LocalSuiteStore(root),
+  const result = await buildJob(SUITE, {
+    store: new LocalJobStore(root),
     outDir,
     baseAppsDir: baseApps,
     allowlist: { include: ['nightly-*'], exclude: [], overrides: [], releasedModels: [FIXTURE_MODEL] },

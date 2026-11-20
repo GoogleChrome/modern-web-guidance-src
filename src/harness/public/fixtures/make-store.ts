@@ -20,7 +20,7 @@ export const PASSKEY_RUN = '1/passkey-authentication/task/guided';
 const FIXTURE_EVALS = path.join(import.meta.dirname, 'nightly-sample.evals.json');
 
 export interface FixtureStore {
-  /** Pass to `new LocalSuiteStore(root)`. */
+  /** Pass to `new LocalJobStore(root)`. */
   root: string;
   /** Pass as `baseAppsDir`; contains `daily-grind/index.html`. */
   baseApps: string;

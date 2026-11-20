@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseResultPath, evaluateScenarioResults } from './collection.ts';
+import { parseResultPath, evaluateTrialChecks } from './collection.ts';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -11,7 +11,7 @@ test('parseResultPath handles new structure', () => {
   assert.deepStrictEqual(result, {
     guide: 'guide-name',
     taskName: 'task-name',
-    runType: 'guided'
+    condition: 'guided'
   });
 });
 
@@ -21,7 +21,7 @@ test('parseResultPath handles legacy structure', () => {
   assert.deepStrictEqual(result, {
     guide: 'guide-name',
     taskName: 'task',
-    runType: 'guided'
+    condition: 'guided'
   });
 });
 
@@ -31,7 +31,7 @@ test('parseResultPath handles legacy negative structure', () => {
   assert.deepStrictEqual(result, {
     guide: 'guide-name',
     taskName: 'task',
-    runType: 'guided'
+    condition: 'guided'
   });
 });
 
@@ -41,17 +41,17 @@ test('parseResultPath returns null for invalid structure', () => {
   assert.strictEqual(result, null);
 });
 
-test('parseResultPath handles deep suite and nightly structure', () => {
+test('parseResultPath handles deep job and nightly structure', () => {
   const relPath = path.join('nightly-2026-08-10_17-00-02-jetski_cli', '1', 'accessible-error-announcement', 'task', 'guided');
   const result = parseResultPath(relPath);
   assert.deepStrictEqual(result, {
     guide: 'accessible-error-announcement',
     taskName: 'task',
-    runType: 'guided'
+    condition: 'guided'
   });
 });
 
-test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from agent-broken apps (0/N checks)', async (t) => {
+test('evaluateTrialChecks splits infra errors (isEarlyFailure: true) from agent-broken apps (0/N checks)', async (t) => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-denom-test-'));
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
@@ -65,8 +65,8 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
     `;
     fs.writeFileSync(graderPath, graderContent);
 
-    await t.test('missing target app without generation_failed.json is an agent failure (0/N checks, not isEarlyFailure)', () => {
-      const res = evaluateScenarioResults(
+    await t.test('missing solution app without generation_failed.json is an agent failure (0/N checks, not isEarlyFailure)', () => {
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,
@@ -86,7 +86,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
     await t.test('empty suites in grader results JSON without generation_failed.json is an agent failure (0/N checks)', () => {
       const resultsJsonPath = path.join(tempDir, 'results.json');
       fs.writeFileSync(resultsJsonPath, JSON.stringify({ suites: [] }));
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,
@@ -104,7 +104,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
     });
 
     await t.test('missing grader results JSON (ENOENT) without generation_failed.json is an agent failure (0/N checks)', () => {
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,
@@ -126,12 +126,12 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
         path.join(tempDir, 'generation_failed.json'),
         JSON.stringify({ agentName: 'claude_code', exitCode: 'TIMEOUT (10m)' })
       );
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,
         path.join(tempDir, 'results.json'),
-        false, // even when targetAppExists is false, generation_failed.json takes precedence
+        false, // even when solutionPresent is false, generation_failed.json takes precedence
         path.join(tempDir, 'index.html')
       );
       assert.deepStrictEqual(res, [{
@@ -143,7 +143,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
     });
 
     await t.test('missing grader.ts is an infra error (single isEarlyFailure entry)', () => {
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         path.join(tempDir, 'non_existent_grader.ts'),
@@ -159,7 +159,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
       }]);
     });
 
-    await t.test('omits skipped Playwright specs from scenario results instead of counting them as failed', () => {
+    await t.test('omits skipped Playwright specs from trial checks instead of counting them as failed', () => {
       const genFail = path.join(tempDir, 'generation_failed.json');
       if (fs.existsSync(genFail)) fs.unlinkSync(genFail);
 
@@ -195,7 +195,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
         })
       );
 
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,
@@ -231,7 +231,7 @@ test('evaluateScenarioResults splits infra errors (isEarlyFailure: true) from ag
         })
       );
 
-      const res = evaluateScenarioResults(
+      const res = evaluateTrialChecks(
         tempDir,
         'test-guide',
         graderPath,

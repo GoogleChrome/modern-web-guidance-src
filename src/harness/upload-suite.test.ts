@@ -156,15 +156,15 @@ describe('reconcileAndUploadManifest', () => {
     },
   });
 
-  function makeManifestBucket(initialManifest: unknown[] | null, suiteEvals: Record<string, unknown>) {
+  function makeManifestBucket(initialManifest: unknown[] | null, jobEvals: Record<string, unknown>) {
     let savedManifest: any[] | null = initialManifest ? structuredClone(initialManifest) : null;
-    const downloadedSuites: string[] = [];
+    const downloadedJobs: string[] = [];
     return {
-      downloadedSuites,
+      downloadedJobs,
       getSavedManifest: () => savedManifest,
       bucket: {
         async getFiles() {
-          return [[], null, { prefixes: Object.keys(suiteEvals).map(id => `${id}/`) }];
+          return [[], null, { prefixes: Object.keys(jobEvals).map(id => `${id}/`) }];
         },
         file(objectPath: string) {
           if (objectPath === 'suites.gen.json') {
@@ -174,11 +174,11 @@ describe('reconcileAndUploadManifest', () => {
               async save(body: string) { savedManifest = JSON.parse(body); },
             };
           }
-          const suiteId = objectPath.replace(/\/evals\.json$/, '');
+          const jobId = objectPath.replace(/\/evals\.json$/, '');
           return {
             async download() {
-              downloadedSuites.push(suiteId);
-              return [Buffer.from(JSON.stringify(suiteEvals[suiteId]))];
+              downloadedJobs.push(jobId);
+              return [Buffer.from(JSON.stringify(jobEvals[jobId]))];
             },
           };
         },
@@ -186,7 +186,7 @@ describe('reconcileAndUploadManifest', () => {
     };
   }
 
-  test('backfills only suites missing headline stats by default and re-extracts all when reextractAll is set', async () => {
+  test('backfills only jobs missing headline stats by default and re-extracts all when reextractAll is set', async () => {
     const completeStaleEntry = {
       testId: 'nightly-2026-10-20_07-00-00-codex_cli',
       guidedStats: { passed: 0, total: 1 },
@@ -207,19 +207,19 @@ describe('reconcileAndUploadManifest', () => {
 
     // Default reconciliation: backfills only the incomplete entry, leaving completeStaleEntry untouched.
     await reconcileAndUploadManifest(store.bucket, null, null);
-    assert.deepEqual(store.downloadedSuites, ['nightly-2026-10-21_07-00-00-codex_cli']);
+    assert.deepEqual(store.downloadedJobs, ['nightly-2026-10-21_07-00-00-codex_cli']);
     assert.equal(store.getSavedManifest()?.[0].a11yStats.guidedPassed, 0);
     assert.equal(store.getSavedManifest()?.[1].a11yStats.guidedPassed, 1);
 
-    // Full re-extraction (--reextract-manifest): refreshes already-populated entries too, skipping uploadedSuiteName if just provided.
-    store.downloadedSuites.length = 0;
+    // Full re-extraction (--reextract-manifest): refreshes already-populated entries too, skipping uploadedJobId if just provided.
+    store.downloadedJobs.length = 0;
     await reconcileAndUploadManifest(
       store.bucket,
       'nightly-2026-10-21_07-00-00-codex_cli',
       sampleEvals(false),
       { reextractAll: true },
     );
-    assert.deepEqual(store.downloadedSuites, ['nightly-2026-10-20_07-00-00-codex_cli']);
+    assert.deepEqual(store.downloadedJobs, ['nightly-2026-10-20_07-00-00-codex_cli']);
     assert.equal(store.getSavedManifest()?.[0].a11yStats.guidedPassed, 1);
     assert.equal(store.getSavedManifest()?.[1].a11yStats.guidedPassed, 0);
   });

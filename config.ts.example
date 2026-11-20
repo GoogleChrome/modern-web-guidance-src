@@ -1,6 +1,6 @@
-import { Agents, type SuiteConfig } from './src/harness/config.ts';
+import { Agents, type JobConfig } from './src/harness/config.ts';
 
-const customConfig: Partial<SuiteConfig> = {
+const customConfig: Partial<JobConfig> = {
   agent: Agents.ANTIGRAVITY_CLI,
   numRuns: 1,
   tasks: [

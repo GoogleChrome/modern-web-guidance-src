@@ -111,8 +111,8 @@ export async function parseAntigravityTrajectory(dirPath: string): Promise<Traje
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('antigravity-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.ANTIGRAVITY_CLI, templateDir, runType);
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('antigravity-cli-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.ANTIGRAVITY_CLI, baseAppDir, condition);
 
   if (!workDir) {
     throw new Error('Failed to initialize working directory');
@@ -125,7 +125,7 @@ async function run() {
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
     try {
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI', runType);
+      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI', condition);
     } finally {
       exportAntigravityTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.ANTIGRAVITY_CLI, userPrompt);

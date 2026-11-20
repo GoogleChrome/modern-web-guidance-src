@@ -1,11 +1,11 @@
 /**
  * @file backfill.ts
- * @description Backfills evaluation metrics for all suites in a results directory.
+ * @description Backfills evaluation metrics for all jobs in a results directory.
  * 
  * Rationale:
  * When reporting logic changes (e.g., adding split guide metrics or handling new directory structures),
- * we need to re-evaluate historical test runs to update their `evals.json` and `evals.md` reports.
- * This script iterates over all suite directories in the results folder and delegates to `evaluateSuite`
+ * we need to re-evaluate historical trials to update their `evals.json` and `evals.md` reports.
+ * This script iterates over all job directories in the results folder and delegates to `evaluateJob`
  * to re-process results, running grading only if missing, and updating the summary files.
  * 
  * Usage:
@@ -17,7 +17,7 @@
 import path from 'path';
 import fs from 'fs';
 import 'colors';
-import { evaluateSuite } from './evaluate.ts';
+import { evaluateJob } from './evaluate.ts';
 import { suitesDir } from '../core/paths.ts';
 
 export function resolveResultsDir(argv: string[], defaultDir: string): string {
@@ -31,8 +31,8 @@ export function resolveResultsDir(argv: string[], defaultDir: string): string {
   return defaultDir;
 }
 
-async function backfillSuite(suiteResultsDir: string, suiteName: string) {
-  await evaluateSuite(suiteResultsDir, suiteName);
+async function backfillJob(jobResultsDir: string, jobId: string) {
+  await evaluateJob(jobResultsDir, jobId);
 }
 
 export async function runBackfill() {
@@ -46,20 +46,20 @@ export async function runBackfill() {
   }
 
   const entries = fs.readdirSync(mainResultsDir, { withFileTypes: true });
-  // Check if this is a single suite folder (contains numbered run directories)
-  const hasRunDirs = entries.some(e => e.isDirectory() && /^\d+$/.test(e.name));
+  // Check if this is a single job folder (contains numbered trial repetition directories)
+  const hasTrialIndexDirs = entries.some(e => e.isDirectory() && /^\d+$/.test(e.name));
 
-  if (hasRunDirs) {
-    const suiteName = path.basename(mainResultsDir);
-    console.log(`Detected single suite folder. Backfilling ${suiteName}...`.cyan);
-    await backfillSuite(mainResultsDir, suiteName);
+  if (hasTrialIndexDirs) {
+    const jobId = path.basename(mainResultsDir);
+    console.log(`Detected single job folder. Backfilling ${jobId}...`.cyan);
+    await backfillJob(mainResultsDir, jobId);
   } else {
-    const suiteDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
-    console.log(`Found ${suiteDirs.length} potential suites in ${mainResultsDir}.`.cyan);
+    const jobDirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+    console.log(`Found ${jobDirs.length} potential jobs in ${mainResultsDir}.`.cyan);
 
-    for (const suiteName of suiteDirs) {
-      const suiteResultsDir = path.join(mainResultsDir, suiteName);
-      await backfillSuite(suiteResultsDir, suiteName);
+    for (const jobId of jobDirs) {
+      const jobResultsDir = path.join(mainResultsDir, jobId);
+      await backfillJob(jobResultsDir, jobId);
     }
   }
 
