@@ -4,8 +4,13 @@
 - Any element that sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) also has a non-zero `border-radius`.
 - Any element that uses `border-shape` defines its outline with `polygon()` or `shape()`.
 - An element using `border-shape` keeps a visible `border` or `box-shadow` instead of relying on `clip-path`.
-- When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, a transparent border, and no `box-shadow`, gated by `@supports not (border-shape: ...)`.
+- When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, gated by `@supports not (border-shape: ...)`.
+- When `border-shape` is unsupported, the fallback element has a transparent border.
+- When `border-shape` is unsupported, the fallback element has no `box-shadow`.
+- When `border-shape` is unsupported, the fallback element sets `border-radius: 0`.
 - A rounded polygon uses `polygon(round <length>, ...)` inside `clip-path`.
 - When `polygon(round ...)` is unsupported, the element uses a `polygon()` without `round`, with the rounded version gated by `@supports`.
 - An element clipped with `clip-path` has no `box-shadow` itself, and its shadow comes from `filter: drop-shadow()` on a wrapping ancestor.
-- A responsive curved cutout uses `clip-path: shape()` with percentage coordinates, gated by `@supports` that tests `shape()`, and the element sets `border-radius: 0` when the shape is applied.
+- A responsive curved cutout uses `clip-path: shape()` with percentage coordinates.
+- An element clipped with `clip-path: shape()` sets `border-radius: 0`.
+- When `shape()` is unsupported, the cutout uses a `polygon()` with the same overall outline, with the `shape()` version gated by `@supports`.
