@@ -21,8 +21,8 @@ Shape the element itself with CSS instead of nesting extra elements, using image
 
 - Circles, ellipses, pills, and blobs: `border-radius`.
 - Different corner geometry (squircle, bevel, scoop, notch): `corner-shape` on top of `border-radius`.
-- Custom outline that must keep its border, shadow, and hit area: `border-shape`.
-- Custom outline without a border, where a clipped fill is enough: `clip-path` with `polygon()`, rounded `polygon()`, or `shape()`.
+- Custom geometric or path outlines (speech bubbles, badges, ribbons, tickets): `border-shape` with `polygon()` (or `polygon(round ...)`) or `shape()`, which reshapes borders, shadows, focus outlines, and hit-testing with the element.
+- Clipping an image, media, or inner children to a shape without affecting the element's outer box, border, or shadow (or animated reveal wipes): `clip-path`.
 - Soft, feathered, or free-form textured edges: masking with `mask-image`, which does not reshape borders, `box-shadow`, or pointer hit-testing (see {{ GUIDE_REF("complex-shapes") }}).
 - Masked notches or knockout cutouts using SVG or CSS gradient masks: see {{ GUIDE_REF("shaped-cutouts") }}.
 
