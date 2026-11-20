@@ -81,17 +81,23 @@ When a design depends on distinct non-rounded silhouettes (`bevel`, `notch`, or 
 If your Baseline target does not support `border-shape`, declare the `border-shape` outline inside `@supports (border-shape: circle(50%))` and provide a `clip-path` with the same outline inside `@supports not (border-shape: circle(50%))`. In the fallback, make the border color transparent, reset `border-radius: 0`, and clear `box-shadow: none` without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). The fallback outline matches, but `clip-path` also clips the focus outline and ignores pointer events outside the shape.
 
 ```css
-.badge { border: 2px solid var(--accent); box-shadow: var(--shadow); }
+.badge {
+  /* Example outline; one variable keeps border-shape and the clip-path fallback identical */
+  --badge-shape: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%);
+  border: 2px solid currentColor;
+  box-shadow: 0 10px 18px rgb(0 0 0 / 0.2); /* Example values */
+}
 
 @supports (border-shape: circle(50%)) {
-  .badge { border-shape: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%); }
+  .badge { border-shape: var(--badge-shape); }
 }
 
 @supports not (border-shape: circle(50%)) {
   .badge {
     border-color: transparent;
+    border-radius: 0;
     box-shadow: none;
-    clip-path: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%);
+    clip-path: var(--badge-shape);
   }
 }
 ```
