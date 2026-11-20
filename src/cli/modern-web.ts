@@ -23,8 +23,44 @@ import { determineAgent, KNOWN_AGENTS } from "./telemetry/detect-agent.ts";
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
+/**
+ * Pulls `--telemetry=<bool>` out of the args that come before a `--` terminator, so no
+ * subcommand or child process has to know the flag. A bare `--telemetry` yields an empty value.
+ */
+function extractTelemetryFlag(args: string[]): { rest: string[]; telemetryValues: string[] } {
+  const rest: string[] = [];
+  const telemetryValues: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--") {
+      rest.push(...args.slice(i));
+      break;
+    }
+    if (arg === "--telemetry" || arg.startsWith("--telemetry=")) {
+      telemetryValues.push(arg.slice("--telemetry=".length));
+    } else {
+      rest.push(arg);
+    }
+  }
+  return { rest, telemetryValues };
+}
+
+const { rest: cliArgs, telemetryValues } = extractTelemetryFlag(process.argv.slice(2));
+
+const invalidTelemetryValue = telemetryValues.find(v => v !== "true" && v !== "false");
+if (invalidTelemetryValue !== undefined) {
+  console.error(`Invalid value for --telemetry: ${JSON.stringify(invalidTelemetryValue)}. Use --telemetry=true or --telemetry=false.`);
+  process.exit(1);
+}
+
+// `--telemetry=true` cannot undo another opt-out. The env var is the switch the logger reads,
+// and the `npx skills` child processes inherit it.
+if (telemetryValues.includes("false")) {
+  process.env.DISABLE_TELEMETRY = "1";
+}
+
 const { values, positionals } = parseArgs({
-  args: process.argv.slice(2),
+  args: cliArgs,
   options: {
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
@@ -77,6 +113,7 @@ Commands:
 Options:
   --skill-version <version> Internal use: version of the skill being executed
   --choose                  Choose specific skills from the repository interactively
+  --telemetry=false         Disable telemetry for this run
   -h, --help                Show this help
   -v, --version             Show version
 `);
@@ -96,7 +133,7 @@ async function main() {
     maybeEmitUpdateMessage(skillVersion);
     // Dynamic import to keep the CLI loading fast -- only load legacy-scan dependencies if needed.
     const { runLegacyScanCli, writeLegacyScanCliResult } = await import("../legacy-scan/cli.ts");
-    const args = process.argv.slice(2);
+    const args = [...cliArgs];
     const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
     const startTime = Date.now();
@@ -236,7 +273,9 @@ async function main() {
   } else if (command === "install") {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
-    const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
+    const extraArgs = cliArgs.filter(a => a !== "--choose");
+    const cmdIdx = extraArgs.indexOf(command);
+    if (cmdIdx !== -1) extraArgs.splice(cmdIdx, 1);
     const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)

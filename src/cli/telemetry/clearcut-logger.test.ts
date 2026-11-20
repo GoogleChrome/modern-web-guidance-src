@@ -1,5 +1,8 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { detectOS, bucketizeLatency, ClearcutLogger } from './clearcut-logger.ts';
 import { OsType, CommandType } from './types.ts';
 import { WatchdogClient } from './watchdog-client.ts';
@@ -39,15 +42,40 @@ describe('bucketizeLatency', () => {
 describe('ClearcutLogger', () => {
   let savedDisableTelemetry: string | undefined;
   let savedNodeTestContext: string | undefined;
+  let savedHome: string | undefined;
+  let savedUserProfile: string | undefined;
+  let savedCwd: string;
+  let sandboxDir: string;
+  let projectDir: string;
+  let homeDir: string;
 
   beforeEach(() => {
     savedDisableTelemetry = process.env.DISABLE_TELEMETRY;
     savedNodeTestContext = process.env.NODE_TEST_CONTEXT;
     delete process.env.DISABLE_TELEMETRY;
     delete process.env.NODE_TEST_CONTEXT;
+
+    // Keep the developer's own `.mwgrc` files out of these tests.
+    sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-logger-test-'));
+    projectDir = path.join(sandboxDir, 'project');
+    homeDir = path.join(sandboxDir, 'home');
+    fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
+    fs.mkdirSync(homeDir);
+    savedHome = process.env.HOME;
+    savedUserProfile = process.env.USERPROFILE;
+    process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
+    savedCwd = process.cwd();
+    process.chdir(projectDir);
   });
 
   afterEach(() => {
+    process.chdir(savedCwd);
+    if (savedHome !== undefined) process.env.HOME = savedHome;
+    else delete process.env.HOME;
+    if (savedUserProfile !== undefined) process.env.USERPROFILE = savedUserProfile;
+    else delete process.env.USERPROFILE;
+    fs.rmSync(sandboxDir, { recursive: true, force: true });
     if (savedDisableTelemetry !== undefined) {
       process.env.DISABLE_TELEMETRY = savedDisableTelemetry;
     } else {
@@ -81,6 +109,24 @@ describe('ClearcutLogger', () => {
       const logger = new ClearcutLogger();
       await logger.logToolCommand(120, true, CommandType.INSTALL);
       assert.strictEqual(sendMock.mock.calls.length, 0, 'WatchdogClient.send should not be called inside node --test context');
+    } finally {
+      sendMock.mock.restore();
+    }
+  });
+
+  it('disables telemetry when ~/.mwgrc or the project .mwgrc sets "telemetry": false', async () => {
+    const sendMock = mock.method(WatchdogClient.prototype, 'send', () => {});
+
+    try {
+      const homeConfig = path.join(homeDir, '.mwgrc');
+      fs.writeFileSync(homeConfig, JSON.stringify({ telemetry: false }));
+      await new ClearcutLogger().logToolCommand(120, true, CommandType.LIST);
+      assert.strictEqual(sendMock.mock.calls.length, 0, 'home .mwgrc opt-out should apply inside a git repo');
+
+      fs.rmSync(homeConfig);
+      fs.writeFileSync(path.join(projectDir, '.mwgrc'), JSON.stringify({ telemetry: false }));
+      await new ClearcutLogger().logToolCommand(120, true, CommandType.LIST);
+      assert.strictEqual(sendMock.mock.calls.length, 0, 'project .mwgrc opt-out should apply');
     } finally {
       sendMock.mock.restore();
     }
