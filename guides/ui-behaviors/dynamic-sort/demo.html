@@ -105,8 +105,14 @@
 
     @media (forced-colors: active) {
       fieldset input:checked + label {
-        outline: 2px solid CanvasText;
-        outline-offset: -4px;
+        forced-color-adjust: none;
+        background: Highlight;
+        color: HighlightText;
+        border-color: Highlight;
+      }
+
+      fieldset input:focus-visible + label {
+        outline-color: Highlight;
       }
     }
 
