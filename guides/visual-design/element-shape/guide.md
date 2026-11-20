@@ -61,11 +61,16 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 
 {{ BASELINE_STATUS("corner-shape") }}
 
-Put every `corner-shape` declaration inside `@supports (corner-shape: squircle)`. Unsupported browsers keep the plain rounded corners, which is an acceptable graceful degradation.
+Declare `corner-shape` directly after `border-radius` without an `@supports` wrapper. For `squircle` and `superellipse()`, unsupported browsers ignore `corner-shape` and keep the plain rounded corners as an acceptable graceful degradation.
+
+When a design depends on distinct non-rounded silhouettes (`bevel`, `notch`, or `scoop`), recreate them inside `@supports not (corner-shape: squircle)`: reset `border-radius: 0`, set `border-color: transparent`, and clear `box-shadow: none` so the cutout doesn't slice them off without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip or mask a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). Parameterize horizontal and vertical corner radii with custom properties clamped via `min(<radius>, 50%)` so the primary `border-radius` and fallback match:
+
+- `bevel` and `notch`: clip angled or stepped corner cutouts with `clip-path: polygon(...)` (and add a `:dir(rtl)` override when replicating logical corner properties such as slanted tags).
+- `scoop`: cut concave corners with four corner `radial-gradient(ellipse var(--corner-x) var(--corner-y) at ..., transparent calc(100% - 1px), black 100%)` layers combined via `mask-composite: intersect` (`-webkit-mask-composite: source-in`).
 
 {{ BASELINE_STATUS("border-shape") }}
 
-If your Baseline target does not support `border-shape`, declare the `border-shape` outline inside `@supports (border-shape: circle(50%))` and provide a `clip-path` with the same outline inside `@supports not (border-shape: circle(50%))`. In the fallback, make the border color transparent, remove `box-shadow` from the element, and wrap the element so `filter: drop-shadow()` on the wrapper restores the shadow. The fallback outline matches, but the border, outline, and hit-testing follow the clip instead of the shape.
+If your Baseline target does not support `border-shape`, declare the `border-shape` outline inside `@supports (border-shape: circle(50%))` and provide a `clip-path` with the same outline inside `@supports not (border-shape: circle(50%))`. In the fallback, make the border color transparent and clear `box-shadow: none` without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). The fallback outline matches, but the border, outline, and hit-testing follow the clip instead of the shape.
 
 ```css
 .badge { border: 2px solid var(--accent); box-shadow: var(--shadow); }
@@ -75,7 +80,6 @@ If your Baseline target does not support `border-shape`, declare the `border-sha
 }
 
 @supports not (border-shape: circle(50%)) {
-  .badge-wrap { filter: drop-shadow(0 10px 18px var(--shadow-color)); }
   .badge {
     border-color: transparent;
     box-shadow: none;

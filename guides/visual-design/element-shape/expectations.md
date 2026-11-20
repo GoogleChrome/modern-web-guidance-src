@@ -2,7 +2,7 @@
 - A pill-shaped element uses `calc(infinity * 1px)` as its `border-radius`, not a large fixed pixel value.
 - An elliptical or organic element uses `border-radius` with slash syntax to give separate horizontal and vertical radii.
 - At least one element sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) on an element that also has a non-zero `border-radius`.
-- Every `corner-shape` declaration is inside an `@supports` block that tests `corner-shape`, or the page remains acceptable with plain rounded corners when it is unsupported.
+- When `corner-shape` is unsupported, the element keeps usable plain rounded corners from `border-radius`.
 - At least one element with a custom non-rectangular outline uses `border-shape` with `polygon()` or `shape()`, and has `border-radius: 0`.
 - An element using `border-shape` keeps a visible `border` or `box-shadow` instead of relying on `clip-path`.
 - When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, a transparent border, and no `box-shadow`, gated by `@supports not (border-shape: ...)`.

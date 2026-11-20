@@ -35,6 +35,7 @@
 
         --radius-card: 1.25rem;
         --radius-corner-demo: 2rem;
+        --radius-tag-slant: 1rem;
         --radius-elliptical: 1.25rem / 2.5rem;
         --radius-organic: 62% 38% 46% 54% / 44% 58% 42% 56%;
         --radius-pill: 999px;
@@ -166,13 +167,8 @@
         padding: var(--space-md);
         border: var(--stroke-thin) solid var(--border-subtle);
         border-radius: var(--radius-card);
+        corner-shape: squircle;
         background-color: var(--surface-card);
-      }
-
-      @supports (corner-shape: squircle) {
-        .panel {
-          corner-shape: squircle;
-        }
       }
 
       .panel-header {
@@ -264,13 +260,26 @@
 
         /* 2. corner-shape variations */
         .corner-sample {
+          --corner-x: min(var(--radius-corner-demo-x, var(--radius-corner-demo)), 50%);
+          --corner-y: min(var(--radius-corner-demo-y, var(--radius-corner-demo)), 50%);
           inline-size: clamp(6.5rem, 28cqi, 8.5rem);
           block-size: 6rem;
-          border-radius: var(--radius-corner-demo);
+          border-radius: var(--corner-x) / var(--corner-y);
         }
 
         .corner-bevel {
-          border-radius: var(--radius-corner-demo);
+          --corner-x: min(var(--radius-corner-demo-x, var(--radius-corner-demo)), 50%);
+          --corner-y: min(var(--radius-corner-demo-y, var(--radius-corner-demo)), 50%);
+          border-radius: var(--corner-x) / var(--corner-y);
+          corner-shape: bevel;
+        }
+
+        .corner-scoop {
+          corner-shape: scoop;
+        }
+
+        .corner-notch {
+          corner-shape: notch;
         }
 
         .corner-tag-slant {
@@ -278,25 +287,22 @@
           block-size: auto;
           padding-block: 0.6em;
           padding-inline: 1.4em;
-          border-start-start-radius: 1rem 100%;
-          border-end-end-radius: 1rem 100%;
+          border-start-start-radius: var(--radius-tag-slant) 100%;
+          border-end-end-radius: var(--radius-tag-slant) 100%;
+          corner-shape: bevel;
         }
 
-        @supports (corner-shape: squircle) {
-          .corner-bevel {
-            corner-shape: bevel;
-          }
-
-          .corner-scoop {
-            corner-shape: scoop;
-          }
-
-          .corner-notch {
-            corner-shape: notch;
-          }
-
+        /* Fallback for distinct non-rounded corner-shape silhouettes when unsupported */
+        @supports not (corner-shape: squircle) {
           .corner-tag-slant {
-            corner-shape: bevel;
+            border-radius: 0;
+            border-color: transparent;
+            box-shadow: none;
+            clip-path: polygon(var(--radius-tag-slant) 0, 100% 0, calc(100% - var(--radius-tag-slant)) 100%, 0 100%);
+          }
+
+          .corner-tag-slant:dir(rtl) {
+            clip-path: polygon(0 0, calc(100% - var(--radius-tag-slant)) 0, 100% 100%, var(--radius-tag-slant) 100%);
           }
         }
 
@@ -316,12 +322,8 @@
           box-shadow: var(--shadow-shape);
         }
 
-        /* Fallback without border-shape: a clipped fill plus a drop-shadow wrapper */
+        /* Fallback without border-shape: a clipped fill without extra wrapper markup */
         @supports not (border-shape: circle(50%)) {
-          .tooltip-wrap {
-            filter: var(--drop-shadow-shape);
-          }
-
           .tooltip-bubble {
             border-color: transparent;
             box-shadow: none;
@@ -371,10 +373,6 @@
         }
 
         @supports not (border-shape: circle(50%)) {
-          .ribbon-wrap {
-            filter: var(--drop-shadow-shape);
-          }
-
           .ribbon-badge {
             border-color: transparent;
             box-shadow: none;
@@ -526,12 +524,6 @@
         }
       }
 
-      @supports not (corner-shape: squircle) {
-        .corner-controls {
-          display: none;
-        }
-      }
-
       @supports (corner-shape: squircle) {
         .panel {
           &:has(input[value="squircle"]:checked) .interactive-corner { corner-shape: squircle; }
@@ -539,6 +531,62 @@
           &:has(input[value="scoop"]:checked) .interactive-corner { corner-shape: scoop; }
           &:has(input[value="notch"]:checked) .interactive-corner { corner-shape: notch; }
           &:has(input[value="superellipse"]:checked) .interactive-corner { corner-shape: superellipse(1.5); }
+        }
+      }
+
+      @supports not (corner-shape: squircle) {
+        .panel:has(input[value="bevel"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          clip-path: polygon(
+            var(--corner-x) 0,
+            calc(100% - var(--corner-x)) 0,
+            100% var(--corner-y),
+            100% calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) 100%,
+            var(--corner-x) 100%,
+            0 calc(100% - var(--corner-y)),
+            0 var(--corner-y)
+          );
+        }
+
+        .panel:has(input[value="notch"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          clip-path: polygon(
+            var(--corner-x) 0,
+            calc(100% - var(--corner-x)) 0,
+            calc(100% - var(--corner-x)) var(--corner-y),
+            100% var(--corner-y),
+            100% calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) 100%,
+            var(--corner-x) 100%,
+            var(--corner-x) calc(100% - var(--corner-y)),
+            0 calc(100% - var(--corner-y)),
+            0 var(--corner-y),
+            var(--corner-x) var(--corner-y)
+          );
+        }
+
+        .panel:has(input[value="scoop"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          -webkit-mask-image:
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 100%, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 100%, transparent calc(100% - 1px), black 100%);
+          -webkit-mask-composite: source-in;
+          mask-image:
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 100%, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 100%, transparent calc(100% - 1px), black 100%);
+          mask-composite: intersect;
         }
       }
 
@@ -692,19 +740,15 @@
       <section class="panel">
         <header class="panel-header">
           <h2>3. Box Geometry (<code>border-shape</code>)</h2>
-          <p><code>border-shape</code> reshapes the border, shadow, and focus ring directly using <code>shape()</code> or <code>polygon()</code>, falling back to <code>clip-path</code> + <code>drop-shadow()</code>.</p>
+          <p><code>border-shape</code> reshapes the border, shadow, and focus ring directly using <code>shape()</code> or <code>polygon()</code>, falling back to <code>clip-path</code>.</p>
         </header>
         <div class="stage">
           <figure class="specimen">
-            <div class="tooltip-wrap">
-              <div class="tooltip-bubble">Tooltip with tail built from <code>border-shape: shape()</code></div>
-            </div>
+            <div class="tooltip-bubble">Tooltip with tail built from <code>border-shape: shape()</code></div>
             <figcaption>Curved speech bubble</figcaption>
           </figure>
           <figure class="specimen">
-            <div class="ribbon-wrap">
-              <div class="ribbon-badge">Notched Badge</div>
-            </div>
+            <div class="ribbon-badge">Notched Badge</div>
             <figcaption>Notched chevron polygon</figcaption>
           </figure>
         </div>
