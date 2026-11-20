@@ -1,8 +1,8 @@
 - A circular element uses `border-radius: 50%` together with `aspect-ratio: 1`, and its computed width equals its computed height.
 - A pill-shaped element uses `calc(infinity * 1px)` as its `border-radius`, not a large fixed pixel value.
 - An elliptical or organic element uses `border-radius` with slash syntax to give separate horizontal and vertical radii.
-- At least one element sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) on an element that also has a non-zero `border-radius`.
-- At least one element with a custom non-rectangular outline uses `border-shape` with `polygon()` or `shape()`.
+- Any element that sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) also has a non-zero `border-radius`.
+- Any element that uses `border-shape` defines its outline with `polygon()` or `shape()`.
 - An element using `border-shape` keeps a visible `border` or `box-shadow` instead of relying on `clip-path`.
 - When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, a transparent border, and no `box-shadow`, gated by `@supports not (border-shape: ...)`.
 - A rounded polygon uses `polygon(round <length>, ...)` inside `clip-path`.
