@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { resolveMwgrcPath, readMwgrc, writeMwgrc, normalizeBaselineTarget } from './mwgrc.ts';
+import { resolveMwgrcPath, readMwgrc, writeMwgrc, normalizeBaselineTarget, isTelemetryDisabledByMwgrc } from './mwgrc.ts';
 
 describe('mwgrc configuration utility', () => {
   let tempDir: string;
@@ -94,6 +94,50 @@ describe('mwgrc configuration utility', () => {
       else process.env.HOME = prevHome;
       fs.rmSync(fakeHome, { recursive: true, force: true });
     }
+  });
+
+  test('isTelemetryDisabledByMwgrc honors an opt-out in either the project or home config', () => {
+    const repoDir = path.join(tempDir, 'repo');
+    const subDir = path.join(repoDir, 'src');
+    const homeDir = path.join(tempDir, 'home');
+    fs.mkdirSync(path.join(repoDir, '.git'), { recursive: true });
+    fs.mkdirSync(subDir);
+    fs.mkdirSync(homeDir);
+    const projectConfig = path.join(repoDir, '.mwgrc');
+    const homeConfig = path.join(homeDir, '.mwgrc');
+
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), false, 'no config files');
+
+    fs.writeFileSync(homeConfig, JSON.stringify({ telemetry: false }));
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), true, 'home opt-out applies inside a git repo');
+
+    fs.writeFileSync(projectConfig, JSON.stringify({ telemetry: true }));
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), true, 'project true must not override home false');
+
+    fs.writeFileSync(homeConfig, JSON.stringify({ telemetry: true }));
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), false, 'both true');
+
+    fs.writeFileSync(projectConfig, JSON.stringify({ telemetry: false }));
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), true, 'home true must not override project false');
+
+    fs.rmSync(homeConfig);
+    assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), true, 'project opt-out alone');
+  });
+
+  test('isTelemetryDisabledByMwgrc fails closed on non-boolean values and unreadable configs', () => {
+    const repoDir = path.join(tempDir, 'repo');
+    const homeDir = path.join(tempDir, 'home');
+    fs.mkdirSync(path.join(repoDir, '.git'), { recursive: true });
+    fs.mkdirSync(homeDir);
+    const projectConfig = path.join(repoDir, '.mwgrc');
+
+    for (const content of ['{"telemetry": "false"}', '{"telemetry": null}', '{ not json', '[]']) {
+      fs.writeFileSync(projectConfig, content);
+      assert.strictEqual(isTelemetryDisabledByMwgrc(repoDir, homeDir), true, content);
+    }
+
+    fs.writeFileSync(projectConfig, JSON.stringify({ allowOriginTrials: true }));
+    assert.strictEqual(isTelemetryDisabledByMwgrc(repoDir, homeDir), false, 'unrelated keys leave telemetry on');
   });
 
   test('normalizeBaselineTarget normalizes supported targets and rejects invalid inputs', () => {

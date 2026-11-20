@@ -322,6 +322,106 @@ describe('modern-web CLI', () => {
     }
   });
 
+  it('lists --telemetry=false in --help', () => {
+    const { status, stdout } = runCLI(['--help']);
+    assert.strictEqual(status, 0);
+    assert.ok(stdout.includes('--telemetry=false'));
+  });
+
+  it('rejects --telemetry values other than true or false', () => {
+    const { status, stderr } = runCLI(['list', '--telemetry=off']);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Invalid option "--telemetry=off"/);
+
+    for (const args of [['list', '--telemetry'], ['list', '--telemetry', 'false']]) {
+      const res = runCLI(args);
+      assert.strictEqual(res.status, 1, args.join(' '));
+      assert.match(res.stderr, /Use --telemetry=true or --telemetry=false/);
+    }
+  });
+
+  it('accepts --telemetry with legacy-scan before or after the command', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-no-telemetry-scan-'));
+    try {
+      for (const args of [
+        ['--telemetry=false', 'legacy-scan', tempDir, '--json'],
+        ['legacy-scan', tempDir, '--json', '--telemetry=false'],
+        ['legacy-scan', '--telemetry=true', tempDir, '--json'],
+      ]) {
+        const res = runCLI(args);
+        assert.strictEqual(res.status, 0, `${args.join(' ')}: ${res.stderr}`);
+        assert.strictEqual(JSON.parse(res.stdout).targetDir, tempDir);
+      }
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('turns --telemetry=false into DISABLE_TELEMETRY=1 for npx without forwarding the flag', () => {
+    const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-no-telemetry-npx-'));
+    const logFile = path.join(tempBinDir, 'npx-call.json');
+    fs.writeFileSync(
+      path.join(tempBinDir, 'npx'),
+      `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ args: process.argv.slice(2), disableTelemetry: process.env.DISABLE_TELEMETRY ?? null }))' "${logFile}" "$@"\n`,
+      { mode: 0o755 }
+    );
+    // Run from a temp project and home so the developer's own `.mwgrc` files cannot opt out.
+    const projectDir = path.join(tempBinDir, 'project');
+    fs.mkdirSync(path.join(projectDir, '.git'), { recursive: true });
+    // Pin NODE_TEST_CONTEXT so no telemetry is sent while DISABLE_TELEMETRY is unset.
+    const recordNpxCall = (args: string[]): { args: string[]; disableTelemetry: string | null } => {
+      fs.rmSync(logFile, { force: true });
+      const result = spawnSync('node', [scriptPath, ...args], {
+        encoding: 'utf8',
+        cwd: projectDir,
+        env: {
+          ...process.env,
+          NO_COLOR: '1',
+          PATH: `${tempBinDir}${path.delimiter}${process.env.PATH}`,
+          HOME: tempBinDir,
+          USERPROFILE: tempBinDir,
+          DISABLE_TELEMETRY: undefined,
+          NODE_TEST_CONTEXT: process.env.NODE_TEST_CONTEXT ?? 'child-v8',
+          npm_config_user_agent: undefined,
+        },
+      });
+      assert.strictEqual(result.status, 0, `${args.join(' ')}: ${result.stderr}`);
+      return JSON.parse(fs.readFileSync(logFile, 'utf8'));
+    };
+
+    try {
+      const baseline = recordNpxCall(['install', '--agent', 'claude-code']);
+      assert.strictEqual(baseline.disableTelemetry, null);
+      assert.deepStrictEqual(baseline.args.slice(-2), ['--agent', 'claude-code']);
+
+      for (const args of [
+        ['install', '--telemetry=false', '--agent', 'claude-code'],
+        ['--telemetry=false', 'install', '--agent', 'claude-code'],
+        ['install', '--agent', 'claude-code', '--telemetry=false'],
+      ]) {
+        const call = recordNpxCall(args);
+        assert.deepStrictEqual(call.args, baseline.args, args.join(' '));
+        assert.strictEqual(call.disableTelemetry, '1', args.join(' '));
+      }
+
+      assert.strictEqual(recordNpxCall(['uninstall']).disableTelemetry, null);
+      assert.strictEqual(recordNpxCall(['--telemetry=false', 'uninstall']).disableTelemetry, '1');
+
+      const leftOn = recordNpxCall(['install', '--telemetry=true', '--agent', 'claude-code']);
+      assert.deepStrictEqual(leftOn.args, baseline.args);
+      assert.strictEqual(leftOn.disableTelemetry, null);
+
+      const afterTerminator = recordNpxCall(['install', '--', '--telemetry=false']);
+      assert.deepStrictEqual(afterTerminator.args.slice(-2), ['--', '--telemetry=false']);
+      assert.strictEqual(afterTerminator.disableTelemetry, null);
+
+      fs.writeFileSync(path.join(projectDir, '.mwgrc'), JSON.stringify({ telemetry: false }));
+      assert.strictEqual(recordNpxCall(['uninstall']).disableTelemetry, '1', '.mwgrc opt-out reaches the skills runner');
+    } finally {
+      fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
   it('passes -y to npx when uninstalling skills', () => {
     const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-npx-test-'));
     const logFile = path.join(tempBinDir, 'npx-args.json');

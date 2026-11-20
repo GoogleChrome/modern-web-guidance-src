@@ -7,6 +7,8 @@ export interface MwgConfig {
   allowVolatileFeatures?: boolean;
   /** Target Baseline threshold ('widely', 'newly', 'limited', or a 4-digit year like '2024'). */
   baseline?: string;
+  /** Set to `false` to opt out of anonymous usage telemetry. */
+  telemetry?: boolean;
   [key: string]: unknown;
 }
 
@@ -70,6 +72,27 @@ function readMwgrcFile(filePath: string): MwgConfig {
     throw new Error(`Invalid ${CONFIG_FILENAME} at ${filePath}: expected a JSON object`);
   }
   return parsed as MwgConfig;
+}
+
+/**
+ * Whether a `.mwgrc` opts out of telemetry. Checks the project config and `~/.mwgrc`, because
+ * `resolveMwgrcPath()` never reaches the home config from inside a git repo. Fails closed: a
+ * `telemetry` value other than `true`, or an unreadable config, opts out.
+ */
+export function isTelemetryDisabledByMwgrc(startDir?: string, homeDir?: string): boolean {
+  try {
+    const candidates = new Set([
+      resolveMwgrcPath(startDir),
+      path.join(homeDir ?? os.homedir(), CONFIG_FILENAME),
+    ]);
+    for (const filePath of candidates) {
+      const config = readMwgrcFile(filePath);
+      if ('telemetry' in config && config.telemetry !== true) return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 export function writeMwgrc(patch: Partial<MwgConfig>, startDir = process.cwd()): string {

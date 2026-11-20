@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
 import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
-import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
+import { isTelemetryDisabledByMwgrc, normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
@@ -23,8 +23,29 @@ import { determineAgent, KNOWN_AGENTS } from "./telemetry/detect-agent.ts";
 
 const MAX_INLINE_STDOUT_BYTES = 9500;
 
+const rawArgs = process.argv.slice(2);
+const terminatorIdx = rawArgs.indexOf("--");
+// Only `--telemetry` args before a `--` terminator count as the flag. They are removed so no
+// subcommand or child process has to know about it.
+const isTelemetryFlag = (arg: string, i: number) =>
+  (terminatorIdx === -1 || i < terminatorIdx) && /^--telemetry(=|$)/.test(arg);
+const telemetryFlags = rawArgs.filter(isTelemetryFlag);
+const cliArgs = rawArgs.filter((arg, i) => !isTelemetryFlag(arg, i));
+
+const invalidTelemetryFlag = telemetryFlags.find(f => f !== "--telemetry=true" && f !== "--telemetry=false");
+if (invalidTelemetryFlag !== undefined) {
+  console.error(`Invalid option ${JSON.stringify(invalidTelemetryFlag)}. Use --telemetry=true or --telemetry=false.`);
+  process.exit(1);
+}
+
+// `--telemetry=true` cannot undo another opt-out. Setting the env var also passes the opt-out
+// on to the skills runner child processes.
+if (telemetryFlags.includes("--telemetry=false") || isTelemetryDisabledByMwgrc()) {
+  process.env.DISABLE_TELEMETRY = "1";
+}
+
 const { values, positionals } = parseArgs({
-  args: process.argv.slice(2),
+  args: cliArgs,
   options: {
     help: { type: "boolean", short: "h" },
     version: { type: "boolean", short: "v" },
@@ -77,6 +98,7 @@ Commands:
 Options:
   --skill-version <version> Internal use: version of the skill being executed
   --choose                  Choose specific skills from the repository interactively
+  --telemetry=false         Disable telemetry for this run
   -h, --help                Show this help
   -v, --version             Show version
 `);
@@ -96,7 +118,7 @@ async function main() {
     maybeEmitUpdateMessage(skillVersion);
     // Dynamic import to keep the CLI loading fast -- only load legacy-scan dependencies if needed.
     const { runLegacyScanCli, writeLegacyScanCliResult } = await import("../legacy-scan/cli.ts");
-    const args = process.argv.slice(2);
+    const args = [...cliArgs];
     const cmdIdx = args.indexOf(command);
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
     const startTime = Date.now();
@@ -236,7 +258,7 @@ async function main() {
   } else if (command === "install") {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
-    const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
+    const extraArgs = cliArgs.toSpliced(cliArgs.indexOf(command), 1).filter(a => a !== "--choose");
     const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
