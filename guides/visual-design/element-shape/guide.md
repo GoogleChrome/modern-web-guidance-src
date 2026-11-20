@@ -46,7 +46,7 @@ Set a non-zero `border-radius` and add `corner-shape` (`squircle`, `bevel`, `sco
 
 ## Shape the box with border-shape
 
-Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, and ribbons. It reshapes the background, border, `box-shadow`, outline, and hit-testing together, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`, and set `border-radius: 0`. For diamonds, `corner-shape` is simpler.
+Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, and ribbons. It reshapes the background, border, `box-shadow`, outline, and hit-testing together, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`. For diamonds, `corner-shape` is simpler.
 
 - Straight edges only (chevrons, ribbons, arrows): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
@@ -77,7 +77,7 @@ When a design depends on distinct non-rounded silhouettes (`bevel`, `notch`, or 
 
 {{ BASELINE_STATUS("border-shape") }}
 
-If your Baseline target does not support `border-shape`, declare the `border-shape` outline inside `@supports (border-shape: circle(50%))` and provide a `clip-path` with the same outline inside `@supports not (border-shape: circle(50%))`. In the fallback, make the border color transparent and clear `box-shadow: none` without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). The fallback outline matches, but the border, outline, and hit-testing follow the clip instead of the shape.
+If your Baseline target does not support `border-shape`, declare the `border-shape` outline inside `@supports (border-shape: circle(50%))` and provide a `clip-path` with the same outline inside `@supports not (border-shape: circle(50%))`. In the fallback, make the border color transparent, reset `border-radius: 0`, and clear `box-shadow: none` without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). The fallback outline matches, but the border, outline, and hit-testing follow the clip instead of the shape.
 
 ```css
 .badge { border: 2px solid var(--accent); box-shadow: var(--shadow); }

@@ -3,7 +3,7 @@
 - An elliptical or organic element uses `border-radius` with slash syntax to give separate horizontal and vertical radii.
 - At least one element sets `corner-shape` to a non-default value (such as `squircle`, `bevel`, `scoop`, `notch`, or `superellipse()`) on an element that also has a non-zero `border-radius`.
 - When `corner-shape` is unsupported, the element keeps usable plain rounded corners from `border-radius`.
-- At least one element with a custom non-rectangular outline uses `border-shape` with `polygon()` or `shape()`, and has `border-radius: 0`.
+- At least one element with a custom non-rectangular outline uses `border-shape` with `polygon()` or `shape()`.
 - An element using `border-shape` keeps a visible `border` or `box-shadow` instead of relying on `clip-path`.
 - When `border-shape` is unsupported, the element falls back to `clip-path` with the same outline, a transparent border, and no `box-shadow`, gated by `@supports not (border-shape: ...)`.
 - A rounded polygon uses `polygon(round <length>, ...)` inside `clip-path`.
