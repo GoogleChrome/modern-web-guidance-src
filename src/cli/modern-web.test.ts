@@ -293,11 +293,13 @@ describe('modern-web CLI', () => {
     try {
       const result = spawnSync('node', [scriptPath, 'uninstall'], {
         encoding: 'utf8',
+        cwd: tempBinDir,
         env: {
           ...process.env,
           PATH: `${tempBinDir}:${process.env.PATH}`,
           NO_COLOR: '1',
           DISABLE_TELEMETRY: '1',
+          npm_config_user_agent: undefined,
         },
       });
 
@@ -307,6 +309,58 @@ describe('modern-web CLI', () => {
       assert.deepStrictEqual(args.slice(0, 3), ['-y', 'skills', 'remove']);
     } finally {
       fs.rmSync(tempBinDir, { recursive: true, force: true });
+    }
+  });
+
+  it('wires the detected runner and its prefix args into skills commands', () => {
+    // Runner selection itself is unit-tested in skills-runner.test.ts; this only
+    // checks that the CLI call sites use runner.cmd and splice in prefixArgs.
+    const cases = [
+      {
+        cmd: 'install',
+        ua: 'pnpm/10.30.3 npm/? node/v24.12.0 linux x64',
+        expectedBin: 'pnpx',
+        expectedArgs: ['skills', 'add', 'GoogleChrome/modern-web-guidance', '--skill', 'modern-web-guidance'],
+      },
+      {
+        cmd: 'update',
+        ua: 'yarn/4.5.0 npm/? node/v24.12.0 linux x64',
+        expectedBin: 'yarn',
+        expectedArgs: ['dlx', 'skills', 'update'],
+      },
+    ];
+
+    for (const tc of cases) {
+      const tempBinDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-runner-cli-'));
+      for (const bin of ['npx', 'pnpx', 'yarn']) {
+        const logFile = path.join(tempBinDir, `${bin}-args.json`);
+        fs.writeFileSync(
+          path.join(tempBinDir, bin),
+          `#!/bin/sh\nnode -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))' "${logFile}" "$@"\n`,
+          { mode: 0o755 }
+        );
+      }
+      try {
+        const result = spawnSync('node', [scriptPath, tc.cmd], {
+          encoding: 'utf8',
+          cwd: tempBinDir,
+          env: {
+            ...process.env,
+            PATH: `${tempBinDir}:${process.env.PATH}`,
+            NO_COLOR: '1',
+            DISABLE_TELEMETRY: '1',
+            npm_config_user_agent: tc.ua,
+          },
+        });
+        assert.strictEqual(result.status, 0, `${tc.cmd} failed: ${result.stderr}`);
+        const expectedLog = path.join(tempBinDir, `${tc.expectedBin}-args.json`);
+        assert.ok(fs.existsSync(expectedLog), `${tc.expectedBin} should be invoked for ${tc.cmd}`);
+        assert.strictEqual(fs.existsSync(path.join(tempBinDir, 'npx-args.json')), false, 'npx must not be invoked');
+        const recorded: string[] = JSON.parse(fs.readFileSync(expectedLog, 'utf8'));
+        assert.deepStrictEqual(recorded.slice(0, tc.expectedArgs.length), tc.expectedArgs);
+      } finally {
+        fs.rmSync(tempBinDir, { recursive: true, force: true });
+      }
     }
   });
 });
