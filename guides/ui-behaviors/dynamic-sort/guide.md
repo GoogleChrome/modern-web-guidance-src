@@ -66,9 +66,9 @@ function reorderWithTransition(list, orderedNodes) {
 
   // Prefer a transition scoped to the list: the rest of the page stays interactive.
   // Fall back to a document-level transition, then to a plain update.
-  if (list.startViewTransition) {
+  if ('startViewTransition' in list) {
     list.startViewTransition(update);
-  } else if (document.startViewTransition) {
+  } else if ('startViewTransition' in document) {
     document.startViewTransition(update);
   } else {
     update();

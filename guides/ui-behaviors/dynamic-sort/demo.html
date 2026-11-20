@@ -281,9 +281,9 @@
 
     // Scope element is the group being sorted, so the other group is unaffected.
     function sortWithTransition(scope, update) {
-      if (scope.startViewTransition) {
+      if ('startViewTransition' in scope) {
         scope.startViewTransition(update);
-      } else if (document.startViewTransition) {
+      } else if ('startViewTransition' in document) {
         document.startViewTransition(update);
       } else {
         update();
