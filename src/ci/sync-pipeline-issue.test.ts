@@ -291,6 +291,22 @@ describe('formatReviewDecision', () => {
   });
 });
 
+describe('formatShortDate', () => {
+  it('formats YYYY-MM-DD in UTC regardless of local timezone', () => {
+    const prevTz = process.env.TZ;
+    try {
+      for (const tz of ['UTC', 'Europe/Madrid', 'Pacific/Auckland']) {
+        process.env.TZ = tz;
+        assert.equal(formatShortDate('2026-10-04'), 'Oct 4', tz);
+      }
+      assert.equal(formatShortDate('not-a-date'), 'not-a-date');
+    } finally {
+      if (prevTz === undefined) delete process.env.TZ;
+      else process.env.TZ = prevTz;
+    }
+  });
+});
+
 describe('findStaleEvals', () => {
   it('flags complete guides with substantive expectations updates after evals', () => {
     const g1 = makeGuide({ category: 'forms', name: 'forms' });
@@ -500,17 +516,6 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
     });
     assert.equal(report.needsGuidanceIssues[0]?.issueNumber, 1742);
-    const prevTz = process.env.TZ;
-    try {
-      for (const tz of ['UTC', 'Europe/Madrid', 'Pacific/Auckland']) {
-        process.env.TZ = tz;
-        assert.equal(formatShortDate('2026-10-04'), 'Oct 4', tz);
-      }
-      assert.equal(formatShortDate('not-a-date'), 'not-a-date');
-    } finally {
-      if (prevTz === undefined) delete process.env.TZ;
-      else process.env.TZ = prevTz;
-    }
     assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'micahjo7', 'paulirish'], 'guidance'), ['TravenReese']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'paulirish'], 'evals'), ['TravenReese']);
