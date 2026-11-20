@@ -1,5 +1,7 @@
 name: Content ATL Triage
 
+# Repo Actions policy #9652 restricts this pull_request_target workflow to issues + pull_request_target.
+# The hourly awaiting-cla sweep lives in cla-sweep.yml so it does not require widening that policy.
 on:
   issues:
     types: [opened, labeled, assigned, edited]
@@ -7,9 +9,6 @@ on:
   pull_request_target:
     types: [opened, reopened, synchronize, labeled, ready_for_review]
     branches: [main]
-  schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
 
 permissions:
   issues: write
@@ -17,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: atl-triage-${{ github.event.pull_request.number || github.event.issue.number || github.event_name }}
+  group: atl-triage-${{ github.event.pull_request.number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
