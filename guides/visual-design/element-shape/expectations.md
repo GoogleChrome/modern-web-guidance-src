@@ -10,6 +10,6 @@
 - When `polygon(round ...)` is unsupported, the element uses a `polygon()` without `round`, with the rounded version gated by `@supports`.
 - An element clipped with `clip-path` has no `box-shadow` itself, and its shadow comes from `filter: drop-shadow()` on a wrapping ancestor.
 - A responsive curved cutout uses `clip-path: shape()` with percentage coordinates, gated by `@supports` that tests `shape()`, and the element sets `border-radius: 0` when the shape is applied.
-- A shaped interactive element (a button using `border-shape` or `clip-path`) is a native `<button>` that stays focusable, and a click on its clipped-away corner does not trigger its click handler.
+- A shaped interactive element (a button using `border-shape` or `clip-path`) stays focusable, and a click on its clipped-away corner does not trigger its click handler.
 - Every shaped interactive element shows a visible focus indicator through `:focus-visible`.
 - A `@media (forced-colors: active)` rule sets a visible border color on shaped elements that rely on a background fill.
