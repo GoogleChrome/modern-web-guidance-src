@@ -21,7 +21,7 @@ Shape the element itself with CSS instead of nesting extra elements, using image
 
 - Circles, ellipses, pills, and blobs: `border-radius`.
 - Different corner geometry (squircle, bevel, scoop, notch): `corner-shape` on top of `border-radius`.
-- Custom geometric or path outlines (speech bubbles, badges, ribbons, tickets): `border-shape` with `polygon()` (or `polygon(round ...)`) or `shape()`, which shapes the border and `box-shadow` with the element.
+- Custom outlines `corner-shape` can't make (speech bubbles with tails, notched ribbons): `border-shape` with `polygon()` (or `polygon(round ...)`) or `shape()`, which shapes the border and `box-shadow` with the element.
 - Clipping an image, media, or inner children to a shape without affecting the element's outer box, border, or shadow (or animated reveal wipes): `clip-path`.
 - Soft, feathered, or free-form textured edges: masking with `mask-image`, which does not reshape borders, `box-shadow`, or pointer hit-testing (see {{ GUIDE_REF("complex-shapes") }}).
 - Masked notches or knockout cutouts using SVG or CSS gradient masks: see {{ GUIDE_REF("shaped-cutouts") }}.
@@ -40,15 +40,16 @@ Set a non-zero `border-radius` and add `corner-shape` (`squircle`, `bevel`, `sco
 
 - Slanted tag or slanted rectangle: asymmetric radii on opposite corners (via `border-radius` shorthand or corner properties such as `border-start-start-radius` and `border-end-end-radius`) with `corner-shape: bevel`.
 - Diamond: `border-radius: 50%` with `corner-shape: bevel`.
+- Parallelogram or arrow/chevron point: `corner-shape: bevel` with a horizontal radius of the slant or point and a vertical radius of `100%` (slant) or `50%` (arrow), using logical corner properties so RTL mirrors. This keeps per-side border widths, colors, and styles.
 - Octagon or chamfered box: a fixed `border-radius` with `corner-shape: bevel`.
 - Ticket or coupon edges: `corner-shape: scoop` or `notch` with a fixed `border-radius`.
 - Soft, iOS-style rounded corners: `corner-shape: squircle`.
 
 ## Shape the box with border-shape
 
-Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bubbles with tails, chevrons, and ribbons. It shapes the border and `box-shadow` (an outer shadow is cast from the outer path) and clips overflow content to the inner shape, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`. For diamonds, `corner-shape` is simpler.
+Use `border-shape` with `polygon()` or `shape()` only for outlines `corner-shape` can't make, such as speech bubbles with tails and notched ribbons. It shapes the border and `box-shadow` (an outer shadow is cast from the outer path) and clips overflow content to the inner shape, so keep a visible `border` or `box-shadow` on the element rather than relying on `clip-path`. For diamonds, `corner-shape` is simpler.
 
-- Straight edges only (chevrons, ribbons, arrows): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
+- Straight edges only (notched ribbons): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
 - Put a value in a custom property only when it is reused or tuned per instance.
 - Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
