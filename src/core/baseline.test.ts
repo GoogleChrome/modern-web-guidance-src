@@ -234,6 +234,16 @@ describe('baseline data', () => {
       assert.strictEqual(checkBaseline('Baseline Widely available on 2024-01-01', 'grid'), true);
     });
 
+    it('resolves "Widely available on" dates in UTC so the verdict does not depend on the host timezone', () => {
+      // A local-time `Date` shifted these dates by the host offset and landed on the previous day in
+      // negative-offset zones, flipping the boundary verdict for ~330 features (which broke this suite
+      // under TZ=America/Los_Angeles). `a` is Baseline since 2015-07-29, `grid` since 2017-10-17.
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2018-01-29', 'a'), true);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2018-01-28', 'a'), false);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2020-04-17', 'grid'), true);
+      assert.strictEqual(checkBaseline('Baseline Widely available on 2020-04-16', 'grid'), false);
+    });
+
     it('returns false for features without necessary dates', () => {
       assert.strictEqual(checkBaseline('Baseline 2025', 'non-existent-feature'), false);
       assert.strictEqual(checkBaseline('Baseline Widely available on 2025-01-01', 'non-existent-feature'), false);

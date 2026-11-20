@@ -99,6 +99,123 @@ describe('extractTargetFilesFromPatch', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  test('does not treat added/removed hunk lines starting with +++ or --- as file headers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-hunk-content-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    // The hunk adds a line "++ leading plus-plus line", which the diff emits as "+++ leading ...".
+    const patchContent = `diff --git a/notes.md b/notes.md
+index 7c88e8a..2f5f31f 100644
+--- a/notes.md
++++ b/notes.md
+@@ -1 +1,3 @@
+ # notes
++++ leading plus-plus line
+++++ three pluses
+--- a/removed.md
+--- removed line starting with two minuses
+`;
+    fs.writeFileSync(patchPath, patchContent);
+
+    try {
+      assert.deepStrictEqual(extractTargetFilesFromPatch(patchPath), ['notes.md']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('handles git-quoted non-ASCII paths, diff -u timestamps, and paths containing spaces', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-quoted-path-test-'));
+    try {
+      const quoted = path.join(tmpDir, 'quoted.patch');
+      // core.quotePath quotes non-ASCII paths as octal byte escapes.
+      fs.writeFileSync(
+        quoted,
+        'diff --git "a/\\351\\241\\265\\351\\235\\242.md" "b/\\351\\241\\265\\351\\235\\242.md"\n' +
+          'index 111..222 100644\n' +
+          '--- "a/\\351\\241\\265\\351\\235\\242.md"\n' +
+          '+++ "b/\\351\\241\\265\\351\\235\\242.md"\n' +
+          '@@ -1 +1 @@\n-a\n+b\n',
+      );
+      assert.deepStrictEqual(extractTargetFilesFromPatch(quoted), ['页面.md']);
+
+      const timestamped = path.join(tmpDir, 'timestamps.patch');
+      fs.writeFileSync(
+        timestamped,
+        '--- a/app.js\t2026-11-17 10:00:00.000000000 +0800\n' +
+          '+++ b/app.js\t2026-11-17 10:00:01.000000000 +0800\n' +
+          '@@ -1 +1 @@\n-a\n+b\n',
+      );
+      assert.deepStrictEqual(extractTargetFilesFromPatch(timestamped), ['app.js']);
+
+      const spaced = path.join(tmpDir, 'spaced.patch');
+      fs.writeFileSync(
+        spaced,
+        'diff --git a/my file.txt b/my file.txt\n' +
+          'index 111..222 100644\n' +
+          '--- a/my file.txt\n' +
+          '+++ b/my file.txt\n' +
+          '@@ -1 +1 @@\n-one\n+two\n',
+      );
+      assert.deepStrictEqual(extractTargetFilesFromPatch(spaced), ['my file.txt']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('includes binary additions and empty new files that emit no text header', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-binary-targets-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    const patchContent = `diff --git a/icons/app-192.png b/icons/app-192.png
+new file mode 100644
+index 0000000..e69de29
+Binary files /dev/null and b/icons/app-192.png differ
+diff --git a/wasm/smallpt.wasm b/wasm/smallpt.wasm
+new file mode 100755
+index 0000000000000000000000000000000000000000..9ca925f33a990aa83c1125dd62990356b1abc04e
+GIT binary patch
+literal 27504
+zcmc(I2UrwW*Z<kZE-WZ^5X<ap?AWj!zk9+dl#dzfEuw!Q8sq0SQ2Y=!HULc5{)H
+
+diff --git a/assets/preview.png b/assets/preview.png
+new file mode 100644
+index 0000000..e69de29
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -1 +1 @@
+-<p>before</p>
++<p>after</p>
+`;
+    fs.writeFileSync(patchPath, patchContent);
+
+    try {
+      assert.deepStrictEqual(extractTargetFilesFromPatch(patchPath), [
+        'icons/app-192.png',
+        'wasm/smallpt.wasm',
+        'assets/preview.png',
+        'index.html',
+      ]);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('reports each file once when a patch repeats its headers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-dup-test-'));
+    const patchPath = path.join(tmpDir, 'demo.patch');
+    fs.writeFileSync(
+      patchPath,
+      'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+b\n' +
+        'diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+c\n',
+    );
+
+    try {
+      assert.deepStrictEqual(extractTargetFilesFromPatch(patchPath), ['a.txt']);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('applyPatchSync', () => {

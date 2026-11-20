@@ -29,18 +29,197 @@ const EXCLUDED_PATCH_PATHSPECS = [
   ':(exclude)**/pnpm-workspace.yaml',
 ];
 
+const HUNK_HEADER_RE = /^@@ -\d+(?:,\d+)? \+\d+(?:,\d+)? @@/;
+const BINARY_FILES_RE = /^Binary files (?:.*) and (.*) differ$/;
+
+/** Lines that may follow a `--- `/`+++ ` pair; anything else means the pair was hunk content. */
+const HEADER_FOLLOWUP_RE =
+  /^(?:@@ |index |new file mode |deleted file mode |old mode |new mode |similarity index |rename |copy |Binary files |GIT binary patch|diff --git )/;
+
 /**
- * Extracts target modified file paths directly from unified diff headers (+++ b/<path>).
+ * Decodes a git `core.quotePath`-quoted path (`"b/\351\241\265.md"`) back to a raw path.
+ * Escapes are C-style; `\NNN` sequences are octal bytes, so multi-byte UTF-8 survives.
+ */
+function decodeGitQuotedPath(quoted: string): string {
+  const inner = quoted.slice(1, -1);
+  const bytes: number[] = [];
+  for (let i = 0; i < inner.length; i++) {
+    const char = inner[i];
+    if (char !== '\\') {
+      bytes.push(...Buffer.from(char, 'utf8'));
+      continue;
+    }
+    const escape = inner[++i];
+    switch (escape) {
+      case 'a': bytes.push(0x07); break;
+      case 'b': bytes.push(0x08); break;
+      case 't': bytes.push(0x09); break;
+      case 'n': bytes.push(0x0a); break;
+      case 'v': bytes.push(0x0b); break;
+      case 'f': bytes.push(0x0c); break;
+      case 'r': bytes.push(0x0d); break;
+      case '"': bytes.push(0x22); break;
+      case '\\': bytes.push(0x5c); break;
+      default: {
+        if (escape !== undefined && escape >= '0' && escape <= '7') {
+          let octal = escape;
+          while (octal.length < 3 && inner[i + 1] !== undefined && inner[i + 1] >= '0' && inner[i + 1] <= '7') {
+            octal += inner[++i];
+          }
+          bytes.push(parseInt(octal, 8) & 0xff);
+        } else {
+          bytes.push(...Buffer.from(`\\${escape ?? ''}`, 'utf8'));
+        }
+      }
+    }
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+
+/** Removes a leading `a/` or `b/` marker from a diff path. */
+function stripDiffMarker(rawPath: string): string {
+  return rawPath.replace(/^[ab]\//, '');
+}
+
+/**
+ * Parses the path out of a diff header payload (the text after `--- ` / `+++ `),
+ * handling git-quoted paths and the optional `\t<timestamp>` suffix that `diff -u` adds.
+ */
+function parseDiffPath(payload: string): string {
+  const trimmed = payload.trim();
+  if (trimmed.startsWith('"')) {
+    let end = 1;
+    while (end < trimmed.length) {
+      if (trimmed[end] === '\\') {
+        end += 2;
+        continue;
+      }
+      if (trimmed[end] === '"') break;
+      end++;
+    }
+    return stripDiffMarker(decodeGitQuotedPath(trimmed.slice(0, end + 1)));
+  }
+  const tabIndex = trimmed.indexOf('\t');
+  const pathPart = tabIndex === -1 ? trimmed : trimmed.slice(0, tabIndex);
+  return stripDiffMarker(pathPart.trim());
+}
+
+/**
+ * Parses the target path out of a `diff --git <old> <new>` line.
+ *
+ * Git writes both sides of the same path and only quotes non-ASCII paths, so `\t` is not a
+ * separator here (`a/my file.txt b/my file.txt` is a real header). Prefer the symmetric
+ * `a/<p> b/<p>` reading, then fall back to the last ` b/` split.
+ */
+function parseDiffGitTarget(payload: string): string | null {
+  const quoted = /^("(?:[^"\\]|\\.)*") ("(?:[^"\\]|\\.)*")$/.exec(payload);
+  if (quoted) {
+    return parseDiffPath(quoted[2]);
+  }
+
+  if (payload.startsWith('a/')) {
+    const remainder = payload.slice(2);
+    // `a/<p> b/<p>` — the two halves must name the same path.
+    const symmetric = /^(.*?) b\/(.*)$/.exec(remainder);
+    if (symmetric && symmetric[1] === symmetric[2]) {
+      return stripDiffMarker(symmetric[1]);
+    }
+    const lastSplit = remainder.lastIndexOf(' b/');
+    if (lastSplit !== -1) {
+      return stripDiffMarker(remainder.slice(lastSplit + 3));
+    }
+  }
+
+  const halves = payload.split(' ');
+  return halves.length >= 2 ? parseDiffPath(halves[halves.length - 1] ?? '') : null;
+}
+
+/**
+ * Extracts target modified file paths from a unified diff.
+ *
+ * Paths come from `+++` headers, plus the `diff --git` declaration for changes that emit no text
+ * header at all — binary additions (PNG/wasm via `GIT binary patch` or `Binary files … differ`) and
+ * empty new files (`new file mode` with only an `index` line).
+ *
+ * A `--- `/`+++ ` pair is only read as a header when it is immediately followed by a hunk header or
+ * a git extended header. Hunk bodies legitimately contain added lines that begin with `+++` (or
+ * removed lines beginning with `---`), so position alone is not enough.
+ *
  * Ignores deleted files (/dev/null), package manager lockfiles, and authoring metadata files.
  */
 export function extractTargetFilesFromPatch(patchPath: string): string[] {
   try {
     if (!fs.existsSync(patchPath)) return [];
     const content = fs.readFileSync(patchPath, 'utf8');
-    const matches = Array.from(content.matchAll(/^\+\+\+ (?:b\/)?(.+)$/gm));
-    return matches
-      .map((m) => m[1].trim())
-      .filter((filePath) => filePath && filePath !== '/dev/null' && !EXCLUDED_FILES_RE.test(filePath));
+
+    const found: string[] = [];
+    const seen = new Set<string>();
+    const add = (rawPath: string | null): void => {
+      if (!rawPath || rawPath === '/dev/null' || EXCLUDED_FILES_RE.test(rawPath) || seen.has(rawPath)) {
+        return;
+      }
+      seen.add(rawPath);
+      found.push(rawPath);
+    };
+
+    const lines = content.split('\n').map((line) => (line.endsWith('\r') ? line.slice(0, -1) : line));
+
+    let sectionTarget: string | null = null;
+    let sectionHasTextBox = false;
+    let sectionHasBinary = false;
+    let sectionAddsFile = false;
+
+    const closeSection = (): void => {
+      // Changes without a text header still touched a real file.
+      if (!sectionHasTextBox && (sectionHasBinary || sectionAddsFile) && sectionTarget) {
+        add(sectionTarget);
+      }
+      sectionTarget = null;
+      sectionHasTextBox = false;
+      sectionHasBinary = false;
+      sectionAddsFile = false;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? '';
+
+      if (line.startsWith('diff --git ')) {
+        closeSection();
+        sectionTarget = parseDiffGitTarget(line.slice('diff --git '.length));
+        continue;
+      }
+
+      // A file header is a `--- ` line immediately followed by `+++ ` and then a real diff body.
+      if (line.startsWith('--- ') && (lines[i + 1] ?? '').startsWith('+++ ')) {
+        const after = lines[i + 2] ?? '';
+        const isPair = after === '' || HUNK_HEADER_RE.test(after) || HEADER_FOLLOWUP_RE.test(after);
+        if (isPair) {
+          sectionHasTextBox = true;
+          add(parseDiffPath((lines[i + 1] ?? '').slice(4)));
+          i++;
+          continue;
+        }
+      }
+
+      if (line.startsWith('GIT binary patch')) {
+        sectionHasBinary = true;
+        continue;
+      }
+
+      if (line.startsWith('new file mode ')) {
+        sectionAddsFile = true;
+        continue;
+      }
+
+      const binaryFiles = BINARY_FILES_RE.exec(line);
+      if (binaryFiles) {
+        sectionHasBinary = true;
+        add(parseDiffPath(binaryFiles[1]));
+      }
+    }
+
+    closeSection();
+    return found;
   } catch (e) {
     console.warn(`Failed to extract target files from patch ${patchPath}: ${e}`);
     return [];
