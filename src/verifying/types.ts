@@ -33,6 +33,7 @@ export interface VerificationFinding {
   severity: FindingSeverity;
   url?: string;
   selector?: string | null;
+  culpritSelector?: string | null;
   file?: string | null;
   line?: number | null;
   column?: number | null;
@@ -47,6 +48,7 @@ export interface BrowserAuditFinding {
   category: FindingCategory;
   severity: FindingSeverity;
   selector: string;
+  culpritSelector?: string;
   file: string | null;
   line: number | null;
   column: number | null;
@@ -54,6 +56,11 @@ export interface BrowserAuditFinding {
   message: string;
   fix: string;
   guides: string[];
+}
+
+export interface PageAuditOptions {
+  viewportWidth?: number;
+  excludeRootIds?: readonly string[];
 }
 
 export interface InteractiveCandidate {

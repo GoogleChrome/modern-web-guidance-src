@@ -22,6 +22,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { parseHTML } from 'linkedom';
 import {
+  auditElement,
   computeContrastRatio,
   isRuleIgnored,
   parseCssColor,
@@ -200,8 +201,11 @@ describe('browser-audit', () => {
 
     const result = runPageAudit(win);
     const ids = new Set(result.findings.map((f) => f.id));
+    const stickyFinding = result.findings.find((f) => f.id === 'sticky-overflow-ancestor');
 
-    assert.ok(ids.has('sticky-overflow-ancestor'), 'Expected broken sticky ancestor detection');
+    assert.ok(stickyFinding, 'Expected broken sticky ancestor detection');
+    assert.equal(stickyFinding.selector, '#sticky-hdr');
+    assert.equal(stickyFinding.culpritSelector, '#clip-wrap');
     assert.ok(ids.has('inert-z-index'), 'Expected inert z-index detection');
     assert.ok(ids.has('mwg-native-popover-menu'), 'Expected custom dropdown MWG finding');
     assert.ok(ids.has('mwg-native-dialog'), 'Expected custom modal MWG finding');
@@ -214,6 +218,56 @@ describe('browser-audit', () => {
       'data-mwg-ignore should suppress the waived custom modal',
     );
     assert.equal(ids.has('a11y-missing-name'), false, 'data-gleam-ignore="*" should waive icon button');
+
+    const scoped = auditElement(stickyHdr, win);
+    assert.equal(scoped.length, 1);
+    assert.equal(scoped[0].id, 'sticky-overflow-ancestor');
+    assert.equal(scoped[0].culpritSelector, '#clip-wrap');
+  });
+
+  it('checks SVG icon contrast, honors excludeRootIds, and omits static rules covered by Impeccable', () => {
+    const { win, document } = createDom(`<!doctype html><html lang="en"><head><title>Audit</title></head><body>
+      <button id="icon-btn"><svg stroke="currentColor" fill="none"><circle cx="8" cy="8" r="6"></circle></svg></button>
+      <img id="unsized-no-alt" src="/chart.png">
+      <div id="inline-click" onclick="go()">Tap</div>
+      <div id="overlay-root"><button id="overlay-btn"></button></div>
+    </body></html>`);
+
+    const iconBtn = document.getElementById('icon-btn')!;
+    (win as unknown as Record<string, unknown>).getComputedStyle = (el: Element) =>
+      ({
+        display: 'block',
+        visibility: 'visible',
+        opacity: '1',
+        position: 'static',
+        top: 'auto',
+        bottom: 'auto',
+        left: 'auto',
+        right: 'auto',
+        overflowX: 'visible',
+        overflowY: 'visible',
+        zIndex: 'auto',
+        color: el === iconBtn ? 'oklch(0.84 0.01 255)' : '#111111',
+        backgroundColor: '#ffffff',
+        fontSize: '16px',
+        fontWeight: '400',
+        aspectRatio: 'auto',
+        getPropertyValue: () => '',
+      }) as unknown as CSSStyleDeclaration;
+
+    const result = runPageAudit(win, { excludeRootIds: ['overlay-root'] });
+    const ids = new Set(result.findings.map((f) => f.id));
+
+    assert.ok(ids.has('a11y-missing-name'), 'Expected live interactive accessible name check');
+    assert.ok(ids.has('a11y-low-contrast'), 'Expected live SVG icon contrast check');
+    assert.equal(
+      result.findings.some((f) => f.selector === '#overlay-btn'),
+      false,
+      'excludeRootIds should skip overlay subtree',
+    );
+    assert.equal(ids.has('image-alt'), false, 'Static image-alt is omitted');
+    assert.equal(ids.has('perf-image-dimensions'), false, 'Static perf-image-dimensions is omitted');
+    assert.equal(ids.has('a11y-non-semantic-click'), false, 'Static inline onclick is omitted in favor of CDP listeners');
   });
 });
 

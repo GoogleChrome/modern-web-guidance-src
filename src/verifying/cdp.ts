@@ -260,6 +260,8 @@ export async function launchHeadlessBrowser(
     '--no-first-run',
     '--mute-audio',
     '--no-proxy-server',
+    '--password-store=basic',
+    '--use-mock-keychain',
     '--window-size=1280,800',
     ...(userDataDir ? [`--user-data-dir=${userDataDir}`] : []),
     'about:blank',

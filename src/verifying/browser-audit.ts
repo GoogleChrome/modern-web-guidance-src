@@ -20,6 +20,7 @@ import type {
   FindingCategory,
   FindingSeverity,
   InteractiveCandidate,
+  PageAuditOptions,
   PageAuditResult,
 } from './types.ts';
 
@@ -35,6 +36,14 @@ interface CwvSnapshot {
   clsElement: Element | null;
   lcpMs: number | null;
   lcpElement: Element | null;
+  nodeCls?: WeakMap<Element, number>;
+  observerInstalled?: boolean;
+}
+
+/** WCAG luminance contrast ratio and composited background luminance. */
+export interface ContrastDetails {
+  ratio: number;
+  bgLuminance: number;
 }
 
 const DESTRUCTIVE_LABEL_RE =
@@ -120,6 +129,7 @@ export function isRuleIgnored(el: Element, ruleId: string): boolean {
   return false;
 }
 
+/** Returns whether `el` is visually rendered (not hidden, display:none, or transparent). */
 export function isVisuallyRendered(el: Element, win: Window = window): boolean {
   if (el.hasAttribute('hidden')) return false;
   const cs = safeStyle(el, win);
@@ -226,7 +236,8 @@ export function parseCssColor(input: string): RgbaColor | null {
   return null;
 }
 
-export function computeContrastRatio(el: Element, win: Window = window): number | null {
+/** Computes WCAG 2.1 contrast ratio and composited background luminance for `el`. */
+export function computeContrastDetails(el: Element, win: Window = window): ContrastDetails | null {
   const cs = safeStyle(el, win);
   if (!cs) return null;
   const fg = parseCssColor(cs.color);
@@ -250,9 +261,82 @@ export function computeContrastRatio(el: Element, win: Window = window): number 
   const effectiveFg = compositeOver(fg, backdrop);
   const l1 = luminance(effectiveFg);
   const l2 = luminance(backdrop);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  return {
+    ratio: (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05),
+    bgLuminance: l2,
+  };
 }
 
+/** Computes WCAG 2.1 contrast ratio (`1..21`) for `el` against composited ancestor backgrounds. */
+export function computeContrastRatio(el: Element, win: Window = window): number | null {
+  return computeContrastDetails(el, win)?.ratio ?? null;
+}
+
+/** Installs idempotent buffered LCP and CLS PerformanceObservers on `win`. */
+export function ensureCwvObserver(win: Window = window): void {
+  const host = win as unknown as Record<string, unknown>;
+  let state = host['__mwgCwv'] as CwvSnapshot | undefined;
+  if (!state || typeof state !== 'object') {
+    state = {
+      cls: 0,
+      clsElement: null,
+      lcpMs: null,
+      lcpElement: null,
+      nodeCls: new WeakMap<Element, number>(),
+      observerInstalled: false,
+    };
+    host['__mwgCwv'] = state;
+  }
+  if (!state.nodeCls) {
+    state.nodeCls = new WeakMap<Element, number>();
+  }
+  if (state.observerInstalled || typeof PerformanceObserver === 'undefined') {
+    return;
+  }
+  state.observerInstalled = true;
+  const cwvState = state;
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<
+        PerformanceEntry & { element?: Element | null; renderTime?: number }
+      >) {
+        if (entry.element) {
+          cwvState.lcpElement = entry.element;
+          cwvState.lcpMs = Math.round(entry.renderTime || entry.startTime);
+        }
+      }
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+  } catch {
+    // Browser context does not support buffered LCP entries.
+  }
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<
+        PerformanceEntry & {
+          value?: number;
+          hadRecentInput?: boolean;
+          sources?: Array<{ node?: Node | null }>;
+        }
+      >) {
+        if (entry.hadRecentInput || !(entry.value && entry.value > 0)) continue;
+        cwvState.cls += entry.value;
+        for (const src of entry.sources ?? []) {
+          const node = src.node;
+          if (node && node.nodeType === 1) {
+            const el = node as Element;
+            cwvState.clsElement = el;
+            const prev = cwvState.nodeCls?.get(el) ?? 0;
+            cwvState.nodeCls?.set(el, prev + entry.value);
+          }
+        }
+      }
+    }).observe({ type: 'layout-shift', buffered: true });
+  } catch {
+    // Browser context does not support buffered LayoutShift entries.
+  }
+}
+
+/** Computes the accessible name of `el` following ARIA/HTML labeling precedence. */
 export function computeAccessibleName(el: Element): string {
   const doc = el.ownerDocument;
   const labelledBy = el.getAttribute('aria-labelledby');
@@ -292,31 +376,65 @@ export function computeAccessibleName(el: Element): string {
   return text || svgTitle || imgAlt || el.getAttribute('title')?.trim() || '';
 }
 
-/** Runs all live DOM, layout, MWG pattern, a11y, and CWV checks on `win.document`. */
-export function runPageAudit(
-  win: Window = window,
-  opts: { viewportWidth?: number } = {},
-): PageAuditResult {
-  const doc = win.document;
-  const findings: BrowserAuditFinding[] = [];
-  const seen = new Set<string>();
+type PushFinding = (
+  el: Element,
+  id: string,
+  category: FindingCategory,
+  severity: FindingSeverity,
+  message: string,
+  fix: string,
+  guides: string[],
+  culpritSelector?: string,
+) => void;
 
-  const push = (
-    el: Element,
-    id: string,
-    category: FindingCategory,
-    severity: FindingSeverity,
-    message: string,
-    fix: string,
-    guides: string[],
-  ): void => {
+interface InteractiveCollector {
+  smokeElements: Element[];
+  interactiveCandidates: InteractiveCandidate[];
+  openModalCount: number;
+}
+
+function isExcludedNode(el: Element, excludeRoots: ReadonlySet<string>): boolean {
+  let cursor: Element | null = el;
+  while (cursor) {
+    if (cursor.id && excludeRoots.has(cursor.id)) return true;
+    if (
+      cursor.getAttribute('data-builder-lens-exclude') === 'true' ||
+      cursor.getAttribute('data-bibifrost-exclude') === 'true'
+    ) {
+      return true;
+    }
+    cursor = cursor.parentElement;
+  }
+  return false;
+}
+
+function isInteractiveElement(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  const role = (el.getAttribute('role') ?? '').trim().toLowerCase();
+  const inputType = tag === 'input' ? (el.getAttribute('type') ?? 'text').toLowerCase() : '';
+  return (
+    tag === 'button' ||
+    (tag === 'a' && el.hasAttribute('href')) ||
+    (tag === 'input' && inputType !== 'hidden') ||
+    tag === 'select' ||
+    tag === 'textarea' ||
+    INTERACTIVE_ROLES.has(role)
+  );
+}
+
+function createFindingPusher(
+  win: Window,
+  findings: BrowserAuditFinding[],
+  seen: Set<string>,
+): PushFinding {
+  return (el, id, category, severity, message, fix, guides, culpritSelector) => {
     if (isRuleIgnored(el, id)) return;
     const selector = buildCompactSelector(el);
     const src = resolveElementSource(el, win);
     const key = `${id}::${src.file ? `${src.file}:${src.line}` : selector}`;
     if (seen.has(key)) return;
     seen.add(key);
-    findings.push({
+    const entry: BrowserAuditFinding = {
       id,
       category,
       severity,
@@ -328,8 +446,364 @@ export function runPageAudit(
       message,
       fix,
       guides,
-    });
+    };
+    if (culpritSelector) {
+      entry.culpritSelector = culpritSelector;
+    }
+    findings.push(entry);
   };
+}
+
+function auditSingleElement(
+  el: Element,
+  win: Window,
+  cwv: CwvSnapshot,
+  push: PushFinding,
+  collector?: InteractiveCollector,
+): void {
+  if (!isVisuallyRendered(el, win)) return;
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'script' || tag === 'style' || tag === 'noscript') return;
+  const cs = safeStyle(el, win);
+  const parent = el.parentElement;
+  const parentCs = parent ? safeStyle(parent, win) : null;
+  const role = (el.getAttribute('role') ?? '').trim().toLowerCase();
+  const cls = `${typeof el.className === 'string' ? el.className : ''} ${el.id ?? ''}`.toLowerCase();
+  const rect = safeRect(el);
+
+  if (
+    collector &&
+    ((tag === 'dialog' && el.hasAttribute('open')) ||
+      role === 'dialog' ||
+      role === 'alertdialog' ||
+      /\bmodal\b/.test(cls))
+  ) {
+    if (!el.hasAttribute('hidden')) collector.openModalCount++;
+  }
+
+  // --- Layout container diagnostics ---
+  if (cs?.position === 'sticky') {
+    if (cs.top === 'auto' && cs.bottom === 'auto' && cs.left === 'auto' && cs.right === 'auto') {
+      push(
+        el,
+        'sticky-missing-inset',
+        'LAYOUT',
+        'warning',
+        'position: sticky element has no inset threshold (top/bottom/left/right are auto).',
+        'Add an explicit inset such as `top: 0` on the sticky element.',
+        ['css-layout'],
+      );
+    }
+    const blocker = findStickyBreakingAncestor(el, win);
+    if (blocker) {
+      const bcs = safeStyle(blocker, win);
+      const blockerSel = buildCompactSelector(blocker);
+      push(
+        el,
+        'sticky-overflow-ancestor',
+        'LAYOUT',
+        'error',
+        `position: sticky on ${buildCompactSelector(el)} is defeated by ancestor ${blockerSel} overflow (${bcs?.overflowX}/${bcs?.overflowY}).`,
+        'Replace `overflow: hidden` on the ancestor with `overflow: clip` (clips paint without creating a scroll container) or `overflow: visible`.',
+        ['css-layout'],
+        blockerSel,
+      );
+    }
+  }
+
+  const isFlexOrGridItem = Boolean(
+    parentCs && (parentCs.display.includes('flex') || parentCs.display.includes('grid')),
+  );
+  if (cs && cs.position === 'static' && cs.zIndex && cs.zIndex !== 'auto' && !isFlexOrGridItem) {
+    push(
+      el,
+      'inert-z-index',
+      'LAYOUT',
+      'warning',
+      `z-index: ${cs.zIndex} has no effect on position: static.`,
+      'Set `position: relative` (or `isolation: isolate`) if a stacking context is needed, or remove the dead `z-index`.',
+      ['css-layout'],
+    );
+  }
+
+  if (
+    isFlexOrGridItem &&
+    cs?.overflowX === 'visible' &&
+    el.clientWidth > 0 &&
+    el.scrollWidth > el.clientWidth + 4
+  ) {
+    push(
+      el,
+      'flex-grid-min-width-overflow',
+      'LAYOUT',
+      'error',
+      `Flex/Grid item overflows container by ${Math.round(el.scrollWidth - el.clientWidth)}px (min-width: auto).`,
+      'Add `min-width: 0` on the flex/grid child (or `flex-wrap: wrap` on the parent) so content can shrink or wrap cleanly.',
+      ['css-layout'],
+    );
+  }
+
+  // --- Live MWG platform modernization ---
+  const isDropdownWrapperWithMenuTrigger =
+    /\b(dropdown|popover|context-menu|action-menu|flyout)\b/.test(cls) &&
+    role !== 'menu' &&
+    el.getAttribute('aria-haspopup') !== 'menu' &&
+    Boolean(el.querySelector('[aria-haspopup="menu"]'));
+  if (
+    !el.hasAttribute('popover') &&
+    tag !== 'dialog' &&
+    !isDropdownWrapperWithMenuTrigger &&
+    (/\b(dropdown|popover|context-menu|action-menu|flyout)\b/.test(cls) ||
+      role === 'menu' ||
+      (el.getAttribute('aria-haspopup') === 'menu' &&
+        !el.hasAttribute('commandfor') &&
+        !el.hasAttribute('popovertarget')))
+  ) {
+    push(
+      el,
+      'mwg-native-popover-menu',
+      'MODERNITY',
+      'info',
+      `Custom <${tag}> menu/dropdown instead of native [popover] + CSS Anchor Positioning.`,
+      'Use `popover="auto"` triggered with `commandfor`/`command="toggle-popover"` (or `popovertarget`) and CSS Anchor Positioning (`position-area`, `position-try-fallbacks`).',
+      ['menu', 'viewport-aware-dropdowns', 'declarative-dialog-popover-control'],
+    );
+  }
+
+  if (
+    tag !== 'dialog' &&
+    (el.getAttribute('aria-modal') === 'true' ||
+      role === 'dialog' ||
+      role === 'alertdialog' ||
+      /\b(modal-backdrop|modal-overlay|custom-modal)\b/.test(cls))
+  ) {
+    push(
+      el,
+      'mwg-native-dialog',
+      'MODERNITY',
+      'info',
+      `Custom modal <${tag}> re-implements top-layer modal semantics manually.`,
+      'Replace with native `<dialog>` opened via `showModal()` (or `command="show-modal"`) with `closedby="any"` and `::backdrop`.',
+      ['dialog', 'light-dismiss-a-dialog'],
+    );
+  }
+
+  if (tag !== 'details' && tag !== 'summary' && /\b(accordion-item|accordion-panel|collapsible-card)\b/.test(cls)) {
+    push(
+      el,
+      'mwg-native-accordion',
+      'MODERNITY',
+      'info',
+      `Custom accordion <${tag}> toggles disclosure in JS instead of native <details>.`,
+      'Use semantic `<details>` + `<summary>` (with shared `name` for exclusive groups) animated via `::details-content` and `interpolate-size: allow-keywords`.',
+      ['accordion', 'animate-to-intrinsic-sizes'],
+    );
+  }
+
+  if (
+    !(tag === 'input' && el.hasAttribute('switch')) &&
+    (role === 'switch' || /\b(toggle-switch|custom-switch)\b/.test(cls))
+  ) {
+    push(
+      el,
+      'mwg-native-switch',
+      'MODERNITY',
+      'info',
+      `Custom switch <${tag}> re-implements checkbox toggle behavior in script.`,
+      'Use `<input type="checkbox" switch>` paired with a `<label>` for native semantics and progressive fallback.',
+      ['switch'],
+    );
+  }
+
+  if (tag === 'textarea' && cs && cs.getPropertyValue('field-sizing').trim() !== 'content') {
+    push(
+      el,
+      'mwg-field-sizing',
+      'MODERNITY',
+      'info',
+      'Textarea uses fixed sizing or JS auto-resize instead of CSS field-sizing: content.',
+      'Add `field-sizing: content` with `min-block-size`/`max-block-size` bounds and remove JS scrollHeight resize listeners.',
+      ['form-fields-automatically-fit-contents'],
+    );
+  }
+
+  // --- Accessibility & target size ---
+  const isHiddenFromAt = Boolean(el.closest('[aria-hidden="true"]'));
+  const isInteractive = isInteractiveElement(el);
+
+  if (el.getAttribute('aria-hidden') === 'true') {
+    const focusable = el.querySelector('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (focusable) {
+      push(
+        focusable,
+        'aria-hidden-focus',
+        'A11Y',
+        'error',
+        'Focusable element is nested inside an aria-hidden="true" container.',
+        'Remove `aria-hidden="true"` from the ancestor or add `inert` so hidden controls cannot receive keyboard focus.',
+        ['accessibility'],
+      );
+    }
+  }
+
+  if (!isHiddenFromAt && isInteractive) {
+    if (!computeAccessibleName(el)) {
+      push(
+        el,
+        'a11y-missing-name',
+        'A11Y',
+        'error',
+        `Interactive <${tag}> is missing an accessible name.`,
+        'Provide visible text, an associated `<label>`, or a concise `aria-label` (with `aria-hidden="true"` on decorative SVGs).',
+        ['accessibility'],
+      );
+    }
+    if (rect && rect.width === 0 && rect.height === 0 && (tag === 'button' || tag === 'a')) {
+      push(
+        el,
+        'zero-size-interactive',
+        'LAYOUT',
+        'error',
+        `Visible interactive <${tag}> rendered at 0x0px.`,
+        'Ensure the control has non-zero dimensions or remove it from the tab order when collapsed.',
+        ['accessibility', 'css-layout'],
+      );
+    } else if (rect && rect.width > 0 && rect.height > 0 && (rect.width < 24 || rect.height < 24)) {
+      push(
+        el,
+        'a11y-target-size',
+        'A11Y',
+        'warning',
+        `Interactive hit target is ${Math.round(rect.width)}x${Math.round(rect.height)}px (< 24x24px WCAG 2.2 AA).`,
+        'Expand clickable hit area to at least 24x24px (44x44px recommended on touch viewports).',
+        ['accessibility'],
+      );
+    }
+
+    // Collect up to 6 safe interactive triggers for CDP smoke probing.
+    if (
+      collector &&
+      collector.interactiveCandidates.length < 6 &&
+      (tag === 'button' || role === 'button' || el.hasAttribute('popovertarget') || el.hasAttribute('commandfor')) &&
+      !el.hasAttribute('disabled')
+    ) {
+      const label = computeAccessibleName(el) || buildCompactSelector(el);
+      if (!DESTRUCTIVE_LABEL_RE.test(label)) {
+        const src = resolveElementSource(el, win);
+        collector.smokeElements.push(el);
+        collector.interactiveCandidates.push({
+          smokeIdx: collector.smokeElements.length - 1,
+          selector: buildCompactSelector(el),
+          label: label.slice(0, 60),
+          file: src.file,
+          line: src.line,
+          column: src.column,
+          framework: src.framework,
+        });
+      }
+    }
+  }
+
+  // WCAG 2.1 AA contrast check on elements with direct visible text or currentColor SVG icons.
+  const hasText = hasDirectText(el);
+  const hasIcon = !hasText && hasDirectIconChild(el);
+  if (!isHiddenFromAt && (hasText || hasIcon) && cs) {
+    const ratio = computeContrastRatio(el, win);
+    if (ratio !== null) {
+      const fontPx = Number(cs.fontSize.replace(/px$/i, '')) || 16;
+      const weight = Number(cs.fontWeight) || 400;
+      const isLargeText = fontPx >= 24 || (fontPx >= 18.66 && weight >= 700);
+      const required = isLargeText || hasIcon ? 3.0 : 4.5;
+      if (ratio < required) {
+        push(
+          el,
+          'a11y-low-contrast',
+          'A11Y',
+          'error',
+          `${hasIcon ? 'Icon' : 'Text'} contrast ratio is ${ratio.toFixed(1)}:1 (WCAG AA requires >= ${required}:1).`,
+          'Adjust foreground/background color tokens to meet WCAG AA contrast across light and dark themes.',
+          ['accessibility', 'contrast-color', 'color'],
+        );
+      }
+    }
+  }
+
+  // --- CWV / LCP image priority check ---
+  if (tag === 'img') {
+    const fetchPriority = (el.getAttribute('fetchpriority') ?? '').toLowerCase();
+    const loading = (el.getAttribute('loading') ?? '').toLowerCase();
+    const isRecordedLcp = cwv.lcpElement === el;
+    const isLikelyHero =
+      !cwv.lcpElement &&
+      rect !== null &&
+      rect.top >= 0 &&
+      rect.top < (win.innerHeight || 800) * 0.75 &&
+      rect.width * rect.height >= 120_000;
+    if ((isRecordedLcp || isLikelyHero) && (fetchPriority !== 'high' || loading === 'lazy')) {
+      push(
+        el,
+        'perf-lcp-image',
+        'PERF',
+        loading === 'lazy' ? 'error' : 'warning',
+        loading === 'lazy'
+          ? 'LCP/hero image sets loading="lazy", delaying Largest Contentful Paint.'
+          : 'LCP/hero image is missing fetchpriority="high".',
+        'Remove `loading="lazy"` and set `fetchpriority="high"` on the hero/LCP `<img>`.',
+        ['optimize-image-priority', 'optimize-preload-priority', 'performance'],
+      );
+    }
+  }
+}
+
+/** Runs live layout, MWG pattern, a11y, and CWV checks scoped to `element` and its subtree. */
+export function auditElement(
+  element: Element,
+  win: Window = window,
+): BrowserAuditFinding[] {
+  ensureCwvObserver(win);
+  const findings: BrowserAuditFinding[] = [];
+  const seen = new Set<string>();
+  const push = createFindingPusher(win, findings, seen);
+  const cwv = readCwvSnapshot(win);
+
+  const candidates = [element, ...Array.from(element.querySelectorAll('*'))].slice(0, 40);
+  for (const node of candidates) {
+    auditSingleElement(node, win, cwv, push);
+  }
+
+  let subtreeCls = 0;
+  if (cwv.nodeCls) {
+    for (const node of candidates) {
+      subtreeCls += cwv.nodeCls.get(node) ?? 0;
+    }
+  } else if (cwv.cls >= 0.05 && cwv.clsElement && (cwv.clsElement === element || element.contains(cwv.clsElement))) {
+    subtreeCls = cwv.cls;
+  }
+  if (subtreeCls >= 0.05) {
+    push(
+      element,
+      'perf-cls',
+      'PERF',
+      subtreeCls >= 0.1 ? 'error' : 'warning',
+      `Cumulative Layout Shift reached ${subtreeCls.toFixed(3)} (good threshold is <= 0.100).`,
+      'Reserve intrinsic space (`width`/`height`, `aspect-ratio`, `min-height`) and animate only compositor properties (`transform`, `opacity`).',
+      ['performance'],
+    );
+  }
+
+  return findings;
+}
+
+/** Runs all live DOM, layout, MWG pattern, a11y, and CWV checks on `win.document`. */
+export function runPageAudit(
+  win: Window = window,
+  opts: PageAuditOptions = {},
+): PageAuditResult {
+  const doc = win.document;
+  const findings: BrowserAuditFinding[] = [];
+  const seen = new Set<string>();
+  const push = createFindingPusher(win, findings, seen);
+  const excludeRoots = new Set(opts.excludeRootIds ?? []);
 
   // 1. Document-level checks.
   const htmlEl = doc.documentElement;
@@ -391,343 +865,15 @@ export function runPageAudit(
   // 2. Single bounded DOM traversal for layout, MWG patterns, a11y, and CWV.
   const cwv = readCwvSnapshot(win);
   const allElements = Array.from(doc.querySelectorAll('body *')).slice(0, 600);
-  const smokeElements: Element[] = [];
-  const interactiveCandidates: InteractiveCandidate[] = [];
-  let openModalCount = 0;
+  const collector: InteractiveCollector = {
+    smokeElements: [],
+    interactiveCandidates: [],
+    openModalCount: 0,
+  };
 
   for (const el of allElements) {
-    if (!isVisuallyRendered(el, win)) continue;
-    const tag = el.tagName.toLowerCase();
-    if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
-    const cs = safeStyle(el, win);
-    const parent = el.parentElement;
-    const parentCs = parent ? safeStyle(parent, win) : null;
-    const role = (el.getAttribute('role') ?? '').trim().toLowerCase();
-    const cls = `${typeof el.className === 'string' ? el.className : ''} ${el.id ?? ''}`.toLowerCase();
-    const rect = safeRect(el);
-
-    if (
-      (tag === 'dialog' && el.hasAttribute('open')) ||
-      role === 'dialog' ||
-      role === 'alertdialog' ||
-      /\bmodal\b/.test(cls)
-    ) {
-      if (!el.hasAttribute('hidden')) openModalCount++;
-    }
-
-    // --- Layout container diagnostics ---
-    if (cs?.position === 'sticky') {
-      if (cs.top === 'auto' && cs.bottom === 'auto' && cs.left === 'auto' && cs.right === 'auto') {
-        push(
-          el,
-          'sticky-missing-inset',
-          'LAYOUT',
-          'warning',
-          'position: sticky element has no inset threshold (top/bottom/left/right are auto).',
-          'Add an explicit inset such as `top: 0` on the sticky element.',
-          ['css-layout'],
-        );
-      }
-      const blocker = findStickyBreakingAncestor(el, win);
-      if (blocker) {
-        const bcs = safeStyle(blocker, win);
-        push(
-          blocker,
-          'sticky-overflow-ancestor',
-          'LAYOUT',
-          'error',
-          `position: sticky on ${buildCompactSelector(el)} is defeated by ancestor overflow (${bcs?.overflowX}/${bcs?.overflowY}).`,
-          'Replace `overflow: hidden` on the ancestor with `overflow: clip` (clips paint without creating a scroll container) or `overflow: visible`.',
-          ['css-layout'],
-        );
-      }
-    }
-
-    const isFlexOrGridItem = Boolean(
-      parentCs && (parentCs.display.includes('flex') || parentCs.display.includes('grid')),
-    );
-    if (cs && cs.position === 'static' && cs.zIndex && cs.zIndex !== 'auto' && !isFlexOrGridItem) {
-      push(
-        el,
-        'inert-z-index',
-        'LAYOUT',
-        'warning',
-        `z-index: ${cs.zIndex} has no effect on position: static.`,
-        'Set `position: relative` (or `isolation: isolate`) if a stacking context is needed, or remove the dead `z-index`.',
-        ['css-layout'],
-      );
-    }
-
-    if (
-      isFlexOrGridItem &&
-      cs?.overflowX === 'visible' &&
-      el.clientWidth > 0 &&
-      el.scrollWidth > el.clientWidth + 4
-    ) {
-      push(
-        el,
-        'flex-grid-min-width-overflow',
-        'LAYOUT',
-        'error',
-        `Flex/Grid item overflows container by ${Math.round(el.scrollWidth - el.clientWidth)}px (min-width: auto).`,
-        'Add `min-width: 0` on the flex/grid child (or `flex-wrap: wrap` on the parent) so content can shrink or wrap cleanly.',
-        ['css-layout'],
-      );
-    }
-
-    // --- Live MWG platform modernization ---
-    if (
-      !el.hasAttribute('popover') &&
-      tag !== 'dialog' &&
-      (/\b(dropdown|popover|context-menu|action-menu|flyout)\b/.test(cls) ||
-        role === 'menu' ||
-        (el.getAttribute('aria-haspopup') === 'menu' &&
-          !el.hasAttribute('commandfor') &&
-          !el.hasAttribute('popovertarget')))
-    ) {
-      push(
-        el,
-        'mwg-native-popover-menu',
-        'MODERNITY',
-        'info',
-        `Custom <${tag}> menu/dropdown instead of native [popover] + CSS Anchor Positioning.`,
-        'Use `popover="auto"` triggered with `commandfor`/`command="toggle-popover"` (or `popovertarget`) and CSS Anchor Positioning (`position-area`, `position-try-fallbacks`).',
-        ['menu', 'viewport-aware-dropdowns', 'declarative-dialog-popover-control'],
-      );
-    }
-
-    if (
-      tag !== 'dialog' &&
-      (el.getAttribute('aria-modal') === 'true' ||
-        role === 'dialog' ||
-        role === 'alertdialog' ||
-        /\b(modal-backdrop|modal-overlay|custom-modal)\b/.test(cls))
-    ) {
-      push(
-        el,
-        'mwg-native-dialog',
-        'MODERNITY',
-        'info',
-        `Custom modal <${tag}> re-implements top-layer modal semantics manually.`,
-        'Replace with native `<dialog>` opened via `showModal()` (or `command="show-modal"`) with `closedby="any"` and `::backdrop`.',
-        ['dialog', 'light-dismiss-a-dialog'],
-      );
-    }
-
-    if (tag !== 'details' && tag !== 'summary' && /\b(accordion-item|accordion-panel|collapsible-card)\b/.test(cls)) {
-      push(
-        el,
-        'mwg-native-accordion',
-        'MODERNITY',
-        'info',
-        `Custom accordion <${tag}> toggles disclosure in JS instead of native <details>.`,
-        'Use semantic `<details>` + `<summary>` (with shared `name` for exclusive groups) animated via `::details-content` and `interpolate-size: allow-keywords`.',
-        ['accordion', 'animate-to-intrinsic-sizes'],
-      );
-    }
-
-    if (
-      !(tag === 'input' && el.hasAttribute('switch')) &&
-      (role === 'switch' || /\b(toggle-switch|custom-switch)\b/.test(cls))
-    ) {
-      push(
-        el,
-        'mwg-native-switch',
-        'MODERNITY',
-        'info',
-        `Custom switch <${tag}> re-implements checkbox toggle behavior in script.`,
-        'Use `<input type="checkbox" switch>` paired with a `<label>` for native semantics and progressive fallback.',
-        ['switch'],
-      );
-    }
-
-    if (tag === 'textarea' && cs && cs.getPropertyValue('field-sizing').trim() !== 'content') {
-      push(
-        el,
-        'mwg-field-sizing',
-        'MODERNITY',
-        'info',
-        'Textarea uses fixed sizing or JS auto-resize instead of CSS field-sizing: content.',
-        'Add `field-sizing: content` with `min-block-size`/`max-block-size` bounds and remove JS scrollHeight resize listeners.',
-        ['form-fields-automatically-fit-contents'],
-      );
-    }
-
-    // --- Accessibility & target size ---
-    const isHiddenFromAt = Boolean(el.closest('[aria-hidden="true"]'));
-    const inputType = tag === 'input' ? (el.getAttribute('type') ?? 'text').toLowerCase() : '';
-    const isInteractive =
-      tag === 'button' ||
-      (tag === 'a' && el.hasAttribute('href')) ||
-      (tag === 'input' && inputType !== 'hidden') ||
-      tag === 'select' ||
-      tag === 'textarea' ||
-      INTERACTIVE_ROLES.has(role);
-
-    if (el.getAttribute('aria-hidden') === 'true') {
-      const focusable = el.querySelector('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])');
-      if (focusable) {
-        push(
-          focusable,
-          'aria-hidden-focus',
-          'A11Y',
-          'error',
-          'Focusable element is nested inside an aria-hidden="true" container.',
-          'Remove `aria-hidden="true"` from the ancestor or add `inert` so hidden controls cannot receive keyboard focus.',
-          ['accessibility'],
-        );
-      }
-    }
-
-    if (!isHiddenFromAt && isInteractive) {
-      if (!computeAccessibleName(el)) {
-        push(
-          el,
-          'a11y-missing-name',
-          'A11Y',
-          'error',
-          `Interactive <${tag}> is missing an accessible name.`,
-          'Provide visible text, an associated `<label>`, or a concise `aria-label` (with `aria-hidden="true"` on decorative SVGs).',
-          ['accessibility'],
-        );
-      }
-      if (rect && rect.width === 0 && rect.height === 0 && (tag === 'button' || tag === 'a')) {
-        push(
-          el,
-          'zero-size-interactive',
-          'LAYOUT',
-          'error',
-          `Visible interactive <${tag}> rendered at 0x0px.`,
-          'Ensure the control has non-zero dimensions or remove it from the tab order when collapsed.',
-          ['accessibility', 'css-layout'],
-        );
-      } else if (rect && rect.width > 0 && rect.height > 0 && (rect.width < 24 || rect.height < 24)) {
-        push(
-          el,
-          'a11y-target-size',
-          'A11Y',
-          'warning',
-          `Interactive hit target is ${Math.round(rect.width)}x${Math.round(rect.height)}px (< 24x24px WCAG 2.2 AA).`,
-          'Expand clickable hit area to at least 24x24px (44x44px recommended on touch viewports).',
-          ['accessibility'],
-        );
-      }
-
-      // Collect up to 6 safe interactive triggers for CDP smoke probing.
-      if (
-        interactiveCandidates.length < 6 &&
-        (tag === 'button' || role === 'button' || el.hasAttribute('popovertarget') || el.hasAttribute('commandfor')) &&
-        !el.hasAttribute('disabled')
-      ) {
-        const label = computeAccessibleName(el) || buildCompactSelector(el);
-        if (!DESTRUCTIVE_LABEL_RE.test(label)) {
-          const src = resolveElementSource(el, win);
-          smokeElements.push(el);
-          interactiveCandidates.push({
-            smokeIdx: smokeElements.length - 1,
-            selector: buildCompactSelector(el),
-            label: label.slice(0, 60),
-            file: src.file,
-            line: src.line,
-            column: src.column,
-            framework: src.framework,
-          });
-        }
-      }
-    } else if (
-      !isHiddenFromAt &&
-      tag === 'img' &&
-      !el.hasAttribute('alt') &&
-      role !== 'presentation' &&
-      role !== 'none'
-    ) {
-      push(
-        el,
-        'image-alt',
-        'A11Y',
-        'error',
-        '<img> element is missing an alt attribute.',
-        'Add descriptive `alt="..."` text, or `alt=""` if the image is purely decorative.',
-        ['accessibility'],
-      );
-    } else if (
-      !isHiddenFromAt &&
-      (tag === 'div' || tag === 'span') &&
-      el.hasAttribute('onclick') &&
-      !el.hasAttribute('tabindex')
-    ) {
-      push(
-        el,
-        'a11y-non-semantic-click',
-        'A11Y',
-        'error',
-        `Clickable <${tag}> uses inline onclick without <button> semantics or tabindex.`,
-        'Replace with `<button type="button">` (or `<a href>` for navigation) so keyboard focus and Enter/Space work natively.',
-        ['accessibility'],
-      );
-    }
-
-    // WCAG 2.1 AA contrast check on elements with direct visible text.
-    if (!isHiddenFromAt && hasDirectText(el) && cs) {
-      const ratio = computeContrastRatio(el, win);
-      if (ratio !== null) {
-        const fontPx = Number.parseFloat(cs.fontSize) || 16;
-        const weight = Number.parseInt(cs.fontWeight, 10) || 400;
-        const required = fontPx >= 24 || (fontPx >= 18.66 && weight >= 700) ? 3.0 : 4.5;
-        if (ratio < required) {
-          push(
-            el,
-            'a11y-low-contrast',
-            'A11Y',
-            'error',
-            `Text contrast ratio is ${ratio.toFixed(1)}:1 (WCAG AA requires >= ${required}:1).`,
-            'Adjust foreground/background color tokens to meet WCAG AA contrast across light and dark themes.',
-            ['accessibility', 'contrast-color', 'color'],
-          );
-        }
-      }
-    }
-
-    // --- CWV / Image performance checks ---
-    if (tag === 'img') {
-      const fetchPriority = (el.getAttribute('fetchpriority') ?? '').toLowerCase();
-      const loading = (el.getAttribute('loading') ?? '').toLowerCase();
-      const isRecordedLcp = cwv.lcpElement === el;
-      const isLikelyHero =
-        !cwv.lcpElement &&
-        rect !== null &&
-        rect.top >= 0 &&
-        rect.top < (win.innerHeight || 800) * 0.75 &&
-        rect.width * rect.height >= 120_000;
-      if ((isRecordedLcp || isLikelyHero) && (fetchPriority !== 'high' || loading === 'lazy')) {
-        push(
-          el,
-          'perf-lcp-image',
-          'PERF',
-          loading === 'lazy' ? 'error' : 'warning',
-          loading === 'lazy'
-            ? 'LCP/hero image sets loading="lazy", delaying Largest Contentful Paint.'
-            : 'LCP/hero image is missing fetchpriority="high".',
-          'Remove `loading="lazy"` and set `fetchpriority="high"` on the hero/LCP `<img>`.',
-          ['optimize-image-priority', 'optimize-preload-priority', 'performance'],
-        );
-      }
-      if (
-        !el.getAttribute('width') &&
-        !el.getAttribute('height') &&
-        (!cs || cs.aspectRatio === 'auto' || !cs.aspectRatio)
-      ) {
-        push(
-          el,
-          'perf-image-dimensions',
-          'PERF',
-          'warning',
-          '<img> omits intrinsic width/height attributes and CSS aspect-ratio (CLS risk).',
-          'Specify explicit `width` and `height` attributes (or CSS `aspect-ratio`) to reserve layout space before decode.',
-          ['performance'],
-        );
-      }
-    }
+    if (isExcludedNode(el, excludeRoots)) continue;
+    auditSingleElement(el, win, cwv, push, collector);
   }
 
   if (cwv.cls >= 0.05) {
@@ -747,13 +893,13 @@ export function runPageAudit(
 
   // Expose lightweight hooks for CDP follow-up calls (DOMDebugger listeners & smoke clicks).
   const host = win as unknown as Record<string, unknown>;
-  host.__mwgSmokeElements = smokeElements;
+  host['__mwgSmokeElements'] = collector.smokeElements;
 
   return {
     finalUrl: win.location?.href ?? '',
     findings,
-    interactiveCandidates,
-    openModalCount,
+    interactiveCandidates: collector.interactiveCandidates,
+    openModalCount: collector.openModalCount,
     cls: Math.round(cwv.cls * 1000) / 1000,
     lcpMs: cwv.lcpMs,
   };
@@ -791,13 +937,16 @@ export function describeElement(el: Element, win: Window = window) {
 }
 
 function readCwvSnapshot(win: Window): CwvSnapshot {
-  const tracked = (win as unknown as { __mwgCwv?: Partial<CwvSnapshot> }).__mwgCwv;
+  const tracked = (win as unknown as Record<string, unknown>)['__mwgCwv'] as
+    | Partial<CwvSnapshot>
+    | undefined;
   if (tracked && typeof tracked === 'object') {
     return {
       cls: typeof tracked.cls === 'number' ? tracked.cls : 0,
       clsElement: tracked.clsElement ?? null,
       lcpMs: typeof tracked.lcpMs === 'number' ? Math.round(tracked.lcpMs) : null,
       lcpElement: tracked.lcpElement ?? null,
+      nodeCls: tracked.nodeCls,
     };
   }
   return { cls: 0, clsElement: null, lcpMs: null, lcpElement: null };
@@ -825,7 +974,31 @@ function findStickyBreakingAncestor(stickyEl: Element, win: Window): Element | n
 
 function hasDirectText(el: Element): boolean {
   for (const node of Array.from(el.childNodes)) {
-    if (node.nodeType === 3 && (node.textContent ?? '').trim().length > 0) return true;
+    if (node.nodeType === 3 && (node.textContent ?? '').trim().length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasDirectIconChild(el: Element): boolean {
+  for (const node of Array.from(el.childNodes)) {
+    if (node.nodeType === 1 && (node as Element).tagName.toLowerCase() === 'svg') {
+      const svg = node as Element;
+      if (svg.getAttribute('aria-hidden') === 'true' && !isInteractiveElement(el)) {
+        continue;
+      }
+      const fill = (svg.getAttribute('fill') ?? '').toLowerCase();
+      const stroke = (svg.getAttribute('stroke') ?? '').toLowerCase();
+      if (
+        fill === 'currentcolor' ||
+        stroke === 'currentcolor' ||
+        (!fill && !stroke) ||
+        (fill === 'none' && !stroke)
+      ) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -847,7 +1020,9 @@ function safeRect(el: Element): DOMRect | null {
 }
 
 function escapeCss(val: string): string {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(val);
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(val);
+  }
   return val.replace(/([^a-zA-Z0-9_-])/g, '\\$1');
 }
 
@@ -878,7 +1053,9 @@ function parseHueRad(token: string): number | null {
   if (!token) return null;
   if (token === 'none') return 0;
   if (token.endsWith('turn')) return Number(token.slice(0, -4)) * 2 * Math.PI;
-  if (token.endsWith('grad')) return (Number(token.slice(0, -4)) * Math.PI) / 200;
+  if (token.endsWith('grad')) {
+    return (Number(token.slice(0, -4)) * Math.PI) / 200;
+  }
   if (token.endsWith('rad')) return Number(token.slice(0, -3));
   const deg = Number(token.endsWith('deg') ? token.slice(0, -3) : token);
   return Number.isFinite(deg) ? (deg * Math.PI) / 180 : null;
