@@ -607,16 +607,10 @@
         border: var(--stroke-thick) solid var(--accent-primary);
         padding-block: 1rem;
         padding-inline: 1.75rem;
-        transition: transform var(--duration-fast) var(--ease-standard),
-                    filter var(--duration-fast) var(--ease-standard);
+        transition: filter var(--duration-fast) var(--ease-standard);
 
         &:hover:not(:disabled) {
-          transform: translateY(-2px);
           filter: brightness(1.08);
-        }
-
-        &:active:not(:disabled) {
-          transform: translateY(0);
         }
       }
 

@@ -55,7 +55,7 @@ Use `border-shape` with `polygon()` or `shape()` for outlines such as speech bub
 - `clip-path` and `border-shape` make clipped-away corners ignore pointer events, so a click on the empty corner reaches whatever is behind and does not trigger the click handler. Do not enlarge the hit area with extra elements.
 - Give every shaped interactive element a visible `:focus-visible` indicator. A plain `outline` with an offset works for `border-shape`; with `clip-path` the outline is clipped, so draw the indicator inside the shape or on the wrapper.
 - Under `@media (forced-colors: active)`, set a visible border color (such as `ButtonText`) on shaped elements that rely on a background fill, since fills are removed.
-- Disable hover transforms under `@media (prefers-reduced-motion: reduce)`.
+- Do not translate shaped interactive elements on `:hover` or `:active`, because moving a clipped hitbox under the pointer causes missed clicks; disable any remaining hover transitions under `@media (prefers-reduced-motion: reduce)`.
 
 ## Fallbacks
 
