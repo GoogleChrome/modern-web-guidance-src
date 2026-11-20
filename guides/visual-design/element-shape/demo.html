@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modern CSS Element Shapes</title>
+  <style>
+    @layer tokens, base, layout, shapes, interactive;
+
+    @layer tokens {
+      :root {
+        color-scheme: light dark;
+
+        /* Tier 1 & 2: Palette and surface tokens */
+        --surface-page: light-dark(#f5f7fb, #0f141c);
+        --surface-card: light-dark(#ffffff, #171e29);
+        --surface-subtle: light-dark(#eaf0f8, #202938);
+        --ink-primary: light-dark(#151c28, #eef3fa);
+        --ink-muted: light-dark(#4e5b70, #a2b0c6);
+
+        --accent-primary: light-dark(#1d4ed8, #7aa7ff);
+        --accent-secondary: light-dark(#0f766e, #4fd1c5);
+        --accent-warm: light-dark(#b45309, #fbbf24);
+        --accent-contrast: light-dark(#ffffff, #0b1322);
+
+        --border-subtle: color-mix(in oklab, var(--ink-primary) 16%, transparent);
+        --surface-accent-soft: color-mix(in oklab, var(--accent-primary) 12%, var(--surface-card));
+        --shadow-color: light-dark(rgb(15 23 42 / 0.14), rgb(0 0 0 / 0.45));
+
+        /* Shape geometry tokens */
+        --space-xs: 0.5rem;
+        --space-sm: 0.75rem;
+        --space-md: 1.25rem;
+        --space-lg: 2rem;
+
+        --radius-card: 1.25rem;
+        --radius-corner-demo: 2rem;
+        --radius-tag-slant: 1rem;
+        --radius-elliptical: 1.25rem / 2.5rem;
+        --radius-organic: 62% 38% 46% 54% / 44% 58% 42% 56%;
+        --radius-pill: calc(infinity * 1px);
+        --radius-polygon-vertex: 14px;
+
+        --stroke-thin: 1px;
+        --stroke-medium: 2px;
+        --stroke-thick: 3px;
+
+        --tooltip-radius: 12px;
+        --tooltip-tail-height: 12px;
+        --tooltip-tail-half: 12px;
+
+        --shadow-shape: 0 10px 24px -6px var(--shadow-color);
+        --drop-shadow-shape: drop-shadow(0 10px 18px var(--shadow-color));
+
+        --gradient-cool: linear-gradient(135deg in oklch, var(--accent-primary), var(--accent-secondary));
+        --gradient-warm: linear-gradient(135deg in oklch, var(--accent-warm), var(--accent-primary));
+
+        --ticket-wave: 10%;
+        --ticket-notch: 12px;
+        --duration-fast: 160ms;
+        --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+    }
+
+    @layer base {
+      :where(html, body, main, header, section, article, div, figure, figcaption, button, fieldset, legend, label) {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding-block: var(--space-lg);
+        padding-inline: var(--space-md);
+        background-color: var(--surface-page);
+        color: var(--ink-primary);
+        font: 1rem/1.55 system-ui, -apple-system, sans-serif;
+      }
+
+      :where(h1, h2, h3, p) {
+        margin-block-start: 0;
+      }
+
+      :where(h1, h2, h3) {
+        line-height: 1.2;
+      }
+
+      :where(code) {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.88em;
+        padding-block: 0.1em;
+        padding-inline: 0.35em;
+        border-radius: 0.3em;
+        background-color: var(--surface-subtle);
+        color: var(--ink-primary);
+      }
+
+      :where(:focus-visible) {
+        outline: var(--stroke-thick) solid var(--accent-primary);
+        outline-offset: 3px;
+      }
+    }
+
+    @layer layout {
+      .page {
+        inline-size: min(72rem, 100%);
+        margin-inline: auto;
+        display: grid;
+        gap: var(--space-lg);
+      }
+
+      .hero {
+        display: grid;
+        gap: var(--space-sm);
+
+        & p {
+          max-inline-size: 65ch;
+          margin-block-end: 0;
+          color: var(--ink-muted);
+        }
+      }
+
+      .support-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs) var(--space-md);
+        list-style: none;
+        margin: 0;
+        padding: var(--space-sm) var(--space-md);
+        border: var(--stroke-thin) solid var(--border-subtle);
+        border-radius: var(--radius-card);
+        background-color: var(--surface-card);
+
+        &:empty {
+          display: none;
+        }
+      }
+
+      .support-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45em;
+        font-size: 0.9rem;
+
+        &::before {
+          content: "\2715" / "";
+          font-weight: 700;
+          color: var(--accent-warm);
+        }
+
+        &[data-supported="true"]::before {
+          content: "\2713" / "";
+          color: var(--accent-secondary);
+        }
+      }
+
+      .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+        gap: var(--space-md);
+      }
+
+      .panel {
+        container-type: inline-size;
+        display: grid;
+        align-content: start;
+        gap: var(--space-md);
+        padding: var(--space-md);
+        border: var(--stroke-thin) solid var(--border-subtle);
+        border-radius: var(--radius-card);
+        corner-shape: squircle;
+        background-color: var(--surface-card);
+      }
+
+      .panel-header {
+        display: grid;
+        gap: 0.35rem;
+
+        & h2 {
+          margin-block-end: 0;
+          font-size: 1.15rem;
+        }
+
+        & p {
+          margin-block-end: 0;
+          font-size: 0.92rem;
+          color: var(--ink-muted);
+        }
+      }
+
+      .stage {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-md);
+        min-block-size: 10.5rem;
+        padding: var(--space-md);
+        border-radius: calc(var(--radius-card) * 0.7);
+        background-color: var(--surface-subtle);
+      }
+
+      .specimen {
+        margin: 0;
+        display: grid;
+        justify-items: center;
+        gap: var(--space-xs);
+
+        & figcaption {
+          font-size: 0.85rem;
+          color: var(--ink-muted);
+          text-align: center;
+        }
+      }
+    }
+
+    @layer shapes {
+      @scope (.panel) to (.panel-header) {
+        .shape-box {
+          display: grid;
+          place-items: center;
+          inline-size: clamp(5.5rem, 24cqi, 7rem);
+          block-size: clamp(5.5rem, 24cqi, 7rem);
+          padding: var(--space-xs);
+          background: var(--gradient-cool);
+          color: var(--accent-contrast);
+          font-size: 0.85rem;
+          font-weight: 600;
+          text-align: center;
+
+          &:not(.poly-shape) {
+            border: var(--stroke-medium) solid var(--accent-primary);
+            box-shadow: var(--shadow-shape);
+          }
+        }
+
+        /* 1. border-radius primitives */
+        .circle {
+          block-size: auto;
+          aspect-ratio: 1;
+          border-radius: 50%;
+        }
+
+        .elliptical {
+          inline-size: clamp(7rem, 30cqi, 8.5rem);
+          block-size: 5rem;
+          border-radius: var(--radius-elliptical);
+        }
+
+        .organic {
+          border-radius: var(--radius-organic);
+        }
+
+        .pill {
+          inline-size: auto;
+          block-size: auto;
+          padding-block: 0.65em;
+          padding-inline: 1.5em;
+          border-radius: var(--radius-pill);
+        }
+
+        /* 2. corner-shape variations */
+        .corner-sample {
+          --corner-x: min(var(--radius-corner-demo-x, var(--radius-corner-demo)), 50%);
+          --corner-y: min(var(--radius-corner-demo-y, var(--radius-corner-demo)), 50%);
+          inline-size: clamp(6.5rem, 28cqi, 8.5rem);
+          block-size: 6rem;
+          border-radius: var(--corner-x) / var(--corner-y);
+        }
+
+        .corner-tag-slant {
+          inline-size: auto;
+          block-size: auto;
+          padding-block: 0.6em;
+          padding-inline: 1.4em;
+          border-start-start-radius: var(--radius-tag-slant) 100%;
+          border-end-end-radius: var(--radius-tag-slant) 100%;
+          corner-shape: bevel;
+        }
+
+        /* Fallback for distinct non-rounded corner-shape silhouettes when unsupported */
+        @supports not (corner-shape: squircle) {
+          .corner-tag-slant {
+            border-radius: 0;
+            border-color: transparent;
+            box-shadow: none;
+            clip-path: polygon(var(--radius-tag-slant) 0, 100% 0, calc(100% - var(--radius-tag-slant)) 100%, 0 100%);
+          }
+
+          .corner-tag-slant:dir(rtl) {
+            clip-path: polygon(0 0, calc(100% - var(--radius-tag-slant)) 0, 100% 100%, var(--radius-tag-slant) 100%);
+          }
+        }
+
+        /* 3. border-shape: geometry defines background, border, shadow, outline, and hit-testing */
+        .tooltip-bubble {
+          position: relative;
+          inline-size: min(16rem, 100%);
+          padding-block: 0.9em calc(0.9em + var(--tooltip-tail-height));
+          padding-inline: 1.2em;
+          border: var(--stroke-medium) solid var(--accent-primary);
+          border-radius: var(--tooltip-radius);
+          background-color: var(--surface-card);
+          color: var(--ink-primary);
+          font-size: 0.92rem;
+          font-weight: 500;
+          text-align: center;
+          box-shadow: var(--shadow-shape);
+        }
+
+        /* Fallback without border-shape: a clipped fill without extra wrapper markup */
+        @supports not (border-shape: circle(50%)) {
+          .tooltip-bubble {
+            border-color: transparent;
+            box-shadow: none;
+            clip-path: polygon(
+              0 0, 100% 0, 100% calc(100% - var(--tooltip-tail-height)),
+              calc(50% + var(--tooltip-tail-half)) calc(100% - var(--tooltip-tail-height)),
+              50% 100%,
+              calc(50% - var(--tooltip-tail-half)) calc(100% - var(--tooltip-tail-height)),
+              0 calc(100% - var(--tooltip-tail-height))
+            );
+          }
+        }
+
+        @supports (border-shape: circle(50%)) {
+          .tooltip-bubble {
+            border-radius: 0;
+            border-shape: shape(
+              from var(--tooltip-radius) 0%,
+              hline to calc(100% - var(--tooltip-radius)),
+              curve to 100% var(--tooltip-radius) with 100% 0%,
+              vline to calc(100% - (var(--tooltip-radius) + var(--tooltip-tail-height))),
+              curve to calc(100% - var(--tooltip-radius)) calc(100% - var(--tooltip-tail-height))
+                with 100% calc(100% - var(--tooltip-tail-height)),
+              hline to calc(50% + var(--tooltip-tail-half)),
+              line by calc(var(--tooltip-tail-half) * -1) var(--tooltip-tail-height),
+              line by calc(var(--tooltip-tail-half) * -1) calc(var(--tooltip-tail-height) * -1),
+              hline to var(--tooltip-radius),
+              curve to 0% calc(100% - (var(--tooltip-radius) + var(--tooltip-tail-height)))
+                with 0% calc(100% - var(--tooltip-tail-height)),
+              vline to var(--tooltip-radius),
+              curve to var(--tooltip-radius) 0% with 0% 0%
+            );
+          }
+        }
+
+        /* 4. border-shape ribbon */
+        .ribbon-badge {
+          inline-size: auto;
+          block-size: auto;
+          padding-block: 0.7em;
+          padding-inline: 1.75em;
+          border: var(--stroke-medium) solid var(--accent-warm);
+          background: var(--gradient-warm);
+          color: var(--accent-contrast);
+          font-weight: 700;
+          box-shadow: var(--shadow-shape);
+        }
+
+        @supports not (border-shape: circle(50%)) {
+          .ribbon-badge {
+            border-color: transparent;
+            box-shadow: none;
+            clip-path: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%);
+          }
+        }
+
+        @supports (border-shape: circle(50%)) {
+          .ribbon-badge {
+            border-shape: polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%, 12% 50%);
+          }
+        }
+
+        /* 5. shapes-polygon-round: polygon(round <length>, ...) inside clip-path */
+        .shadow-frame {
+          filter: var(--drop-shadow-shape);
+        }
+
+        .poly-hex,
+        .poly-hex-sharp {
+          clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+        }
+
+        .poly-star {
+          clip-path: polygon(
+            50% 0%, 62% 35%, 98% 35%, 69% 57%, 79% 92%,
+            50% 71%, 21% 92%, 31% 57%, 2% 35%, 38% 35%
+          );
+        }
+
+        @supports (clip-path: polygon(round 10px, 0 0, 100% 0, 50% 100%)) {
+          .poly-hex {
+            clip-path: polygon(
+              round var(--radius-polygon-vertex),
+              50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%
+            );
+          }
+
+          .poly-star {
+            clip-path: polygon(
+              round calc(var(--radius-polygon-vertex) * 0.65),
+              50% 0%, 62% 35%, 98% 35%, 69% 57%, 79% 92%,
+              50% 71%, 21% 92%, 31% 57%, 2% 35%, 38% 35%
+            );
+          }
+        }
+
+        /* 6. Responsive shape() cutout / ticket */
+        .wave-ticket {
+          inline-size: min(17rem, 100%);
+          padding-block: 1.75rem;
+          padding-inline: 1.75rem;
+          background: var(--gradient-cool);
+          color: var(--accent-contrast);
+          text-align: center;
+          font-weight: 600;
+          border-radius: var(--radius-card);
+        }
+
+        @supports not (clip-path: shape(from 0% 0%, line to 100% 100%)) {
+          .wave-ticket {
+            border-radius: 0;
+            clip-path: polygon(
+              0 var(--ticket-wave), 50% 0%, 100% var(--ticket-wave),
+              100% calc(50% - var(--ticket-notch)), calc(100% - var(--ticket-notch)) 50%, 100% calc(50% + var(--ticket-notch)),
+              100% calc(100% - var(--ticket-wave)), 50% 100%, 0 calc(100% - var(--ticket-wave)),
+              0 calc(50% + var(--ticket-notch)), var(--ticket-notch) 50%, 0 calc(50% - var(--ticket-notch))
+            );
+          }
+        }
+
+        @supports (clip-path: shape(from 0% 0%, line to 100% 100%)) {
+          .wave-ticket {
+            border-radius: 0;
+            clip-path: shape(
+              from 0% var(--ticket-wave),
+              curve to 50% 0% with 25% 0% / 35% 12%,
+              smooth to 100% var(--ticket-wave) with 75% 0%,
+              vline to calc(50% - var(--ticket-notch)),
+              arc to 100% calc(50% + var(--ticket-notch)) of var(--ticket-notch) ccw,
+              vline to calc(100% - var(--ticket-wave)),
+              curve to 50% 100% with 75% 100% / 65% 88%,
+              smooth to 0% calc(100% - var(--ticket-wave)) with 25% 100%,
+              vline to calc(50% + var(--ticket-notch)),
+              arc to 0% calc(50% - var(--ticket-notch)) of var(--ticket-notch) ccw,
+              close
+            );
+          }
+        }
+
+        /* 7. Masking preview: soft alpha fade and compound cutout */
+        .masked-orb {
+          inline-size: 7.5rem;
+          block-size: 7.5rem;
+          display: grid;
+          place-items: center;
+          background: var(--gradient-warm);
+          color: var(--accent-contrast);
+          font-weight: 700;
+          border-radius: 50%;
+          -webkit-mask-image: radial-gradient(circle at 50% 50%, black 46%, rgb(0 0 0 / 0.25) 66%, transparent 72%);
+          mask-image: radial-gradient(circle at 50% 50%, black 46%, rgb(0 0 0 / 0.25) 66%, transparent 72%);
+        }
+      }
+    }
+
+    @layer interactive {
+      /* Pure CSS :has() corner-shape switcher */
+      .corner-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        border: 0;
+        margin: 0;
+        padding: 0;
+
+        & legend {
+          position: absolute;
+          inline-size: 1px;
+          block-size: 1px;
+          overflow: hidden;
+          clip-path: inset(50%);
+        }
+      }
+
+      .choice-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35em;
+        padding-block: 0.35em;
+        padding-inline: 0.75em;
+        border: var(--stroke-thin) solid var(--border-subtle);
+        border-radius: var(--radius-pill);
+        background-color: var(--surface-subtle);
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background-color var(--duration-fast) var(--ease-standard),
+                    border-color var(--duration-fast) var(--ease-standard);
+
+        & input {
+          margin: 0;
+          accent-color: var(--accent-primary);
+        }
+
+        &:has(:checked) {
+          border-color: var(--accent-primary);
+          background-color: var(--surface-accent-soft);
+          font-weight: 600;
+        }
+      }
+
+      @supports (corner-shape: squircle) {
+        .panel {
+          &:has(input[value="squircle"]:checked) .interactive-corner { corner-shape: squircle; }
+          &:has(input[value="bevel"]:checked) .interactive-corner { corner-shape: bevel; }
+          &:has(input[value="scoop"]:checked) .interactive-corner { corner-shape: scoop; }
+          &:has(input[value="notch"]:checked) .interactive-corner { corner-shape: notch; }
+          &:has(input[value="superellipse"]:checked) .interactive-corner { corner-shape: superellipse(1.5); }
+        }
+      }
+
+      @supports not (corner-shape: squircle) {
+        .panel:has(input[value="bevel"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          clip-path: polygon(
+            var(--corner-x) 0,
+            calc(100% - var(--corner-x)) 0,
+            100% var(--corner-y),
+            100% calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) 100%,
+            var(--corner-x) 100%,
+            0 calc(100% - var(--corner-y)),
+            0 var(--corner-y)
+          );
+        }
+
+        .panel:has(input[value="notch"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          clip-path: polygon(
+            var(--corner-x) 0,
+            calc(100% - var(--corner-x)) 0,
+            calc(100% - var(--corner-x)) var(--corner-y),
+            100% var(--corner-y),
+            100% calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) calc(100% - var(--corner-y)),
+            calc(100% - var(--corner-x)) 100%,
+            var(--corner-x) 100%,
+            var(--corner-x) calc(100% - var(--corner-y)),
+            0 calc(100% - var(--corner-y)),
+            0 var(--corner-y),
+            var(--corner-x) var(--corner-y)
+          );
+        }
+
+        .panel:has(input[value="scoop"]:checked) .interactive-corner {
+          border-radius: 0;
+          border-color: transparent;
+          box-shadow: none;
+          -webkit-mask-image:
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 100%, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 100%, transparent calc(100% - 1px), black 100%);
+          -webkit-mask-composite: source-in;
+          mask-image:
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 0, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 100% 100%, transparent calc(100% - 1px), black 100%),
+            radial-gradient(ellipse var(--corner-x) var(--corner-y) at 0 100%, transparent calc(100% - 1px), black 100%);
+          mask-composite: intersect;
+        }
+      }
+
+      /* Hit-testing interactive buttons */
+      .hit-zone {
+        position: relative;
+        display: inline-grid;
+        place-items: center;
+        padding: var(--space-sm);
+        border: var(--stroke-thin) dashed var(--border-subtle);
+        border-radius: var(--space-xs);
+        background-color: var(--surface-card);
+        cursor: crosshair;
+      }
+
+      .shape-button {
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--accent-contrast);
+        background: var(--gradient-cool);
+        border: var(--stroke-thick) solid var(--accent-primary);
+        padding-block: 1rem;
+        padding-inline: 1.75rem;
+        transition: filter var(--duration-fast) var(--ease-standard);
+
+        &:hover:not(:disabled) {
+          filter: brightness(1.08);
+        }
+      }
+
+      .shape-button-diamond {
+        inline-size: 7.5rem;
+        block-size: 7.5rem;
+        padding: 0;
+        border-radius: 50%;
+        corner-shape: bevel;
+      }
+
+      @supports not (corner-shape: bevel) {
+        .shape-button-diamond {
+          border-radius: 0;
+          border-color: transparent;
+          clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
+        .shape-button-diamond:focus-visible {
+          outline: none;
+          background: var(--accent-primary);
+          text-decoration: underline;
+        }
+      }
+
+      .hit-readout {
+        margin: 0;
+        font-size: 0.88rem;
+        color: var(--ink-muted);
+        text-align: center;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shape-button,
+        .choice-pill {
+          transition: none;
+        }
+      }
+
+      @media (forced-colors: active) {
+        .shape-box,
+        .tooltip-bubble,
+        .ribbon-badge,
+        .shape-button,
+        .wave-ticket,
+        .masked-orb {
+          clip-path: none;
+          -webkit-mask-image: none;
+          mask-image: none;
+          border: var(--stroke-medium) solid ButtonText;
+          forced-color-adjust: auto;
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <h1>Modern CSS Element Shapes</h1>
+      <p>
+        Examples of shaping elements with <code>border-radius</code>, <code>corner-shape</code>,
+        <code>border-shape</code>, rounded <code>polygon()</code>, and <code>shape()</code>, including
+        shadow behavior, progressive enhancement with <code>@supports</code>, and pointer hit-testing.
+      </p>
+      <ul class="support-list" id="support-list" aria-label="Browser support status"></ul>
+    </header>
+
+    <div class="section-grid">
+      <section class="panel">
+        <header class="panel-header">
+          <h2>1. Circles, Ellipses &amp; Pills</h2>
+          <p>Proportional curves with <code>aspect-ratio</code>, elliptical <code>border-radius</code> (<code>x / y</code>), and organic radii without extra elements.</p>
+        </header>
+        <div class="stage">
+          <figure class="specimen">
+            <div class="shape-box circle">50%</div>
+            <figcaption>Circle (<code>aspect-ratio: 1</code>)</figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shape-box elliptical">1.25rem / 2.5rem</div>
+            <figcaption>Elliptical radii</figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shape-box organic">Blob</div>
+            <figcaption>8-value radii</figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shape-box pill">Pill shape</div>
+            <figcaption><code>calc(infinity * 1px)</code></figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h2>2. Corner Geometry (<code>corner-shape</code>)</h2>
+          <p>Switch corner geometry with pure CSS <code>:has(:checked)</code>. Borders, shadows, and outlines automatically follow the corners.</p>
+        </header>
+        <fieldset class="corner-controls">
+          <legend>Choose a corner shape</legend>
+          <label class="choice-pill"><input type="radio" name="corner" value="squircle" checked> squircle</label>
+          <label class="choice-pill"><input type="radio" name="corner" value="bevel"> bevel</label>
+          <label class="choice-pill"><input type="radio" name="corner" value="scoop"> scoop</label>
+          <label class="choice-pill"><input type="radio" name="corner" value="notch"> notch</label>
+          <label class="choice-pill"><input type="radio" name="corner" value="superellipse"> superellipse(1.5)</label>
+        </fieldset>
+        <div class="stage">
+          <figure class="specimen">
+            <div class="shape-box corner-sample interactive-corner">Preview</div>
+            <figcaption>Interactive corner shape</figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shape-box corner-tag-slant">Slanted tag</div>
+            <figcaption>Logical bevel radii</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h2>3. Box Geometry (<code>border-shape</code>)</h2>
+          <p><code>border-shape</code> reshapes the border, shadow, and focus ring directly using <code>shape()</code> or <code>polygon()</code>, falling back to <code>clip-path</code>.</p>
+        </header>
+        <div class="stage">
+          <figure class="specimen">
+            <div class="tooltip-bubble">Tooltip with tail built from <code>border-shape: shape()</code></div>
+            <figcaption>Curved speech bubble</figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="ribbon-badge">Notched Badge</div>
+            <figcaption>Notched chevron polygon</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h2>4. Rounded Polygons (<code>polygon(round ...)</code>)</h2>
+          <p>Soften polygon vertices with <code>polygon(round &lt;length&gt;, ...)</code> inside <code>clip-path</code>, paired with <code>filter: drop-shadow()</code> on a wrapper.</p>
+        </header>
+        <div class="stage">
+          <figure class="specimen">
+            <div class="shadow-frame">
+              <div class="shape-box poly-shape poly-hex-sharp">Hex</div>
+            </div>
+            <figcaption>Plain <code>polygon()</code></figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shadow-frame">
+              <div class="shape-box poly-shape poly-hex">Hex</div>
+            </div>
+            <figcaption><code>polygon(round 14px, ...)</code></figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="shadow-frame">
+              <div class="shape-box poly-shape poly-star">Star</div>
+            </div>
+            <figcaption>Rounded star</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h2>5. Complex Paths &amp; Soft Masks</h2>
+          <p>Use responsive <code>shape()</code> curves for tickets and cutouts, or <code>mask-image</code> when an edge needs alpha feathering.</p>
+        </header>
+        <div class="stage">
+          <figure class="specimen">
+            <div class="shadow-frame">
+              <div class="wave-ticket">Responsive <code>shape()</code> ticket</div>
+            </div>
+            <figcaption><code>clip-path: shape()</code></figcaption>
+          </figure>
+          <figure class="specimen">
+            <div class="masked-orb">Soft</div>
+            <figcaption><code>mask-image</code> fade</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <h2>6. Shaped Hit-Testing &amp; Focus</h2>
+          <p>Click inside the dashed bounding box vs. inside the diamond. Clipped corners outside the shape ignore clicks and pass them to the box behind.</p>
+        </header>
+        <div class="stage">
+          <div class="hit-zone" id="hit-zone" title="Dashed bounding box">
+            <button type="button" class="shape-button shape-button-diamond" id="shape-btn">Diamond</button>
+          </div>
+        </div>
+        <p class="hit-readout" id="hit-readout" aria-live="polite">Click the diamond or a corner of the dashed box.</p>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    const features = [
+      ['border-radius (x / y)', () => CSS.supports('border-radius', '10px / 20px')],
+      ['corner-shape', () => CSS.supports('corner-shape', 'squircle')],
+      ['border-shape', () => CSS.supports('border-shape', 'circle(50%)')],
+      ['polygon(round ...)', () => CSS.supports('clip-path', 'polygon(round 10px, 0 0, 100% 0, 50% 100%)')],
+      ['shape()', () => CSS.supports('clip-path', 'shape(from 0% 0%, line to 100% 100%)')]
+    ];
+
+    const supportList = document.getElementById('support-list');
+    for (const [label, check] of features) {
+      const li = document.createElement('li');
+      li.className = 'support-item';
+      li.dataset.supported = String(check());
+      li.textContent = `${label}: ${check() ? 'supported' : 'not supported'}`;
+      supportList.append(li);
+    }
+
+    const hitZone = document.getElementById('hit-zone');
+    const shapeBtn = document.getElementById('shape-btn');
+    const hitReadout = document.getElementById('hit-readout');
+    let shapeHits = 0;
+    let outsideHits = 0;
+
+    hitZone.addEventListener('click', (event) => {
+      if (event.target === shapeBtn) {
+        shapeHits += 1;
+        hitReadout.textContent = `Hit inside diamond (${shapeHits} inside, ${outsideHits} outside).`;
+      } else {
+        outsideHits += 1;
+        hitReadout.textContent = `Missed diamond — corner hit passed to wrapper (${shapeHits} inside, ${outsideHits} outside).`;
+      }
+    });
+  </script>
+</body>
+</html>
