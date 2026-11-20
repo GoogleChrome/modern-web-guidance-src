@@ -150,6 +150,8 @@ If your Baseline target does not include Invoker Commands, keep the same markup 
 if (!('CommandEvent' in window)) {
   // Resolve the target from commandfor, as the browser does for command events
   document.addEventListener('click', (event) => {
+    // Respect handlers that already canceled the button's activation.
+    if (event.defaultPrevented) return;
     const button = event.target.closest('button[command^="--copy"]');
     if (!button) return;
     const target = document.getElementById(button.getAttribute('commandfor'));

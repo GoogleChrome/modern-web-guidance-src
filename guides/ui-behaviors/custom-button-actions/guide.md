@@ -164,6 +164,8 @@ if (!globalThis.CommandEvent) {
 
 // 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
+    // Respect handlers that already canceled the button's activation.
+    if (event.defaultPrevented) return;
     const button = event.composedPath().find((el) => el.matches?.("button[commandfor]"));
     if (!button) return;
 
