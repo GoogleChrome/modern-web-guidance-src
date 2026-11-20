@@ -14,7 +14,7 @@ web-feature-ids:
 Running your own model weights in the browser keeps user data on the device and removes server inference costs. Use this guide when your app ships its own model or model layers, such as a classifier head on top of embeddings, a small vision or audio model, or a custom neural network layer.
 
 > [!NOTE]
-> If a browser-provided model covers the task, you don't need to ship weights. For summarizing, translating, detecting languages, or general prompting, see {{ GUIDE_REF("summarizer") }}, {{ GUIDE_REF("translator") }}, {{ GUIDE_REF("language-detection") }}, and {{ GUIDE_REF("language-model") }}. For general-purpose GPU math that isn't a neural network, see {{ GUIDE_REF("data-parallel-computation") }}.
+> If a browser-provided model covers the task and your users are on devices with browsers that support them, you don't need to ship weights. For summarizing, translating, detecting languages, or general prompting, see {{ GUIDE_REF("summarizer") }}, {{ GUIDE_REF("translator") }}, {{ GUIDE_REF("language-detection") }}, and {{ GUIDE_REF("language-model") }}. For general-purpose GPU math that isn't a neural network, see {{ GUIDE_REF("data-parallel-computation") }}.
 
 ## Choose how to run the model
 
@@ -55,25 +55,20 @@ If you publish weight files in both precisions, download the `f16` file only whe
 
 ## Load and cache model weights
 
-Weight files can be tens to hundreds of megabytes. Download them only after a user action that asks for the feature, and store them with the Cache API so later visits reuse them:
+Weight files can be tens to hundreds of megabytes. Choose when to download them:
 
-```js
-async function loadWeights(url) {
-  // Version the cache name to invalidate old model files.
-  const cache = 'caches' in self ? await caches.open('model-weights-v1') : null;
-  let response = await cache?.match(url);
-  if (!response) {
-    response = await fetch(url);
-    if (!response.ok) throw new Error(`Weight download failed: ${response.status}`);
-    try {
-      await cache?.put(url, response.clone());
-    } catch {
-      // Storage quota exceeded: keep working without caching.
-    }
-  }
-  return new Float32Array(await response.arrayBuffer());
-}
-```
+- **On-demand loading:** when the model powers a feature that only some users use, download the weights when the user first uses that feature.
+- **Default loading:** when the model is central to the app, start the download early, for example after the page has loaded or while the browser is idle, so the model is ready when the user needs it. Show progress for large files.
+
+Store the weights with the Cache API so later visits don't download them again.
+
+{#
+Maintainer note: open-weight models are a good fit for Cross-Origin Storage, which lets sites
+share one stored copy. It hasn't shipped yet, and its guides are draft: blocked, so this guide
+doesn't reference it. When they're published, add the pointer below (and the
+tmp-cross-origin-storage web-feature ID), then remove this note.
+#}
+{# PENDING_GUIDE_REF: To share open-weight model files across sites, see {{ GUIDE_REF("avoid-redundant-large-asset-downloads") }}. #}
 
 ## Upload weights to GPU buffers
 

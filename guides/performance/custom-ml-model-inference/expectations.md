@@ -4,7 +4,6 @@
 - When `shader-f16` is unavailable, weights and inputs are uploaded to GPU storage buffers as 32-bit floats.
 - Every `device.queue.writeBuffer()` call and every storage buffer binding uses a byte size that is a multiple of 4.
 - Model loading and inference run in a dedicated Web Worker rather than on the main thread.
-- Model weights are not downloaded until the user triggers the inference feature.
 - Model weights are stored with the Cache API and read from the cache when they are requested again.
 - A `device.lost` handler switches inference to the CPU fallback.
 - When `adapter.requestDevice()` rejects, inference returns a result from the CPU fallback.
