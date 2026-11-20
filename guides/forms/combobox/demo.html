@@ -282,6 +282,7 @@
           break;
         case 'Enter':
           if (isOpen && active >= 0) { e.preventDefault(); choose(items[active]); }
+          else if (isOpen) close();
           break;
         case 'Escape':
           if (isOpen) { e.preventDefault(); close(); }
