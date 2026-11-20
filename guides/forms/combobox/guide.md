@@ -113,7 +113,7 @@ Highlight the matched substring of each option label with the Custom Highlight A
 const ranges = [];
 const q = query.toLowerCase();
 const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
-for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+for (let text = q && walker.nextNode(); text; text = walker.nextNode()) {
   const lower = text.data.toLowerCase();
   for (let at = lower.indexOf(q); at >= 0; at = lower.indexOf(q, at + q.length)) {
     const range = new Range();
