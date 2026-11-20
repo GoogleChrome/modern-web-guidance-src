@@ -97,8 +97,8 @@ Reordering moves many nodes, but the user performed one action. **DO NOT** put `
 /* Hides the status text visually but keeps it available to screen readers. Do not use display: none. */
 .visually-hidden {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inline-size: 1px;
+  block-size: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;

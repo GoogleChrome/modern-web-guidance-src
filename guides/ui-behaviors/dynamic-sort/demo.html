@@ -14,8 +14,8 @@
 
     .visually-hidden {
       position: absolute;
-      width: 1px;
-      height: 1px;
+      inline-size: 1px;
+      block-size: 1px;
       overflow: hidden;
       clip-path: inset(50%);
       white-space: nowrap;
@@ -51,8 +51,8 @@
       /* Native radios stay in the accessibility tree and keyboard flow; the labels are the visible segments. */
       & input[type="radio"] {
         position: absolute;
-        width: 1px;
-        height: 1px;
+        inline-size: 1px;
+        block-size: 1px;
         margin: 0;
         opacity: 0;
       }
@@ -116,7 +116,7 @@
     }
 
     section + section {
-      margin-top: 3rem;
+      margin-block-start: 3rem;
     }
 
     #list {
@@ -170,7 +170,7 @@
     td {
       text-align: start;
       padding: 0.75rem 1rem;
-      border-bottom: 1px solid #ccc;
+      border-block-end: 1px solid #ccc;
     }
 
     tbody tr {
@@ -273,7 +273,7 @@
     }
 
     function reorder(container, nodes) {
-      const move = 'moveBefore' in Element.prototype
+      const move = 'moveBefore' in container
         ? (node) => container.moveBefore(node, null)
         : (node) => container.append(node);
       for (const node of nodes) move(node);
@@ -311,7 +311,7 @@
       gridStatus.textContent = `Sorted by ${sortSelect.selectedOptions[0].text}, ${items.length} items`;
     });
 
-    // Table rows, driven by the buttons.
+    // Table rows, driven by the radios.
     const table = document.getElementById('table');
     const tbody = document.getElementById('rows');
     const tableStatus = document.getElementById('table-status');
