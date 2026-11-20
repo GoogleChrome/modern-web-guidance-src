@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overflow-safe masking</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    font-family: system-ui, sans-serif;
+  }
+
+  body {
+    max-inline-size: 40rem;
+    margin: 2rem auto;
+    padding-inline: 1rem;
+    /* Not a solid color, to show that masked content becomes transparent */
+    background: linear-gradient(to right, light-dark(#eef, #223), light-dark(#fee, #322));
+  }
+
+  :focus-visible {
+    outline: 3px solid light-dark(#06c, #6cf);
+    outline-offset: 3px;
+  }
+
+  .preview {
+    display: block;
+    margin-block: 2rem;
+    color: inherit;
+    text-decoration: none;
+    mask:
+      /* Opaque everywhere, including outside the border box, minus the layers below */
+      linear-gradient(black, black) no-clip subtract,
+      /* What to hide: fades out the bottom of the preview */
+      linear-gradient(to bottom, transparent, black) bottom / 100% 4rem no-repeat;
+  }
+
+  .badge {
+    inline-size: 6rem;
+    aspect-ratio: 1;
+    border: 0;
+    background: light-dark(#06c, #6cf);
+    color: light-dark(white, black);
+    font: inherit;
+    /* An image mask (a hexagon), inlined so the demo needs no other files */
+    --shape: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Cpolygon points="50,0 93,25 93,75 50,100 7,75 7,25"/%3E%3C/svg%3E');
+    mask:
+      linear-gradient(black, black) no-clip subtract,
+      /* Clipped to the border box (the default), so only the box is inverted */
+      linear-gradient(black, black) subtract,
+      /* The existing mask, unchanged */
+      var(--shape) center / contain no-repeat;
+  }
+</style>
+</head>
+<body>
+  <h1>Overflow-safe masking</h1>
+  <p>Press <kbd>Tab</kbd>: each masked element keeps its focus ring.</p>
+
+  <a class="preview" href="#subscribe">
+    <h2>Roasting at home</h2>
+    <p>Start with a small batch of green beans and a pan you do not mind staining. Keep the beans moving the whole time, and listen for the first crack a few minutes in.</p>
+    <p>From there, every thirty seconds changes the cup. Pull the beans early for brightness, or wait for the second crack if you want body and smoke.</p>
+  </a>
+
+  <button class="badge" type="button">Save</button>
+</body>
+</html>
