@@ -299,7 +299,7 @@
     });
   } else {
     region.addEventListener('change', () => {
-      for (const o of datalist.options) o.disabled = !!region.value && o.dataset.region !== region.value;
+      for (const o of datalist.querySelectorAll('option')) o.disabled = !!region.value && o.dataset.region !== region.value;
     });
   }
 </script>
