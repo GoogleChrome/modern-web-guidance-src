@@ -5,10 +5,7 @@ import path from 'path';
 import os from 'os';
 import {
   generateNormalizedTrajectory,
-  collectCodexGuidesFromTrajectory,
-  collectCodexToolsFromTrajectory,
-  extractCodexCliModel,
-  extractCodexCliTokenUsage,
+  loadSessionLogs,
   writeTrajectorySummary
 } from '../lib/trajectory-normalizer.ts';
 import { hasTrajectoryGuideLeak } from '../lib/guide-usage.ts';
@@ -353,12 +350,11 @@ test('collectCodex metrics from legacy function_call trajectory file', async () 
 
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), lines.join('\n'));
 
-    const guides = await collectCodexGuidesFromTrajectory(tempDir);
-    assert.deepStrictEqual(guides.retrievedGuides, ['visually-texture-content', 'complex-shapes']);
-    assert.deepStrictEqual(guides.fileReadGuides, ['size-aware-styling']);
-
-    const tools = collectCodexToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web-guidance']);
+    const { logData, subagentsMap } = loadSessionLogs(tempDir);
+    const summary = parseCodexTrajectory(logData, subagentsMap);
+    assert.deepStrictEqual(summary.retrievedGuides, ['visually-texture-content', 'complex-shapes']);
+    assert.deepStrictEqual(summary.fileReadGuides, ['size-aware-styling']);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
   } finally {
     removeTempDir(tempDir);
   }
@@ -414,18 +410,13 @@ test('collectCodex metrics from modern custom_tool_call trajectory file', async 
 
     fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), lines.join('\n'));
 
-    const guides = await collectCodexGuidesFromTrajectory(tempDir);
-    assert.deepStrictEqual(guides.retrievedGuides, ['validate-input-after-interaction', 'accessible-error-announcement']);
-    assert.deepStrictEqual(guides.fileReadGuides, ['validate-input-after-interaction']);
-
-    const tools = collectCodexToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web-guidance']);
-
-    const model = extractCodexCliModel(tempDir);
-    assert.strictEqual(model, 'gpt-5.6-sol');
-
-    const tokenUsage = extractCodexCliTokenUsage(tempDir);
-    assert.deepStrictEqual(tokenUsage, { total: 1500, cached: 400 });
+    const { logData, subagentsMap } = loadSessionLogs(tempDir);
+    const summary = parseCodexTrajectory(logData, subagentsMap);
+    assert.deepStrictEqual(summary.retrievedGuides, ['validate-input-after-interaction', 'accessible-error-announcement']);
+    assert.deepStrictEqual(summary.fileReadGuides, ['validate-input-after-interaction']);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
+    assert.strictEqual(summary.model, 'gpt-5.6-sol');
+    assert.deepStrictEqual(summary.tokenUsage, { total: 1500, cached: 400 });
   } finally {
     removeTempDir(tempDir);
   }

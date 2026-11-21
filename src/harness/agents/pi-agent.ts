@@ -8,22 +8,17 @@ import { parseBooleanEnv } from '../../core/env.ts';
 import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import {
   copyFileIfExists,
-  runAgentCliEntrypoint,
-  parseJsonlFile,
-  type GuideUsage
+  runAgentCliEntrypoint
 } from '../lib/agent-shared.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
   extractRetrievedGuidesFromCommand,
-  extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  readTrajectorySummary,
-  getSessionFiles,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
@@ -281,82 +276,6 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
     retrievedGuides: Array.from(retrievedGuides),
     fileReadGuides: Array.from(fileReadGuides)
   });
-}
-
-export function extractPiMetadata(logData: any[], subagentsMap: Record<string, any[]> = {}): {
-  model: string;
-  tokenUsage?: { total: number; cached: number };
-  toolsUsed: string[];
-  retrievedGuides: string[];
-  fileReadGuides: string[];
-} {
-  const summary = parsePiTrajectory(logData, subagentsMap);
-  return {
-    model: summary.model || 'unknown',
-    tokenUsage: summary.tokenUsage,
-    toolsUsed: summary.toolsUsed || [],
-    retrievedGuides: summary.retrievedGuides || [],
-    fileReadGuides: summary.fileReadGuides || []
-  };
-}
-
-export function loadPiLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
-  const logData: any[] = [];
-  const subagentsMap: Record<string, any[]> = {};
-  const files = getSessionFiles(dir);
-
-  const mainFiles = files.filter(f => !f.startsWith('subagent-')).sort();
-  const subFiles = files.filter(f => f.startsWith('subagent-')).sort();
-
-  for (const file of mainFiles) {
-    try {
-      logData.push(...parseJsonlFile(path.join(dir, file)));
-    } catch {}
-  }
-
-  for (const file of subFiles) {
-    try {
-      const subId = extractSubagentIdFromFilename(file);
-      subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
-    } catch {}
-  }
-
-  return { logData, subagentsMap };
-}
-
-function getPiMetadataForDir(dir: string): ReturnType<typeof extractPiMetadata> {
-  const summary = readTrajectorySummary(dir);
-  if (summary) {
-    return {
-      model: summary.model || 'unknown',
-      tokenUsage: summary.tokenUsage,
-      toolsUsed: summary.toolsUsed || [],
-      retrievedGuides: summary.retrievedGuides || [],
-      fileReadGuides: summary.fileReadGuides || []
-    };
-  }
-  const { logData, subagentsMap } = loadPiLogs(dir);
-  return extractPiMetadata(logData, subagentsMap);
-}
-
-export async function collectPiGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
-  const meta = getPiMetadataForDir(dirPath);
-  return {
-    retrievedGuides: meta.retrievedGuides,
-    fileReadGuides: meta.fileReadGuides
-  };
-}
-
-export function extractPiModel(resultsDir: string): string {
-  return getPiMetadataForDir(resultsDir).model;
-}
-
-export function extractPiTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  return getPiMetadataForDir(dir).tokenUsage;
-}
-
-export function collectPiToolsFromTrajectory(dir: string): string[] {
-  return getPiMetadataForDir(dir).toolsUsed;
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

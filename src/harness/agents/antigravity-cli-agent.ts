@@ -9,12 +9,9 @@ import {
   isEnoent
 } from '../lib/agent-shared.ts';
 import { exportTrajectories } from '../lib/trajectory-export.ts';
-import {
-  type TrajectorySummary,
-  finalizeTrajectorySummary,
-} from '../lib/trajectory-normalizer.ts';
 import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
-// agy stores conversations in the same SQLite step schema as Jetski CLI, so the parser is shared.
+// agy stores conversations in the same SQLite step schema as Jetski CLI (`parseJetskiCliSession` in
+// `jetski-cli-agent.ts`, invoked via `trajectory-normalizer.ts`).
 // TODO: The shared SQLite parser is lossy (it scrapes JSON fragments from protobuf payloads, so it can
 // drop or invent steps and doesn't attribute subagent steps). agy also writes structured data that
 // would give more accurate trajectories:
@@ -23,7 +20,6 @@ import { resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
 //   - `--output-format stream-json` on stdout (tool calls, outputs, and per-step token usage)
 // Neither includes the model name, so keep `gen_metadata` (or pass `--model` explicitly) for that.
 // Switch agy to these sources when/if Jetski CLI is removed and this parser no longer needs to be shared.
-import { parseJetskiCliSession } from './jetski-cli-agent.ts';
 
 /** agy app data directory, relative to HOME. */
 const AGY_APP_DATA_SUBDIR = path.join('.gemini', 'antigravity-cli');
@@ -88,10 +84,6 @@ export function getAntigravityCliCommandAndArgs(prompt: string): { command: stri
 function exportAntigravityTrajectories(workDir: string, targetDir: string): void {
   const conversationsDir = path.join(path.dirname(workDir), AGY_APP_DATA_SUBDIR, 'conversations');
   exportTrajectories(conversationsDir, '*.db', targetDir);
-}
-
-export async function parseAntigravityTrajectory(dirPath: string): Promise<TrajectorySummary> {
-  return finalizeTrajectorySummary({ ...parseJetskiCliSession(dirPath), agent: Agents.ANTIGRAVITY_CLI });
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);

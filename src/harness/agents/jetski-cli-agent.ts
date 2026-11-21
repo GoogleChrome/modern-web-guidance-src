@@ -7,8 +7,7 @@ import {
   copyFileIfExists,
   linkMacKeychains,
   runAgentCliEntrypoint,
-  isEnoent,
-  type GuideUsage
+  isEnoent
 } from '../lib/agent-shared.ts';
 import { exportTrajectories } from '../lib/trajectory-export.ts';
 import {
@@ -17,8 +16,6 @@ import {
   extractRetrievedGuidesFromCommand,
   extractTimestamp,
   truncateMessage,
-  finalizeTrajectorySummary,
-  readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
 import { defaultLevelFromModelId, resolveEffortCliArgs } from '../lib/reasoning-effort.ts';
@@ -529,38 +526,6 @@ export function parseJetskiCliSession(dirPath: string): TrajectorySummary {
     ...(observedEffort ? { reasoningEffort: { level: observedEffort, source: 'observed' } } : {}),
     tokenUsage: hasTokens ? { total: totalTokens, cached: totalCached } : undefined
   };
-}
-
-export async function parseJetskiTrajectory(dirPath: string): Promise<TrajectorySummary> {
-  const summary = parseJetskiCliSession(dirPath);
-  return finalizeTrajectorySummary(summary);
-}
-
-function getJetskiSummaryForDir(dir: string): TrajectorySummary {
-  return readTrajectorySummary(dir) || parseJetskiCliSession(dir);
-}
-
-export async function collectJetskiCliGuidesFromTrajectory(dirPath: string): Promise<GuideUsage> {
-  const summary = getJetskiSummaryForDir(dirPath);
-  return {
-    retrievedGuides: summary?.retrievedGuides || [],
-    fileReadGuides: summary?.fileReadGuides || []
-  };
-}
-
-export function extractJetskiCliModel(resultsDir: string): string {
-  const summary = getJetskiSummaryForDir(resultsDir);
-  return summary?.model || 'unknown';
-}
-
-export function extractJetskiCliTokenUsage(dir: string): { total: number; cached: number } | undefined {
-  const summary = getJetskiSummaryForDir(dir);
-  return summary?.tokenUsage;
-}
-
-export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
-  const summary = getJetskiSummaryForDir(dir);
-  return summary?.toolsUsed || [];
 }
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
