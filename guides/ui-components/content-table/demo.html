@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Content table</title>
+<style>
+	:root {
+		color-scheme: light dark;
+		font-family: system-ui;
+		line-height: 1.5;
+	}
+
+	body {
+		max-inline-size: 48rem;
+		margin-inline: auto;
+		padding: 1rem;
+	}
+
+	h1 {
+		text-wrap: balance;
+	}
+
+	search {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		margin-block-end: 0.75rem;
+	}
+
+	.table-wrapper {
+		--table-border: light-dark(#d8dce2, #3a4048);
+		--table-head-bg: light-dark(#f1f3f6, #262b32);
+		overflow: auto;
+		container-type: inline-size;
+		max-block-size: 20rem;
+		border: 1px solid var(--table-border);
+	}
+
+	@supports named-feature(single-axis-scroll-container) {
+		.table-wrapper {
+			overflow: auto clip;
+			max-block-size: none;
+			max-inline-size: 30rem;
+			margin-block-end: 100vh;
+		}
+	}
+
+	table {
+		border-collapse: separate;
+		border-spacing: 0;
+		inline-size: 100%;
+		min-inline-size: 40rem;
+
+		caption {
+			position: sticky;
+			inset-inline-start: 0;
+			inline-size: max-content;
+			max-inline-size: 100cqi;
+			text-align: start;
+			font-weight: 600;
+			padding-block-end: 0.5rem;
+		}
+
+		th,
+		td {
+			padding: 0.5rem 0.75rem;
+			text-align: start;
+			white-space: nowrap;
+			border-block-end: 1px solid var(--table-border);
+		}
+
+		th {
+			background: var(--table-head-bg);
+		}
+
+		thead th {
+			position: sticky;
+			inset-block-start: 0;
+			z-index: 1;
+
+			&:first-child {
+				inset-inline-start: 0;
+				z-index: 2;
+			}
+		}
+
+		tbody th {
+			position: sticky;
+			inset-inline-start: 0;
+			border-inline-end: 1px solid var(--table-border);
+		}
+
+		thead th,
+		tbody th {
+			container-type: scroll-state;
+			container-name: sticky-header;
+
+			&::after {
+				content: "";
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				transition: box-shadow 0.2s;
+			}
+		}
+	}
+
+	@container sticky-header scroll-state(stuck: block-start) {
+		thead th::after {
+			box-shadow: 0 2px 4px -2px rgb(0 0 0 / 0.5);
+		}
+	}
+
+	@container sticky-header scroll-state(stuck: inline-start) {
+		tbody th::after {
+			box-shadow: 2px 0 4px -2px rgb(0 0 0 / 0.5);
+		}
+	}
+
+	@media (forced-colors: active) {
+		thead th,
+		tbody th {
+			border: 1px solid CanvasText;
+		}
+	}
+
+	.empty td {
+		text-align: center;
+		color: GrayText;
+	}
+
+	.visually-hidden {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+</style>
+
+<main>
+<h1>Team directory</h1>
+
+<search>
+	<label for="filter">Filter team</label>
+	<input id="filter" type="search" aria-controls="people-table">
+</search>
+<p id="filter-status" role="status" class="visually-hidden"></p>
+
+<div class="table-wrapper" role="region" aria-labelledby="people-caption" tabindex="0">
+	<table id="people-table">
+		<caption id="people-caption">People, roles and locations</caption>
+		<thead>
+			<tr>
+				<th scope="col">Name</th>
+				<th scope="col">Role</th>
+				<th scope="col">Location</th>
+				<th scope="col">Team</th>
+				<th scope="col">Start date</th>
+				<th scope="col">Manager</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+</div>
+</main>
+
+<script type="module">
+	const people = [
+		['Alex Rivera', 'Engineer', 'Lisbon', 'Platform', '2021-03-01', 'Sam Okafor'],
+		['Bea Lindqvist', 'Designer', 'Stockholm', 'Design', '2020-09-14', 'Priya Nair'],
+		['Chen Wei', 'Engineer', 'Singapore', 'Search', '2019-06-03', 'Sam Okafor'],
+		['Dana Cohen', 'Product manager', 'Tel Aviv', 'Search', '2022-01-17', 'Lee Park'],
+		['Eli Brooks', 'Engineer', 'Austin', 'Platform', '2023-04-24', 'Sam Okafor'],
+		['Fatima Zahra', 'Researcher', 'Casablanca', 'Design', '2021-11-08', 'Priya Nair'],
+		['Gus Almeida', 'Engineer', 'São Paulo', 'Payments', '2018-02-12', 'Lee Park'],
+		['Hana Sato', 'Designer', 'Osaka', 'Payments', '2022-08-29', 'Priya Nair'],
+		['Ivan Petrov', 'Engineer', 'Berlin', 'Search', '2020-05-18', 'Sam Okafor'],
+		['Jules Martin', 'Writer', 'Montréal', 'Docs', '2019-10-21', 'Lee Park'],
+		['Kai Nguyen', 'Engineer', 'Hanoi', 'Platform', '2024-02-05', 'Sam Okafor'],
+		['Lena Fischer', 'Product manager', 'Zürich', 'Payments', '2017-07-10', 'Lee Park'],
+		['Mo Abdi', 'Engineer', 'Nairobi', 'Search', '2021-06-28', 'Sam Okafor'],
+		['Nora Quinn', 'Designer', 'Dublin', 'Docs', '2023-09-11', 'Priya Nair'],
+		['Omar Haddad', 'Engineer', 'Amman', 'Payments', '2022-12-05', 'Lee Park'],
+		['Pia Rossi', 'Researcher', 'Milan', 'Design', '2020-01-27', 'Priya Nair'],
+	];
+
+	const table = document.getElementById('people-table');
+	const tbody = table.tBodies[0];
+	const filter = document.getElementById('filter');
+	const status = document.getElementById('filter-status');
+
+	for (const [name, ...cells] of people) {
+		const row = tbody.insertRow();
+		const th = document.createElement('th');
+		th.scope = 'row';
+		th.textContent = name;
+		row.append(th);
+		for (const text of cells) row.insertCell().textContent = text;
+	}
+
+	const empty = document.createElement('tr');
+	empty.className = 'empty';
+	empty.hidden = true;
+	empty.innerHTML = `<td colspan="${table.tHead.rows[0].cells.length}">No people match your filter.</td>`;
+	tbody.append(empty);
+
+	filter.addEventListener('input', () => {
+		const query = filter.value.trim().toLocaleLowerCase();
+		const rows = [...tbody.rows].filter((row) => row !== empty);
+		let visible = 0;
+		for (const row of rows) {
+			const match = row.textContent.toLocaleLowerCase().includes(query);
+			row.hidden = !match;
+			if (match) visible++;
+		}
+		empty.hidden = visible > 0;
+		status.textContent = visible ? '' : 'No rows match your filter';
+	});
+</script>
