@@ -616,8 +616,8 @@
     const submenu = dropdown.querySelector(".dropdown-list");
 
     const setExpanded = (open) => trigger.setAttribute("aria-expanded", String(open));
-    // The polyfill cannot define :popover-open, so it sets a class instead
-    const isOpen = (el) => el.matches(":is(:popover-open, .\\:popover-open)");
+
+    const isOpen = (el) => el.matches(":popover-open");
 
     // Narrow layout: the submenu is an inline disclosure, so the script toggles it.
     // It is hidden by script, so without scripting the links stay visible.
