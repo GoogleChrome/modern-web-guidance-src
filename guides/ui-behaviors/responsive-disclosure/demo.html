@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Disclosure Demo</title>
+  <style>
+    @layer reset {
+      *, *::before, *::after {
+        box-sizing: border-box;
+      }
+    }
+
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f5f7fa, #121417);
+      --surface: light-dark(#ffffff, #1b1f24);
+      --surface-subtle: light-dark(#eef2f6, #242a32);
+      --border: light-dark(#768390, #7d8590);
+      --text: light-dark(#1f2328, #e6edf3);
+      --muted: light-dark(#57606a, #9ba3b0);
+      --accent: light-dark(#0550ae, #6cb6ff);
+      --accent-soft: light-dark(#ddf4ff, #162b44);
+      --focus-ring: light-dark(#0550ae, #79c0ff);
+      --success: light-dark(#1a7f37, #3fb950);
+      --shadow-overlay: 0 10px 28px rgb(0 0 0 / 22%);
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 10px;
+    }
+
+    body {
+      margin: 0;
+      padding: clamp(1rem, 3vw, 2.5rem);
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      accent-color: var(--accent);
+    }
+
+    :where(a, button, input, select, textarea, summary):focus-visible {
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    :where(h1, h2, h3) {
+      text-wrap: balance;
+    }
+
+    :where(p) {
+      text-wrap: pretty;
+      max-inline-size: 80ch;
+    }
+
+    .page-header {
+      max-inline-size: 64rem;
+      margin-inline: auto;
+      margin-block-end: 2rem;
+
+      & h1 {
+        margin-block: 0 0.5rem;
+        font-size: clamp(1.5rem, 1rem + 2vw, 2.25rem);
+      }
+
+      & p {
+        margin-block: 0 1rem;
+        color: var(--muted);
+        max-inline-size: 62ch;
+      }
+    }
+
+    .support-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding-block: 0.25rem;
+      padding-inline: 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 0.8125rem;
+      font-weight: 600;
+
+      &[data-state="native"] {
+        border-color: var(--success);
+        color: var(--success);
+      }
+    }
+
+    .examples {
+      display: grid;
+      gap: 2.5rem;
+      max-inline-size: 64rem;
+      margin-inline: auto;
+    }
+
+    .example-card {
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+    }
+
+    .example-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-block-end: 1rem;
+
+      & h2 {
+        margin-block: 0 0.25rem;
+        margin-inline: 0;
+        font-size: 1.2rem;
+      }
+
+      & p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.925rem;
+        max-inline-size: 56ch;
+      }
+    }
+
+    .size-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      padding-block: 0.6rem;
+      padding-inline: 0.75rem;
+      margin-block-end: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-subtle);
+      font-size: 0.875rem;
+
+      & label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+      }
+
+      & input[type="range"] {
+        inline-size: 9rem;
+        min-block-size: 24px;
+      }
+    }
+
+    .mode-readout {
+      margin-inline-start: auto;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      min-inline-size: 24px;
+      min-block-size: 2.25rem;
+      padding-block: 0.35rem;
+      padding-inline: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--surface-subtle);
+        border-color: var(--accent);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        transition:
+          background-color 150ms ease,
+          border-color 150ms ease,
+          scale 120ms ease;
+
+        &:active {
+          scale: 0.97;
+        }
+      }
+    }
+
+    /* Resizable container query stage */
+    .stage-resizer {
+      --stage-width: 100%;
+      inline-size: min(var(--stage-width), 100%);
+      min-inline-size: 260px;
+      max-inline-size: 100%;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg);
+      resize: horizontal;
+      overflow: hidden;
+    }
+
+    .demo-stage {
+      container-type: inline-size;
+      inline-size: 100%;
+    }
+
+    .stage-pad {
+      padding: 1rem;
+    }
+
+    /* Generic placeholder block styling */
+    .content-block {
+      padding-block: 0.65rem;
+      padding-inline: 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+
+      & h3 {
+        margin-block: 0 0.25rem;
+        margin-inline: 0;
+        font-size: 0.925rem;
+      }
+
+      & p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    }
+
+    .block-label {
+      display: inline-block;
+      margin-block-end: 0.35rem;
+      padding-block: 0.1rem;
+      padding-inline: 0.45rem;
+      border-radius: var(--radius-sm);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .block-field {
+      display: grid;
+      gap: 0.3rem;
+      margin-block-start: 0.6rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+
+      & input {
+        inline-size: 100%;
+        min-block-size: 24px;
+        padding-block: 0.35rem;
+        padding-inline: 0.55rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg);
+        color: var(--text);
+        font: inherit;
+      }
+    }
+
+    /* =========================================================================
+       1. Static to details
+       ========================================================================= */
+    .details-stage {
+      container-name: details-stage;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+
+    .disclosure-details {
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+
+      & summary {
+        min-block-size: 24px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      &[open] summary {
+        margin-block-end: 0.6rem;
+      }
+    }
+
+    @container details-stage (inline-size >= 520px) {
+      .details-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+
+      .disclosure-details summary {
+        list-style: none;
+        cursor: default;
+        pointer-events: none;
+
+        &::-webkit-details-marker {
+          display: none;
+        }
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @supports (interpolate-size: allow-keywords) {
+        .disclosure-details {
+          --details-block-size: 0;
+          --details-opacity: 0;
+          --details-overflow: clip;
+          interpolate-size: allow-keywords;
+
+          &[open] {
+            --details-block-size: auto;
+            --details-opacity: 1;
+            --details-overflow: visible;
+          }
+        }
+
+        .disclosure-details::details-content {
+          block-size: var(--details-block-size);
+          overflow: var(--details-overflow);
+          opacity: var(--details-opacity);
+          transition:
+            block-size 220ms ease,
+            opacity 180ms ease,
+            content-visibility 220ms allow-discrete;
+        }
+      }
+    }
+
+    /* =========================================================================
+       2. Static to popover (with CSS Anchor Positioning enhancement)
+       ========================================================================= */
+    .popover-stage {
+      container-name: popover-stage;
+    }
+
+    .disclosure-host {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .host-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .popover-trigger {
+      display: inline-flex;
+      anchor-name: --popover-trigger;
+    }
+
+    .popover-content {
+      margin: 0;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-overlay);
+      max-inline-size: min(22rem, calc(100dvw - 2rem));
+
+      &:is(:popover-open, .\:popover-open) {
+        display: grid;
+        gap: 0.65rem;
+      }
+    }
+
+    .popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+
+      & h3 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    @supports (position-area: block-end) {
+      .popover-content {
+        position: fixed;
+        inset: auto;
+        position-anchor: --popover-trigger;
+        position-area: block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline;
+        margin-block-start: 0.4rem;
+      }
+    }
+
+    @container popover-stage (inline-size >= 500px) {
+      .popover-trigger,
+      .popover-header,
+      .popover-close {
+        display: none;
+      }
+
+      .popover-content[popover] {
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        inset: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        max-inline-size: none;
+        opacity: 1;
+        translate: none;
+        scale: 1;
+        transition: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @container popover-stage (inline-size < 500px) {
+        .popover-content[popover] {
+          --popover-opacity: 0;
+          --popover-translate: 0 -0.4rem;
+          --popover-scale: 0.97;
+          opacity: var(--popover-opacity);
+          translate: var(--popover-translate);
+          scale: var(--popover-scale);
+          transform-origin: 50% 0;
+          transition:
+            opacity 180ms ease,
+            translate 180ms ease,
+            scale 180ms ease,
+            display 180ms allow-discrete,
+            overlay 180ms allow-discrete;
+
+          &:is(:popover-open, .\:popover-open) {
+            --popover-opacity: 1;
+            --popover-translate: 0 0;
+            --popover-scale: 1;
+          }
+        }
+      }
+
+      @starting-style {
+        .popover-content[popover]:is(:popover-open, .\:popover-open) {
+          --popover-opacity: 0;
+          --popover-translate: 0 -0.4rem;
+          --popover-scale: 0.97;
+        }
+      }
+    }
+
+    /* =========================================================================
+       3. Static to modal drawer (<dialog> + ResizeObserver handoff)
+       ========================================================================= */
+    .drawer-stage {
+      container-name: drawer-stage;
+    }
+
+    .drawer-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .drawer-main-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-block-end: 0.75rem;
+
+      & h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+    }
+
+    .drawer-dialog {
+      margin: 0;
+      padding: 0;
+      inset-block: 0;
+      inset-inline-start: 0;
+      inset-inline-end: auto;
+      block-size: 100dvh;
+      max-block-size: 100dvh;
+      inline-size: min(19rem, 85dvw);
+      max-inline-size: none;
+      border: 0;
+      border-inline-end: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 0 32px rgb(0 0 0 / 30%);
+
+      &::backdrop {
+        background: rgb(0 0 0 / 45%);
+      }
+    }
+
+    .drawer-surface {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 0.85rem;
+      block-size: 100%;
+      padding: 1rem;
+      overflow: auto;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-block-end: 0.5rem;
+      border-block-end: 1px solid var(--border);
+
+      & h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+    }
+
+    .drawer-blocks {
+      display: grid;
+      gap: 0.75rem;
+      align-content: start;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .drawer-dialog {
+        --drawer-opacity: 0;
+        --drawer-translate: -100% 0;
+        --drawer-backdrop: rgb(0 0 0 / 0%);
+        opacity: var(--drawer-opacity);
+        translate: var(--drawer-translate);
+        transition:
+          opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+          translate 240ms cubic-bezier(0.22, 1, 0.36, 1),
+          display 240ms allow-discrete,
+          overlay 240ms allow-discrete;
+
+        &::backdrop {
+          background: var(--drawer-backdrop);
+          transition:
+            background-color 240ms ease,
+            display 240ms allow-discrete,
+            overlay 240ms allow-discrete;
+        }
+
+        &[open] {
+          --drawer-opacity: 1;
+          --drawer-translate: 0 0;
+        }
+
+        &[open]::backdrop {
+          --drawer-backdrop: rgb(0 0 0 / 45%);
+        }
+      }
+
+      @starting-style {
+        .drawer-dialog[open] {
+          --drawer-opacity: 0;
+          --drawer-translate: -100% 0;
+        }
+
+        .drawer-dialog[open]::backdrop {
+          --drawer-backdrop: rgb(0 0 0 / 0%);
+        }
+      }
+    }
+
+    @container drawer-stage (inline-size >= 580px) {
+      .drawer-layout {
+        grid-template-columns: 14.5rem 1fr;
+        align-items: start;
+      }
+
+      .drawer-trigger,
+      .drawer-header {
+        display: none;
+      }
+
+      .drawer-dialog {
+        position: static;
+        display: block;
+        inline-size: 100%;
+        block-size: auto;
+        max-block-size: none;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: none;
+        opacity: 1;
+        translate: none;
+        transition: none;
+      }
+
+      .drawer-surface {
+        display: block;
+        block-size: auto;
+        padding: 0.75rem;
+        overflow: visible;
+      }
+    }
+
+    /* =========================================================================
+       4. One markup, three container widths
+       ========================================================================= */
+    .unifying-stage {
+      container-name: unifying-stage;
+    }
+
+    .unifying-host {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .unifying-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .unifying-trigger {
+      display: inline-flex;
+      anchor-name: --unifying-trigger;
+    }
+
+    .unifying-panel {
+      margin: 0;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-overlay);
+      max-inline-size: min(20rem, calc(100dvw - 2rem));
+
+      &:is(:popover-open, .\:popover-open) {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+      }
+    }
+
+    @supports (position-area: block-end) {
+      .unifying-panel {
+        position: fixed;
+        inset: auto;
+        position-anchor: --unifying-trigger;
+        position-area: block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline;
+        margin-block-start: 0.4rem;
+      }
+    }
+
+    /* Width 2 (Medium >= 420px): trigger removed, single DOM renders inline as 2-column grid */
+    @container unifying-stage (inline-size >= 420px) {
+      .unifying-trigger,
+      .unifying-close {
+        display: none;
+      }
+
+      .unifying-panel[popover] {
+        position: static;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+        inset: auto;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        max-inline-size: none;
+        inline-size: 100%;
+        opacity: 1;
+        translate: none;
+        scale: 1;
+        transition: none;
+      }
+    }
+
+    /* Width 3 (Wide >= 600px): same single DOM expands inline to 3 columns */
+    @container unifying-stage (inline-size >= 600px) {
+      .unifying-panel[popover] {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @container unifying-stage (inline-size < 420px) {
+        .unifying-panel[popover] {
+          --unifying-opacity: 0;
+          --unifying-translate: 0 -0.4rem;
+          --unifying-scale: 0.97;
+          opacity: var(--unifying-opacity);
+          translate: var(--unifying-translate);
+          scale: var(--unifying-scale);
+          transform-origin: 50% 0;
+          transition:
+            opacity 180ms ease,
+            translate 180ms ease,
+            scale 180ms ease,
+            display 180ms allow-discrete,
+            overlay 180ms allow-discrete;
+
+          &:is(:popover-open, .\:popover-open) {
+            --unifying-opacity: 1;
+            --unifying-translate: 0 0;
+            --unifying-scale: 1;
+          }
+        }
+      }
+
+      @starting-style {
+        .unifying-panel[popover]:is(:popover-open, .\:popover-open) {
+          --unifying-opacity: 0;
+          --unifying-translate: 0 -0.4rem;
+          --unifying-scale: 0.97;
+        }
+      }
+    }
+
+    @media (forced-colors: active) {
+      .popover-content:is(:popover-open, .\:popover-open),
+      .unifying-panel:is(:popover-open, .\:popover-open),
+      .drawer-dialog {
+        border: 2px solid CanvasText;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>Responsive Disclosure</h1>
+    <p>
+      Four content-agnostic mechanisms for adapting a single DOM between static content and progressive
+      disclosure (<code>details</code>, <code>popover</code>, and modal <code>dialog</code>) using CSS
+      Container Queries.
+    </p>
+    <div class="support-bar">
+      <span id="popover-status" class="pill">Checking Popover…</span>
+    </div>
+  </header>
+
+  <main class="examples">
+    <!-- =====================================================================
+         1. Static to details
+         ===================================================================== -->
+    <section class="example-card" aria-labelledby="ex1-heading">
+      <div class="example-header">
+        <h2 id="ex1-heading">1. Static to details</h2>
+        <p>
+          Default choice for secondary, inline content: <code>&lt;details&gt;</code> collapses when narrow
+          (<code>&lt; 520px</code>) and syncs <code>open = true</code> when wide while remembering the narrow
+          collapsed or expanded state.
+        </p>
+      </div>
+
+      <div class="size-controls" data-controls-for="details-stage">
+        <label id="details-width-label" for="details-width-slider">Stage width</label>
+        <input id="details-width-slider" type="range" min="280" max="760" value="640" aria-labelledby="details-width-label ex1-heading" data-width-slider>
+        <button id="details-narrow-btn" type="button" class="btn" aria-labelledby="details-narrow-btn ex1-heading" data-preset-width="360">Narrow (360px)</button>
+        <button id="details-wide-btn" type="button" class="btn" aria-labelledby="details-wide-btn ex1-heading" data-preset-width="full">Wide (full width)</button>
+        <span class="mode-readout" data-mode-readout></span>
+      </div>
+
+      <div class="stage-resizer" data-resizer-for="details-stage">
+        <div id="details-stage" class="demo-stage details-stage">
+          <div class="stage-pad">
+            <div class="details-grid">
+              <details class="disclosure-details" open>
+                <summary>Secondary Section A</summary>
+                <div class="content-block">
+                  <span class="block-label">Section A</span>
+                  <p>Inline secondary content that collapses behind a native disclosure when space is tight.</p>
+                </div>
+              </details>
+
+              <details class="disclosure-details" open>
+                <summary>Secondary Section B</summary>
+                <div class="content-block">
+                  <span class="block-label">Section B</span>
+                  <p>Add a shared <code>name</code> attribute on sibling elements for an exclusive accordion.</p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         2. Static to popover
+         ===================================================================== -->
+    <section class="example-card" aria-labelledby="ex2-heading">
+      <div class="example-header">
+        <h2 id="ex2-heading">2. Static to popover</h2>
+        <p>
+          For short, transient, light-dismiss content: one <code>[popover="auto"]</code> element renders
+          inline at <code>&gt;= 500px</code> and promotes to an anchored top-layer popover below that threshold.
+        </p>
+      </div>
+
+      <div class="size-controls" data-controls-for="popover-stage">
+        <label id="popover-width-label" for="popover-width-slider">Stage width</label>
+        <input id="popover-width-slider" type="range" min="280" max="760" value="640" aria-labelledby="popover-width-label ex2-heading" data-width-slider>
+        <button id="popover-narrow-btn" type="button" class="btn" aria-labelledby="popover-narrow-btn ex2-heading" data-preset-width="360">Narrow (360px)</button>
+        <button id="popover-wide-btn" type="button" class="btn" aria-labelledby="popover-wide-btn ex2-heading" data-preset-width="full">Wide (full width)</button>
+        <span class="mode-readout" data-mode-readout></span>
+      </div>
+
+      <div class="stage-resizer" data-resizer-for="popover-stage">
+        <div id="popover-stage" class="demo-stage popover-stage">
+          <div class="stage-pad">
+            <div class="disclosure-host">
+              <div class="host-bar">
+                <div class="content-block">
+                  <span class="block-label">Primary Content</span>
+                  <p>Always-visible host content next to transient controls.</p>
+                </div>
+
+                <button
+                  id="popover-trigger"
+                  class="btn popover-trigger"
+                  type="button"
+                  popovertarget="popover-panel"
+                  aria-controls="popover-panel"
+                  aria-expanded="false"
+                >
+                  Open Panel
+                </button>
+
+                <div id="popover-panel" popover="auto" class="popover-content">
+                  <div class="popover-header">
+                    <h3>Disclosure Panel</h3>
+                    <button
+                      type="button"
+                      class="btn popover-close"
+                      popovertarget="popover-panel"
+                      popovertargetaction="hide"
+                    >
+                      Done
+                    </button>
+                  </div>
+                  <div class="action-row">
+                    <button type="button" class="btn" data-panel-action="Action A">Action A</button>
+                    <button type="button" class="btn" data-panel-action="Action B">Action B</button>
+                    <button type="button" class="btn" data-panel-action="Action C">Action C</button>
+                  </div>
+                </div>
+              </div>
+              <p id="popover-feedback" class="pill" aria-live="polite" aria-atomic="true">Last action: none</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         3. Static to modal drawer
+         ===================================================================== -->
+    <section class="example-card" aria-labelledby="ex3-heading">
+      <div class="example-header">
+        <h2 id="ex3-heading">3. Static to modal drawer</h2>
+        <p>
+          For heavy or task-focused content needing modal isolation: a single <code>&lt;dialog&gt;</code>
+          docks inline at <code>&gt;= 580px</code>, and switches to
+          <code>.showModal()</code> below that with a <code>ResizeObserver</code> handoff back to static.
+        </p>
+      </div>
+
+      <div class="size-controls" data-controls-for="drawer-stage">
+        <label id="drawer-width-label" for="drawer-width-slider">Stage width</label>
+        <input id="drawer-width-slider" type="range" min="280" max="760" value="680" aria-labelledby="drawer-width-label ex3-heading" data-width-slider>
+        <button id="drawer-narrow-btn" type="button" class="btn" aria-labelledby="drawer-narrow-btn ex3-heading" data-preset-width="360">Narrow (360px)</button>
+        <button id="drawer-wide-btn" type="button" class="btn" aria-labelledby="drawer-wide-btn ex3-heading" data-preset-width="full">Wide (full width)</button>
+        <span class="mode-readout" data-mode-readout></span>
+      </div>
+
+      <div class="stage-resizer" data-resizer-for="drawer-stage">
+        <div id="drawer-stage" class="demo-stage drawer-stage">
+          <div class="stage-pad">
+            <div class="drawer-layout">
+              <dialog id="drawer-dialog" class="drawer-dialog" aria-labelledby="drawer-heading">
+                <div class="drawer-surface">
+                  <div class="drawer-header">
+                    <h3 id="drawer-heading">Task Panel</h3>
+                    <form method="dialog">
+                      <button id="drawer-close" class="btn" aria-labelledby="drawer-close drawer-heading">Close</button>
+                    </form>
+                  </div>
+                  <div class="drawer-blocks">
+                    <div class="content-block">
+                      <span class="block-label">Drawer Content</span>
+                      <h3>Secondary Content</h3>
+                      <p>Single DOM node preserving state between inline and modal modes.</p>
+                      <div class="block-field">
+                        <label for="drawer-panel-input">Panel input</label>
+                        <input id="drawer-panel-input" type="text" placeholder="Type and resize across 580px…">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </dialog>
+
+              <div class="content-block">
+                <div class="drawer-main-bar">
+                  <h3 id="drawer-main-heading">Primary Content</h3>
+                  <button
+                    id="drawer-trigger"
+                    class="btn drawer-trigger"
+                    type="button"
+                    aria-controls="drawer-dialog"
+                    aria-expanded="false"
+                  >
+                    Open Drawer
+                  </button>
+                </div>
+                <p>
+                  When the stage is narrower than <code>580px</code>, the trigger opens
+                  <code>&lt;dialog&gt;</code> modally; widening past <code>580px</code> closes the modal
+                  layer and restores inline docking.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         4. One markup, three container widths
+         ===================================================================== -->
+    <section class="example-card" aria-labelledby="ex4-heading">
+      <div class="example-header">
+        <h2 id="ex4-heading">4. One markup, three container widths</h2>
+        <p>
+          Unifying pattern: a single DOM with no domain assumptions adapts across narrow
+          (<code>&lt; 420px</code> popover), medium (<code>420px–599px</code> 2-column inline), and wide
+          (<code>&gt;= 600px</code> 3-column inline) container thresholds, hiding the trigger when static.
+        </p>
+      </div>
+
+      <div class="size-controls" data-controls-for="unifying-stage">
+        <label id="unifying-width-label" for="unifying-width-slider">Stage width</label>
+        <input id="unifying-width-slider" type="range" min="280" max="760" value="660" aria-labelledby="unifying-width-label ex4-heading" data-width-slider>
+        <button id="unifying-narrow-btn" type="button" class="btn" aria-labelledby="unifying-narrow-btn ex4-heading" data-preset-width="340">Narrow (340px)</button>
+        <button id="unifying-medium-btn" type="button" class="btn" aria-labelledby="unifying-medium-btn ex4-heading" data-preset-width="500">Medium (500px)</button>
+        <button id="unifying-wide-btn" type="button" class="btn" aria-labelledby="unifying-wide-btn ex4-heading" data-preset-width="full">Wide (full width)</button>
+        <span class="mode-readout" data-mode-readout></span>
+      </div>
+
+      <div class="stage-resizer" data-resizer-for="unifying-stage">
+        <div id="unifying-stage" class="demo-stage unifying-stage">
+          <div class="stage-pad">
+            <div class="unifying-host">
+              <div class="unifying-header">
+                <div class="content-block">
+                  <span class="block-label">Host</span>
+                  <p>Single DOM adapting across three container query breakpoints.</p>
+                </div>
+
+                <button
+                  id="unifying-trigger"
+                  class="btn unifying-trigger"
+                  type="button"
+                  popovertarget="unifying-panel"
+                  aria-controls="unifying-panel"
+                  aria-expanded="false"
+                >
+                  Reveal Panels
+                </button>
+              </div>
+
+              <div id="unifying-panel" popover="auto" class="unifying-panel">
+                <div class="content-block">
+                  <span class="block-label">Block 1</span>
+                  <h3>Content Block 1</h3>
+                  <p>Stacked in popover; 2-up at medium; 3-up at wide.</p>
+                </div>
+                <div class="content-block">
+                  <span class="block-label">Block 2</span>
+                  <h3>Content Block 2</h3>
+                  <p>Same DOM node throughout—no duplicated markup.</p>
+                </div>
+                <div class="content-block">
+                  <span class="block-label">Block 3</span>
+                  <h3>Content Block 3</h3>
+                  <p>Trigger removed automatically when rendered inline.</p>
+                </div>
+                <button
+                  id="unifying-close"
+                  type="button"
+                  class="btn unifying-close"
+                  aria-labelledby="unifying-close ex4-heading"
+                  popovertarget="unifying-panel"
+                  popovertargetaction="hide"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const hasNativePopover = 'popover' in HTMLElement.prototype;
+    const popoverStatusEl = document.getElementById('popover-status');
+
+    if (hasNativePopover) {
+      popoverStatusEl.textContent = 'Popover: Native';
+      popoverStatusEl.dataset.state = 'native';
+    } else {
+      popoverStatusEl.textContent = 'Popover: Polyfill';
+      try {
+        await import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
+      } catch (err) {
+        console.error('Failed to load popover polyfill:', err);
+      }
+    }
+
+    function isPopoverOpen(el) {
+      return el.matches(':popover-open') || el.classList.contains(':popover-open');
+    }
+
+    function bindStageControls(stageId, getMode, onModeChange) {
+      const stage = document.getElementById(stageId);
+      const resizer = document.querySelector(`[data-resizer-for="${stageId}"]`);
+      const controls = document.querySelector(`[data-controls-for="${stageId}"]`);
+      const slider = controls.querySelector('[data-width-slider]');
+      const readout = controls.querySelector('[data-mode-readout]');
+
+      let currentMode = null;
+
+      const getMaxWidth = () => {
+        const style = getComputedStyle(resizer.parentElement);
+        const pad = (parseFloat(style.paddingInlineStart) || 0) + (parseFloat(style.paddingInlineEnd) || 0);
+        return Math.max(Number(slider.min), Math.round(resizer.parentElement.clientWidth - pad));
+      };
+
+      const applyWidth = (px) => {
+        resizer.style.removeProperty('width');
+        resizer.style.removeProperty('height');
+        resizer.style.removeProperty('inline-size');
+        resizer.style.setProperty('--stage-width', px === 'full' ? '100%' : `${px}px`);
+      };
+
+      slider.addEventListener('input', () => applyWidth(Number(slider.value)));
+
+      controls.querySelectorAll('[data-preset-width]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.presetWidth;
+          slider.max = String(getMaxWidth());
+          const width = preset === 'full' ? 'full' : Number(preset);
+          slider.value = width === 'full' ? slider.max : String(width);
+          applyWidth(width);
+        });
+      });
+
+      new ResizeObserver(() => {
+        slider.max = String(getMaxWidth());
+      }).observe(resizer.parentElement);
+
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        const inlineSize = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+        const rounded = Math.round(inlineSize);
+        const mode = getMode(inlineSize);
+
+        slider.max = String(getMaxWidth());
+        if (document.activeElement !== slider) {
+          const outerWidth = Math.round(resizer.getBoundingClientRect().width);
+          slider.value = String(Math.min(Math.max(outerWidth, Number(slider.min)), Number(slider.max)));
+        }
+        readout.textContent = `${rounded}px — ${mode}`;
+        slider.setAttribute('aria-valuetext', `${rounded}px, ${mode}`);
+
+        if (mode === currentMode) return;
+        currentMode = mode;
+        onModeChange(currentMode);
+      });
+
+      observer.observe(stage);
+    }
+
+    // =========================================================================
+    // 1. Static to details
+    // =========================================================================
+    const detailsItems = [...document.querySelectorAll('#details-stage .disclosure-details')];
+    const narrowDetailsState = new WeakMap(detailsItems.map((el, i) => [el, i === 0]));
+    let detailsIsWide = null;
+
+    for (const details of detailsItems) {
+      details.querySelector('summary')?.addEventListener('click', (event) => {
+        if (detailsIsWide) {
+          event.preventDefault();
+        }
+      });
+      details.addEventListener('toggle', () => {
+        if (detailsIsWide === false) {
+          narrowDetailsState.set(details, details.open);
+        }
+      });
+    }
+
+    bindStageControls(
+      'details-stage',
+      (w) => (w >= 520 ? 'Wide (Static)' : 'Narrow (Details)'),
+      (mode) => {
+        const isWide = mode.startsWith('Wide');
+        detailsIsWide = isWide;
+        for (const details of detailsItems) {
+          const summary = details.querySelector('summary');
+          if (isWide) {
+            details.open = true;
+            if (summary) summary.tabIndex = -1;
+          } else {
+            summary?.removeAttribute('tabindex');
+            const hasFocus = details.contains(document.activeElement);
+            details.open = hasFocus || Boolean(narrowDetailsState.get(details));
+          }
+        }
+      }
+    );
+
+    // =========================================================================
+    // 2. Static to popover
+    // =========================================================================
+    const popoverTrigger = document.getElementById('popover-trigger');
+    const popoverPanel = document.getElementById('popover-panel');
+    const popoverFeedback = document.getElementById('popover-feedback');
+
+    popoverPanel.addEventListener('toggle', (event) => {
+      popoverTrigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+    });
+
+    popoverPanel.querySelectorAll('[data-panel-action]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        popoverFeedback.textContent = `Last action: ${btn.dataset.panelAction}`;
+        if (isPopoverOpen(popoverPanel)) {
+          popoverPanel.hidePopover?.();
+        }
+      });
+    });
+
+    bindStageControls(
+      'popover-stage',
+      (w) => (w >= 500 ? 'Wide (Static)' : 'Narrow (Popover)'),
+      (mode) => {
+        const isWide = mode.startsWith('Wide');
+        const focusedEl = popoverPanel.contains(document.activeElement) ? document.activeElement : null;
+
+        if (isWide) {
+          if (isPopoverOpen(popoverPanel)) {
+            popoverPanel.hidePopover?.();
+          }
+        } else if (focusedEl && !isPopoverOpen(popoverPanel)) {
+          popoverPanel.showPopover?.();
+        }
+
+        if (focusedEl && document.activeElement !== focusedEl) {
+          focusedEl.focus({ preventScroll: true });
+        }
+      }
+    );
+
+    // =========================================================================
+    // 3. Static to modal drawer (<dialog> + ResizeObserver handoff)
+    // =========================================================================
+    const drawerDialog = document.getElementById('drawer-dialog');
+    const drawerTrigger = document.getElementById('drawer-trigger');
+
+    drawerTrigger.addEventListener('click', () => {
+      if (!drawerDialog.open) {
+        drawerDialog.showModal();
+        drawerTrigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+
+    drawerDialog.addEventListener('click', (event) => {
+      if (event.target === drawerDialog) {
+        drawerDialog.close();
+      }
+    });
+
+    drawerDialog.addEventListener('close', () => {
+      drawerTrigger.setAttribute('aria-expanded', 'false');
+    });
+
+    bindStageControls(
+      'drawer-stage',
+      (w) => (w >= 580 ? 'Wide (Static)' : 'Narrow (Dialog)'),
+      (mode) => {
+        const isWide = mode.startsWith('Wide');
+        const focusedEl = drawerDialog.contains(document.activeElement) ? document.activeElement : null;
+
+        if (isWide) {
+          if (drawerDialog.open) {
+            drawerDialog.close();
+          }
+        } else {
+          if (focusedEl && !drawerDialog.open) {
+            drawerDialog.showModal();
+          }
+        }
+
+        if (focusedEl && document.activeElement !== focusedEl) {
+          focusedEl.focus({ preventScroll: true });
+        }
+      }
+    );
+
+    // =========================================================================
+    // 4. One markup, three container widths
+    // =========================================================================
+    const unifyingTrigger = document.getElementById('unifying-trigger');
+    const unifyingPanel = document.getElementById('unifying-panel');
+
+    unifyingPanel.addEventListener('toggle', (event) => {
+      unifyingTrigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+    });
+
+    bindStageControls(
+      'unifying-stage',
+      (w) => {
+        if (w >= 600) return 'Wide (3-up Static)';
+        if (w >= 420) return 'Medium (2-up Static)';
+        return 'Narrow (Popover)';
+      },
+      (mode) => {
+        const isStatic = !mode.startsWith('Narrow');
+        const focusedEl = unifyingPanel.contains(document.activeElement) ? document.activeElement : null;
+
+        if (isStatic) {
+          if (isPopoverOpen(unifyingPanel)) {
+            unifyingPanel.hidePopover?.();
+          }
+        } else if (focusedEl && !isPopoverOpen(unifyingPanel)) {
+          unifyingPanel.showPopover?.();
+        }
+
+        if (focusedEl && document.activeElement !== focusedEl) {
+          focusedEl.focus({ preventScroll: true });
+        }
+      }
+    );
+  </script>
+</body>
+</html>
