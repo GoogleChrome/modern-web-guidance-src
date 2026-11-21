@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Star rating (meter and range)</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --surface: light-dark(#f4f4f8, #121216);
+      --card: light-dark(#fff, #1d1d24);
+      --border: light-dark(#e2e2ea, #33333d);
+      --muted: light-dark(#5b5b69, #a4a4b3);
+      --accent: light-dark(#4f46e5, #a5b4fc);
+      --color-star-filled: #fbbf24;
+      --color-star-average: light-dark(#6366f1, #a5b4fc);
+      --color-star-empty: light-dark(#c9c9d4, #4a4a58);
+      --star-size: clamp(2.5rem, 14vw, 3rem); /* 3rem: each half star is 1.5rem (24px), the minimum touch target; shrinks only on very narrow screens */
+      /* Any SVG url() works (external file or data URI); matching stroke keeps outer silhouettes aligned */
+      --icon-star-filled: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' stroke='%23000' stroke-width='1.5' stroke-linejoin='round' d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+      --icon-star-empty: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%23000' stroke-width='1.5' stroke-linejoin='round' d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+    }
+
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      min-block-size: 100dvh;
+      padding-block: 2rem;
+      padding-inline: 1rem;
+      background: var(--surface);
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      max-inline-size: 36rem;
+      margin-inline: auto;
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+
+    .lede {
+      margin-block: -0.75rem 0;
+      margin-inline: 0;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .card {
+      display: grid;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.4)),
+        0 8px 24px -12px light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.5));
+
+      & h2 {
+        margin: 0;
+        font-size: 1rem;
+        text-wrap: balance;
+      }
+
+      & p {
+        margin: 0;
+      }
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.875rem;
+      text-wrap: pretty;
+    }
+
+    /* Stars are a row of star-shaped masks over a hard-stop gradient driven by --control-value and --max */
+    .rating {
+      --max: 5;
+      --_offset: 0px;
+      --_display-value: var(--control-value);
+      --_fill-stop: calc(var(--_offset) + var(--_display-value) * var(--star-size));
+      inline-size: calc(var(--star-size) * var(--max));
+      block-size: var(--star-size);
+      --_stars-bg: linear-gradient(to right in oklch,
+          var(--color-star-filled) var(--_fill-stop),
+          var(--color-star-empty) 0);
+      --_mask-empty: var(--icon-star-empty) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-filled: var(--icon-star-filled) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
+    }
+
+    /* Read-only: <meter> painted as stars */
+    meter.rating {
+      appearance: none;
+      display: block;
+      padding: 0;
+      border: 0;
+      --max: attr(max type(<number>), 5);
+      --control-value: attr(value type(<number>), 0);
+      background: var(--_stars-bg);
+      mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+
+      &::-webkit-meter-bar,
+      &::-webkit-meter-optimum-value,
+      &::-webkit-meter-suboptimum-value,
+      &::-webkit-meter-even-less-good-value {
+        appearance: none;
+        border: 0;
+        background: none;
+      }
+
+      &::-webkit-meter-bar {
+        block-size: 100%;
+        inline-size: 100%;
+      }
+    }
+
+    /* Native range (step 0.5) styled directly via its track pseudo-elements */
+    input[type="range"].rating {
+      --min: attr(min type(<number>), 0);
+      --max: attr(max type(<number>), 5);
+      --step: attr(step type(<number>), 1);
+      --control-value: attr(value type(<number>), 0);
+      --_offset: calc((var(--step) - var(--min)) * var(--star-size));
+      --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
+      --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
+      --_display-value: var(--_preview-value, var(--control-value));
+      inline-size: calc((var(--max) - var(--min) + var(--step)) * var(--star-size));
+      appearance: none;
+      margin: 0;
+      border: 0;
+      border-radius: 0.375rem;
+      background: transparent;
+      cursor: pointer;
+      transition: scale 0.15s ease;
+
+      &[data-average]:not([data-edited]):not(:hover) {
+        --color-star-filled: var(--color-star-average);
+      }
+
+      &:active {
+        scale: 1.02;
+      }
+
+      &:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 6px;
+      }
+
+      /* Painted on the track pseudo-elements so the focus ring is not clipped by the mask */
+      &::-webkit-slider-runnable-track {
+        block-size: 100%;
+        background: var(--_stars-bg);
+        mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+        clip-path: inset(0 0 0 var(--_offset));
+      }
+
+      &::-moz-range-track {
+        block-size: 100%;
+        background: var(--_stars-bg);
+        mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+        clip-path: inset(0 0 0 var(--_offset));
+      }
+
+      /* Step-wide thumb aligns native step snapping with star halves without JS */
+      &::-webkit-slider-thumb {
+        appearance: none;
+        inline-size: calc(var(--step) * var(--star-size));
+        block-size: 100%;
+        background: transparent;
+      }
+
+      &::-moz-range-thumb {
+        inline-size: calc(var(--step) * var(--star-size));
+        block-size: 100%;
+        border: 0;
+        background: transparent;
+      }
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 1rem;
+    }
+
+    output {
+      padding-block: 0.125rem;
+      padding-inline: 0.625rem;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--accent) 15%, transparent);
+      color: var(--accent);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (forced-colors: active) {
+      .rating {
+        --color-star-filled: light-dark(CanvasText, Highlight);
+        --color-star-average: light-dark(CanvasText, Highlight);
+        --color-star-empty: color-mix(in srgb, CanvasText 40%, Canvas);
+        forced-color-adjust: none;
+      }
+
+      meter.rating,
+      meter.rating::-webkit-meter-bar,
+      input[type="range"].rating::-webkit-slider-runnable-track,
+      input[type="range"].rating::-moz-range-track,
+      input[type="range"].rating::-webkit-slider-thumb,
+      input[type="range"].rating::-moz-range-thumb {
+        forced-color-adjust: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .rating {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Star rating</h1>
+    <p class="lede">Native meter and range elements, drawn as stars with CSS masks.</p>
+
+    <section class="card">
+      <p id="avg-label">Average rating: <output id="avg-text">3.5 out of 5</output> (128 reviews)</p>
+      <meter class="rating" id="avg" min="0" max="5" value="3.5" aria-labelledby="avg-label" aria-valuetext="3.5 out of 5">3.5 out of 5</meter>
+      <p class="hint">Read-only, using a <code>&lt;meter&gt;</code>.</p>
+    </section>
+
+    <section class="card">
+      <h2><label for="rate">Rate this product</label></h2>
+      <div class="row">
+        <input type="range" class="rating" id="rate" data-average="3.7" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.7 out of 5 stars" />
+        <output for="rate" id="rate-out" aria-hidden="true">Average: 3.7 out of 5</output>
+      </div>
+      <p class="hint">Shows the 3.7 average until edited. Click, drag, or use the arrow keys; half stars are supported.</p>
+    </section>
+  </main>
+
+  <script>
+    // Mirror min, max, step and value into custom properties where typed attr() is unsupported
+    if (!CSS.supports('width', 'attr(value type(<number>), 0)')) {
+      for (const el of document.querySelectorAll('meter.rating, input[type="range"].rating')) {
+        el.style.setProperty('--min', el.getAttribute('min') ?? 0);
+        el.style.setProperty('--max', el.getAttribute('max') ?? 5);
+        el.style.setProperty('--step', el.getAttribute('step') ?? 1);
+        el.style.setProperty('--control-value', el.getAttribute('value') ?? 0);
+      }
+    }
+
+    const range = document.getElementById('rate');
+    const out = document.getElementById('rate-out');
+
+    function update() {
+      const max = Number(range.max) || 5;
+      const edited = 'edited' in range.dataset;
+      const average = range.dataset.average;
+      if (!edited && average !== undefined) {
+        range.style.setProperty('--control-value', average);
+        range.setAttribute('aria-valuetext', `Not rated, average ${average} out of ${max} stars`);
+        out.textContent = `Average: ${average} out of ${max}`;
+        return;
+      }
+      const value = Number(range.value);
+      const text = !edited ? 'Not rated' : `${value} out of ${max} stars`;
+      range.style.setProperty('--control-value', value);
+      range.setAttribute('aria-valuetext', text);
+      out.textContent = text;
+    }
+    range.addEventListener('input', () => {
+      range.dataset.edited = '';
+      update();
+    });
+    range.addEventListener('pointermove', (event) => {
+      if (event.pointerType === 'touch' || range.disabled) return;
+      const { left, width } = range.getBoundingClientRect();
+      const pointerX = Math.min(1, Math.max(0, (event.clientX - left) / width));
+      range.style.setProperty('--pointer-x', pointerX);
+    });
+    for (const type of ['pointerleave', 'pointercancel']) {
+      range.addEventListener(type, () => range.style.removeProperty('--pointer-x'));
+    }
+    update();
+  </script>
+</body>
+
+</html>

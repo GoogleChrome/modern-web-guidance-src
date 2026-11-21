@@ -1,0 +1,17 @@
+- The stars are drawn with a CSS `mask` that repeats icon URL(s) stored in custom properties, over a `linear-gradient` background whose filled portion is calculated from `--control-value` and `--max`.
+- When a read-only rating is needed, it is a `<meter>` with `min="0"`, a `max` (such as `5`), and a `value`, and has an accessible name via `aria-labelledby` or a `<label>`.
+- When a read-only rating is needed, the `<meter>` has its native appearance removed and renders the same mask-and-gradient stars, with its filled portion matching its `value`.
+- When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.
+- When a read-only rating is needed, the `<meter>` has an `aria-valuetext` that states the score on its scale (such as "3.5 out of 5") and its `aria-labelledby` references visible text that includes the score.
+- When a read-only rating is needed, the `<meter>`'s `--max` and `--control-value` are derived from its `max` and `value` attributes, either with typed `attr()` or by copying the attributes with script.
+- When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, a `max` (such as `5`), and `step="0.5"`.
+- When an interactive rating is needed, the range input has an associated `<label>` that gives it an accessible name.
+- When an interactive rating is needed, setting the range input to a half-step value such as 2.5 is accepted without being rounded to a whole number.
+- When an interactive rating is needed, the range input's `aria-valuetext` is a human-readable string that states the scale (such as "2.5 out of 5 stars") and updates when the value changes.
+- When an interactive rating is needed, the range input has `appearance: none`, an invisible thumb sized to one step so native clicks map to stars without JavaScript, and remains focusable and operable with the keyboard arrow keys.
+- When an interactive rating is needed, a visible focus indicator appears on the range input when focused via the keyboard without being clipped by the star mask.
+- When an interactive rating is needed, the stars are painted on the range input's track pseudo-elements rather than on the input itself, so the focus indicator is not clipped by the mask.
+- When an interactive rating is needed, the filled portion of the stars follows the range input's value, including half stars, by updating `--control-value` when the input changes.
+- When an interactive rating is needed, hovering the pointer over the stars previews the rating under the pointer without committing the input's value until clicked.
+- Under `forced-colors: active`, the stars are redrawn with the system colors `light-dark(CanvasText, Highlight)` (filled) and a `color-mix()` of `CanvasText` and `Canvas` (empty) and set `forced-color-adjust: none`.
+- When typed `attr()` is unsupported, the `<meter>`'s and range input's `--min`, `--max`, `--step`, and `--control-value` are set from their `min`, `max`, `step`, and `value` attributes by script.
