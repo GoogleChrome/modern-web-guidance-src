@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, parseAgentArgs, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
+import { parseJsonlFile, copyFileIfExists, runAgentCliEntrypoint, type GuideUsage } from '../lib/agent-shared.ts';
 import { sanitizeTextSecrets } from '../lib/secret-guard.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
@@ -15,7 +15,6 @@ import {
   mapToolType,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory,
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
@@ -131,48 +130,6 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
       const dest = path.join(targetDir, destName);
       fs.writeFileSync(dest, htmlContent, 'utf8');
     }
-  }
-}
-
-/**
- * Executes the Claude CLI command and captures output.
- */
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType);
-
-  if (!workDir || !fs.existsSync(workDir)) {
-    throw new Error(`Failed to initialize working directory: ${workDir}`);
-  }
-
-  try {
-    console.log(`Starting Claude Code agent in: ${workDir}`);
-
-    const { command, commandArgs } = getClaudeCodeCommandAndArgs(userPrompt, ['--verbose', '--output-format', 'stream-json']);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    try {
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Claude Code',
-        runType
-      );
-    } finally {
-      exportClaudeCodeTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
-    }
-
-    console.log("Claude Code agent finished successfully.");
-
-  } catch (err) {
-    console.error("Error during Claude Code execution:", err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
   }
 }
 
@@ -432,5 +389,11 @@ export function collectClaudeToolsFromTrajectory(dir: string): string[] {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  run();
+  runAgentCliEntrypoint({
+    agent: Agents.CLAUDE_CODE,
+    displayName: 'Claude Code',
+    scriptName: 'claude-code-agent.ts',
+    extraArgs: ['--verbose', '--output-format', 'stream-json'],
+    exportTrajectories: exportClaudeCodeTrajectories,
+  });
 }
