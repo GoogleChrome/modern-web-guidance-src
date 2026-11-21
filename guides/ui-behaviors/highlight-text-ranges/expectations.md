@@ -1,7 +1,8 @@
 * The `::highlight()` pseudo-element is used in CSS to style at least one named highlight.
 * `CSS.highlights.set()` is called to register at least one `Highlight` object in the `HighlightRegistry`.
-* `Highlight` objects are constructed from one or more `Range` objects.
-* `Range` objects have their start and end set on text nodes (not element nodes).
+* For text that does not change while highlighted, `Highlight` objects are constructed from one or more `StaticRange` objects.
+* `StaticRange` start and end containers are text nodes (not element nodes), with offsets that select the matched characters.
+* When highlighted text changes, clear and recreate the `StaticRange` highlights. Use a live `Range` only when its endpoints need to track DOM mutations.
 * `CSS.highlights.clear()` is called before recalculating highlights to prevent stale ranges.
 * Only allowable CSS properties are used inside `::highlight()` (e.g., `color`, `background-color`, `text-decoration`, `text-shadow`). Properties like `font-size`, `padding`, or `background-image` are NOT used inside `::highlight()`.
 * Text nodes are collected using `TreeWalker` with `NodeFilter.SHOW_TEXT`, rather than manipulating `innerHTML` or wrapping text in extra DOM elements.
