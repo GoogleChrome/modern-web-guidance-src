@@ -76,7 +76,7 @@ input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 ### 3. Filtering and keyboard behavior
 
 ```js
-// Case-insensitive substring match; render only matching options.
+// Case-insensitive substring match, e.g. via toLowerCase(). Real matching is use-case specific (Unicode case mapping, diacritics, locale); adapt it. Render only matching options.
 const query = input.value.trim().toLowerCase();
 const matches = options.filter(o => o.value.toLowerCase().includes(query));
 ```
@@ -111,6 +111,7 @@ Highlight the matched substring of each option label with the Custom Highlight A
 // After rendering the options, create one Range per match, across every text node and every occurrence.
 // Setting the same highlight name again replaces the previous ranges, so there is nothing to clean up.
 const ranges = [];
+// Build from the raw input, not the lowercased query: lowercasing can change string length for some characters, so match offsets would drift.
 const re = query && new RegExp(input.value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
 const walker = document.createTreeWalker(listbox, NodeFilter.SHOW_TEXT);
 for (let text = re && walker.nextNode(); text; text = walker.nextNode()) {
