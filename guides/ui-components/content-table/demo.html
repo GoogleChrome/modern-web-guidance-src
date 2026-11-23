@@ -126,8 +126,19 @@
 	}
 
 	.empty td {
-		text-align: center;
+		padding: 0;
 		color: GrayText;
+	}
+
+	.empty span {
+		display: block;
+		position: sticky;
+		inset-inline-start: 0;
+		inline-size: 100cqi;
+		box-sizing: border-box;
+		padding: 0.5rem 0.75rem;
+		text-align: center;
+		white-space: normal;
 	}
 
 	.visually-hidden {
@@ -204,7 +215,7 @@
 	const empty = document.createElement('tr');
 	empty.className = 'empty';
 	empty.hidden = true;
-	empty.innerHTML = `<td colspan="${table.tHead.rows[0].cells.length}">No people match your filter.</td>`;
+	empty.innerHTML = `<td colspan="${table.tHead.rows[0].cells.length}"><span>No people match your filter.</span></td>`;
 	tbody.append(empty);
 
 	filter.addEventListener('input', () => {
