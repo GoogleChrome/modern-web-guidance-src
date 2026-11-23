@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
-import type { Dirent } from 'node:fs';
-import { open, readdir } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { constants as fsConstants, type Dirent } from 'node:fs';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { ScanFinding, ScanRule } from '../schema.ts';
 import {
@@ -53,6 +53,23 @@ export function resolveMaxFiles(maxFiles?: number): number {
 }
 
 const execFileAsync = promisify(execFile);
+const GIT_SYMLINK_MODE = '120000';
+
+/**
+ * Returns `true` when `candidatePath` sits at or inside `rootPath`.
+ */
+export function isPathWithinRoot(candidatePath: string, rootPath: string): boolean {
+  const rel = relative(rootPath, candidatePath);
+  return !/^\.\.(?:[\\/]|$)/.test(rel) && !isAbsolute(rel);
+}
+
+function setEmptyScanStats(stats: RepoScanStats | undefined): void {
+  if (!stats) return;
+  stats.skippedDocsAndTestsCount = 0;
+  stats.scannedFileCount = 0;
+  stats.eligibleFileCount = 0;
+  stats.truncatedByMaxFiles = false;
+}
 
 interface ReadCandidateResult {
   readonly kind: 'source' | 'vendored';
@@ -60,12 +77,24 @@ interface ReadCandidateResult {
 }
 
 async function tryReadFileContent(
-  fullPath: string,
+  realRepoRoot: string,
   relPath: string,
   session: ScanSession,
 ): Promise<ReadCandidateResult | undefined> {
+  const fullPath = resolve(realRepoRoot, relPath);
+  if (!isPathWithinRoot(fullPath, realRepoRoot)) {
+    return undefined;
+  }
   try {
-    const handle = await open(fullPath, 'r');
+    const realParent = await realpath(dirname(fullPath));
+    if (!isPathWithinRoot(realParent, realRepoRoot)) {
+      return undefined;
+    }
+    const entryStat = await lstat(fullPath);
+    if (entryStat.isSymbolicLink() || !entryStat.isFile()) {
+      return undefined;
+    }
+    const handle = await open(fullPath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
     try {
       const fileStat = await handle.stat();
       if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
@@ -81,15 +110,15 @@ async function tryReadFileContent(
       await handle.close();
     }
   } catch {
-    // Missing/deleted file (ENOENT), unreadable, or binary file
+    // Missing/deleted file (ENOENT), symlink (ELOOP), unreadable, or binary file
     return undefined;
   }
 }
 
 async function collectDirectoryPaths(
-  resolvedRoot: string,
+  realRoot: string,
   filterOpts: FileFilterOptions | undefined,
-  currentDir = resolvedRoot,
+  currentDir = realRoot,
   outPaths: string[] = [],
 ): Promise<string[]> {
   let entries: Dirent[];
@@ -102,8 +131,12 @@ async function collectDirectoryPaths(
   entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
+
     const fullPath = join(currentDir, entry.name);
-    const relPath = relative(resolvedRoot, fullPath).replace(/\\/g, '/');
+    const relPath = relative(realRoot, fullPath).replace(/\\/g, '/');
 
     if (entry.isDirectory()) {
       const dirLower = entry.name.toLowerCase();
@@ -116,7 +149,7 @@ async function collectDirectoryPaths(
       ) {
         continue;
       }
-      await collectDirectoryPaths(resolvedRoot, filterOpts, fullPath, outPaths);
+      await collectDirectoryPaths(realRoot, filterOpts, fullPath, outPaths);
       continue;
     }
 
@@ -128,25 +161,49 @@ async function collectDirectoryPaths(
   return outPaths;
 }
 
-async function tryEnumerateGitFiles(resolvedRepoDir: string): Promise<string[] | null> {
-  let stdout: string;
+function parseCachedGitFiles(stdout: string): string[] {
+  const paths: string[] = [];
+  for (const record of stdout.split('\0')) {
+    if (!record) continue;
+    const tabIdx = record.indexOf('\t');
+    const spaceIdx = record.indexOf(' ');
+    if (tabIdx === -1 || spaceIdx === -1 || spaceIdx > tabIdx) continue;
+    if (record.slice(0, spaceIdx) === GIT_SYMLINK_MODE) continue;
+    const filePath = record.slice(tabIdx + 1);
+    if (filePath) {
+      paths.push(filePath);
+    }
+  }
+  return paths;
+}
+
+async function tryEnumerateGitFiles(realRepoRoot: string): Promise<string[] | null> {
+  const execOpts = {
+    cwd: realRepoRoot,
+    maxBuffer: 50 * 1024 * 1024,
+    timeout: 10_000,
+  } as const;
+
+  let cachedStdout: string;
+  let othersStdout: string;
   try {
-    const res = await execFileAsync(
-      'git',
-      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
-      {
-        cwd: resolvedRepoDir,
-        maxBuffer: 50 * 1024 * 1024,
-        timeout: 10_000,
-      },
-    );
-    stdout = res.stdout;
+    const [cachedRes, othersRes] = await Promise.all([
+      execFileAsync('git', ['ls-files', '-z', '-s', '--cached'], execOpts),
+      execFileAsync('git', ['ls-files', '-z', '--others', '--exclude-standard'], execOpts),
+    ]);
+    cachedStdout = cachedRes.stdout;
+    othersStdout = othersRes.stdout;
   } catch {
     return null;
   }
 
-  const rawPaths = stdout.split('\0').filter(Boolean);
-  return rawPaths.length > 0 ? rawPaths : null;
+  if (!cachedStdout && !othersStdout) {
+    return null;
+  }
+
+  const cachedPaths = parseCachedGitFiles(cachedStdout);
+  const untrackedPaths = othersStdout.split('\0').filter(Boolean);
+  return Array.from(new Set([...cachedPaths, ...untrackedPaths]));
 }
 
 /**
@@ -161,19 +218,22 @@ export async function scanRepoFiles(
   const session = createScanSession(rules, options);
 
   if (session.activeEngines.size === 0) {
-    if (options?.stats) {
-      options.stats.skippedDocsAndTestsCount = 0;
-      options.stats.scannedFileCount = 0;
-      options.stats.eligibleFileCount = 0;
-      options.stats.truncatedByMaxFiles = false;
-    }
+    setEmptyScanStats(options?.stats);
     return [];
   }
 
   const resolvedRepoDir = resolve(repoDirPath);
+  let realRepoRoot: string;
+  try {
+    realRepoRoot = await realpath(resolvedRepoDir);
+  } catch {
+    setEmptyScanStats(options?.stats);
+    return [];
+  }
+
   const rawPaths =
-    (await tryEnumerateGitFiles(resolvedRepoDir)) ??
-    (await collectDirectoryPaths(resolvedRepoDir, session.filterOpts));
+    (await tryEnumerateGitFiles(realRepoRoot)) ??
+    (await collectDirectoryPaths(realRepoRoot, session.filterOpts));
 
   const pkgCandidates: string[] = [];
   const otherCandidates: string[] = [];
@@ -205,9 +265,7 @@ export async function scanRepoFiles(
     idx += batch.length;
 
     const reads = await Promise.all(
-      batch.map((relPath) =>
-        tryReadFileContent(join(resolvedRepoDir, relPath), relPath, session),
-      ),
+      batch.map((relPath) => tryReadFileContent(realRepoRoot, relPath, session)),
     );
     for (let i = 0; i < batch.length; i++) {
       const relPath = batch[i];

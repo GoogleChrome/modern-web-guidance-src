@@ -1,17 +1,22 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { promisify } from 'node:util';
 import { SyntaxKind } from 'ts-morph';
 import type { RuleMatcher, ScanRule } from '../schema.ts';
 import {
   DEFAULT_MAX_FILES,
+  isPathWithinRoot,
   resolveMaxFiles,
   scanFiles,
   scanRepoFiles,
   type RepoScanStats,
 } from './index.ts';
+
+const execFileAsync = promisify(execFile);
 
 function makeTestRule(id: string, guideId: string, matcher: RuleMatcher): ScanRule {
   return {
@@ -331,6 +336,103 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
       assert.deepEqual(repoFindings.map((f) => f.file), ['src/Valid.vue']);
       assert.equal(repoStats.scannedFileCount, 1);
       assert.equal(repoStats.eligibleFileCount, 1);
+    });
+  });
+
+  await t.test('isPathWithinRoot enforces directory boundaries without prefix or dot-dot bypasses', () => {
+    assert.equal(isPathWithinRoot('/repo', '/repo'), true);
+    assert.equal(isPathWithinRoot('/repo/src/app.ts', '/repo'), true);
+    assert.equal(isPathWithinRoot('/repo/..foo.ts', '/repo'), true);
+    assert.equal(isPathWithinRoot('/repo-other/app.ts', '/repo'), false);
+    assert.equal(isPathWithinRoot('/etc/passwd', '/repo'), false);
+    assert.equal(isPathWithinRoot('/repo/..', '/repo'), false);
+  });
+
+  await t.test('git mode skips tracked symlinks, untracked symlinks, and external directory symlinks', async () => {
+    await withTempRepo('git-symlinks-root-', async (workspace) => {
+      const outsideDir = join(workspace, 'outside');
+      const repoDir = join(workspace, 'repo');
+      await mkdir(join(outsideDir, 'nested'), { recursive: true });
+      await mkdir(join(repoDir, 'src'), { recursive: true });
+
+      await writeFile(join(outsideDir, 'secret.ts'), 'legacyTarget("outside");\n');
+      await writeFile(join(outsideDir, 'nested', 'deep.ts'), 'legacyTarget("deep-outside");\n');
+      await writeFile(join(repoDir, 'src', 'real.ts'), 'legacyTarget("real");\n');
+      await writeFile(join(repoDir, 'src', 'untracked.ts'), 'legacyTarget("untracked");\n');
+      await writeFile(join(repoDir, '.gitignore'), 'ignored.ts\n');
+      await writeFile(join(repoDir, 'ignored.ts'), 'legacyTarget("ignored");\n');
+
+      // Tracked symlinks (mode 120000) to outside and inside files
+      await symlink(join(outsideDir, 'secret.ts'), join(repoDir, 'src', 'tracked-outside-link.ts'));
+      await symlink(join(repoDir, 'src', 'real.ts'), join(repoDir, 'src', 'tracked-inside-link.ts'));
+      // Untracked symlinks to outside file and outside directory
+      await symlink(join(outsideDir, 'secret.ts'), join(repoDir, 'src', 'untracked-outside-link.ts'));
+      await symlink(outsideDir, join(repoDir, 'linked-outside-dir'));
+
+      await execFileAsync('git', ['init'], { cwd: repoDir });
+      await execFileAsync(
+        'git',
+        ['add', '.gitignore', 'src/real.ts', 'src/tracked-outside-link.ts', 'src/tracked-inside-link.ts'],
+        { cwd: repoDir },
+      );
+
+      const rule = makeCallRule('test/git-symlinks', 'legacyTarget');
+      const stats: RepoScanStats = {};
+      const findings = await scanRepoFiles(repoDir, [rule], { stats });
+
+      assert.deepEqual(
+        findings.map((f) => f.file).sort(),
+        ['src/real.ts', 'src/untracked.ts'],
+      );
+      assert.equal(stats.scannedFileCount, 2);
+      assert.equal(stats.eligibleFileCount, 2);
+
+      // Repo with only untracked files must still enumerate them cleanly
+      const untrackedOnlyDir = join(workspace, 'untracked-only');
+      await mkdir(untrackedOnlyDir, { recursive: true });
+      await execFileAsync('git', ['init'], { cwd: untrackedOnlyDir });
+      await writeFile(join(untrackedOnlyDir, 'only.ts'), 'legacyTarget("only");\n');
+      const untrackedFindings = await scanRepoFiles(untrackedOnlyDir, [rule]);
+      assert.deepEqual(untrackedFindings.map((f) => f.file), ['only.ts']);
+
+      // Repo with only a tracked symlink + excluded file must NOT fall back to directory walk
+      const symlinkOnlyDir = join(workspace, 'symlink-only');
+      await mkdir(symlinkOnlyDir, { recursive: true });
+      await execFileAsync('git', ['init'], { cwd: symlinkOnlyDir });
+      await writeFile(join(symlinkOnlyDir, '.git', 'info', 'exclude'), 'ignored.ts\n');
+      await writeFile(join(symlinkOnlyDir, 'ignored.ts'), 'legacyTarget("ignored");\n');
+      await symlink(join(outsideDir, 'secret.ts'), join(symlinkOnlyDir, 'link.ts'));
+      await execFileAsync('git', ['add', 'link.ts'], { cwd: symlinkOnlyDir });
+      const symlinkOnlyFindings = await scanRepoFiles(symlinkOnlyDir, [rule]);
+      assert.deepEqual(symlinkOnlyFindings, []);
+    });
+  });
+
+  await t.test('non-git walk skips internal/external file and directory symlinks and circular symlink loops', async () => {
+    await withTempRepo('nongit-symlinks-root-', async (workspace) => {
+      const outsideDir = join(workspace, 'outside');
+      const rootDir = join(workspace, 'scan-root');
+      await mkdir(outsideDir, { recursive: true });
+      await mkdir(join(rootDir, 'src'), { recursive: true });
+
+      await writeFile(join(outsideDir, 'secret.ts'), 'legacyTarget("outside");\n');
+      await writeFile(join(rootDir, 'src', 'app.ts'), 'legacyTarget("inside");\n');
+
+      // File symlinks (outside & inside)
+      await symlink(join(outsideDir, 'secret.ts'), join(rootDir, 'src', 'outside-file-link.ts'));
+      await symlink(join(rootDir, 'src', 'app.ts'), join(rootDir, 'src', 'inside-file-link.ts'));
+      // Directory symlinks (outside, inside, and circular self-loop)
+      await symlink(outsideDir, join(rootDir, 'outside-dir-link'));
+      await symlink(join(rootDir, 'src'), join(rootDir, 'inside-dir-link'));
+      await symlink(rootDir, join(rootDir, 'src', 'loop-to-root'));
+
+      const rule = makeCallRule('test/nongit-symlinks', 'legacyTarget');
+      const stats: RepoScanStats = {};
+      const findings = await scanRepoFiles(rootDir, [rule], { stats });
+
+      assert.deepEqual(findings.map((f) => f.file), ['src/app.ts']);
+      assert.equal(stats.scannedFileCount, 1);
+      assert.equal(stats.eligibleFileCount, 1);
     });
   });
 });

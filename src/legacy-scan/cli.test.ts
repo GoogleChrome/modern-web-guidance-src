@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -985,6 +985,176 @@ describe('runLegacyScanCli', () => {
         const resDirEmptyRules = await runLegacyScanCli([edgeDir, '--json'], { rules: [] });
         assert.equal(resDirEmptyRules.exitCode, 0);
         assert.equal(resDirEmptyRules.data?.scannedFileCount, 0);
+      });
+    });
+  });
+
+  describe('symlink and scan-root containment', () => {
+    const CSS_TEST_RULES: readonly ScanRule[] = [
+      {
+        id: 'test-symlink/css',
+        guideId: 'animate-to-intrinsic-sizes',
+        guideHash: '1234567890ab',
+        summary: 'Test CSS rule',
+        matcher: {
+          kind: 'css',
+          fastTokens: ['.legacy-hit'],
+          matchRule: (rule) =>
+            rule.selectorText.includes('.legacy-hit') ? { message: 'Legacy hit' } : null,
+        },
+        verifierRubric: {
+          keepWhen: ['Always'],
+          dropWhen: ['Never'],
+        },
+      },
+    ];
+
+    it('rejects symlinks pointing outside the scan root in human and --json modes without reading target', async () => {
+      await withTempDir(async (workspace) => {
+        const repoDir = join(workspace, 'repo');
+        const outsideDir = join(workspace, 'outside');
+        await mkdir(repoDir, { recursive: true });
+        await mkdir(outsideDir, { recursive: true });
+
+        const secretFile = join(outsideDir, 'secret.css');
+        await writeFile(secretFile, '.legacy-hit { color: red; }\n', 'utf8');
+        await symlink(secretFile, join(repoDir, 'escape.css'));
+        await symlink(outsideDir, join(repoDir, 'escape-dir'));
+
+        // Relative symlink inside cwd escaping scan root
+        const resHuman = await runLegacyScanCli(['escape.css'], { cwd: repoDir, rules: CSS_TEST_RULES });
+        assert.equal(resHuman.exitCode, 1);
+        assert.equal(resHuman.stdout, '');
+        assert.match(resHuman.stderr ?? resHuman.output, /Error: .*symlink.*scan root/);
+
+        const resJson = await runLegacyScanCli(['escape.css', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resJson.exitCode, 1);
+        const parsed = JSON.parse(resJson.output) as ScanJsonOutput;
+        assert.equal(parsed.totalFindings, 0);
+        assert.deepEqual(parsed.guides, []);
+        assert.match(parsed.error ?? '', /symlink.*scan root/);
+
+        // Directory symlink escaping cwd
+        const resDirEscape = await runLegacyScanCli(['escape-dir', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resDirEscape.exitCode, 1);
+        assert.match(resDirEscape.data?.error ?? '', /symlink.*scan root/);
+
+        // Explicit external symlink path whose target escapes its parent directory
+        const externalHolder = join(workspace, 'external-holder');
+        await mkdir(externalHolder, { recursive: true });
+        const externalEscapeLink = join(externalHolder, 'ext-escape.css');
+        await symlink(secretFile, externalEscapeLink);
+        const resExternalEscape = await runLegacyScanCli([externalEscapeLink, '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resExternalEscape.exitCode, 1);
+        assert.match(resExternalEscape.data?.error ?? '', /symlink.*scan root/);
+      });
+    });
+
+    it('rejects files accessed via a relative symlinked parent directory escaping cwd', async () => {
+      await withTempDir(async (workspace) => {
+        const repoDir = join(workspace, 'repo');
+        const outsideDir = join(workspace, 'outside');
+        await mkdir(repoDir, { recursive: true });
+        await mkdir(outsideDir, { recursive: true });
+
+        await writeFile(join(outsideDir, 'secret.css'), '.legacy-hit { color: red; }\n', 'utf8');
+        await symlink(outsideDir, join(repoDir, 'linked-dir'));
+
+        const resHuman = await runLegacyScanCli(['linked-dir/secret.css'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resHuman.exitCode, 1);
+        assert.match(resHuman.stderr ?? resHuman.output, /Error: .*escapes scan root via symlink/);
+
+        const resJson = await runLegacyScanCli(['linked-dir/secret.css', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resJson.exitCode, 1);
+        assert.equal(resJson.data?.totalFindings, 0);
+        assert.match(resJson.data?.error ?? '', /escapes scan root via symlink/);
+      });
+    });
+
+    it('scans symlinks resolving inside the scan root, rejects broken symlinks, and allows external regular files', async () => {
+      await withTempDir(async (workspace) => {
+        const repoDir = join(workspace, 'repo');
+        const subDir = join(repoDir, 'src');
+        const externalDir = join(workspace, 'external');
+        await mkdir(subDir, { recursive: true });
+        await mkdir(externalDir, { recursive: true });
+
+        await writeFile(join(subDir, 'app.css'), '.legacy-hit { color: red; }\n', 'utf8');
+        await symlink(join(subDir, 'app.css'), join(repoDir, 'alias.css'));
+        await symlink(subDir, join(repoDir, 'src-alias'));
+        await symlink(join(subDir, 'missing.css'), join(repoDir, 'broken.css'));
+
+        // Symlink pointing to a file inside scan root
+        const resInRootFile = await runLegacyScanCli(['alias.css', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resInRootFile.exitCode, 0);
+        assert.equal(resInRootFile.data?.totalFindings, 1);
+        assert.equal(resInRootFile.data?.guides[0]?.rules[0]?.findings[0]?.file, 'alias.css');
+
+        // Symlink pointing to a directory inside scan root
+        const resInRootDir = await runLegacyScanCli(['src-alias', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resInRootDir.exitCode, 0);
+        assert.equal(resInRootDir.data?.totalFindings, 1);
+        assert.equal(resInRootDir.data?.guides[0]?.rules[0]?.findings[0]?.file, 'app.css');
+
+        // Broken symlink
+        const resBrokenHuman = await runLegacyScanCli(['broken.css'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resBrokenHuman.exitCode, 1);
+        assert.match(resBrokenHuman.output, /Error: Target path not found: broken\.css/);
+
+        const resBrokenJson = await runLegacyScanCli(['broken.css', '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resBrokenJson.exitCode, 1);
+        assert.match(resBrokenJson.data?.error ?? '', /Target path not found: broken\.css/);
+
+        // Regular file at an external absolute path still scans normally
+        const externalRegular = join(externalDir, 'external.css');
+        await writeFile(externalRegular, '.legacy-hit { color: red; }\n', 'utf8');
+        const resExternalRegular = await runLegacyScanCli([externalRegular, '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resExternalRegular.exitCode, 0);
+        assert.equal(resExternalRegular.data?.totalFindings, 1);
+        assert.equal(resExternalRegular.data?.guides[0]?.rules[0]?.findings[0]?.file, 'external.css');
+
+        // External symlink resolving inside its own parent directory scans normally
+        const externalSub = join(externalDir, 'nested');
+        await mkdir(externalSub, { recursive: true });
+        await writeFile(join(externalSub, 'inner.css'), '.legacy-hit { color: red; }\n', 'utf8');
+        const externalSafeLink = join(externalDir, 'safe-link.css');
+        await symlink(join(externalSub, 'inner.css'), externalSafeLink);
+        const resExternalSafeLink = await runLegacyScanCli([externalSafeLink, '--json'], {
+          cwd: repoDir,
+          rules: CSS_TEST_RULES,
+        });
+        assert.equal(resExternalSafeLink.exitCode, 0);
+        assert.equal(resExternalSafeLink.data?.totalFindings, 1);
       });
     });
   });

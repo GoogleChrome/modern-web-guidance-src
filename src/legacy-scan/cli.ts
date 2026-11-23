@@ -1,10 +1,12 @@
-import { readFile, stat } from 'node:fs/promises';
-import { basename, relative, resolve } from 'node:path';
+import { constants as fsConstants } from 'node:fs';
+import { lstat, open, realpath, stat } from 'node:fs/promises';
+import { basename, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import {
   DEFAULT_MAX_FILES,
+  isPathWithinRoot,
   MAX_SOURCE_FILE_BYTES,
   resolveMaxFiles,
   scanFiles,
@@ -355,6 +357,78 @@ function groupFindingsByGuide(
     });
 }
 
+type ResolvedCliTarget =
+  | { readonly ok: true; readonly realTarget: string; readonly isDirectory: boolean }
+  | { readonly ok: false; readonly error: string };
+
+async function resolveCliTarget(
+  resolvedBaseCwd: string,
+  resolvedDir: string,
+  targetDir: string,
+): Promise<ResolvedCliTarget> {
+  const targetLstat = await lstat(resolvedDir).catch(() => null);
+  if (!targetLstat) {
+    return { ok: false, error: `Target path not found: ${targetDir}` };
+  }
+
+  const realTarget = await realpath(resolvedDir).catch(() => null);
+  if (!realTarget) {
+    return { ok: false, error: `Target path not found: ${targetDir}` };
+  }
+
+  const realBaseRoot = await realpath(resolvedBaseCwd).catch(() => null);
+  const escapeError = targetLstat.isSymbolicLink()
+    ? `Target symlink escapes scan root: ${targetDir}`
+    : `Target path escapes scan root via symlink: ${targetDir}`;
+
+  if (isPathWithinRoot(resolvedDir, resolvedBaseCwd)) {
+    if (!realBaseRoot || !isPathWithinRoot(realTarget, realBaseRoot)) {
+      return { ok: false, error: escapeError };
+    }
+  } else if (targetLstat.isSymbolicLink()) {
+    const realLinkParent = await realpath(dirname(resolvedDir)).catch(() => null);
+    if (!realLinkParent || !isPathWithinRoot(realTarget, realLinkParent)) {
+      return { ok: false, error: escapeError };
+    }
+  }
+
+  const targetStat = await stat(realTarget).catch(() => null);
+  if (!targetStat) {
+    return { ok: false, error: `Target path not found: ${targetDir}` };
+  }
+  if (!targetStat.isFile() && !targetStat.isDirectory()) {
+    return { ok: false, error: `Target path is not a file or directory: ${targetDir}` };
+  }
+
+  return { ok: true, realTarget, isDirectory: targetStat.isDirectory() };
+}
+
+async function readSingleTargetFile(
+  realTarget: string,
+  targetDir: string,
+): Promise<{ readonly ok: true; readonly content: string } | { readonly ok: false; readonly error: string }> {
+  try {
+    const handle = await open(realTarget, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+    try {
+      const fdStat = await handle.stat();
+      if (!fdStat.isFile()) {
+        return { ok: false, error: `Target path is not a file or directory: ${targetDir}` };
+      }
+      if (fdStat.size > MAX_SOURCE_FILE_BYTES) {
+        return {
+          ok: false,
+          error: `Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`,
+        };
+      }
+      return { ok: true, content: await handle.readFile('utf8') };
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return { ok: false, error: `Target path not found: ${targetDir}` };
+  }
+}
+
 /**
  * Deterministic CLI runner for modern-web-guidance legacy-scan.
  * Supports human-readable output, --json structured output, --guide filtering, and --max-files cap.
@@ -392,7 +466,8 @@ export async function runLegacyScanCli(
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
   const baseCwd = options?.cwd ?? process.cwd();
-  const resolvedDir = resolve(baseCwd, targetDir);
+  const resolvedBaseCwd = resolve(baseCwd);
+  const resolvedDir = resolve(resolvedBaseCwd, targetDir);
 
   const rawMaxFiles = parsed.values['max-files'];
   let effectiveMaxFiles: number;
@@ -419,30 +494,27 @@ export async function runLegacyScanCli(
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
-  const dirStat = await stat(resolvedDir).catch(() => null);
-  if (!dirStat) {
-    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
-  }
-  if (!dirStat.isFile() && !dirStat.isDirectory()) {
-    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
+  const target = await resolveCliTarget(resolvedBaseCwd, resolvedDir, targetDir);
+  if (!target.ok) {
+    return errorCliResult(target.error, isJson, targetDir);
   }
 
   const scanStats: RepoScanStats = {};
   let findings: ScanFinding[];
 
-  if (dirStat.isFile()) {
-    if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
-      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
+  if (!target.isDirectory) {
+    const fileRead = await readSingleTargetFile(target.realTarget, targetDir);
+    if (!fileRead.ok) {
+      return errorCliResult(fileRead.error, isJson, targetDir);
     }
-    const content = await readFile(resolvedDir, 'utf8');
-    const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
-    const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
-    findings = scanFiles(new Map([[fileKey, content]]), activeRules, {
+    const rel = relative(resolvedBaseCwd, resolvedDir).replace(/\\/g, '/');
+    const fileKey = rel && isPathWithinRoot(resolvedDir, resolvedBaseCwd) ? rel : basename(resolvedDir);
+    findings = scanFiles(new Map([[fileKey, fileRead.content]]), activeRules, {
       includeDocsAndTests: true,
       stats: scanStats,
     });
   } else {
-    findings = await scanRepoFiles(resolvedDir, activeRules, {
+    findings = await scanRepoFiles(target.realTarget, activeRules, {
       maxFiles: effectiveMaxFiles,
       includeDocsAndTests,
       stats: scanStats,

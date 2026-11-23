@@ -57,6 +57,7 @@ export * from './js-scanner.ts';
 export * from './sfc-extractor.ts';
 export {
   DEFAULT_MAX_FILES,
+  isPathWithinRoot,
   resolveMaxFiles,
   scanRepoFiles,
   type RepoScanOptions,
