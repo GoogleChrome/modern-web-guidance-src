@@ -279,7 +279,7 @@
         case 'ArrowUp':
           e.preventDefault();
           if (!isOpen) open();
-          if (items.length) setActive((active - 1 + items.length) % items.length);
+          if (items.length) setActive(active > 0 ? active - 1 : items.length - 1);
           break;
         case 'Home': case 'End':
           if (isOpen && active >= 0) { e.preventDefault(); setActive(e.key === 'Home' ? 0 : items.length - 1); }
