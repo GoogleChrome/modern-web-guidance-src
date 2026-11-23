@@ -1,7 +1,7 @@
 - The data is presented in a `<table>` with a `<caption>`, a `<thead>` containing the column headers as `<th scope="col">`, and a `<tbody>` containing the rows.
 - The first cell of each body row is a `<th scope="row">`.
 - The table is wrapped in a scroll container (`overflow-x` is `auto` or `scroll`, and `overflow-y` is `auto`, `scroll`, or `clip`) that has `role="region"`, an accessible name, and `tabindex="0"`.
-- When the table has many rows, the column header `<th>` cells compute `position: sticky` with a block-start inset of `0`.
+- When the table has many rows, the column header `<th>` cells compute `position: sticky` with a block-start inset of `0`, or the height of the page's sticky header when the page has one.
 - When the table has many columns, the row header `<th>` cells in `<tbody>` compute `position: sticky` with an inline-start inset of `0`.
 - The table does not compute `border-collapse: collapse`.
 - The sticky `<th>` cells compute an opaque background color.
