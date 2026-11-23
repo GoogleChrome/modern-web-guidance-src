@@ -5,6 +5,8 @@ web-feature-ids:
   - prefers-reduced-motion
   - conic-gradients
   - progress
+  - registered-custom-properties
+  - background-clip-border-area
 ---
 
 # Loading spinner

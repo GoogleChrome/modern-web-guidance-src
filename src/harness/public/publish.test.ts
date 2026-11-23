@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { checkoutPublished, cloneDir, publishPublicEvals, remoteHead } from './publish.ts';
+import { checkoutPublished, cloneDir, publishPublicEvals, remoteHead, repoFromRemoteUrl } from './publish.ts';
 
 const TEST_USER = { name: 'Example Publisher', email: 'publisher@example.invalid' };
 const cacheDirs: string[] = [];
@@ -93,7 +93,7 @@ describe('publishPublicEvals + checkoutPublished', () => {
     assert.equal(execFileSync('git', ['-C', inspect, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), '1');
   });
 
-  test('publishes modern-web.log even though the deployed dashboard .gitignore excludes *.log', async () => {
+  test('publishes a file that a stale .gitignore on the branch would exclude', async () => {
     const bare = makeBareRemote();
     seedBranchFile(bare, '.gitignore', '*.log\n');
     const head = remoteHead(bare);
@@ -122,17 +122,29 @@ describe('publishPublicEvals + checkoutPublished', () => {
       '.DS_Store': 'junk',
       'suite-1/.hidden': 'junk',
     });
-    await publishPublicEvals(out, { repoUrl: bare, message: 'first', expectedHead: null, user: TEST_USER });
+    const firstResult = await publishPublicEvals(out, { repoUrl: bare, message: 'first', expectedHead: null, user: TEST_USER });
     const head = remoteHead(bare);
     assert.ok(head);
+    assert.equal(firstResult, true);
 
-    await publishPublicEvals(out, { repoUrl: bare, message: 'again', expectedHead: head, user: TEST_USER });
+    const secondResult = await publishPublicEvals(out, { repoUrl: bare, message: 'again', expectedHead: head, user: TEST_USER });
     assert.equal(remoteHead(bare), head, 'unchanged content does not create a new commit');
+    assert.equal(secondResult, false);
 
     const inspect = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-inspect-'));
     execFileSync('git', ['clone', '--quiet', '--branch', 'gh-pages', bare, inspect]);
     assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', '.DS_Store')));
     assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', 'suite-1', '.hidden')));
+  });
+
+  test('repoFromRemoteUrl parses git and https URLs, throwing on non-GitHub URLs', () => {
+    assert.equal(repoFromRemoteUrl('git@github.com:GoogleChrome/modern-web-guidance-src.git'), 'GoogleChrome/modern-web-guidance-src');
+    assert.equal(repoFromRemoteUrl('https://github.com/GoogleChrome/modern-web-guidance-src.git'), 'GoogleChrome/modern-web-guidance-src');
+    assert.equal(repoFromRemoteUrl('https://github.com/GoogleChrome/modern-web-guidance-src'), 'GoogleChrome/modern-web-guidance-src');
+    assert.throws(
+      () => repoFromRemoteUrl('/tmp/local-repo'),
+      /cannot determine GitHub \{owner\}\/\{repo\} from remote URL/,
+    );
   });
 
   test('refuses to publish without suites.gen.json or when expectedHead has moved', async () => {

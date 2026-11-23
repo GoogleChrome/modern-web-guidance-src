@@ -16,7 +16,7 @@
 npx modern-web-guidance@latest install
 ```
 
-This command runs an interactive wizard to install Modern Web Guidance. See [Alternative Installation Methods](#-alternative-installation-methods) below.
+This command runs an interactive wizard to install Modern Web Guidance. See [Alternative Installation Methods](#-alternative-installation-methods) below. Requires Node.js 22 or later.
 
 #### Try it out (without installing)
 
@@ -104,12 +104,12 @@ Configure Origin Trial and volatile feature opt-ins for a repository with an opt
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/cpu.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> How It Works
 
 1. **Activation**: The coding agent activates the `modern-web-guidance` skill because of a relevant task. The agent is instructed to use the `modern-web-guidance` CLI for web platform queries.
-2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide using an offline, zero-dependency embedding model and BM25 search engine (no network calls, no API keys).
+2. **Local Semantic Search**: The agent runs `modern-web-guidance search "<query>"`. The tool matches the query to the best guide locally using an offline, zero-dependency embedding model and BM25 search engine (no search API calls or API keys).
 3. **Guide Fetch**: The agent retrieves the guide via `modern-web-guidance retrieve <guide-id>`, inserting targeted code patterns, gotchas, and fallbacks directly into its context window.
 
 > [!TIP]
-> Note: We use `npx` to ensure the content doesn't go stale, but the CLI works offline, completely private and local.
-> The npm package is self-contained, with no extra dependencies to ensure both low-latency and supply-chain security.
+> Note: We use `npx` to keep guides up to date, but the CLI itself works completely offline (once cached, via `npx --offline`) with a self-contained, zero-dependency npm package for low latency and supply-chain security.
+> When online, it sends anonymous usage telemetry in the background without blocking execution—see [Telemetry & Privacy](#-telemetry--privacy) for what's collected and how to opt out.
 
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/package.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Alternative Installation Methods
 
@@ -174,6 +174,14 @@ grok plugin install https://github.com/GoogleChrome/modern-web-guidance --trust
 </details>
 
 <details>
+<summary><b>Pi</b></summary>
+
+```shell
+pi install git:github.com/GoogleChrome/modern-web-guidance
+```
+</details>
+
+<details>
 <summary><b>OpenAI Codex</b></summary>
 
 ```shell
@@ -185,6 +193,20 @@ codex plugin add modern-web-guidance@googlechrome
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
+
+<details>
+<summary><b>Claude Code (if installed via <code>claude-plugins-official</code>)</b></summary>
+
+Anthropic stopped updating third-party plugins in their built-in `claude-plugins-official` marketplace on Oct 12, stranding installs at `v0.0.194` ([details](https://github.com/GoogleChrome/modern-web-guidance-src/issues/3533)). Switch to the `googlechrome` marketplace to get updates:
+
+```shell
+/plugin uninstall modern-web-guidance@claude-plugins-official
+/plugin marketplace add GoogleChrome/modern-web-guidance
+/plugin install modern-web-guidance@googlechrome
+/plugin  # Select GoogleChrome marketplace, press enter, enable AutoUpdate
+/reload-plugins
+```
+</details>
 
 Otherwise, consult your agent's documentation for updating plugins and skills.
 

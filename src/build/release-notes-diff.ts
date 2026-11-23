@@ -10,14 +10,11 @@ export interface EvalSummaryItem {
   testId?: string;
   timestamp?: string;
   agent: string;
-  serving?: string;
   model: string;
   taskCount: number;
   assertionCount: number;
   unguidedPassRate: number;
   guidedPassRate: number;
-  skillVersion?: string;
-  cliVersion?: string;
 }
 
 export interface BaselineUpdateInfo {

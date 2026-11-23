@@ -8,6 +8,7 @@ import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
 import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureGuidedEvalDist } from './lib/eval-dist.ts';
 import {
   ALLOWED_ENV_PREFIXES,
   ALLOWED_GRADER_ENV_KEYS,
@@ -40,13 +41,15 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
 
   if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Template directory not found: ${templateDir}`);
+    console.error(`❌ Base app directory not found: ${templateDir}`);
     return;
   }
 
+  await ensureGuidedEvalDist();
+
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
-  console.log(`Template: ${templateDir}`);
+  console.log(`Base app: ${templateDir}`);
   console.log(`Target: ${targetDir}\n`);
 
   if (!fs.existsSync(targetDir)) {
@@ -79,6 +82,7 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  skipSkillBuild?: boolean;
   guidedOnly?: boolean;
   suiteConfig?: Partial<SuiteConfig>;
 }
@@ -86,6 +90,10 @@ export interface RunSuiteOptions {
 export async function runSuite(options: RunSuiteOptions = {}) {
   loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
+
+  if (!options.skipSkillBuild) {
+    await ensureGuidedEvalDist();
+  }
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(suitesDir)) {
@@ -111,7 +119,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const originalConsoleMethods = setupLogging(logFilePath);
   const suiteStart = Date.now();
 
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
+  console.log(`\n=== Evaluation Job Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
@@ -120,7 +128,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     const numRuns = options.numRuns ?? suiteConfig.numRuns;
     const endRun = 1 + numRuns;
 
-    console.log(`\nStarting execution for ${numRuns} runs`);
+    console.log(`\nStarting execution for ${numRuns} ${numRuns === 1 ? 'trial per condition' : 'trials per condition'}`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -254,9 +262,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
+      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
-      console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+      console.log(`\n✅ Evaluation job complete! Results saved to: ${testDir}`);
     }
 
     if (!options.skipEval) {
@@ -270,7 +278,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       process.exitCode = 1;
     }
   } catch (e) {
-    console.error('❌ Error during suite execution:', e);
+    console.error('❌ Error during job execution:', e);
   } finally {
     restoreLogging(originalConsoleMethods);
   }
@@ -648,8 +656,14 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   if (positionalArgs.length >= 1) {
-    runSuite({ tasks: positionalArgs }).catch(console.error);
+    runSuite({ tasks: positionalArgs }).catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   } else {
-    runSuite().catch(console.error);
+    runSuite().catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   }
 }

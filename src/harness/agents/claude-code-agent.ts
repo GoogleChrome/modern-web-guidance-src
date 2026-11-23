@@ -83,6 +83,7 @@ export function coalesceClaudeEntries(entries: any[]): any[] {
       }
       if (entry.message.usage) prev.message.usage = entry.message.usage;
       if (entry.message.model && !prev.message.model) prev.message.model = entry.message.model;
+      if (entry.effort && !prev.effort) prev.effort = entry.effort;
     }
   }
 
@@ -197,14 +198,16 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
       if (rawEntry.message?.model) {
         modelCounts[rawEntry.message.model] = (modelCounts[rawEntry.message.model] || 0) + 1;
       }
-      if (
-        !subagentId &&
-        !rawEntry.isSidechain &&
-        rawEntry.type === 'api-request' &&
-        typeof rawEntry.params?.output_config?.effort === 'string' &&
-        rawEntry.params.output_config.effort.trim()
-      ) {
-        observedEffort = rawEntry.params.output_config.effort.trim().toLowerCase();
+      if (!subagentId && !rawEntry.isSidechain) {
+        const entryEffort =
+          rawEntry.type === 'api-request'
+            ? rawEntry.params?.output_config?.effort
+            : rawEntry.type === 'assistant'
+              ? rawEntry.effort
+              : undefined;
+        if (typeof entryEffort === 'string' && entryEffort.trim()) {
+          observedEffort = entryEffort.trim().toLowerCase();
+        }
       }
       if (rawEntry.message?.usage) {
         const u = rawEntry.message.usage;

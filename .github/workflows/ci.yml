@@ -53,7 +53,7 @@ jobs:
 
       - name: RAG Benchmark (Public Datasets)
         run: |
-          pnpm run benchmark:rag --ci --markdown /tmp/rag-bench-ci.md
+          pnpm run benchmark:rag --public-only --markdown /tmp/rag-bench-ci.md
           if [ -f /tmp/rag-bench-ci.md ]; then
             cat /tmp/rag-bench-ci.md >> $GITHUB_STEP_SUMMARY
           fi
