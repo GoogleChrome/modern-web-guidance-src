@@ -17,7 +17,12 @@
 - When an interactive rating is needed, a visible focus indicator appears on the range input when focused via the keyboard without being clipped by the star mask.
 - When an interactive rating is needed, the stars are painted on the range input's track pseudo-elements rather than on the input itself, so the focus indicator is not clipped by the mask.
 - When an interactive rating is needed, the filled portion of the stars updates to match the range input's value when the input changes.
+- When an interactive rating is needed, changing the value via keyboard clears any active pointer hover preview so the stars match the committed value.
+- When an interactive rating is needed, the pointer hover preview clears when the pointer leaves the range input.
+- When an interactive rating is needed, the pointer hover preview clears when the range input or window loses focus.
 - When an interactive rating is needed, hovering the pointer over the stars previews the rating under the pointer without committing the input's value until clicked.
+- In a right-to-left (`dir="rtl"`) context, the stars align and fill from right to left.
+- In a right-to-left (`dir="rtl"`) context, hovering the pointer over the interactive stars previews the rating from right to left.
 - Under `forced-colors: active`, the filled stars use the system colors `light-dark(CanvasText, Highlight)`.
 - Under `forced-colors: active`, the empty stars use a `color-mix()` of `CanvasText` and `Canvas`.
 - Under `forced-colors: active`, the rating sets `forced-color-adjust: none`.
