@@ -137,11 +137,11 @@ Reset the range input's native styling, add a visible `:focus-visible` outline w
 input[type="range"].rating {
   --min: attr(min type(<number>), 0);
   --step: attr(step type(<number>), 1);
-  --_offset: calc((var(--step) - var(--min)) * var(--star-size));
+  --_offset: max(0px, calc((var(--step) - var(--min)) * var(--star-size)));
   --_raw-preview: calc(var(--min) - var(--step) / 2 + var(--pointer-x) * (var(--max) - var(--min) + var(--step)));
   --_preview-value: clamp(var(--min), round(nearest, var(--_raw-preview), var(--step)), var(--max));
   --_display-value: var(--_preview-value, var(--control-value));
-  inline-size: calc((var(--max) - var(--min) + var(--step)) * var(--star-size));
+  inline-size: calc(var(--_offset) + var(--max) * var(--star-size));
   appearance: none;
   margin: 0;
   border: 0;
