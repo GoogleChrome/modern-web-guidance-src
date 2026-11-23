@@ -37,7 +37,7 @@ MANDATORY: Define `container-type: inline-size` on the host wrapper so the discl
 
 Choose the threshold based on when the static content fits comfortably without wrapping or clipping, and use the same value in the JavaScript handoff.
 
-For the JavaScript handoff, attach a single `ResizeObserver` to the container wrapper and measure `entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width` so threshold checks match `@container (inline-size)` pixel-for-pixel. Only run state transitions when crossing between narrow and wide; before altering disclosure state across a breakpoint, capture `document.activeElement` if it lies inside the disclosed subtree and restore it afterward with `.focus({ preventScroll: true })` if focus moved.
+For the JavaScript handoff, attach a single `ResizeObserver` to the container wrapper and measure `entry.contentBoxSize[0].inlineSize` so threshold checks match `@container (inline-size)` pixel-for-pixel. Only run state transitions when crossing between narrow and wide; before altering disclosure state across a breakpoint, capture `document.activeElement` if it lies inside the disclosed subtree and restore it afterward with `.focus({ preventScroll: true })` if focus moved.
 
 ## Static to `<details>`
 

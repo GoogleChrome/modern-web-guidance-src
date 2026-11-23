@@ -1099,7 +1099,7 @@
 
       const observer = new ResizeObserver((entries) => {
         const entry = entries[0];
-        const inlineSize = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+        const inlineSize = entry.contentBoxSize[0].inlineSize;
         const rounded = Math.round(inlineSize);
         const mode = getMode(inlineSize);
 
