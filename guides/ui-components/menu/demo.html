@@ -5,11 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accessible popup menu</title>
-  <script type="module">
-      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
-        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
-      }
-    </script>
   <style>
     :root {
       color-scheme: light dark;
@@ -353,6 +348,9 @@
   </main>
 
   <script type="module">
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+    }
     // Native focusgroup supplies menu navigation and inferred roles where supported.
     // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {

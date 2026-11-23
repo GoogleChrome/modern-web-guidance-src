@@ -27,7 +27,7 @@ Caveats when using the polyfill:
 }
 ```
 
-The polyfill patches `querySelector`, `querySelectorAll`, `matches` and `closest` to match the `.\:popover-open` class when `:popover-open` is queried, so you do not need to list both.
+The polyfill patches `querySelector`, `querySelectorAll`, `matches`, and `closest` on documents and elements to match the `.\:popover-open` class when `:popover-open` is queried, so you do not need to list both.
 
 ```js
 // Good:
