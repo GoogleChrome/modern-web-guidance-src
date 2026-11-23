@@ -4,9 +4,9 @@
 - When a read-only rating is needed, the `<meter>` contains text fallback content stating its value.
 - When a read-only rating is needed, the `<meter>` has an `aria-valuetext` that states the score on its scale (such as "3.5 out of 5") and its `aria-labelledby` references visible text that includes the score.
 - When a read-only rating is needed, the `<meter>`'s `--max` and `--control-value` are derived from its `max` and `value` attributes, either with typed `attr()` or by copying the attributes with script.
-- When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, a `max` (such as `5`), and `step="0.5"`.
+- When an interactive rating is needed, it is an `<input type="range">` with `min="0"`, a `max` (such as `5`), and a `step` (`0.5` unless whole stars are requested).
 - When an interactive rating is needed, the range input has an associated `<label>` that gives it an accessible name.
-- When an interactive rating is needed, setting the range input to a half-step value such as 2.5 is accepted without being rounded to a whole number.
+- When an interactive rating supports half stars (including the default), setting the range input to a half-step value such as 2.5 is accepted without being rounded to a whole number.
 - When an interactive rating is needed, the range input's `aria-valuetext` is a human-readable string that states the scale (such as "2.5 out of 5 stars") and updates when the value changes.
 - When an interactive rating is needed, the range input has `appearance: none`, an invisible thumb sized to one step so native clicks map to stars without JavaScript, and remains focusable and operable with the keyboard arrow keys.
 - When an interactive rating is needed, a visible focus indicator appears on the range input when focused via the keyboard without being clipped by the star mask.
