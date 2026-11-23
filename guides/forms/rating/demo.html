@@ -94,8 +94,8 @@
       --_stars-bg: linear-gradient(to right in oklch,
           var(--color-star-filled) var(--_fill-stop),
           var(--color-star-empty) 0);
-      --_mask-empty: var(--icon-star-empty) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
-      --_mask-filled: var(--icon-star-filled) var(--_offset) 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-empty: var(--icon-star-empty) 0 0 / var(--star-size) var(--star-size) repeat-x;
+      --_mask-filled: var(--icon-star-filled) 0 0 / var(--star-size) var(--star-size) repeat-x;
       --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
     }
 
@@ -162,6 +162,7 @@
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+        mask-position: var(--_offset) 0, 0 0, var(--_offset) 0;
         clip-path: inset(0 0 0 var(--_offset));
       }
 
@@ -169,6 +170,7 @@
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+        mask-position: var(--_offset) 0, 0 0, var(--_offset) 0;
         clip-path: inset(0 0 0 var(--_offset));
       }
 
@@ -246,10 +248,10 @@
     <section class="card">
       <h2><label for="rate">Rate this product</label></h2>
       <div class="row">
-        <input type="range" class="rating" id="rate" data-average="3.7" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.7 out of 5 stars" />
-        <output for="rate" id="rate-out" aria-hidden="true">Average: 3.7 out of 5</output>
+        <input type="range" class="rating" id="rate" data-average="3.5" min="0" max="5" step="0.5" value="0" aria-valuetext="Not rated, average 3.5 out of 5 stars" />
+        <output for="rate" id="rate-out" aria-hidden="true">Average: 3.5 out of 5</output>
       </div>
-      <p class="hint">Shows the 3.7 average until edited. Click, drag, or use the arrow keys; half stars are supported.</p>
+      <p class="hint">Shows the 3.5 average until edited. Click, drag, or use the arrow keys; half stars are supported.</p>
     </section>
   </main>
 
