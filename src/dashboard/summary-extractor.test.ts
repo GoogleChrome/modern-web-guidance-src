@@ -9,6 +9,7 @@ import {
     compareEffortLevels,
     pickHigherPrecedenceEffort,
     renderEffortChip,
+    formatRatePct,
 } from './utils.js';
 
 /**
@@ -177,9 +178,15 @@ test('extractJobSummary computes unguidedLeakRate when unguided trial accesses e
 
     assert.ok(summary);
     // 1 out of 2 unguided trials leaked -> 50%, without altering pass rates
+    assert.strictEqual(summary.totalTrials, 4);
+    assert.strictEqual(summary.unguidedTrialCount, 2);
+    assert.strictEqual(summary.unguidedLeakCount, 1);
     assert.strictEqual(summary.unguidedLeakRate, 50);
     assert.strictEqual(summary.unguidedStats.passed, 5);
     assert.strictEqual(summary.unguidedStats.total, 10);
+    assert.strictEqual(formatRatePct(1, 200), 0.5);
+    assert.strictEqual(formatRatePct(0, 200), 0);
+    assert.strictEqual(formatRatePct(3, 200), 2);
 });
 test('extractJobSummary counts distinct base-app tasks and excludes infra errors from efficiency medians while counting timeouts', () => {
     const summary = extractJobSummary('job-efficiency-hygiene', {

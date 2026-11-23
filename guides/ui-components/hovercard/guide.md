@@ -149,7 +149,7 @@ By assigning matching `view-transition-name` values to elements in the hovercard
 <body>
   <main id="main-content">
     <h1>The buzz on hummingbirds</h1>
-    <img src="bird.jpg">
+    <img src="bird.jpg" alt="A hummingbird in flight">
   </main>
 </body>
 ```

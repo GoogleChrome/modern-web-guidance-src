@@ -224,7 +224,7 @@
         creature…</button>
       <dialog id="confirm-dlg" aria-labelledby="confirm-title">
         <form method="dialog">
-          <h2 id="confirm-title">Abandon the work?</h2>
+          <h1 id="confirm-title">Abandon the work?</h1>
           <blockquote>“I beheld the wretch—the miserable monster whom I had created.”</blockquote>
           <div class="actions">
             <button value="destroy" class="danger">Destroy</button>
@@ -243,7 +243,7 @@
       <button type="button" command="show-modal" commandfor="form-dlg">Write to Margaret</button>
       <dialog id="form-dlg" aria-labelledby="form-title">
         <form method="dialog">
-          <h2 id="form-title">Letter to Margaret</h2>
+          <h1 id="form-title">Letter to Margaret</h1>
           <label for="letter">Your letter</label>
           <textarea id="letter" name="letter" rows="3" required>It is a pleasant thing to be on my way to St. Petersburgh.</textarea>
           <div class="actions">
@@ -262,7 +262,7 @@
         pointer fallback does the same.</p>
       <button type="button" command="show-modal" commandfor="any-dlg">Open the ice sea</button>
       <dialog id="any-dlg" closedby="any" aria-labelledby="any-title">
-        <h2 id="any-title">The sea of ice</h2>
+        <h1 id="any-title">The sea of ice</h1>
         <blockquote>“The sea, however, was in a state of ice, and the vast plains stretched before me.”</blockquote>
         <p class="note">Click outside, or press Esc, to dismiss.</p>
         <div class="actions"><button type="button" command="close" commandfor="any-dlg">Close</button></div>
@@ -279,7 +279,7 @@
       <button type="button" command="show-modal" commandfor="none-dlg">Edit the journal</button>
       <dialog id="none-dlg" closedby="none" aria-labelledby="none-title">
         <form method="dialog" id="journal-form">
-          <h2 id="none-title">Captain's journal</h2>
+          <h1 id="none-title">Captain's journal</h1>
           <label for="journal">Entry</label>
           <textarea id="journal" rows="3">I have no friend, Margaret.</textarea>
           <!-- Space for this message is always reserved, so showing it does not resize the dialog -->

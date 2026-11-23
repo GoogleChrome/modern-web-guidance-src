@@ -171,6 +171,20 @@ describe('applyPatchSync', () => {
       const failResult = applyPatchSync(conflictingDir, patchPath);
       assert.strictEqual(failResult.success, false);
       assert.match(failResult.error || '', /patch failed|does not apply/i);
+
+      const prevEnv = { LANG: process.env.LANG, LC_ALL: process.env.LC_ALL, LANGUAGE: process.env.LANGUAGE };
+      process.env.LANG = process.env.LC_ALL = 'es_ES.UTF-8';
+      process.env.LANGUAGE = 'es';
+      try {
+        const localizedFail = applyPatchSync(conflictingDir, patchPath);
+        assert.strictEqual(localizedFail.success, false);
+        assert.match(localizedFail.error || '', /patch failed|does not apply/i);
+      } finally {
+        for (const [k, v] of Object.entries(prevEnv)) {
+          if (v === undefined) delete process.env[k];
+          else process.env[k] = v;
+        }
+      }
       assert.deepStrictEqual(fs.readdirSync(conflictingDir), ['index.html']);
       assert.strictEqual(fs.readFileSync(path.join(conflictingDir, 'index.html'), 'utf8'), '<p>different</p>\n');
     } finally {
