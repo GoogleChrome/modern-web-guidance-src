@@ -269,7 +269,7 @@ describe('triagePullRequest orchestration', () => {
       assert.equal(res.decision?.kind, 'allow');
       assert.deepEqual(
         res.reviewers.slice().sort(),
-        ['jamesnw', 'lusayaa', 'micahjo7', 'paulirish'].sort()
+        ['jamesnw', 'lusayaa', 'paulirish'].sort()
       );
       assert.deepEqual(calls.prEdits, [
         {

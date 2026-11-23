@@ -30,6 +30,7 @@ npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
+| `--max-files <count>` | String | Maximum eligible files to scan (default: `5000`; `0` for unlimited). |
 | `--skill-version <version>` | String | Passed by the bundled agent skill to report its version for update checks. Not meant for manual use. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
@@ -77,6 +78,7 @@ Coding agents receive structured JSON containing exact file coordinates, message
   "totalFindings": 1,
   "activeRuleCount": 41,
   "activeGuideCount": 37,
+  "scannedFileCount": 312,
   "note": "Checked 37 guides (41 deterministic rules; ~20% of the guidance corpus). Finding 1 item here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.",
   "guides": [
     {
@@ -113,6 +115,8 @@ Coding agents receive structured JSON containing exact file coordinates, message
   "skippedDocsAndTestsCount": 53
 }
 ```
+
+When the scan hits the `--max-files` cap with remaining unread candidates, the JSON payload also includes `"truncatedByMaxFiles": true` and `"eligibleFileCount": <total>`, and `note` explicitly warns about partial coverage with the `--max-files 0` / subdirectory hint.
 
 ---
 

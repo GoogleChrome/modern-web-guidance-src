@@ -163,5 +163,5 @@ jobs:
           RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           gh issue create \
             --title "Publish Skills workflow failed (run #$GITHUB_RUN_NUMBER)" \
-            --assignee "TravenReese,micahjo7,paulirish" \
-            --body "The [Publish Skills workflow run]($RUN_URL) failed."$'\n\n'"cc @TravenReese @micahjo7 @paulirish"
+            --assignee "TravenReese,lusayaa,paulirish" \
+            --body "The [Publish Skills workflow run]($RUN_URL) failed."$'\n\n'"cc @TravenReese @lusayaa @paulirish"

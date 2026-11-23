@@ -73,14 +73,14 @@ describe('classifyRepoFile, isSmeContentFile & resolveInfraReviewers', () => {
     );
 
     // Top-level guides/test-fixture.ts and guide graders/targets route to EVAL_OWNERS:
-    assert.deepEqual(resolveInfraReviewers(['guides/test-fixture.ts']), ['TravenReese', 'micahjo7', 'lusayaa']);
-    assert.deepEqual(resolveInfraReviewers(['guides/css/anchor/grader.ts']), ['TravenReese', 'micahjo7', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['guides/test-fixture.ts']), ['TravenReese', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['guides/css/anchor/grader.ts']), ['TravenReese', 'lusayaa']);
 
     // Top-level guides/lib/* and guides/CONTRIBUTING.md route to DEFAULT_INFRA_OWNERS (not ownerless!):
-    assert.deepEqual(resolveInfraReviewers(['guides/lib/helper.ts']), ['paulirish', 'micahjo7', 'lusayaa']);
-    assert.deepEqual(resolveInfraReviewers(['guides/CONTRIBUTING.md']), ['paulirish', 'micahjo7', 'lusayaa']);
-    assert.deepEqual(resolveInfraReviewers(['src/harness/public/scrub.ts']), ['paulirish', 'micahjo7', 'TravenReese']);
-    assert.deepEqual(resolveInfraReviewers(['.github/atls.json']), ['paulirish', 'rviscomi', 'micahjo7', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['guides/lib/helper.ts']), ['paulirish', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['guides/CONTRIBUTING.md']), ['paulirish', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['src/harness/public/scrub.ts']), ['paulirish', 'TravenReese', 'lusayaa']);
+    assert.deepEqual(resolveInfraReviewers(['.github/atls.json']), ['paulirish', 'rviscomi', 'lusayaa']);
   });
 });
 

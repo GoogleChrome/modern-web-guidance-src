@@ -12,6 +12,8 @@ import type {
 import { shouldScanFile } from './file-filter.ts';
 import {
   FORMAT_REGISTRY,
+  getEnginesForPath,
+  getEnginesForSourceExtension,
   type FormatEngine,
 } from './format-registry.ts';
 import { scanFiles } from './index.ts';
@@ -415,6 +417,35 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
       }
     }
   }
+
+  test('getEnginesForSourceExtension matches FORMAT_REGISTRY supported entries and excludes unsupported extensions', () => {
+    for (const entry of supportedEntries) {
+      for (const ext of entry.extensions) {
+        if (!ext.startsWith('.')) {
+          assert.equal(getEnginesForSourceExtension(ext), undefined);
+          continue;
+        }
+        const engines = getEnginesForSourceExtension(ext);
+        assert.ok(engines, `Expected engine set for ${ext}`);
+        assert.deepEqual([...engines].sort(), [...entry.engines].sort());
+        assert.deepEqual(
+          [...(getEnginesForSourceExtension(ext.toUpperCase()) ?? [])].sort(),
+          [...entry.engines].sort(),
+        );
+      }
+    }
+    for (const unsupportedExt of ['.sass', '.styl', '.mdx', '.pug', '.md', '.json', '.png']) {
+      assert.equal(getEnginesForSourceExtension(unsupportedExt), undefined);
+    }
+
+    assert.deepEqual([...(getEnginesForPath('package.json') ?? [])], ['dependency']);
+    assert.deepEqual([...(getEnginesForPath('apps/web/package.json') ?? [])], ['dependency']);
+    assert.equal(getEnginesForPath('not-package.json'), undefined);
+    assert.deepEqual([...(getEnginesForPath('.eslintrc.js') ?? [])].sort(), ['css', 'js']);
+    assert.deepEqual([...(getEnginesForPath('src/App.vue') ?? [])].sort(), ['css', 'dom', 'js']);
+    assert.equal(getEnginesForPath('src/.vue'), undefined);
+    assert.equal(getEnginesForPath('src\\.vue'), undefined);
+  });
 
   describe('expected-skip formats produce 0 findings', () => {
     for (const entry of expectedSkipEntries) {

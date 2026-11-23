@@ -17,6 +17,7 @@ import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
 import { getVersion } from "./version.ts";
 import { getSkillUpdateLevel, isFrozenClaudeMarketplaceVersion } from "./skill-version.ts";
+import { getSkillsRunner } from "./skills-runner.ts";
 import { USE_CASES } from "../rag/guides.ts";
 import { determineAgent, KNOWN_AGENTS } from "./telemetry/detect-agent.ts";
 
@@ -236,14 +237,15 @@ async function main() {
     const startTime = Date.now();
     // We'll capture additional args and send them through to vercel skills CLI. (eg. --agent and -y)
     const extraArgs = process.argv.slice(3).filter(a => a !== "--choose");
-    const installArgs = `-y skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
+    const installArgs = `skills add GoogleChrome/modern-web-guidance ${values.choose ? "" : "--skill modern-web-guidance"}`
       .split(" ")
       .filter(Boolean)
       .concat(extraArgs);
 
     const detectedAgent = determineAgent().agent?.name;
     const env = detectedAgent ? { ...process.env, AI_AGENT: detectedAgent } : process.env;
-    const result = spawnSync("npx", installArgs, {
+    const runner = getSkillsRunner(env);
+    const result = spawnSync(runner.cmd, [...runner.prefixArgs, ...installArgs], {
       stdio: "inherit",
       shell: process.platform === "win32",
       env,
@@ -261,7 +263,8 @@ async function main() {
   } else if (command === "update") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["-y", "skills", "update", ...skills], {
+    const runner = getSkillsRunner();
+    const result = spawnSync(runner.cmd, [...runner.prefixArgs, "skills", "update", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });
@@ -290,7 +293,8 @@ async function main() {
   } else if (command === "uninstall") {
     const startTime = Date.now();
     const skills = getOurCLIAdjacentSkillIDs();
-    const result = spawnSync("npx", ["-y", "skills", "remove", ...skills], {
+    const runner = getSkillsRunner();
+    const result = spawnSync(runner.cmd, [...runner.prefixArgs, "skills", "remove", ...skills], {
       stdio: "inherit",
       shell: process.platform === "win32",
     });

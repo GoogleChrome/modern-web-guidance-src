@@ -1,7 +1,7 @@
 {
   "config": {
-    "configFile": "/Users/micahjo/guidance/use-cases/playwright.config.js",
-    "rootDir": "/Users/micahjo/guidance/use-cases",
+    "configFile": "guidance/use-cases/playwright.config.js",
+    "rootDir": "guidance/use-cases",
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -34,7 +34,7 @@
         },
         "id": "chromium",
         "name": "chromium",
-        "testDir": "/Users/micahjo/guidance/use-cases",
+        "testDir": "guidance/use-cases",
         "testIgnore": [],
         "testMatch": [
           "**/*.grader.js"
@@ -83,9 +83,9 @@
                       "duration": 478,
                       "error": {
                         "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at /Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js:16:21",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at guidance/use-cases/preload-prerender/preload-prerender.grader.js:16:21",
                         "location": {
-                          "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                          "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                           "column": 21,
                           "line": 16
                         },
@@ -94,11 +94,11 @@
                       "errors": [
                         {
                           "location": {
-                            "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                            "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                             "column": 21,
                             "line": 16
                           },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  14 |     test('Should have <script type=\"speculationrules\">', async ({ page }) => {\n  15 |       const count = await page.locator('script[type=\"speculationrules\"]').count();\n> 16 |       expect(count).toBeGreaterThan(0);\n     |                     ^\n  17 |     });\n  18 |\n  19 |     // 2. Speculation rules exclude /logout\n    at /Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js:16:21"
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  14 |     test('Should have <script type=\"speculationrules\">', async ({ page }) => {\n  15 |       const count = await page.locator('script[type=\"speculationrules\"]').count();\n> 16 |       expect(count).toBeGreaterThan(0);\n     |                     ^\n  17 |     });\n  18 |\n  19 |     // 2. Speculation rules exclude /logout\n    at guidance/use-cases/preload-prerender/preload-prerender.grader.js:16:21"
                         }
                       ],
                       "stdout": [],
@@ -114,7 +114,7 @@
                         }
                       ],
                       "errorLocation": {
-                        "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                        "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                         "column": 21,
                         "line": 16
                       }
@@ -147,9 +147,9 @@
                       "duration": 463,
                       "error": {
                         "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m",
-                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at /Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js:23:21",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at guidance/use-cases/preload-prerender/preload-prerender.grader.js:23:21",
                         "location": {
-                          "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                          "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                           "column": 21,
                           "line": 23
                         },
@@ -158,11 +158,11 @@
                       "errors": [
                         {
                           "location": {
-                            "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                            "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                             "column": 21,
                             "line": 23
                           },
-                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  21 |       const scripts = page.locator('script[type=\"speculationrules\"]');\n  22 |       const count = await scripts.count();\n> 23 |       expect(count).toBeGreaterThan(0);\n     |                     ^\n  24 |\n  25 |       let excludesLogout = false;\n  26 |\n    at /Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js:23:21"
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  21 |       const scripts = page.locator('script[type=\"speculationrules\"]');\n  22 |       const count = await scripts.count();\n> 23 |       expect(count).toBeGreaterThan(0);\n     |                     ^\n  24 |\n  25 |       let excludesLogout = false;\n  26 |\n    at guidance/use-cases/preload-prerender/preload-prerender.grader.js:23:21"
                         }
                       ],
                       "stdout": [],
@@ -178,7 +178,7 @@
                         }
                       ],
                       "errorLocation": {
-                        "file": "/Users/micahjo/guidance/use-cases/preload-prerender/preload-prerender.grader.js",
+                        "file": "guidance/use-cases/preload-prerender/preload-prerender.grader.js",
                         "column": 21,
                         "line": 23
                       }
