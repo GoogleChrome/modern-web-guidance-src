@@ -632,7 +632,7 @@
     }
 
     /* =========================================================================
-       4. One markup, three container widths
+       4. One markup, two container widths
        ========================================================================= */
     .unifying-stage {
       container-name: unifying-stage;
@@ -683,7 +683,7 @@
       }
     }
 
-    /* Width 2 (Medium >= 420px): trigger removed, single DOM renders inline as 2-column grid */
+    /* Wide (>= 420px): trigger removed, single DOM renders inline */
     @container unifying-stage (inline-size >= 420px) {
       .unifying-trigger,
       .unifying-close {
@@ -693,7 +693,7 @@
       .unifying-panel[popover] {
         position: static;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
         gap: 0.65rem;
         inset: auto;
         margin: 0;
@@ -708,13 +708,6 @@
         translate: none;
         scale: 1;
         transition: none;
-      }
-    }
-
-    /* Width 3 (Wide >= 600px): same single DOM expands inline to 3 columns */
-    @container unifying-stage (inline-size >= 600px) {
-      .unifying-panel[popover] {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
@@ -962,15 +955,15 @@
     </section>
 
     <!-- =====================================================================
-         4. One markup, three container widths
+         4. One markup, two container widths
          ===================================================================== -->
     <section class="example-card" aria-labelledby="ex4-heading">
       <div class="example-header">
-        <h2 id="ex4-heading">4. One markup, three container widths</h2>
+        <h2 id="ex4-heading">4. One markup, two container widths</h2>
         <p>
           Unifying pattern: a single DOM with no domain assumptions adapts across narrow
-          (<code>&lt; 420px</code> popover), medium (<code>420px–599px</code> 2-column inline), and wide
-          (<code>&gt;= 600px</code> 3-column inline) container thresholds, hiding the trigger when static.
+          (<code>&lt; 420px</code> popover) and wide (<code>&gt;= 420px</code> inline) container thresholds,
+          hiding the trigger when static.
         </p>
         <p>
           <strong>Caveat:</strong> The narrow popover requires native Popover API support. With the polyfill it can't reach the top layer, so it is clipped by the resizable stage and the demo is not usable at narrow widths.
@@ -981,7 +974,6 @@
         <label id="unifying-width-label" for="unifying-width-slider">Stage width</label>
         <input id="unifying-width-slider" type="range" min="280" max="760" value="660" aria-labelledby="unifying-width-label ex4-heading" data-width-slider>
         <button id="unifying-narrow-btn" type="button" class="btn" aria-labelledby="unifying-narrow-btn ex4-heading" data-preset-width="340">Narrow (340px)</button>
-        <button id="unifying-medium-btn" type="button" class="btn" aria-labelledby="unifying-medium-btn ex4-heading" data-preset-width="500">Medium (500px)</button>
         <button id="unifying-wide-btn" type="button" class="btn" aria-labelledby="unifying-wide-btn ex4-heading" data-preset-width="full">Wide (full width)</button>
         <span class="mode-readout" data-mode-readout></span>
       </div>
@@ -993,7 +985,7 @@
               <div class="unifying-header">
                 <div class="content-block">
                   <span class="block-label">Host</span>
-                  <p>Single DOM adapting across three container query breakpoints.</p>
+                  <p>Single DOM adapting across two container query widths.</p>
                 </div>
 
                 <button
@@ -1012,7 +1004,7 @@
                 <div class="content-block">
                   <span class="block-label">Block 1</span>
                   <h3>Content Block 1</h3>
-                  <p>Stacked in popover; 2-up at medium; 3-up at wide.</p>
+                  <p>Shown in a popover when narrow; rendered inline when wide.</p>
                 </div>
                 <div class="content-block">
                   <span class="block-label">Block 2</span>
@@ -1250,7 +1242,7 @@
     );
 
     // =========================================================================
-    // 4. One markup, three container widths
+    // 4. One markup, two container widths
     // =========================================================================
     const unifyingTrigger = document.getElementById('unifying-trigger');
     const unifyingPanel = document.getElementById('unifying-panel');
@@ -1262,8 +1254,7 @@
     bindStageControls(
       'unifying-stage',
       (w) => {
-        if (w >= 600) return 'Wide (3-up Static)';
-        if (w >= 420) return 'Medium (2-up Static)';
+        if (w >= 420) return 'Wide (Static)';
         return 'Narrow (Popover)';
       },
       (mode) => {
