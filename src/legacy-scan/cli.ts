@@ -40,10 +40,8 @@ export interface CliGuideGroup {
 }
 
 export interface ScanJsonOutput {
-  /** The first target path. */
-  readonly targetDir: string;
-  /** Every target path, present only when more than one was scanned. */
-  readonly targets?: readonly string[];
+  /** Every target path (file or directory), in the order given. */
+  readonly targets: readonly string[];
   readonly totalFindings: number;
   readonly guides: readonly CliGuideGroup[];
   readonly activeRuleCount?: number;
@@ -302,9 +300,9 @@ export function formatHumanReadable(
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
-function errorCliResult(error: string, isJson: boolean, targetDir = '.'): CliResult {
+function errorCliResult(error: string, isJson: boolean, targets: readonly string[] = ['.']): CliResult {
   if (isJson) {
-    const data: ScanJsonOutput = { targetDir, totalFindings: 0, guides: [], error };
+    const data: ScanJsonOutput = { targets, totalFindings: 0, guides: [], error };
     const output = `${JSON.stringify(data, null, 2)}\n`;
     return { exitCode: 1, output, stdout: output, stderr: '', data };
   }
@@ -379,10 +377,10 @@ export async function runLegacyScanCli(
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : String(err);
     const isJson = cleanArgs.includes('--json');
-    const targetDir =
-      cleanArgs.find((a, i) => !a.startsWith('-') && !STRING_OPTION_FLAGS.has(cleanArgs[i - 1] ?? '')) ||
-      '.';
-    return errorCliResult(error, isJson, targetDir);
+    const positionals = cleanArgs.filter(
+      (a, i) => !a.startsWith('-') && !STRING_OPTION_FLAGS.has(cleanArgs[i - 1] ?? ''),
+    );
+    return errorCliResult(error, isJson, positionals.length > 0 ? positionals : ['.']);
   }
 
   if (parsed.values.help) {
@@ -394,7 +392,6 @@ export async function runLegacyScanCli(
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targets = (parsed.positionals.length > 0 ? parsed.positionals : ['.']).map((p) => p || '.');
-  const targetDir = targets[0] ?? '.';
   const baseCwd = options?.cwd ?? process.cwd();
 
   const rawMaxFiles = parsed.values['max-files'];
@@ -405,7 +402,7 @@ export async function runLegacyScanCli(
       return errorCliResult(
         `Invalid --max-files value ${JSON.stringify(rawMaxFiles)}: expected a non-negative integer (0 for unlimited).`,
         isJson,
-        targetDir,
+        targets,
       );
     }
     effectiveMaxFiles = parsedMaxFiles;
@@ -417,7 +414,7 @@ export async function runLegacyScanCli(
   const baseRules = options?.rules ?? QUALIFIED_RULES;
   const activeRules = guideFilter ? baseRules.filter((r) => r.guideId === guideFilter) : baseRules;
   if (guideFilter && activeRules.length === 0) {
-    return errorCliResult(`Unknown or unsupported legacy-scan guide ID: ${guideFilter}`, isJson, targetDir);
+    return errorCliResult(`Unknown or unsupported legacy-scan guide ID: ${guideFilter}`, isJson, targets);
   }
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
@@ -429,13 +426,13 @@ export async function runLegacyScanCli(
     if (uniqueTargets.has(resolved)) continue;
     const targetStat = await stat(resolved).catch(() => null);
     if (!targetStat) {
-      return errorCliResult(`Target path not found: ${path}`, isJson, targetDir);
+      return errorCliResult(`Target path not found: ${path}`, isJson, targets);
     }
     if (!targetStat.isFile() && !targetStat.isDirectory()) {
-      return errorCliResult(`Target path is not a file or directory: ${path}`, isJson, targetDir);
+      return errorCliResult(`Target path is not a file or directory: ${path}`, isJson, targets);
     }
     if (targetStat.isFile() && targetStat.size > MAX_SOURCE_FILE_BYTES) {
-      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${path}`, isJson, targetDir);
+      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${path}`, isJson, targets);
     }
     uniqueTargets.set(resolved, { path, isFile: targetStat.isFile() });
   }
@@ -510,8 +507,7 @@ export async function runLegacyScanCli(
   const note = [truncationHint, corpusHint].filter(Boolean).join(' ') || undefined;
 
   const data: ScanJsonOutput = {
-    targetDir,
-    ...(isMultiTarget ? { targets: targetPaths } : {}),
+    targets: targetPaths,
     totalFindings,
     guides,
     activeRuleCount,

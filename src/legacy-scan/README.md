@@ -74,7 +74,7 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 ```json
 {
-  "targetDir": "/workspace/etherpad-lite",
+  "targets": ["/workspace/etherpad-lite"],
   "totalFindings": 1,
   "activeRuleCount": 41,
   "activeGuideCount": 37,
@@ -118,7 +118,7 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 When the scan hits the `--max-files` cap with remaining unread candidates, the JSON payload also includes `"truncatedByMaxFiles": true` and `"eligibleFileCount": <total>`, and `note` explicitly warns about partial coverage with the `--max-files 0` / subdirectory hint.
 
-When several paths are passed, every one is scanned. `targetDir` holds the first path and an extra `"targets"` array lists them all. Finding `file` paths are then relative to the current working directory (absolute for paths outside it) instead of relative to the scanned directory, and the file counts are summed across paths.
+`"targets"` lists every path that was passed (`["."]` when none is). When several paths are passed, every one is scanned. Finding `file` paths are then relative to the current working directory (absolute for paths outside it) instead of relative to the scanned directory, and the file counts are summed across paths.
 
 ---
 

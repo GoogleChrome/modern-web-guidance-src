@@ -136,7 +136,7 @@ describe('runLegacyScanCli', () => {
       const parsedDefault = JSON.parse(resDefaultJson.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.targetDir, emptyDir);
+      assert.deepEqual(parsedDefault.targets, [emptyDir]);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
       assert.equal(
@@ -248,7 +248,7 @@ describe('runLegacyScanCli', () => {
       assert.equal(res.exitCode, 0);
 
       const parsed = JSON.parse(res.output) as ScanJsonOutput;
-      assert.equal(parsed.targetDir, testDir);
+      assert.deepEqual(parsed.targets, [testDir]);
       assert.ok(parsed.totalFindings >= 1);
       assert.equal(
         parsed.note,
@@ -364,7 +364,7 @@ describe('runLegacyScanCli', () => {
     });
   });
 
-  it('skips string option values when resolving targetDir on parse error', async () => {
+  it('skips string option values when resolving targets on parse error', async () => {
     const resSkillVer = await runLegacyScanCli([
       '--skill-version',
       '2026_01_01',
@@ -375,7 +375,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resSkillVer.exitCode, 1);
     assert.ok(resSkillVer.data);
     const parsedSkillVer = JSON.parse(resSkillVer.output) as ScanJsonOutput;
-    assert.equal(parsedSkillVer.targetDir, 'some/dir');
+    assert.deepEqual(parsedSkillVer.targets, ['some/dir']);
     assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
 
     const resGuide = await runLegacyScanCli([
@@ -388,7 +388,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resGuide.exitCode, 1);
     assert.ok(resGuide.data);
     const parsedGuide = JSON.parse(resGuide.output) as ScanJsonOutput;
-    assert.equal(parsedGuide.targetDir, 'other/dir');
+    assert.deepEqual(parsedGuide.targets, ['other/dir']);
     assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
 
     const resNoDir = await runLegacyScanCli([
@@ -400,7 +400,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resNoDir.exitCode, 1);
     assert.ok(resNoDir.data);
     const parsedNoDir = JSON.parse(resNoDir.output) as ScanJsonOutput;
-    assert.equal(parsedNoDir.targetDir, '.');
+    assert.deepEqual(parsedNoDir.targets, ['.']);
 
     const resMaxFiles = await runLegacyScanCli([
       '--max-files',
@@ -412,7 +412,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resMaxFiles.exitCode, 1);
     assert.ok(resMaxFiles.data);
     const parsedMaxFiles = JSON.parse(resMaxFiles.output) as ScanJsonOutput;
-    assert.equal(parsedMaxFiles.targetDir, 'capped/dir');
+    assert.deepEqual(parsedMaxFiles.targets, ['capped/dir']);
     assert.match(parsedMaxFiles.error ?? '', /Unknown option '--unknown-flag'/);
   });
 
@@ -726,7 +726,7 @@ describe('runLegacyScanCli', () => {
       assert.ok(resFindings.data, 'Expected JSON data in result');
       const parsedFindings = JSON.parse(resFindings.output) as ScanJsonOutput;
       assert.equal(parsedFindings.totalFindings, 1);
-      assert.equal(parsedFindings.targetDir, filePath);
+      assert.deepEqual(parsedFindings.targets, [filePath]);
       assert.equal(parsedFindings.guides.length, 1);
       assert.equal(parsedFindings.guides[0]?.guideId, 'autofill-sign-in-form');
       assert.equal(parsedFindings.guides[0]?.rules[0]?.findings[0]?.file, 'SignInForm.html');
@@ -798,7 +798,7 @@ describe('runLegacyScanCli', () => {
         const resJsonEq = await runLegacyScanCli([nonExistentDir, `--max-files=${bad}`, '--json']);
         assert.equal(resJsonEq.exitCode, 1);
         assert.ok(resJsonEq.data);
-        assert.equal(resJsonEq.data.targetDir, nonExistentDir);
+        assert.deepEqual(resJsonEq.data.targets, [nonExistentDir]);
         assert.equal(resJsonEq.data.totalFindings, 0);
         assert.match(resJsonEq.data.error ?? '', /Invalid --max-files value/);
 
@@ -809,7 +809,7 @@ describe('runLegacyScanCli', () => {
 
         const resJsonSpace = await runLegacyScanCli([nonExistentDir, '--max-files', bad, '--json']);
         assert.equal(resJsonSpace.exitCode, 1);
-        assert.equal(resJsonSpace.data?.targetDir, nonExistentDir);
+        assert.deepEqual(resJsonSpace.data?.targets, [nonExistentDir]);
         assert.doesNotMatch(resJsonSpace.data?.error ?? '', /Target path not found/);
       }
 
@@ -1023,13 +1023,12 @@ describe('runLegacyScanCli', () => {
         assert.equal(res.exitCode, 0);
         assert.equal(res.data?.totalFindings, 2);
         assert.equal(res.data?.scannedFileCount, 2);
-        assert.equal(res.data?.targetDir, fileA);
         assert.deepEqual(res.data?.targets, [fileA, fileB]);
         assert.deepEqual(findingFiles(res.data), ['a/SignIn.html', 'b/SignIn.html']);
 
         const single = await runLegacyScanCli([fileA, ...JSON_ARGS], { cwd: dir });
         assert.equal(single.data?.totalFindings, 1);
-        assert.ok(single.data && !('targets' in single.data));
+        assert.deepEqual(single.data?.targets, [fileA]);
       });
     });
 
@@ -1105,7 +1104,7 @@ describe('runLegacyScanCli', () => {
         const resJson = await runLegacyScanCli([file, missing, ...JSON_ARGS]);
         assert.equal(resJson.exitCode, 1);
         assert.equal(resJson.data?.error, `Target path not found: ${missing}`);
-        assert.equal(resJson.data?.targetDir, file);
+        assert.deepEqual(resJson.data?.targets, [file, missing]);
         assert.deepEqual(resJson.data?.guides, []);
 
         const resHuman = await runLegacyScanCli([file, missing]);

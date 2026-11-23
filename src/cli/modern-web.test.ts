@@ -153,7 +153,7 @@ describe('modern-web CLI', () => {
       assert.strictEqual(leadingRes.status, 0);
       const leadingData = JSON.parse(leadingRes.stdout);
       assert.strictEqual(leadingData.totalFindings, 0);
-      assert.strictEqual(leadingData.targetDir, tempDir);
+      assert.deepStrictEqual(leadingData.targets, [tempDir]);
       assert.match(leadingData.note, /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/);
 
       // Trailing --skill-version
@@ -161,7 +161,7 @@ describe('modern-web CLI', () => {
       assert.strictEqual(trailingRes.status, 0);
       const trailingData = JSON.parse(trailingRes.stdout);
       assert.strictEqual(trailingData.totalFindings, 0);
-      assert.strictEqual(trailingData.targetDir, tempDir);
+      assert.deepStrictEqual(trailingData.targets, [tempDir]);
       assert.match(trailingData.note, /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
