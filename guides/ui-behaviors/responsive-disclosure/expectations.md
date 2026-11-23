@@ -11,4 +11,4 @@
 - Popover and drawer boundaries that rely on `box-shadow` get explicit borders inside `@media (forced-colors: active)`.
 - Popover and drawer entry/exit animations are gated behind `@media (prefers-reduced-motion: no-preference)`.
 - When `popover` is unsupported, `@oddbird/popover-polyfill` is conditionally loaded via dynamic `import()` using feature detection on `HTMLElement.prototype`.
-- When `popover` is unsupported, open popover CSS selectors match both `:popover-open` and `.\:popover-open`.
+- When `popover` is unsupported, open popover CSS selectors match both with `:is(:popover-open, .\:popover-open)`.
