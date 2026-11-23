@@ -131,7 +131,8 @@ When the user toggles:
 2. If the target differs from the current system preference, store it literally.
 3. If the target matches the current system preference, the user is undoing their adjustment: remove the stored value. DO NOT store it — that would invisibly pin the scheme against future system changes.
 4. Set the `<meta>` content to the stored value, or `light dark` if none.
-5. Announce the new scheme via a polite live region (`role="status"`), as `display: none` label swaps on a focused `<button>` are not announced (and DO NOT use `aria-pressed` when the action label changes).
+5. If using a `<button>` that swaps action labels (`display: none`), announce the new scheme via `role="status"`
+   — focused label swaps aren't announced — and DO NOT combine `aria-pressed` with a changing label.
 
 IMPORTANT: Divergence must be checked only at storage time, never retroactively: a stored value that the system preference later changes to match MUST be kept.
 Many users' OS switches schemes automatically based on time of day; removing the stored value whenever the two happen to coincide would make it impossible to pin a scheme at all.
