@@ -165,7 +165,9 @@ input[type="range"].rating {
     appearance: none;
     inline-size: calc(var(--step) * var(--star-size));
     block-size: 100%;
+    border: 0;
     background: transparent;
+    box-shadow: none;
   }
 
   &::-moz-range-thumb {
