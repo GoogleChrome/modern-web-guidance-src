@@ -68,7 +68,9 @@ Store the full outline in one custom property (for example `--badge-shape: polyg
 
 {{ BASELINE_STATUS("corner-shape") }}
 
-Declare `corner-shape` directly after `border-radius` without an `@supports` wrapper, and keep the `border-radius` meaningful on its own because it is the shape unsupported browsers render. For `squircle` and `superellipse()`, plain rounded corners are an acceptable graceful degradation. If they are not acceptable (for example a diamond that would render as a circle), use the `corner` shorthand or gate the shape-specific `border-radius` inside `@supports (corner-shape: bevel)` so unsupported browsers keep a safe default.
+Declare `corner-shape` directly after `border-radius` without an `@supports` wrapper, and keep the `border-radius` meaningful on its own because it is the shape unsupported browsers render. For `squircle` and `superellipse()`, plain rounded corners are an acceptable graceful degradation. If they are not acceptable (for example a diamond that would render as a circle), gate the shape-specific `border-radius` inside `@supports (corner-shape: bevel)` so unsupported browsers keep a safe default.
+
+{# Maintainer note: a speculative `corner` shorthand (combining `border-radius` and `corner-shape`) ships in Chrome 160. It is not documented or in the spec, so it is deliberately left out. Revisit once it is specced. #}
 
 When a design depends on distinct non-rounded silhouettes (`bevel`, `notch`, or `scoop`), recreate them inside `@supports not (corner-shape: squircle)`: reset `border-radius: 0`, set `border-color: transparent`, and clear `box-shadow: none` so the cutout doesn't slice them off without adding extra wrapper elements (if a shadow is essential and the shape only styles a background, clip or mask a `::before` pseudo-element and apply `filter: drop-shadow()` on the element itself). Parameterize horizontal and vertical corner radii with custom properties clamped via `min(<radius>, 50%)` so the primary `border-radius` and fallback match:
 
