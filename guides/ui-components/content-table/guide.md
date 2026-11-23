@@ -110,7 +110,7 @@ When the table needs horizontal scrolling in a wrapper but the column headers sh
 * The wrapper only scrolls inline when it is narrower than the table, and the page only scrolls vertically when the table is taller than the viewport. `clip` on the block axis cuts off content if you keep a `max-block-size`, so remove it.
 * Feature-detect with `@supports named-feature(single-axis-scroll-container)` or `CSS.supports('named-feature(single-axis-scroll-container)')`. `@supports (overflow: scroll clip)` only checks parsing and is not enough.
 * On the clipped axis, programmatic scrolling (`scrollTo()`) is refused, `overscroll-behavior` no longer applies, and in flex or grid the default `min-block-size: auto` takes effect and can grow the container.
-* If the page has a sticky header, keep `inset-block-start` offset by its height (as in `--page-header-height` above) and set `scroll-padding-block-start` on the page scroll container (`:root`) so focused cells are not hidden beneath the page header or sticky table header.
+* If the page has a sticky header, keep `inset-block-start` offset by its height (as in `--page-header-height` above). Set `scroll-padding-block-start` on the page scroll container (`:root`) to the page header height plus the table header row height, so a focused cell does not hide beneath either.
 
 ## Show when headers are stuck
 
