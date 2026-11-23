@@ -7,6 +7,7 @@
 - Typing in the input filters the visible options to those containing the typed text, case-insensitively.
 - Pressing ArrowDown while the popup is closed opens it and sets `aria-activedescendant` on the input to the id of the first option.
 - Pressing ArrowDown and ArrowUp moves `aria-activedescendant` between options while DOM focus stays on the input.
+- Pressing ArrowUp while the popup is open and no option is active sets `aria-activedescendant` on the input to the id of the last option.
 - The active option has `aria-selected="true"` and all other options do not.
 - Pressing Enter with an active option puts its value into the input and closes the popup.
 - Pressing Enter with an active option does not submit the form.
