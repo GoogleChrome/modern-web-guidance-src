@@ -51,7 +51,7 @@ Use `border-shape` with `polygon()` or `shape()` only for outlines `corner-shape
 
 - Straight edges only (notched ribbons): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
-- Put a value in a custom property only when it is reused or tuned per instance.
+- Put a value in a custom property only when it is reused, tuned per instance, or animated (register animated values with `@property` so they interpolate).
 - Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
 - `clip-path` clips the focus outline and ignores pointer events outside the shape.
 - Don't translate a shaped element on hover, because the moving hit area causes missed clicks.
