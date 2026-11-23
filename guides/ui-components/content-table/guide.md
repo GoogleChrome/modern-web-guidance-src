@@ -26,28 +26,6 @@ Start from a plain semantic table and enhance it. Sorting, filtering and sticky 
 * **MANDATORY:** Use `<table>` with a `<caption>`, `<thead>`, `<tbody>`, `<th scope="col">` for column headers and `<th scope="row">` for the row header cell. Do not build tables from `<div>`s with ARIA roles.
 * Wrap the table in a scroll container with `tabindex="0"`, `role="region"` and an accessible name (`aria-labelledby` pointing at the caption). Scrollable regions are not reliably keyboard-focusable across browsers (especially when they contain focusable controls such as sort buttons), so `tabindex="0"` is required for keyboard users to scroll the table.
 
-```html
-<div class="table-wrapper" role="region" aria-labelledby="people-caption" tabindex="0">
-  <table>
-    <caption id="people-caption">Team directory</caption>
-    <thead>
-      <tr>
-        <th scope="col">Name</th>
-        <th scope="col">Role</th>
-        <th scope="col">Location</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <th scope="row">Alex Rivera</th>
-        <td>Engineer</td>
-        <td>Lisbon</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-```
-
 Keep the caption in view when the table scrolls horizontally by making it sticky and capping it to the wrapper's width:
 
 ```css
@@ -77,40 +55,30 @@ Use `position: sticky` on the `<th>` cells themselves (not on `<thead>`/`<tr>`),
 .table-wrapper {
   /* Sticky is relative to the nearest scrolling ancestor, so the wrapper must scroll in the sticky axis.
      Bound the block size (value is an example) or it never scrolls vertically. */
-  --table-head-bg: light-dark(#f1f3f6, #262b32);
   overflow: auto;
   max-block-size: 70vh;
 }
 
-table {
-  /* Sticky cells lose their borders with collapse; use separate. */
-  border-collapse: separate;
-  border-spacing: 0;
+thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
 
-  th {
-    /* Opaque background: otherwise scrolled cells show through the stuck header. */
-    background: var(--table-head-bg);
-  }
-
-  thead th {
-    position: sticky;
-    inset-block-start: 0;
-    z-index: 1;
-
-    /* Corner: sticky on both axes and above both header types. */
-    &:first-child {
-      inset-inline-start: 0;
-      z-index: 2;
-    }
-  }
-
-  tbody th {
-    position: sticky;
+  /* Corner: sticky on both axes and above both header types. */
+  &:first-child {
     inset-inline-start: 0;
+    z-index: 2;
   }
+}
+
+tbody th {
+  position: sticky;
+  inset-inline-start: 0;
 }
 ```
 
+* Give sticky `<th>` cells an opaque `background` (for example a tinted `light-dark()` value), otherwise scrolled cells show through the stuck header.
+* Use `border-collapse: separate` with `border-spacing: 0` on the table; with `collapse`, sticky cells lose their borders.
 * **DO NOT** set `overflow` (other than `visible` or `clip`) on any element between the sticky cell and the scroll container, or the cell sticks to the wrong box.
 
 ## Stick headers to the page while columns stick to the wrapper
@@ -183,20 +151,12 @@ Use flow-relative values (`block-start`, `inline-start`) so the shadow follows w
 
 Use a native text input and toggle the `hidden` attribute on non-matching body rows. Do not remove rows from the DOM and do not touch the header.
 
-* **MANDATORY:** Use `<input type="search">` with a visible `<label>`. Filter on `input` events.
+* **MANDATORY:** Use `<input type="search">` with a visible `<label>`, wrapped together in a `<search>` element. Filter on `input` events.
 * Match case-insensitively against each row's text content; `toLocaleLowerCase()` is enough for substring filtering.
-* **MANDATORY:** Announce only the no-match case, once per change, in a visually hidden `role="status"` element that already exists in the DOM, such as "No rows match your filter". Do not announce the result count when rows match, and clear the status text. Do not put `aria-live` on the table.
+* **MANDATORY:** Announce only the no-match case, once per change, in a visually hidden `role="status"` element that already exists in the DOM, such as "No rows match your filter". Do not announce the result count when rows match, and clear the status text. Do not put `aria-live` on the table. Hide the element visually with the usual clipping pattern (`position: absolute`, 1px size, `overflow: hidden`, `clip-path: inset(50%)`), never `display: none`, which removes it from the accessibility tree.
 * When no row matches, say so in the status element and show an empty-state message in an element right after `</table>` inside the wrapper (not as a `<tr>` in `<tbody>`, which would interfere with sorting); do not leave an empty table with no explanation.
 * Keep the input outside the scroll container so it does not scroll away with the table.
 * Optionally highlight the matched text in visible rows with the CSS Custom Highlight API (see the {{ GUIDE_REF('highlight-text-ranges') }} guide) instead of wrapping matches in `<mark>`. This leaves the DOM and the screen reader output unchanged.
-
-```html
-<search>
-  <label for="filter">Filter team</label>
-  <input id="filter" type="search">
-</search>
-<p id="filter-status" role="status" class="visually-hidden"></p>
-```
 
 ```javascript
 const rows = [...tbody.rows];
@@ -230,16 +190,6 @@ If rows are added or removed dynamically, iterate `tbody.rows` inside the `input
 /* Ensure hidden rows stay hidden when a responsive stacked layout sets display on tr. */
 tr[hidden] {
   display: none;
-}
-
-/* Hides text visually but keeps it available to screen readers. Do not use display: none. */
-.visually-hidden {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 ```
 
