@@ -215,6 +215,11 @@ filter.addEventListener('input', () => {
 If the table is also sortable, read rows from `tbody.rows` at filter time instead of a cached array so reordered rows keep their `hidden` state, and re-apply nothing after sorting: `hidden` travels with each row.
 
 ```css
+/* Ensure hidden rows stay hidden when a responsive stacked layout sets display on tr. */
+tr[hidden] {
+  display: none;
+}
+
 /* Hides text visually but keeps it available to screen readers. Do not use display: none. */
 .visually-hidden {
   position: absolute;
