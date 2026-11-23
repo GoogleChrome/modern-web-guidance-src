@@ -242,8 +242,12 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .rating {
+      input[type="range"].rating {
         transition: none;
+
+        &:active {
+          scale: none;
+        }
       }
     }
   </style>
