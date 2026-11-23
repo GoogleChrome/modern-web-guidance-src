@@ -362,6 +362,9 @@
   "exp-functions": [
     "css"
   ],
+  "field-content": [
+    "css"
+  ],
   "field-sizing": [
     "css"
   ],
@@ -567,6 +570,9 @@
     "css"
   ],
   "hyphenate-limit-chars": [
+    "css"
+  ],
+  "hyphenate-limit-lines": [
     "css"
   ],
   "hyphens": [
@@ -838,6 +844,9 @@
   "random-function": [
     "css"
   ],
+  "random-item": [
+    "css"
+  ],
   "rcap": [
     "css"
   ],
@@ -1065,6 +1074,9 @@
     "css"
   ],
   "text-decoration": [
+    "css"
+  ],
+  "text-decoration-inset": [
     "css"
   ],
   "text-decoration-line-blink": [
@@ -1307,6 +1319,9 @@
   "white-space-collapse": [
     "css"
   ],
+  "white-space-trim": [
+    "css"
+  ],
   "widows-orphans": [
     "css"
   ],
@@ -1329,6 +1344,9 @@
     "css"
   ],
   "word-spacing": [
+    "css"
+  ],
+  "wrap-inside": [
     "css"
   ],
   "writing-mode": [
