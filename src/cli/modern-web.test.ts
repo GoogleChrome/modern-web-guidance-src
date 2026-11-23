@@ -25,7 +25,7 @@ describe('modern-web CLI', () => {
     const { stdout } = runCLI([]);
     assert.ok(stdout.includes('Usage: modern-web-guidance <command> [args]'));
     assert.ok(stdout.includes('search <query>            Search use cases by English query'));
-    assert.ok(stdout.includes('legacy-scan [path] [options]'));
+    assert.ok(stdout.includes('legacy-scan [paths...] [options]'));
   });
 
   it('hints on stderr when non-English search queries return empty or low results', () => {

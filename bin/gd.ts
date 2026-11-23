@@ -236,7 +236,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <base-app> <prompt>' : cmd === 'eval' ? ' [tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <trialA> <trialB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [paths...]' : cmd === 'run' ? ' <base-app> <prompt>' : cmd === 'eval' ? ' [tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <trialA> <trialB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {

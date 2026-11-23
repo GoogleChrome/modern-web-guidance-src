@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { basename, relative, resolve } from 'node:path';
+import { basename, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
@@ -40,7 +40,10 @@ export interface CliGuideGroup {
 }
 
 export interface ScanJsonOutput {
+  /** The first target path. */
   readonly targetDir: string;
+  /** Every target path, present only when more than one was scanned. */
+  readonly targets?: readonly string[];
   readonly totalFindings: number;
   readonly guides: readonly CliGuideGroup[];
   readonly activeRuleCount?: number;
@@ -157,18 +160,18 @@ export function sampleDiversifiedFindings(
 }
 
 export const CLI_HELP = `
-Usage: modern-web-guidance legacy-scan [path] [options]
+Usage: modern-web-guidance legacy-scan [paths...] [options]
 
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
 Arguments:
-  [path]                    Directory or file to analyze (defaults to current directory)
+  [paths...]                Directories or files to analyze (defaults to current directory)
 
 Options:
   --json                    Output findings as structured JSON for coding agents
   --guide <guideId>         Filter analysis to a specific guide ID
   --include-docs-and-tests  Include documentation, example, demo, and test files in analysis
-  --max-files <count>       Maximum eligible files to scan (default: ${DEFAULT_MAX_FILES}; 0 for unlimited)
+  --max-files <count>       Maximum eligible files to scan (default: ${DEFAULT_MAX_FILES}; 0 for unlimited); applies per directory
   -h, --help                Show this help message
 `.trim();
 
@@ -390,9 +393,9 @@ export async function runLegacyScanCli(
   const isJson = Boolean(parsed.values.json);
   const guideFilter = typeof parsed.values.guide === 'string' ? parsed.values.guide : undefined;
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
-  const targetDir = parsed.positionals[0] || '.';
+  const targets = (parsed.positionals.length > 0 ? parsed.positionals : ['.']).map((p) => p || '.');
+  const targetDir = targets[0] ?? '.';
   const baseCwd = options?.cwd ?? process.cwd();
-  const resolvedDir = resolve(baseCwd, targetDir);
 
   const rawMaxFiles = parsed.values['max-files'];
   let effectiveMaxFiles: number;
@@ -419,40 +422,72 @@ export async function runLegacyScanCli(
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
-  const dirStat = await stat(resolvedDir).catch(() => null);
-  if (!dirStat) {
-    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
-  }
-  if (!dirStat.isFile() && !dirStat.isDirectory()) {
-    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
-  }
-
-  const scanStats: RepoScanStats = {};
-  let findings: ScanFinding[];
-
-  if (dirStat.isFile()) {
-    if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
-      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
+  /** Resolved absolute path -> target, in the order given, without exact repeats. */
+  const uniqueTargets = new Map<string, { readonly path: string; readonly isFile: boolean }>();
+  for (const path of targets) {
+    const resolved = resolve(baseCwd, path);
+    if (uniqueTargets.has(resolved)) continue;
+    const targetStat = await stat(resolved).catch(() => null);
+    if (!targetStat) {
+      return errorCliResult(`Target path not found: ${path}`, isJson, targetDir);
     }
-    const content = await readFile(resolvedDir, 'utf8');
-    const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
-    const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
-    findings = scanFiles(new Map([[fileKey, content]]), activeRules, {
-      includeDocsAndTests: true,
-      stats: scanStats,
-    });
-  } else {
-    findings = await scanRepoFiles(resolvedDir, activeRules, {
+    if (!targetStat.isFile() && !targetStat.isDirectory()) {
+      return errorCliResult(`Target path is not a file or directory: ${path}`, isJson, targetDir);
+    }
+    if (targetStat.isFile() && targetStat.size > MAX_SOURCE_FILE_BYTES) {
+      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${path}`, isJson, targetDir);
+    }
+    uniqueTargets.set(resolved, { path, isFile: targetStat.isFile() });
+  }
+  const targetPaths = [...uniqueTargets.values()].map((t) => t.path);
+  const isMultiTarget = targetPaths.length > 1;
+
+  /**
+   * Scans one target. With several targets, finding paths are rewritten relative to cwd
+   * (absolute when outside it) so that they stay distinct across targets.
+   */
+  const scanTarget = async (resolved: string, isFile: boolean, stats: RepoScanStats): Promise<ScanFinding[]> => {
+    const absolute = resolved.replace(/\\/g, '/');
+    const rel = relative(baseCwd, resolved).replace(/\\/g, '/');
+    const isOutsideCwd = rel.startsWith('..');
+    if (isFile) {
+      const content = await readFile(resolved, 'utf8');
+      const fileKey = rel && !isOutsideCwd ? rel : basename(resolved);
+      const fileFindings = scanFiles(new Map([[fileKey, content]]), activeRules, {
+        includeDocsAndTests: true,
+        stats,
+      });
+      if (!isMultiTarget || !isOutsideCwd) return fileFindings;
+      return fileFindings.map((f) => ({ ...f, file: absolute }));
+    }
+    const dirFindings = await scanRepoFiles(resolved, activeRules, {
       maxFiles: effectiveMaxFiles,
       includeDocsAndTests,
-      stats: scanStats,
+      stats,
     });
-  }
+    if (!isMultiTarget) return dirFindings;
+    const prefix = isOutsideCwd ? absolute : rel;
+    return dirFindings.map((f) => ({ ...f, file: posix.join(prefix, f.file) }));
+  };
 
-  const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
-  const scannedFileCount = scanStats.scannedFileCount ?? 0;
-  const eligibleFileCount = scanStats.eligibleFileCount ?? scannedFileCount;
-  const truncatedByMaxFiles = Boolean(scanStats.truncatedByMaxFiles);
+  const findings: ScanFinding[] = [];
+  const seenFiles = new Set<string>();
+  let skippedDocsAndTestsCount = 0;
+  let scannedFileCount = 0;
+  let eligibleFileCount = 0;
+  let truncatedByMaxFiles = false;
+  for (const [resolved, { isFile }] of uniqueTargets) {
+    const stats: RepoScanStats = {};
+    const targetFindings = (await scanTarget(resolved, isFile, stats)).filter((f) => !seenFiles.has(f.file));
+    for (const f of targetFindings) {
+      seenFiles.add(f.file);
+      findings.push(f);
+    }
+    skippedDocsAndTestsCount += stats.skippedDocsAndTestsCount ?? 0;
+    scannedFileCount += stats.scannedFileCount ?? 0;
+    eligibleFileCount += stats.eligibleFileCount ?? stats.scannedFileCount ?? 0;
+    truncatedByMaxFiles ||= Boolean(stats.truncatedByMaxFiles);
+  }
 
   const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
@@ -476,6 +511,7 @@ export async function runLegacyScanCli(
 
   const data: ScanJsonOutput = {
     targetDir,
+    ...(isMultiTarget ? { targets: targetPaths } : {}),
     totalFindings,
     guides,
     activeRuleCount,
@@ -496,7 +532,7 @@ export async function runLegacyScanCli(
     return { exitCode: 0, output, stdout: output, stderr: '', data };
   }
 
-  const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
+  const output = formatHumanReadable(targetPaths.join(', '), totalFindings, guides, guideFilter, {
     activeGuideCount,
     isDefaultQualifiedMode,
     skippedDocsAndTestsCount,
