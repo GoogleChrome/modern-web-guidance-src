@@ -23,7 +23,7 @@ Pick the primitive that matches the interaction model, regardless of domain (whe
 | Secondary, inline, read-only | `<details>` |
 | Short, transient, light-dismiss | `[popover]` |
 | Large, task-focused, or needs modal isolation | `<dialog>` (modal drawer) |
-| A set of sections where only one may be open | `<details>` with a shared `name` (use sparingly; see accordion guide) |
+| A set of sections where only one may be open | `<details>` with a shared `name` (use sparingly; see {{ GUIDE_REF("accordion") }} guide) |
 
 ## Anti-pattern: Do not duplicate markup
 
