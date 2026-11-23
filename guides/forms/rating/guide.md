@@ -181,7 +181,7 @@ input[type="range"].rating {
 
 On `input` (and on initial load), set `--control-value` on `range` to `range.value` via `style.setProperty()` (the `value` attribute only provides the initial default through `attr()`, and does not track the live value), and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Preview the rating on pointer hover by setting a normalized `--pointer-x` (`0` to `1`, clamped from `(event.clientX - left) / width` via `range.getBoundingClientRect()`) on `pointermove`—skipping `event.pointerType === 'touch'` and `range.disabled`—and calling `range.style.removeProperty('--pointer-x')` on `pointerleave` and `pointercancel`.
+Preview the rating on pointer hover by setting a normalized `--pointer-x` (`0` to `1`, clamped from `(event.clientX - left) / width` via `range.getBoundingClientRect()`) on `pointermove`—skipping `event.pointerType === 'touch'` and `range.disabled`—and calling `range.style.removeProperty('--pointer-x')` on `pointerleave`, `pointercancel`, `blur` (on `range` and `window`), and `input` (so keyboard changes are not masked by a lingering hover preview).
 
 <!-- Maintainer note: because CSS computes --_preview-value solely from --pointer-x, this script can be replaced directly with CSS pointer-animations-1 (animation-timeline: pointer(...)) once supported. -->
 

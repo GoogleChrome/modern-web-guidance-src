@@ -302,6 +302,7 @@
     }
     range.addEventListener('input', () => {
       range.dataset.edited = '';
+      range.style.removeProperty('--pointer-x');
       update();
     });
     range.addEventListener('pointermove', (event) => {
@@ -310,9 +311,10 @@
       const pointerX = Math.min(1, Math.max(0, (event.clientX - left) / width));
       range.style.setProperty('--pointer-x', pointerX);
     });
-    for (const type of ['pointerleave', 'pointercancel']) {
+    for (const type of ['pointerleave', 'pointercancel', 'blur']) {
       range.addEventListener(type, () => range.style.removeProperty('--pointer-x'));
     }
+    window.addEventListener('blur', () => range.style.removeProperty('--pointer-x'));
     update();
   </script>
 </body>
