@@ -4,6 +4,8 @@ description: Build a content table component that displays tabular data with sor
 web-feature-ids:
   - sticky-positioning
   - container-scroll-state-queries
+  - search
+  - nesting
 guides:
   - responsive-table
   - sortable-table
