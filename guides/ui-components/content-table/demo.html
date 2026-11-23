@@ -34,6 +34,7 @@
 		overflow: auto;
 		container-type: inline-size;
 		max-block-size: 20rem;
+		max-inline-size: 30rem;
 		border: 1px solid var(--table-border);
 	}
 
@@ -41,7 +42,6 @@
 		.table-wrapper {
 			overflow: auto clip;
 			max-block-size: none;
-			max-inline-size: 30rem;
 			margin-block-end: 100vh;
 		}
 	}
@@ -127,7 +127,7 @@
 
 	.empty td {
 		padding: 0;
-		color: GrayText;
+		color: light-dark(#575e68, #a3aab4);
 	}
 
 	.empty span {
