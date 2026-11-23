@@ -150,7 +150,7 @@
   const region = document.getElementById('region');
 
   // Enhance only when popover and anchor positioning are available; otherwise keep the native datalist.
-  const enhanced = Object.hasOwn(HTMLElement.prototype, 'popover') && CSS.supports('position-anchor: --a');
+  const enhanced = 'popover' in HTMLElement.prototype && CSS.supports('position-anchor: --a');
 
   if (enhanced) {
     const options = [...datalist.options].map(o => ({ value: o.value, region: o.dataset.region }));

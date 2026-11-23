@@ -182,7 +182,7 @@ When `CSS.highlights` is unavailable, skip the highlight ranges and wrap the mat
 **Feature detection:** Enhance only when both popover and anchor positioning are available.
 
 ```js
-const enhanced = Object.hasOwn(HTMLElement.prototype, 'popover') && CSS.supports('position-anchor: --a');
+const enhanced = 'popover' in HTMLElement.prototype && CSS.supports('position-anchor: --a');
 ```
 
 **Experience:** This is progressive enhancement. When detection fails, leave the `list` attribute and `<datalist>` in place and skip all custom-listbox code. Users still get typing, native suggestions, and freeform values. Any external filter (for example a region `<select>`) can toggle `disabled` on the `<option>` elements to narrow the native suggestions.
