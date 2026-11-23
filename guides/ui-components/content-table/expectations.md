@@ -5,7 +5,7 @@
 - When the table has many columns, the row header `<th>` cells in `<tbody>` compute `position: sticky` with an inline-start inset of `0`.
 - The table does not compute `border-collapse: collapse`.
 - The sticky `<th>` cells compute an opaque background color.
-- When the table has many rows, scrolling the vertical sticky container (the page when the wrapper computes `overflow-y: clip`, or the wrapper otherwise) keeps the column header cells at its block-start edge.
+- When the table has many rows, scrolling the vertical sticky container (the page when the wrapper computes `overflow-y: clip`, or the wrapper otherwise) keeps the column header cells at its block-start edge, or directly below the page's sticky header when the page has one.
 - When the table has many columns, scrolling the wrapper horizontally keeps the row header cells at the inline-start edge of the wrapper.
 - When the table shows a shadow on stuck headers, the sticky header cells set `container-type` to `scroll-state` and a `container-name`.
 - When the table shows a shadow on stuck headers, a stylesheet rule uses an `@container` query with `scroll-state(stuck: ...)` to style the stuck header cells.
