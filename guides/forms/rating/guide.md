@@ -9,6 +9,8 @@ web-feature-ids:
   - nesting
   - light-dark
   - round-mod-rem
+  - dir-pseudo
+  - gradient-interpolation
 guides:
   - icons
 ---
