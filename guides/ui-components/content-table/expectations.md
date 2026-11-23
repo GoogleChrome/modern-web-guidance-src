@@ -1,14 +1,14 @@
 - The data is presented in a `<table>` with a `<caption>`, a `<thead>` containing the column headers as `<th scope="col">`, and a `<tbody>` containing the rows.
 - The first cell of each body row is a `<th scope="row">`.
 - The table is wrapped in a scroll container (`overflow-x` is `auto` or `scroll`, and `overflow-y` is `auto`, `scroll`, or `clip`) that has `role="region"`, an accessible name, and `tabindex="0"`.
-- The column header `<th>` cells compute `position: sticky` with a block-start inset of `0`.
-- The row header `<th>` cells in `<tbody>` compute `position: sticky` with an inline-start inset of `0`.
+- When the table has many rows, the column header `<th>` cells compute `position: sticky` with a block-start inset of `0`.
+- When the table has many columns, the row header `<th>` cells in `<tbody>` compute `position: sticky` with an inline-start inset of `0`.
 - The table does not compute `border-collapse: collapse`.
 - The sticky `<th>` cells compute an opaque background color.
-- Scrolling the vertical sticky container (the page when the wrapper computes `overflow-y: clip`, or the wrapper otherwise) keeps the column header cells at its block-start edge.
-- Scrolling the wrapper horizontally keeps the row header cells at the inline-start edge of the wrapper.
-- The sticky header cells set `container-type` to `scroll-state` and a `container-name`.
-- A stylesheet rule uses an `@container` query with `scroll-state(stuck: ...)` to style the stuck header cells.
+- When the table has many rows, scrolling the vertical sticky container (the page when the wrapper computes `overflow-y: clip`, or the wrapper otherwise) keeps the column header cells at its block-start edge.
+- When the table has many columns, scrolling the wrapper horizontally keeps the row header cells at the inline-start edge of the wrapper.
+- When the table shows a shadow on stuck headers, the sticky header cells set `container-type` to `scroll-state` and a `container-name`.
+- When the table shows a shadow on stuck headers, a stylesheet rule uses an `@container` query with `scroll-state(stuck: ...)` to style the stuck header cells.
 - The table is filtered with an `<input type="search">` that has an associated `<label>`, and the input is outside the scroll container.
 - Typing in the filter input sets the `hidden` attribute on body rows whose text does not contain the query, case-insensitively.
 - Typing in the filter input leaves body rows whose text contains the query visible.
