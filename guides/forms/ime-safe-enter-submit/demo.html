@@ -85,14 +85,24 @@
     const chatInput = document.getElementById('chat-input');
     const chatBox = document.getElementById('chat-box');
 
+    let lastCompositionEndAt = null;
+
+    chatInput.addEventListener('compositionend', (event) => {
+      lastCompositionEndAt = event.timeStamp;
+    });
+
     chatInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
         // Prevent default newline behavior
         event.preventDefault();
 
-        // IME composition active check
-        if (event.isComposing || event.keyCode === 229) {
-          // Do not submit while composition is active
+        // IME composition active check and Safari compositionend window fallback
+        if (
+          event.isComposing ||
+          (lastCompositionEndAt !== null &&
+            Math.abs(event.timeStamp - lastCompositionEndAt) < 50)
+        ) {
+          // Do not submit while composition is active or just ended
           return;
         }
 

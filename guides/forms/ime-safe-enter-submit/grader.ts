@@ -94,7 +94,7 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     expect(value, 'Textarea should not be cleared during composition').toBe('Composition test');
   });
 
-  test('Pressing Enter on a textarea when the browser signals an IME-consumed keystroke (`keyCode 229`) does not trigger form submission.', async ({ page }) => {
+  test('Pressing Enter on a textarea right after compositionend on an IME-consumed keystroke (Safari out-of-order delivery) does not trigger form submission.', async ({ page }) => {
     const textarea = page.locator('textarea');
     await expect(textarea).toBeVisible();
     await textarea.fill('Composition test');
@@ -111,8 +111,11 @@ test.describe('IME-Safe Enter-to-Submit', () => {
     });
 
     await textarea.focus();
-    // Dispatch keydown with key: 'Enter', keyCode: 229, isComposing: false (Safari composition confirmation behavior)
+    // Simulate Safari's out-of-order delivery (WebKit bug 165004): compositionend fires
+    // right before the confirming Enter keydown (keyCode: 229, isComposing: false).
     await textarea.evaluate((el) => {
+      el.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+      el.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
       const event = new KeyboardEvent('keydown', {
         key: 'Enter',
         code: 'Enter',

@@ -67,30 +67,11 @@ If you need to support cross-browser compatibility across older versions of Safa
    - W3C UI Events spec (keyCode 229 during IME composition): https://w3c.github.io/uievents/#determine-keydown-keyup-keyCode
    - WebKit Bug 165004 (Safari firing compositionend before keydown): https://bugs.webkit.org/show_bug.cgi?id=165004 #}
 
-### Strategy 1: Add a `keyCode === 229` check (recommended)
+### Strategy 1: Track `compositionend` with `event.timeStamp` (recommended)
 
-During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead of `13` on `keydown`, even while setting `event.key === 'Enter'` on the confirming keystroke. Pairing `event.isComposing` with `event.keyCode === 229` reliably catches Safari's out-of-order confirming `Enter` keydown. (This also means legacy `event.keyCode === 13` handlers are already immune to IME confirmation, whereas migrating them to `event.key === 'Enter'` without `event.isComposing` and `event.keyCode === 229` will introduce premature submission.) Because this check is nested under the `event.key === 'Enter'` gate, it is safe from mobile virtual keyboards that might use `229` for normal character layout entry.
+Use the browser-reported event dispatch timestamp to detect the confirming `Enter` `keydown` without relying on the deprecated `KeyboardEvent.keyCode` API.
 
-```js
-textarea.addEventListener('keydown', (event) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-
-    // Block submission if composing natively or if keyCode is 229
-    if (event.isComposing || event.keyCode === 229) {
-      return;
-    }
-
-    form.requestSubmit();
-  }
-});
-```
-
-### Strategy 2: The `event.timeStamp` window workaround (alternative)
-
-For codebases that strictly forbid the use of deprecated APIs like `keyCode`, or if there are known issues with the `229` check in specific targeted environments, you can track the browser-reported event dispatch timestamp instead. 
-
-Because Safari dispatches the confirming `Enter` keydown event extremely close to the `compositionend` event (often within 5ms, and sometimes with the keydown timestamp being slightly *earlier* due to handler delivery order inversion), checking the time difference is highly reliable and is unlikely to trigger false-positives on mobile virtual keyboards under standard conditions.
+Because Safari dispatches the confirming `Enter` `keydown` event right next to `compositionend` (often within 5ms, and sometimes with the `keydown` timestamp slightly *earlier* due to handler delivery order inversion), comparing `event.timeStamp` values with `Math.abs()` reliably blocks premature submission and is unlikely to trigger false positives on mobile virtual keyboards under standard conditions.
 
 ```js
 let lastCompositionEndAt = null;
@@ -109,12 +90,34 @@ textarea.addEventListener('keydown', (event) => {
       return;
     }
 
-    // Block submission if the event occurs within a 50ms window of composition ending.
-    // Math.abs handles Safari's inverted event delivery timing bug.
+    // Block submission if keydown occurs within a short window (50ms example threshold)
+    // of composition ending. Math.abs handles Safari's inverted event delivery order.
     if (
       lastCompositionEndAt !== null &&
       Math.abs(event.timeStamp - lastCompositionEndAt) < 50
     ) {
+      return;
+    }
+
+    form.requestSubmit();
+  }
+});
+```
+
+### Strategy 2: Check `event.keyCode === 229` (legacy alternative)
+
+> [!WARNING]
+> `KeyboardEvent.keyCode` is deprecated and triggers linters and modern-web checks. Prefer Strategy 1 in new code, and use this only when attaching a separate `compositionend` listener is not practical (for example, in a single-handler legacy codebase).
+
+During IME composition, browsers report `keyCode: 229` (`VK_PROCESSKEY`) instead of `13` on `keydown`, even while setting `event.key === 'Enter'` on the confirming keystroke. Pairing `event.isComposing` with `event.keyCode === 229` catches Safari's out-of-order confirming `Enter` keydown. (This also means legacy `event.keyCode === 13` handlers are already immune to IME confirmation, whereas migrating them to `event.key === 'Enter'` without an IME guard introduces premature submission.) Because this check is nested under the `event.key === 'Enter'` gate, it avoids false positives from mobile virtual keyboards that emit `229` for normal character input.
+
+```js
+textarea.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+
+    // Legacy fallback: KeyboardEvent.keyCode is deprecated; prefer Strategy 1 in new code.
+    if (event.isComposing || event.keyCode === 229) {
       return;
     }
 
