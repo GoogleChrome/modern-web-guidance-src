@@ -23,7 +23,7 @@ Pick the primitive that matches the interaction model, regardless of domain (whe
 | Secondary, inline, read-only | `<details>` |
 | Short, transient, light-dismiss | `[popover]` |
 | Large, task-focused, or needs modal isolation | `<dialog>` (modal drawer) |
-| A set of mutually exclusive sections | `<details>` with a shared `name` |
+| A set of sections where only one may be open | `<details>` with a shared `name` (use sparingly; see accordion guide) |
 
 ## Anti-pattern: Do not duplicate markup
 
@@ -41,7 +41,7 @@ For the JavaScript handoff, attach a single `ResizeObserver` to the container wr
 
 ## Static to `<details>`
 
-Use `<details>` as the default for inline secondary content. Place `<summary>` first, and never put headings, links, or buttons inside `<summary>`. Add a shared `name` attribute on sibling `<details>` elements when only one section should stay open at a time.
+Use `<details>` as the default for inline secondary content. Place `<summary>` first, and never put headings, links, or buttons inside `<summary>`. Avoid a shared `name` (exclusive accordion) by default: it blocks comparing items and can shift content out of view, which hurts screen-magnifier users. See the accordion guide before using it.
 
 In the wide `@container` block, strip `<summary>`'s disclosure marker and pointer affordance so it reads as a static label by setting `list-style: none`, `cursor: default`, and `pointer-events: none` on `<summary>`, and `display: none` on `summary::-webkit-details-marker`.
 
