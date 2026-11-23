@@ -26,3 +26,13 @@ Caveats when using the polyfill:
   display: block;
 }
 ```
+
+To prevent popovers from showing before the polyfill loads, hide them with CSS:
+
+```css
+@supports not selector(:popover-open) {
+  [popover]:not(.\:popover-open) {
+    display: none;
+  }
+}
+```

@@ -1,0 +1,278 @@
+diff --git a/index.html b/index.html
+index 66c9173..66a84a6 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,17 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --in-oklab: ;
++      --cream: #fff3df;
++      --flavor-sweet: #ad591d;
++      --flavor-creamy: #edc980;
++      --flavor-roasted: #51342b;
++    }
++
++    @supports (background: linear-gradient(in oklab, white, black)) {
++      :root {
++        --in-oklab: in oklab;
++      }
+     }
+ 
+     * {
+@@ -24,7 +35,7 @@
+       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+       line-height: 1.6;
+       color: var(--text);
+-      background-color: var(--light);
++      background-color: #fbf7f0;
+     }
+ 
+     /* Navigation */
+@@ -74,9 +85,13 @@
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
++      position: relative;
++      isolation: isolate;
++      min-height: 60vh;
++      background-color: var(--primary);
++      background-image: linear-gradient(115deg var(--in-oklab), #684027, #291d1c),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
++      background-blend-mode: multiply;
+       background-size: cover;
+       background-position: center;
+       display: flex;
+@@ -85,11 +100,29 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 60px 20px;
++    }
++
++    .hero::before {
++      content: "";
++      position: absolute;
++      inset: 0;
++      background: radial-gradient(ellipse at 20% 10% var(--in-oklab), #ffce89, transparent 75%);
++      mix-blend-mode: soft-light;
++      pointer-events: none;
++    }
++
++    .hero > * {
++      position: relative;
++    }
++
++    .hero h1,
++    .hero p {
++      text-shadow: 0 2px 8px #20130f;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
++      font-size: clamp(2.25rem, 6vw, 3.75rem);
+       margin-bottom: 1rem;
+     }
+ 
+@@ -100,19 +133,37 @@
+       padding: 0 20px;
+     }
+ 
++    .container h2 {
++      text-align: center;
++      font-size: 2rem;
++    }
++
++    .container h2::after {
++      content: "";
++      display: block;
++      width: 88px;
++      height: 8px;
++      margin: 12px auto 28px;
++      background: repeating-linear-gradient(-45deg var(--in-oklab), #ad591d 0 3px, transparent 0 7px);
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++      gap: 28px;
+       margin-top: 20px;
+     }
+ 
+     .card {
+       background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      padding: 28px 24px;
++      border: 1px solid #e9ddd0;
++      border-radius: 16px;
++      box-shadow: 0 2px 4px #4e342e0a, 0 8px 16px #4e342e0d, 0 20px 36px -16px #4e342e38;
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
+     }
+ 
+     .card h3 {
+@@ -135,6 +186,90 @@
+       background: #3e2723;
+     }
+ 
++    .hero .btn {
++      background: linear-gradient(135deg var(--in-oklab), #ffd397, #f0a342);
++      color: #352019;
++      font-weight: 700;
++      padding: 12px 28px;
++      border: 1px solid #ffe1b6;
++      border-radius: 999px;
++      box-shadow: 0 2px 3px #0002, 0 8px 20px #1e120f66;
++    }
++
++    .hero .btn:hover {
++      background: linear-gradient(135deg var(--in-oklab), #ffe2b9, #ffc16f);
++    }
++
++    a:focus-visible {
++      outline: 3px solid #ad591d;
++      outline-offset: 5px;
++    }
++
++    nav a:focus-visible,
++    .hero a:focus-visible {
++      outline-color: var(--cream);
++    }
++
++    .flavor-profile {
++      width: 100%;
++      margin: auto 0 0;
++      padding-top: 24px;
++    }
++
++    .flavor-profile figcaption {
++      font-size: 0.8rem;
++      font-weight: 700;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++      margin-bottom: 12px;
++    }
++
++    .flavor-chart {
++      width: 76px;
++      aspect-ratio: 1;
++      border-radius: 50%;
++      margin: 0 auto 14px;
++      background: conic-gradient(from -90deg var(--in-oklab),
++        var(--flavor-sweet) 0 var(--sweet),
++        var(--flavor-creamy) 0 var(--creamy-end),
++        var(--flavor-roasted) 0 100%);
++      box-shadow: 0 0 0 4px #fff, 0 3px 10px #4e342e26;
++    }
++
++    .flavor-breakdown {
++      font-size: 0.8rem;
++      display: flex;
++      justify-content: center;
++      flex-wrap: wrap;
++      gap: 8px 14px;
++    }
++
++    .flavor-breakdown dt::before {
++      content: "";
++      display: inline-block;
++      width: 8px;
++      height: 8px;
++      border-radius: 50%;
++      margin-right: 5px;
++      background: var(--flavor-sweet);
++    }
++
++    .flavor-breakdown .creamy dt::before { background: var(--flavor-creamy); }
++    .flavor-breakdown .roasted dt::before { background: var(--flavor-roasted); }
++
++    .profile-note {
++      text-align: center;
++      font-size: 0.8rem;
++      margin-top: 24px;
++    }
++
++    @media (max-width: 640px) {
++      nav { flex-direction: column; gap: 12px; }
++      nav ul { flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
++      nav ul li { margin-left: 0; }
++      .grid { grid-template-columns: minmax(0, 1fr); }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -176,24 +311,52 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2>Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 40%; --creamy-end: 85%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>40%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>45%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>15%</dd></div>
++            </dl>
++          </figure>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 10%; --creamy-end: 20%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>10%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>10%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>80%</dd></div>
++            </dl>
++          </figure>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
++          <figure class="flavor-profile">
++            <figcaption>Flavor profile</figcaption>
++            <div class="flavor-chart" style="--sweet: 25%; --creamy-end: 40%;" aria-hidden="true"></div>
++            <dl class="flavor-breakdown">
++              <div><dt>Sweet</dt><dd>25%</dd></div>
++              <div class="creamy"><dt>Creamy</dt><dd>15%</dd></div>
++              <div class="roasted"><dt>Roasted</dt><dd>60%</dd></div>
++            </dl>
++          </figure>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
++      <p class="profile-note">Flavor percentages illustrate the balance of tasting notes.</p>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

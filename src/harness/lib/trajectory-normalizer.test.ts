@@ -1061,6 +1061,30 @@ test('parseClaudeTrajectory extracts observed reasoning effort from main-session
   );
   assert.strictEqual(summary.model, 'claude-opus-5-5');
   assert.deepStrictEqual(summary.reasoningEffort, { level: 'medium', source: 'observed' });
+
+  const assistantSummary = parseClaudeTrajectory([
+    {
+      type: 'assistant',
+      effort: 'medium',
+      message: {
+        id: 'msg_1',
+        model: 'claude-sonnet-5-5',
+        content: [{ type: 'text', text: 'Done' }],
+      },
+    },
+    {
+      type: 'assistant',
+      isSidechain: true,
+      effort: 'low',
+      message: {
+        id: 'msg_2',
+        model: 'claude-haiku-4-5',
+        content: [{ type: 'text', text: 'Sidechain' }],
+      },
+    },
+  ]);
+  assert.strictEqual(assistantSummary.model, 'claude-sonnet-5-5');
+  assert.deepStrictEqual(assistantSummary.reasoningEffort, { level: 'medium', source: 'observed' });
 });
 
 test('parsePiTrajectory extracts observed thinking_level_change and offline regeneration preserves configured effort', async () => {
