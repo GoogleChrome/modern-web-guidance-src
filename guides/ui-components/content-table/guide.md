@@ -24,7 +24,7 @@ Start from a plain semantic table and enhance it. Sorting, filtering and sticky 
 ## Markup
 
 * **MANDATORY:** Use `<table>` with a `<caption>`, `<thead>`, `<tbody>`, `<th scope="col">` for column headers and `<th scope="row">` for the row header cell. Do not build tables from `<div>`s with ARIA roles.
-* Wrap the table in a scroll container with `tabindex="0"`, `role="region"` and an accessible name (`aria-labelledby` pointing at the caption). Keyboard users can then scroll it.
+* Wrap the table in a scroll container with `tabindex="0"`, `role="region"` and an accessible name (`aria-labelledby` pointing at the caption). Scrollable regions are not reliably keyboard-focusable across browsers (especially when they contain focusable controls such as sort buttons), so `tabindex="0"` is required for keyboard users to scroll the table.
 
 ```html
 <div class="table-wrapper" role="region" aria-labelledby="people-caption" tabindex="0">
