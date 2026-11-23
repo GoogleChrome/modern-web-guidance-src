@@ -87,16 +87,27 @@
     .rating {
       --max: 5;
       --_offset: 0px;
+      --_dir: to right;
+      --_edge: left;
+      --_clip-left: var(--_offset);
+      --_clip-right: 0px;
       --_display-value: var(--control-value);
       --_fill-stop: calc(var(--_offset) + var(--_display-value) * var(--star-size));
       inline-size: calc(var(--star-size) * var(--max));
       block-size: var(--star-size);
-      --_stars-bg: linear-gradient(to right in oklch,
+      --_stars-bg: linear-gradient(var(--_dir) in oklch,
           var(--color-star-filled) var(--_fill-stop),
           var(--color-star-empty) 0);
       --_mask-empty: var(--icon-star-empty) 0 0 / var(--star-size) var(--star-size) repeat-x;
       --_mask-filled: var(--icon-star-filled) 0 0 / var(--star-size) var(--star-size) repeat-x;
-      --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
+      --_mask-clip: linear-gradient(var(--_dir), #000 var(--_fill-stop), transparent 0);
+
+      &:dir(rtl) {
+        --_dir: to left;
+        --_edge: right;
+        --_clip-left: 0px;
+        --_clip-right: var(--_offset);
+      }
     }
 
     /* Read-only: <meter> painted as stars */
@@ -109,6 +120,7 @@
       --control-value: attr(value type(<number>), 0);
       background: var(--_stars-bg);
       mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+      mask-position: var(--_edge) 0 top 0, 0 0, var(--_edge) 0 top 0;
 
       &::-moz-meter-bar {
         appearance: none;
@@ -168,16 +180,16 @@
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
-        mask-position: var(--_offset) 0, 0 0, var(--_offset) 0;
-        clip-path: inset(0 0 0 var(--_offset));
+        mask-position: var(--_edge) var(--_offset) top 0, 0 0, var(--_edge) var(--_offset) top 0;
+        clip-path: inset(0 var(--_clip-right) 0 var(--_clip-left));
       }
 
       &::-moz-range-track {
         block-size: 100%;
         background: var(--_stars-bg);
         mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
-        mask-position: var(--_offset) 0, 0 0, var(--_offset) 0;
-        clip-path: inset(0 0 0 var(--_offset));
+        mask-position: var(--_edge) var(--_offset) top 0, 0 0, var(--_edge) var(--_offset) top 0;
+        clip-path: inset(0 var(--_clip-right) 0 var(--_clip-left));
       }
 
       /* Step-wide thumb aligns native step snapping with star halves without JS */
@@ -311,8 +323,9 @@
     });
     range.addEventListener('pointermove', (event) => {
       if (event.pointerType === 'touch' || range.disabled) return;
-      const { left, width } = range.getBoundingClientRect();
-      const pointerX = Math.min(1, Math.max(0, (event.clientX - left) / width));
+      const { left, right, width } = range.getBoundingClientRect();
+      const isRtl = getComputedStyle(range).direction === 'rtl';
+      const pointerX = Math.min(1, Math.max(0, (isRtl ? right - event.clientX : event.clientX - left) / width));
       range.style.setProperty('--pointer-x', pointerX);
     });
     for (const type of ['pointerleave', 'pointercancel', 'blur']) {

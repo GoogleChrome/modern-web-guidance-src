@@ -37,14 +37,25 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
   --max: attr(max type(<number>), 5);
   --control-value: attr(value type(<number>), 0);
   --_offset: 0px;
+  --_dir: to right;
+  --_edge: left;
+  --_clip-left: var(--_offset);
+  --_clip-right: 0px;
   --_display-value: var(--control-value);
   inline-size: calc(var(--star-size) * var(--max));
   block-size: var(--star-size);
   /* Hard stop at offset + display-value fills partial and half stars */
-  --_stars-bg: linear-gradient(to right in oklch,
+  --_stars-bg: linear-gradient(var(--_dir) in oklch,
       var(--color-star-filled) calc(var(--_offset) + var(--_display-value) * var(--star-size)),
       var(--color-star-empty) 0);
   --_stars-mask: var(--icon-star) 0 0 / var(--star-size) var(--star-size) repeat-x;
+
+  &:dir(rtl) {
+    --_dir: to left;
+    --_edge: right;
+    --_clip-left: 0px;
+    --_clip-right: var(--_offset);
+  }
 
   @media (forced-colors: active) {
     --color-star-filled: light-dark(CanvasText, Highlight);
@@ -74,18 +85,21 @@ When empty and filled stars use different icons (such as an outlined star and a 
 ```css
 .rating {
   --_fill-stop: calc(var(--_offset) + var(--_display-value) * var(--star-size));
-  --_stars-bg: linear-gradient(to right in oklch,
+  --_stars-bg: linear-gradient(var(--_dir) in oklch,
       var(--color-star-filled) var(--_fill-stop),
       var(--color-star-empty) 0);
   --_mask-empty: var(--icon-star-empty) 0 0 / var(--star-size) var(--star-size) repeat-x;
   --_mask-filled: var(--icon-star-filled) 0 0 / var(--star-size) var(--star-size) repeat-x;
-  --_mask-clip: linear-gradient(to right, #000 var(--_fill-stop), transparent 0);
+  --_mask-clip: linear-gradient(var(--_dir), #000 var(--_fill-stop), transparent 0);
 }
 
-/* On meter.rating, &::-webkit-slider-runnable-track, and &::-moz-range-track */
+/* On meter.rating */
 mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
-/* On the range track pseudo-elements, shift the star layers without tainting url() */
-mask-position: var(--_offset) 0, 0 0, var(--_offset) 0;
+mask-position: var(--_edge) 0 top 0, 0 0, var(--_edge) 0 top 0;
+/* On &::-webkit-slider-runnable-track and &::-moz-range-track */
+mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
+/* Shift the star layers without tainting url() */
+mask-position: var(--_edge) var(--_offset) top 0, 0 0, var(--_edge) var(--_offset) top 0;
 ```
 
 **Limitation:** because all stars share repeated `mask` layers on one element, enlarging only the star currently being hovered is awkward and would require an extra mask layer.
@@ -104,6 +118,7 @@ meter.rating {
   border: 0;
   background: var(--_stars-bg);
   mask: var(--_stars-mask);
+  mask-position: var(--_edge) 0 top 0;
 
   &::-moz-meter-bar {
     appearance: none;
@@ -152,16 +167,16 @@ input[type="range"].rating {
     block-size: 100%;
     background: var(--_stars-bg);
     mask: var(--_stars-mask);
-    mask-position: var(--_offset) 0;
-    clip-path: inset(0 0 0 var(--_offset));
+    mask-position: var(--_edge) var(--_offset) top 0;
+    clip-path: inset(0 var(--_clip-right) 0 var(--_clip-left));
   }
 
   &::-moz-range-track {
     block-size: 100%;
     background: var(--_stars-bg);
     mask: var(--_stars-mask);
-    mask-position: var(--_offset) 0;
-    clip-path: inset(0 0 0 var(--_offset));
+    mask-position: var(--_edge) var(--_offset) top 0;
+    clip-path: inset(0 var(--_clip-right) 0 var(--_clip-left));
   }
 
   /* Step-wide thumb aligns native step snapping with star halves without JS */
@@ -185,7 +200,7 @@ input[type="range"].rating {
 
 On `input` (and on initial load), set `--control-value` on `range` to `range.value` via `style.setProperty()` (the `value` attribute only provides the initial default through `attr()`, and does not track the live value), and update `aria-valuetext` (and any visible `<output>`) to a human-readable string such as `"2.5 out of 5 stars"`.
 
-Preview the rating on pointer hover by setting a normalized `--pointer-x` (`0` to `1`, clamped from `(event.clientX - left) / width` via `range.getBoundingClientRect()`) on `pointermove`—skipping `event.pointerType === 'touch'` and `range.disabled`—and calling `range.style.removeProperty('--pointer-x')` on `pointerleave`, `pointercancel`, `blur` (on `range` and `window`), and `input` (so keyboard changes are not masked by a lingering hover preview).
+Preview the rating on pointer hover by setting a normalized `--pointer-x` (`0` to `1`, clamped from `(event.clientX - left) / width`, or `(right - event.clientX) / width` when `getComputedStyle(range).direction === 'rtl'`, via `range.getBoundingClientRect()`) on `pointermove`—skipping `event.pointerType === 'touch'` and `range.disabled`—and calling `range.style.removeProperty('--pointer-x')` on `pointerleave`, `pointercancel`, `blur` (on `range` and `window`), and `input` (so keyboard changes are not masked by a lingering hover preview).
 
 <!-- Maintainer note: because CSS computes --_preview-value solely from --pointer-x, this script can be replaced directly with CSS pointer-animations-1 (animation-timeline: pointer(...)) once supported. -->
 
