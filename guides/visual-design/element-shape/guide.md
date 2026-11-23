@@ -51,7 +51,7 @@ Use `border-shape` with `polygon()` or `shape()` only for outlines `corner-shape
 
 - Straight edges only (notched ribbons): `polygon()`. Any curves (speech bubbles with rounded corners, waves): `shape()`.
 - Use percentages for proportional geometry and fixed lengths (such as tail height or notch depth) for parts that shouldn't scale with the element.
-- Put a value in a custom property only when it is reused, tuned per instance, or animated (register animated values with `@property` so they interpolate).
+- Put a value in a custom property only when it is reused, tuned per instance (for example tail height, notch size, or wave depth), or animated (register animated values with `@property` so they interpolate).
 - Reserve space for protruding parts (such as a tail) with padding so text doesn't collide with them.
 - `clip-path` clips the focus outline and ignores pointer events outside the shape.
 - Don't translate a shaped element on hover, because the moving hit area causes missed clicks.
@@ -61,7 +61,6 @@ Use `border-shape` with `polygon()` or `shape()` only for outlines `corner-shape
 - An element clipped with `clip-path` must not carry its own `box-shadow` because the clip cuts it off; put `filter: drop-shadow()` on a wrapping ancestor instead (`border-shape` reshapes `box-shadow` directly, and `filter: drop-shadow()` works on it too).
 - Round polygon vertices with `polygon(round <length>, ...)` in `clip-path`.
 - For a responsive curved cutout, use `clip-path: shape()` with percentage coordinates and reset `border-radius: 0` alongside the `shape()` declaration so fallback rounded corners don't interfere with the cutout.
-- Express the outline's dimensions (tail height, notch size, wave depth) as custom properties so the shape is easy to customize.
 
 ## Fallbacks
 
