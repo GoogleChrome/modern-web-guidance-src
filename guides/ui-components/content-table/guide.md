@@ -111,7 +111,7 @@ table {
 }
 ```
 
-* **DO NOT** set `overflow` (other than `visible`) on any element between the sticky cell and the scroll container, or the cell sticks to the wrong box.
+* **DO NOT** set `overflow` (other than `visible` or `clip`) on any element between the sticky cell and the scroll container, or the cell sticks to the wrong box.
 * If the page has its own sticky header, offset `inset-block-start` by its height and set `scroll-padding-block-start` on the scroll container so focused cells are not hidden beneath the sticky header.
 
 ## Stick headers to the page while columns stick to the wrapper
