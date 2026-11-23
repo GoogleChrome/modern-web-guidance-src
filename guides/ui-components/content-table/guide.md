@@ -211,12 +211,22 @@ filter.addEventListener('input', () => {
   }
   // Announce only when nothing matches; stay silent otherwise.
   status.textContent = visible ? '' : 'No rows match your filter';
+  emptyState.hidden = visible > 0;
 });
 ```
 
 If rows are added or removed dynamically, iterate `tbody.rows` inside the `input` listener instead of a cached array; if the table is also sortable, re-apply nothing after sorting because `hidden` travels with each moved `<tr>`.
 
 ```css
+/* Keep the empty-state message inside the visible part of a wide, horizontally scrolling table: sticky to the wrapper's inline start, capped to its width. Requires container-type: inline-size on the wrapper. */
+.empty {
+  position: sticky;
+  inset-inline-start: 0;
+  inline-size: 100cqi;
+  box-sizing: border-box;
+  text-align: center;
+}
+
 /* Ensure hidden rows stay hidden when a responsive stacked layout sets display on tr. */
 tr[hidden] {
   display: none;
