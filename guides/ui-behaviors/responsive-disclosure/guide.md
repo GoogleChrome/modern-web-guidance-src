@@ -27,7 +27,7 @@ Pick the primitive that matches the interaction model, regardless of domain (whe
 
 ## Anti-pattern: Do not duplicate markup
 
-DO NOT render separate desktop and mobile copies of the same content and toggle them with CSS. Duplicated controls lose input values, checked state, and focus when the layout crosses a breakpoint, and double the effort required to maintain event listeners and IDs.
+DO NOT render separate narrow-viewport and wide-viewport copies of the same content and toggle them with CSS. Duplicated controls lose input values, checked state, and focus when the layout crosses a breakpoint, and double the effort required to maintain event listeners and IDs. Choose the primitive from the available space (container or viewport width), never from the assumed device or input type (touch vs. mouse).
 
 Instead, keep **one** semantic DOM subtree and adapt its presentation with container queries.
 
