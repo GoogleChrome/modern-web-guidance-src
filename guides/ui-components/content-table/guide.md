@@ -214,7 +214,7 @@ filter.addEventListener('input', () => {
 });
 ```
 
-If the table is also sortable, read rows from `tbody.rows` at filter time instead of a cached array so reordered rows keep their `hidden` state, and re-apply nothing after sorting: `hidden` travels with each row.
+If rows are added or removed dynamically, iterate `tbody.rows` inside the `input` listener instead of a cached array; if the table is also sortable, re-apply nothing after sorting because `hidden` travels with each moved `<tr>`.
 
 ```css
 /* Ensure hidden rows stay hidden when a responsive stacked layout sets display on tr. */
