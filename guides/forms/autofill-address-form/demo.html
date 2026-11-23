@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <title>Address Form Autofill</title>
+</head>
+<body>
+  <h1>Address</h1>
+  <form id="address-form" name="address-form">
+    <section>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+    </section>
+
+    <section>
+      <label for="address">Address</label>
+      <textarea id="address" name="address" autocomplete="street-address" maxlength="300" required></textarea>
+    </section>
+
+    <section>
+      <label for="postal-code">ZIP or postal code</label>
+      <input id="postal-code" name="postal-code" type="text" autocomplete="postal-code" maxlength="20" required>
+    </section>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>

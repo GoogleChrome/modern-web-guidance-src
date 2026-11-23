@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <style>
+    :root {
+      --style-queries-supported: check;
+    }
+
+    .container {
+      --density: compact;
+    }
+
+    .item {
+      padding: 1rem;
+      border: 1px solid #ccc;
+    }
+
+    @container style(--density: compact) {
+      .item {
+        padding: 0.5rem;
+      }
+    }
+
+    @container style(--density: spacious) {
+      .item {
+        padding: 2.5rem;
+      }
+    }
+
+    #toggle-spacious {
+      display: none;
+    }
+
+    @container style(--style-queries-supported) {
+      #toggle-spacious {
+        display: revert;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="target-container">
+    <div class="item" id="target-item">I react to density</div>
+  </div>
+
+  <button id="toggle-spacious">Toggle Spacious</button>
+
+  <script>
+      document.getElementById('toggle-spacious').addEventListener('click', () => {
+        const c = document.getElementById('target-container');
+        const current = getComputedStyle(c).getPropertyValue('--density').trim();
+        c.style.setProperty('--density', current === 'spacious' ? 'compact' : 'spacious');
+    });
+  </script>
+</body>
+</html>

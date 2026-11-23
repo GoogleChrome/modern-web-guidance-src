@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form-Associated Custom Elements: a custom control in a form</title>
+  <style>
+    rating-input:not(:defined) {
+      opacity: 0;
+      animation: defined-fallback 0.2s 2s forwards;
+    }
+    @keyframes defined-fallback { to { opacity: 1; } }
+    rating-input { display: inline-flex; gap: .25rem; }
+    rating-input:invalid { outline: 2px solid crimson; }
+    rating-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    rating-input::part(star) { background: none; border: 0; padding: 0; cursor: pointer; font-size: 1.5rem; line-height: 1; }
+  </style>
+</head>
+<body>
+  <form id="review">
+    <label for="score">Rating (required)</label>
+    <rating-input id="score" name="rating" required></rating-input>
+    <button type="submit">Submit</button>
+  </form>
+  <output id="result"></output>
+
+  <script>
+    class RatingInput extends HTMLElement {
+      // MANDATORY: opt in, or the attachInternals() form APIs are unavailable.
+      static formAssociated = true;
+
+      #internals;
+      #value = '';
+      #disabled = false;
+
+      constructor() {
+        super();
+        this.#internals = this.attachInternals();
+        this.attachShadow({ mode: 'open', delegatesFocus: true });
+        this.#internals.role = 'group';
+        this.#internals.ariaLabel = "Star rating";
+        this.shadowRoot.innerHTML = [1, 2, 3, 4, 5]
+          .map(n => `<button aria-label="${n} star${n === 1 ? '' : 's'}" aria-pressed="false" type="button" part="star" data-value="${n}" tabindex="${n === 1 ? 0 : -1}">★</button>`)
+          .join('');
+        this.shadowRoot.addEventListener('click', (e) => {
+          if (this.#disabled) return;
+          const star = e.target.closest('[data-value]');
+          if (!star) return;
+          this.value = star.dataset.value;
+          updatePressedState(star);
+        });
+
+        const updatePressedState = (selectedButton) => {
+          const buttons = this.shadowRoot.querySelectorAll('button[data-value]');
+          buttons.forEach((button) => {
+            const isSelected = button === selectedButton;
+            button.setAttribute('aria-pressed', String(isSelected));
+          });
+        };
+
+        this.shadowRoot.addEventListener('keydown', (e) => {
+          const current = e.target.closest('[data-value]');
+          if (!current) return;
+          const buttons = [...this.shadowRoot.querySelectorAll('[data-value]')];
+          const index = buttons.indexOf(current);
+          let nextIndex = index;
+          switch (e.key) {
+            case 'ArrowRight':
+            case 'ArrowDown':
+              if (index < (buttons.length - 1)) {
+                nextIndex = (index + 1);
+              }
+              break;
+            case 'ArrowLeft':
+            case 'ArrowUp':
+              if (index >= 1) {
+                nextIndex = (index - 1);
+              }
+              break;
+            default:
+              return;
+          }
+          e.preventDefault();
+          const next = buttons[nextIndex];
+          current.setAttribute("tabindex", "-1");
+          buttons[nextIndex].setAttribute("tabindex", "0");
+          this.value = next.dataset.value;
+          next.focus();
+        });
+      }
+
+      connectedCallback() {
+        this.#validate();
+      }
+
+      get value() { return this.#value; }
+      set value(v) {
+        this.#value = v;
+        this.#internals.setFormValue(v);        // submits without a hidden input
+        this.#validate();
+      }
+
+      #validate() {
+        if (this.hasAttribute('required') && !this.#value) {
+          this.#internals.setValidity(
+            { valueMissing: true },
+            'Please choose a rating.',
+            this.shadowRoot.querySelector('[data-value]'),
+          );
+        } else {
+          this.#internals.setValidity({}); // clear
+        }
+      }
+
+      formResetCallback() { this.value = ''; }
+      formDisabledCallback(disabled) {
+        this.#disabled = disabled;
+        for (const star of this.shadowRoot.querySelectorAll('button')) {
+          star.disabled = disabled;
+        }
+      }
+      formStateRestoreCallback(state) { this.value = state; }
+    }
+
+    customElements.define('rating-input', RatingInput);
+
+    document.getElementById('review').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = new FormData(e.target);
+      document.getElementById('result').textContent = `Submitted rating: ${data.get('rating')}`;
+    });
+  </script>
+</body>
+</html>

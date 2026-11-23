@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <title>Checkout</title>
+</head>
+<body>
+  <h1>Checkout</h1>
+  <div id="checkout-container">
+    <span>First Name</span>
+    <input id="fname" name="first_name" type="text" pattern="[a-zA-Z]+">
+
+    <span>Last Name</span>
+    <input id="lname" name="last_name" type="text" pattern="[a-zA-Z]+">
+
+    <label for="addr1">Address Line 1</label>
+    <input id="address_line_1" name="address1" type="text">
+
+    <label>Address Line 2</label>
+    <input id="address_line_2" name="address2" type="text">
+
+    <span>ZIP Code</span>
+    <input id="zip_code" name="zip" type="number">
+
+    <br><br>
+    <div onclick="submit()">Save</div>
+  </div>
+</body>
+</html>

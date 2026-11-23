@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+  <meta charset="utf-8">
+  <title>Highlight Autofill Inputs</title>
+  <style>
+    div:auto-fill,
+    form:auto-fill,
+    input:auto-fill,
+    input:-webkit-auto-fill,
+    input:-webkit-auto-fill:hover,
+    input:-webkit-auto-fill:focus {
+      border-color: green;
+      outline: none;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Name Form</h1>
+    <form id="form" name="form">
+      <section>
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="100" pattern="[\p{L} \-\.]+" required>
+      </section>
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+  <script>
+    const inputElement = document.getElementById('name');
+    setInterval(function() {
+      if (inputElement && inputElement.value.length > 0) {
+        inputElement.style.borderColor = 'green';
+        inputElement.style.outline = 'none';
+      }
+    }, 250);
+  </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            margin: 0;
+            height: 200vh;
+            background: #000;
+            color: #fff;
+        }
+        #scroller {
+            height: 400px;
+            overflow-y: scroll;
+            width: 300px;
+            border: 5px solid red;
+        }
+        .content {
+            height: 2000px;
+            background: linear-gradient(white, black);
+        }
+        @keyframes wrong-animation {
+            from { scrollbar-color: red yellow; }
+            to { scrollbar-color: blue green; }
+        }
+        #scroller {
+            animation: wrong-animation 2s infinite;
+        }
+        ::-webkit-scrollbar {
+            width: 20px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #222;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f00;
+        }
+    </style>
+</head>
+<body>
+    <div id="scroller">
+        <div class="content"></div>
+    </div>
+    <script>
+        const s = document.getElementById('scroller');
+        s.onscroll = function() {
+            const p = s.scrollTop / (s.scrollHeight - s.clientHeight);
+            const r = Math.floor(255 * p);
+            const b = Math.floor(255 * (1 - p));
+            const c = 'rgb(' + r + ', 0, ' + b + ')';
+            document.body.style.setProperty('--bad-color', c);
+            const style = document.createElement('style');
+            style.innerHTML = '#scroller::-webkit-scrollbar-thumb { background: ' + c + ' !important; }';
+            document.head.appendChild(style);
+        };
+    </script>
+</body>
+</html>

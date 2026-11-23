@@ -1,0 +1,67 @@
+
+/* Dashboard Layout & Tabs */
+/* Tab Content Areas */
+.tab-content {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Overview Section Layout */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.overview-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 24px;
+}
+
+.overview-card h3 {
+  margin-top: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.metric-huge {
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metric-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+
+/* Recent Tests List Refinement for Overview */
+.recent-tests-compact .recent-test-item {
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+}
+
+.recent-tests-compact .stat-value {
+  font-size: 1.25rem;
+  /* Override the 3rem from dashboard.css */
+}
+

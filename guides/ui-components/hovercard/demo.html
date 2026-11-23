@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head><script>(() => { if (!location.search.includes("preview=1")) return; let ok = false; addEventListener("pointerdown", () => { ok = true; }, true); addEventListener("keydown", () => { ok = true; }, true); const f = HTMLElement.prototype.focus; HTMLElement.prototype.focus = Element.prototype.focus = function(o) { if (ok) return f.call(this, Object.assign({}, o, { preventScroll: true })); }; for (const k of ["scrollIntoView", "scrollIntoViewIfNeeded"]) { const fn = Element.prototype[k]; if (fn) Element.prototype[k] = function(o) { if (ok) return fn.call(this, o); }; } const s = new CSSStyleSheet(); s.replaceSync("*,*::before,*::after{scroll-initial-target:none!important}"); document.adoptedStyleSheets = [...document.adoptedStyleSheets, s]; new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { n.removeAttribute?.("autofocus"); n.querySelectorAll?.("[autofocus]").forEach(e => e.removeAttribute("autofocus")); } }).observe(document, { childList: true, subtree: true }); })();</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Hovercard Demo</title>
+    <style>
+      :root {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0;
+        padding: 2rem;
+        background: #f8f9fa;
+      }
+
+      main {
+        max-width: 600px;
+        margin: 0 auto;
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: #333;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        gap: 1rem;
+      }
+
+      a {
+        color: #0066cc;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      [popover] {
+        position-area: block-end span-inline-end;
+        position-try-fallbacks:
+          flip-block,
+          flip-inline,
+          flip-block flip-inline;
+        border: none;
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.1),
+          0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        width: 300px;
+        background: white;
+
+        opacity: 0;
+        transform-origin: top;
+      }
+
+      [popover]:popover-open {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      @starting-style {
+        [popover]:popover-open {
+          opacity: 0;
+          transform: translateY(-10px) scale(0.95);
+        }
+      }
+
+      /* Respect reduced motion */
+      @media (prefers-reduced-motion: no-preference) {
+        [popover] {
+          /* Entry animation setup */
+          transition:
+            display,
+            overlay,
+            opacity,
+            transform;
+          transition-duration: 0.4s;
+          transition-behavior: allow-discrete;
+        }
+      }
+
+      [interestfor] {
+        --interest-delay-start: 0.2s;
+        interest-delay-start: var(--interest-delay-start);
+        --interest-delay-end: 0.1s;
+        interest-delay-end: var(--interest-delay-end);
+      }
+      /* If any hovercards are already open, open subsequent hovercards
+        immediately. For performance, apply this to the smallest wrapper of a
+        group of hovercard triggers, and target the direct chain to the trigger.
+        */
+      .related-articles:has(
+          > li > a[interestfor]:is(:interest-source, .interest-source)
+        )
+        [interestfor] {
+        --interest-delay-start: 0s;
+      }
+
+      [popover] h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+      }
+
+      [popover] img {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        object-position: top;
+        border-radius: 6px;
+        margin-bottom: 0.5rem;
+      }
+      ::view-transition-group(*) {
+        animation-duration: 0s;
+      }
+
+      @view-transition {
+        navigation: auto;
+      }
+
+      [popover]:popover-open {
+        view-transition-name: --hovercard;
+        view-transition-class: morph;
+        h2 {
+          view-transition-name: --title;
+          view-transition-class: morph;
+          width: fit-content;
+        }
+        img {
+          view-transition-name: --image;
+          view-transition-class: morph;
+        }
+        .byline {
+          view-transition-name: --byline;
+          view-transition-class: morph;
+          width: fit-content;
+        }
+        p {
+          view-transition-name: --p;
+          view-transition-class: morph;
+        }
+      }
+    </style>
+    <script type="module">
+      if (!HTMLButtonElement.prototype.hasOwnProperty("interestForElement")) {
+        // CDN link only used for example, prefer bundling.
+        await import("https://unpkg.com/interestfor@latest");
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <div>
+        <article>
+          <h3>Related articles</h3>
+          <ul class="related-articles">
+            <li>
+              <a href="article-a.html" interestfor="buzz-popover">
+                The buzz on hummingbirds
+              </a>
+              <div id="buzz-popover" popover="hint">
+                <h2>The buzz on hummingbirds</h2>
+                <p class="byline">By Delphi Aguilar</p>
+                <div>
+                  <img
+                    src="https://images.unsplash.com/photo-1520552159191-e28a1d9f0d7e?q=80&w=400&auto=format&fit=crop"
+                    alt="A green hummingbird with a vibrant blue throat and a curved bill seated on a branch."
+                  />
+                  <p>
+                    Swan goose duck mallard teal kingfisher heron egret pelican
+                    cormorants. Heron egret pelican cormorant swan goose duck...
+                  </p>
+                </div>
+              </div>
+            </li>
+            <li>
+              <a href="article-b.html" interestfor="corvid-popover">
+                10 reasons corvids rock
+              </a>
+              <div id="corvid-popover" popover="hint">
+                <h2>10 reasons corvids rock</h2>
+                <p class="byline">By Corby Bertram</p>
+                <div>
+                  <img
+                    src="https://images.unsplash.com/photo-1682467612877-f9b5e55ff2af?q=80&w=400&auto=format&fit=crop"
+                    alt="A large black bird with a thick beak sitting on a limb."
+                  />
+                  <p>
+                    Heron egret pelican cormorant swan goose duck mallard teal
+                    kingfisher. Heron egret pelican cormorant swan goose duck...
+                  </p>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </article>
+      </div>
+    </main>
+    <script type="module">
+      // Explicit ARIA until browsers and the polyfill expose interestfor semantics consistently. Runs before the
+      // polyfill loads: the polyfill wires ARIA only on `load`, too late for some screen readers, and adds no
+      // `role="tooltip"` to plain hints.
+      const managed = new WeakSet();
+      const text = (s) => (s ?? "").replace(/\s+/g, " ").trim();
+
+      // Approximates the accessible name: aria-labelledby, then aria-label, then content including image alt, then title.
+      function accessibleName(el) {
+        const labels = (el.getAttribute("aria-labelledby") ?? "").split(/\s+/).map((id) => document.getElementById(id)?.textContent);
+        const alts = [...el.querySelectorAll("img[alt]")].map((img) => img.alt);
+        return text(labels.join(" ")) || text(el.getAttribute("aria-label")) || text(el.textContent + " " + alts.join(" ")) || text(el.title);
+      }
+
+      function wireInterestHints(root = document) {
+        for (const trigger of root.querySelectorAll("[interestfor]")) {
+          const hint = document.getElementById(trigger.getAttribute("interestfor"));
+          if (hint?.getAttribute("popover") !== "hint") {
+            continue;
+          }
+          // Nothing to add when the hint just repeats the trigger's name.
+          const name = accessibleName(trigger);
+          if (text(hint.textContent) === name) {
+            continue;
+          }
+          hint.role ??= "tooltip";
+          const id = CSS.escape(hint.id);
+          if (!name) {
+            // The hint names an unnamed trigger (icon-only button).
+            if (!trigger.hasAttribute("aria-labelledby")) {
+              trigger.setAttribute("aria-labelledby", hint.id);
+            }
+          } else if (trigger.matches(`[popovertarget="${id}"], [commandfor="${id}"]`)) {
+            // Activating the trigger opens the hint, so open/closed state is honest.
+            // Skip triggers whose aria-expanded belongs to something else.
+            if (!trigger.hasAttribute("aria-expanded")) {
+              trigger.ariaExpanded = hint.matches(":popover-open");
+              managed.add(trigger);
+            }
+          } else if (!trigger.hasAttribute("aria-describedby")) {
+            // Activation does something else (a link, an action button): "collapsed" would promise what
+            // Enter does not deliver, so describe instead.
+            trigger.setAttribute("aria-describedby", hint.id);
+          }
+        }
+      }
+
+      wireInterestHints();
+
+      // `toggle` does not bubble, so one capturing listener on the document covers every hint popover.
+      document.addEventListener("toggle", ({ target, newState }) => {
+        for (const trigger of document.querySelectorAll(`[interestfor="${CSS.escape(target.id)}"]`)) {
+          if (managed.has(trigger)) {
+            trigger.ariaExpanded = newState === "open";
+          }
+        }
+      }, true);
+
+      if (!("interestForElement" in HTMLButtonElement.prototype)) {
+        await import("https://unpkg.com/interestfor@latest");
+      }
+    </script>
+  </body>
+</html>

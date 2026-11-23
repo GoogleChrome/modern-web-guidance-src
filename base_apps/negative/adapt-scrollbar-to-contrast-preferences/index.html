@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Negative Example</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 50px;
+      background: #fff;
+    }
+    .content-box {
+      width: 400px;
+      height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #eee;
+    }
+    .inner {
+      height: 1000px;
+      background: linear-gradient(#fff, #fafafa);
+      padding: 20px;
+    }
+    .content-box::-webkit-scrollbar {
+      width: 8px;
+    }
+    .content-box::-webkit-scrollbar-track {
+      background: #f9f9f9;
+    }
+    .content-box::-webkit-scrollbar-thumb {
+      background: #f0f0f0;
+    }
+    @media (prefers-contrast: more) {
+      .content-box {
+        background: #fdfdfd;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="content-box">
+    <div class="inner">
+      <p>This is a scrollable area with low-contrast custom scrollbars that do not adapt to user preferences.</p>
+    </div>
+  </div>
+</body>
+</html>
