@@ -972,6 +972,9 @@
           (<code>&lt; 420px</code> popover), medium (<code>420px–599px</code> 2-column inline), and wide
           (<code>&gt;= 600px</code> 3-column inline) container thresholds, hiding the trigger when static.
         </p>
+        <p>
+          <strong>Caveat:</strong> The narrow popover requires native Popover API support. With the polyfill it can't reach the top layer, so it is clipped by the resizable stage and the demo is not usable at narrow widths.
+        </p>
       </div>
 
       <div class="size-controls" data-controls-for="unifying-stage">
