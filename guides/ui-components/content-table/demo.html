@@ -125,20 +125,15 @@
 		}
 	}
 
-	.empty td {
-		padding: 0;
-		color: light-dark(#575e68, #a3aab4);
-	}
-
-	.empty span {
-		display: block;
+	.empty {
 		position: sticky;
 		inset-inline-start: 0;
 		inline-size: 100cqi;
 		box-sizing: border-box;
+		margin: 0;
 		padding: 0.5rem 0.75rem;
 		text-align: center;
-		white-space: normal;
+		color: light-dark(#575e68, #a3aab4);
 	}
 
 	.visually-hidden {
@@ -175,6 +170,7 @@
 		</thead>
 		<tbody></tbody>
 	</table>
+	<p class="empty" hidden>No people match your filter.</p>
 </div>
 </main>
 
@@ -212,15 +208,11 @@
 		for (const text of cells) row.insertCell().textContent = text;
 	}
 
-	const empty = document.createElement('tr');
-	empty.className = 'empty';
-	empty.hidden = true;
-	empty.innerHTML = `<td colspan="${table.tHead.rows[0].cells.length}"><span>No people match your filter.</span></td>`;
-	tbody.append(empty);
+	const empty = document.querySelector('.empty');
 
 	filter.addEventListener('input', () => {
 		const query = filter.value.trim().toLocaleLowerCase();
-		const rows = [...tbody.rows].filter((row) => row !== empty);
+		const rows = [...tbody.rows];
 		let visible = 0;
 		for (const row of rows) {
 			const match = row.textContent.toLocaleLowerCase().includes(query);

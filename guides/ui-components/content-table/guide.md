@@ -8,6 +8,7 @@ guides:
   - responsive-table
   - sortable-table
   - data-grid
+  - scrollability-affordance-hints
 ---
 
 # Content table
@@ -176,7 +177,7 @@ tbody th {
 }
 ```
 
-Use flow-relative values (`block-start`, `inline-start`) so the shadow follows writing direction. Avoid size-affecting changes (padding, border, font-size) in stuck-state rules, since they can change layout and flip the stuck state. Use only paint effects such as `box-shadow`, `background` and `opacity`.
+Use flow-relative values (`block-start`, `inline-start`) so the shadow follows writing direction. Avoid size-affecting changes (padding, border, font-size) in stuck-state rules, since they can change layout and flip the stuck state. Use only paint effects such as `box-shadow`, `background` and `opacity`. To hint that more columns or rows are scrollable before scrolling starts, see {{ GUIDE_REF("scrollability-affordance-hints") }}.
 
 ## Filter rows
 
@@ -185,7 +186,7 @@ Use a native text input and toggle the `hidden` attribute on non-matching body r
 * **MANDATORY:** Use `<input type="search">` with a visible `<label>`. Filter on `input` events.
 * Match case-insensitively against each row's text content; `toLocaleLowerCase()` is enough for substring filtering.
 * **MANDATORY:** Announce only the no-match case, once per change, in a visually hidden `role="status"` element that already exists in the DOM, such as "No rows match your filter". Do not announce the result count when rows match, and clear the status text. Do not put `aria-live` on the table.
-* When no row matches, say so in the status element and show an empty-state message; do not leave an empty `<tbody>` with no explanation.
+* When no row matches, say so in the status element and show an empty-state message in an element right after `</table>` inside the wrapper (not as a `<tr>` in `<tbody>`, which would interfere with sorting); do not leave an empty table with no explanation.
 * Keep the input outside the scroll container so it does not scroll away with the table.
 * Optionally highlight the matched text in visible rows with the CSS Custom Highlight API (see the {{ GUIDE_REF('highlight-text-ranges') }} guide) instead of wrapping matches in `<mark>`. This leaves the DOM and the screen reader output unchanged.
 
