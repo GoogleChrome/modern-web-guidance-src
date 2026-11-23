@@ -5,6 +5,10 @@ web-feature-ids:
   - meter
   - input-range
   - attr
+  - masks
+  - nesting
+  - light-dark
+  - round-mod-rem
 guides:
   - icons
 ---
