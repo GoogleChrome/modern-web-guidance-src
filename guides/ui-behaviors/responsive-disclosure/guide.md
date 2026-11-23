@@ -71,7 +71,7 @@ When crossing the threshold in the `ResizeObserver`, detect whether the popover 
 
 ## Static to modal `<dialog>` drawer
 
-Use `<dialog>` with `.showModal()` when the disclosed content is task-focused or needs modal isolation (focus trap, backdrop, and `Escape` dismissal). Dismiss the modal with a native `<form method="dialog">` button inside the dialog header and a backdrop click check (`event.target === dialog`).
+Use `<dialog>` with `.showModal()` when the disclosed content is task-focused or needs modal isolation (focus trap, backdrop, and `Escape` dismissal). Dismiss the modal with a native `<form method="dialog">` button inside the dialog header and a backdrop click check (`event.target === dialog`). Where Invoker Commands are supported, `<button commandfor="dlg" command="close">` is an equivalent form-free alternative.
 
 Author the `<dialog>` with `aria-labelledby` pointing at a heading in its header, plus the native close form, and a trigger with `aria-controls` and `aria-expanded="false"` outside the dialog. Set `aria-expanded="true"` when calling `dialog.showModal()` and reset it on the `close` event so `Escape`, form submission, backdrop clicks, and breakpoint `.close()` calls all stay in sync:
 
