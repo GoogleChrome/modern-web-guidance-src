@@ -51,7 +51,7 @@ Because CSS alone cannot synchronize the `open` attribute with the accessibility
 
 Use `popover="auto"` with a `popovertarget` trigger for short, transient, light-dismiss panels. Give the trigger `popovertarget`, `aria-controls`, and an initial `aria-expanded="false"`, keep the panel inside the container-query host, and add an internal close button (`popovertargetaction="hide"`) that is hidden when wide. Sync `aria-expanded` on the trigger from `event.newState === 'open'` in the panel's `toggle` event.
 
-Scope any narrow `display` override on the `[popover]` element to `:is(:popover-open, .\:popover-open)` (`.\:popover-open` matches the popover polyfill) so closed popovers stay hidden. In the wide `@container` block, hide the trigger and internal close button with `display: none`, undo the UA `[popover]` chrome, and set the wide layout `display` using at least `(0, 2, 0)` specificity (such as `.panel[popover]`) so it overrides the UA `[popover]:not(:popover-open)` `display: none` rule:
+Scope any narrow `display` override on the `[popover]` element to `:popover-open` so closed popovers stay hidden. In the wide `@container` block, hide the trigger and internal close button with `display: none`, undo the UA `[popover]` chrome, and set the wide layout `display` using at least `(0, 2, 0)` specificity (such as `.panel[popover]`) so it overrides the UA `[popover]:not(:popover-open)` `display: none` rule:
 
 ```css
 @container (inline-size >= 500px) { /* Example threshold */
