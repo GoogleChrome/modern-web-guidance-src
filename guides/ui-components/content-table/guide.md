@@ -191,8 +191,10 @@ Use a native text input and toggle the `hidden` attribute on non-matching body r
 * Optionally highlight the matched text in visible rows with the CSS Custom Highlight API (see the {{ GUIDE_REF('highlight-text-ranges') }} guide) instead of wrapping matches in `<mark>`. This leaves the DOM and the screen reader output unchanged.
 
 ```html
-<label for="filter">Filter team</label>
-<input id="filter" type="search" aria-controls="people-table">
+<search>
+  <label for="filter">Filter team</label>
+  <input id="filter" type="search" aria-controls="people-table">
+</search>
 <p id="filter-status" role="status" class="visually-hidden"></p>
 ```
 
