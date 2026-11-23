@@ -378,6 +378,10 @@ describe('runLegacyScanCli', () => {
     assert.deepEqual(parsedSkillVer.targets, ['some/dir']);
     assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
 
+    const resTwoPaths = await runLegacyScanCli(['a/dir', '--unknown-flag', 'b/file.html', '--json']);
+    assert.equal(resTwoPaths.exitCode, 1);
+    assert.deepEqual(resTwoPaths.data?.targets, ['a/dir', 'b/file.html']);
+
     const resGuide = await runLegacyScanCli([
       '--guide',
       'dialog-focus',
@@ -1080,6 +1084,35 @@ describe('runLegacyScanCli', () => {
         assert.equal(res.exitCode, 0);
         assert.equal(res.data?.totalFindings, 2);
         assert.deepEqual(findingFiles(res.data), ['app/SignIn.html', 'extra.html']);
+      });
+    });
+
+    it('keeps findings that overlapping targets report differently for the same file', async () => {
+      await withTempDir(async (dir) => {
+        // Scanned from the root, libs/aos.js is a vendored library; scanned from libs/, it is source.
+        await mkdir(join(dir, 'libs'), { recursive: true });
+        await writeFile(join(dir, 'libs/aos.js'), "import AOS from 'aos';\n\n\nAOS.init();\n", 'utf8');
+        const findingLines = (data: ScanJsonOutput | undefined): string[] => {
+          assert.ok(data, 'Expected JSON data in result');
+          return data.guides
+            .flatMap((guide) => guide.rules.flatMap((rule) => rule.findings.map((f) => `${f.file}:${f.line}`)))
+            .sort();
+        };
+
+        const rootFirst = await runLegacyScanCli(['.', 'libs', '--json'], { cwd: dir });
+        const libsFirst = await runLegacyScanCli(['libs', '.', '--json'], { cwd: dir });
+        assert.deepEqual(findingLines(rootFirst.data), ['libs/aos.js:1', 'libs/aos.js:4']);
+        assert.deepEqual(findingLines(libsFirst.data), ['libs/aos.js:1', 'libs/aos.js:4']);
+      });
+    });
+
+    it('reports cwd-relative paths for a directory whose name starts with two dots', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['..foo/SignIn.html', 'app/SignIn.html']);
+
+        const res = await runLegacyScanCli(['..foo', 'app', ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.deepEqual(findingFiles(res.data), ['..foo/SignIn.html', 'app/SignIn.html']);
       });
     });
 

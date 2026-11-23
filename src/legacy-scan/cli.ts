@@ -446,7 +446,7 @@ export async function runLegacyScanCli(
   const scanTarget = async (resolved: string, isFile: boolean, stats: RepoScanStats): Promise<ScanFinding[]> => {
     const absolute = resolved.replace(/\\/g, '/');
     const rel = relative(baseCwd, resolved).replace(/\\/g, '/');
-    const isOutsideCwd = rel.startsWith('..');
+    const isOutsideCwd = rel === '..' || rel.startsWith('../');
     if (isFile) {
       const content = await readFile(resolved, 'utf8');
       const fileKey = rel && !isOutsideCwd ? rel : basename(resolved);
@@ -468,18 +468,18 @@ export async function runLegacyScanCli(
   };
 
   const findings: ScanFinding[] = [];
-  const seenFiles = new Set<string>();
+  /** Findings already reported by an earlier target; overlapping targets can scan the same file. */
+  const seenFindings = new Set<string>();
+  const findingKey = (f: ScanFinding): string => `${f.file}\0${f.line}\0${f.ruleId}`;
   let skippedDocsAndTestsCount = 0;
   let scannedFileCount = 0;
   let eligibleFileCount = 0;
   let truncatedByMaxFiles = false;
   for (const [resolved, { isFile }] of uniqueTargets) {
     const stats: RepoScanStats = {};
-    const targetFindings = (await scanTarget(resolved, isFile, stats)).filter((f) => !seenFiles.has(f.file));
-    for (const f of targetFindings) {
-      seenFiles.add(f.file);
-      findings.push(f);
-    }
+    const targetFindings = await scanTarget(resolved, isFile, stats);
+    findings.push(...targetFindings.filter((f) => !seenFindings.has(findingKey(f))));
+    for (const f of targetFindings) seenFindings.add(findingKey(f));
     skippedDocsAndTestsCount += stats.skippedDocsAndTestsCount ?? 0;
     scannedFileCount += stats.scannedFileCount ?? 0;
     eligibleFileCount += stats.eligibleFileCount ?? stats.scannedFileCount ?? 0;
