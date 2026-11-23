@@ -67,7 +67,7 @@ Scope any narrow `display` override on the `[popover]` element to `:is(:popover-
 }
 ```
 
-When crossing the threshold in the `ResizeObserver`, detect whether the popover is open via `el.matches(':popover-open') || el.classList.contains(':popover-open')`. Call `hidePopover()` when widening if it is open so it exits the top layer cleanly, call `showPopover()` when narrowing if a descendant held focus and it is not already open, and restore focus with `{ preventScroll: true }`.
+When crossing the threshold in the `ResizeObserver`, detect whether the popover is open via `el.matches(':popover-open')`. Call `hidePopover()` when widening if it is open so it exits the top layer cleanly, call `showPopover()` when narrowing if a descendant held focus and it is not already open, and restore focus with `{ preventScroll: true }`.
 
 ## Static to modal `<dialog>` drawer
 
