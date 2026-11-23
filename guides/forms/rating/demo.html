@@ -110,6 +110,12 @@
       background: var(--_stars-bg);
       mask: var(--_mask-empty) add, var(--_mask-clip) intersect, var(--_mask-filled);
 
+      &::-moz-meter-bar {
+        appearance: none;
+        border: 0;
+        background: none;
+      }
+
       &::-webkit-meter-bar,
       &::-webkit-meter-optimum-value,
       &::-webkit-meter-suboptimum-value,
@@ -216,11 +222,18 @@
         forced-color-adjust: none;
       }
 
-      meter.rating,
+      meter.rating {
+        forced-color-adjust: none;
+      }
+
       meter.rating::-webkit-meter-bar,
       input[type="range"].rating::-webkit-slider-runnable-track,
+      input[type="range"].rating::-webkit-slider-thumb {
+        forced-color-adjust: none;
+      }
+
+      meter.rating::-moz-meter-bar,
       input[type="range"].rating::-moz-range-track,
-      input[type="range"].rating::-webkit-slider-thumb,
       input[type="range"].rating::-moz-range-thumb {
         forced-color-adjust: none;
       }

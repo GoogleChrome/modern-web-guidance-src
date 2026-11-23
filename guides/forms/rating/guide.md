@@ -50,8 +50,12 @@ Define custom properties for `--star-size` (at least `3rem` so each half star is
 
     &::-webkit-meter-bar,
     &::-webkit-slider-runnable-track,
+    &::-webkit-slider-thumb {
+      forced-color-adjust: none;
+    }
+
+    &::-moz-meter-bar,
     &::-moz-range-track,
-    &::-webkit-slider-thumb,
     &::-moz-range-thumb {
       forced-color-adjust: none;
     }
@@ -86,7 +90,7 @@ To transition or animate the fill, mirror `--control-value` into a component-spe
 
 ## Read-only rating: a meter
 
-For an average or non-editable score, use `<meter class="rating" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` pointing at visible text that includes the score (e.g. `Average rating: 3.5 out of 5`; showing the number helps all users), an `aria-valuetext` repeating that score (e.g. `3.5 out of 5`) so screen readers do not announce a percentage such as "70 percent", and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Keep the visible text, `aria-valuetext` and `value` in sync when the score changes. Reset native styling on `meter.rating`, apply `--_stars-bg` and `--_stars-mask`, and clear the native WebKit meter pseudo-elements:
+For an average or non-editable score, use `<meter class="rating" min="0" max="5" value="3.5">` with an accessible name via `aria-labelledby` pointing at visible text that includes the score (e.g. `Average rating: 3.5 out of 5`; showing the number helps all users), an `aria-valuetext` repeating that score (e.g. `3.5 out of 5`) so screen readers do not announce a percentage such as "70 percent", and text fallback content inside `<meter>` stating the value (e.g. `3.5 out of 5`). Keep the visible text, `aria-valuetext` and `value` in sync when the score changes. Reset native styling on `meter.rating`, apply `--_stars-bg` and `--_stars-mask`, and clear the native WebKit and Firefox meter pseudo-elements:
 
 ```css
 meter.rating {
@@ -96,6 +100,12 @@ meter.rating {
   border: 0;
   background: var(--_stars-bg);
   mask: var(--_stars-mask);
+
+  &::-moz-meter-bar {
+    appearance: none;
+    border: 0;
+    background: none;
+  }
 
   &::-webkit-meter-bar,
   &::-webkit-meter-optimum-value,
