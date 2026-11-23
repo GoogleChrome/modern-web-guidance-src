@@ -193,7 +193,7 @@ Use a native text input and toggle the `hidden` attribute on non-matching body r
 ```html
 <search>
   <label for="filter">Filter team</label>
-  <input id="filter" type="search" aria-controls="people-table">
+  <input id="filter" type="search">
 </search>
 <p id="filter-status" role="status" class="visually-hidden"></p>
 ```
