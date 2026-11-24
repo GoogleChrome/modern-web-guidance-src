@@ -13,7 +13,9 @@ guides:
 
 Use this pattern when a user action reorders a list, card grid or table, with no item mid-interaction. It covers only applying the new order to the DOM (moving nodes, animating, announcing, performance), not how the order is computed or what triggers it.
 
-{# Column header semantics (`<button>` in `<th>`, `aria-sort`) belong to a sortable-table guide. This guide does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder. #}
+For sortable table column headers (`<button>` in `<th>`, `aria-sort`), see {{ GUIDE_REF("sortable-table") }}.
+
+{# This guide does not cover lists that re-sort because their data changed while an item is focused or being edited, or drag-to-reorder. #}
 
 ## Reorder the existing nodes
 
@@ -43,8 +45,6 @@ Use `view-transition-name: match-element` so you do not need to generate a name 
 
 MANDATORY: Always respect user preferences for reduced motion using the `prefers-reduced-motion` media query.
 
-{{ BASELINE_STATUS("view-transitions") }}
-
 ```css
 .item {
   /* Derives a unique name from each element's identity. */
@@ -66,9 +66,9 @@ function reorderWithTransition(list, orderedNodes) {
 
   // Prefer a transition scoped to the list: the rest of the page stays interactive.
   // Fall back to a document-level transition, then to a plain update.
-  if (list.startViewTransition) {
+  if ('startViewTransition' in list) {
     list.startViewTransition(update);
-  } else if (document.startViewTransition) {
+  } else if ('startViewTransition' in document) {
     document.startViewTransition(update);
   } else {
     update();
@@ -87,7 +87,7 @@ Reordering moves many nodes, but the user performed one action. **DO NOT** put `
 * Add one visually hidden `role="status"` element and set its text once per reorder, after starting the update. It must already be in the DOM before its text changes.
 * Name the result, not the mechanism: "Sorted by price, low to high, 24 items".
 * Keep focus on the control that triggered the change. Do not move focus into the list.
-* Make the current order readable from the control itself, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, radios) do this already; for toggle buttons use `aria-pressed` and label the current state, not the action.
+* Make the current order readable from the control that triggers it, so a screen reader user who lands on it hears what is selected without searching the page. Native controls (`<select>`, or radios in a `<fieldset>` with a `<legend>`) do this already.
 
 ```html
 <p id="reorder-status" role="status" class="visually-hidden"></p>
@@ -97,8 +97,8 @@ Reordering moves many nodes, but the user performed one action. **DO NOT** put `
 /* Hides the status text visually but keeps it available to screen readers. Do not use display: none. */
 .visually-hidden {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inline-size: 1px;
+  block-size: 1px;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
@@ -120,9 +120,17 @@ status.textContent = `Sorted by price, low to high, ${orderedNodes.length} items
 
 ## Fallbacks
 
+### View transitions
+
+{{ BASELINE_STATUS("view-transitions") }}
+
+### Element-scoped view transitions
+
 {{ BASELINE_STATUS("view-transitions-element-scoped") }}
 
 If your Baseline target does not support `element.startViewTransition()`, use `document.startViewTransition()`. If it does not support that either, reorder without animation. The list still sorts correctly and the announcement is unchanged, so this is graceful degradation: the animation enhances the use case but is not core to it.
+
+### `moveBefore()`
 
 {{ BASELINE_STATUS("move-before") }}
 
@@ -130,7 +138,7 @@ If your Baseline target does not support `moveBefore()`, use `append()`. DOM ord
 
 ```javascript
 function reorder(container, orderedNodes) {
-  const move = Object.hasOwn(Element.prototype, 'moveBefore')
+  const move = 'moveBefore' in container
     ? (node) => container.moveBefore(node, null)
     : (node) => container.append(node);
 
