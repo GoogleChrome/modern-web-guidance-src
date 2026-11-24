@@ -112,7 +112,13 @@ test.beforeEach(async ({ page }) => {
       constructor(source: string, options?: any) {
         this.__source = source;
         this.__id = ++window.__LM_LOGS__.sessionCounter;
-        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.create', source, options, sessionId: this.__id });
+        window.__LM_LOGS__.calls.push({
+          method: 'LanguageModel.create',
+          source,
+          options,
+          sessionId: this.__id,
+          userActivationActive: Boolean(navigator.userActivation?.isActive),
+        });
       }
       async prompt(text: any, options: any) {
         window.__LM_LOGS__.calls.push({ method: 'session.prompt', text, options, source: this.__source });
@@ -134,6 +140,10 @@ test.beforeEach(async ({ page }) => {
           yield 'response';
         })();
         return new Proxy(stream, {
+          get(target, prop) {
+            const val = Reflect.get(target, prop, target);
+            return typeof val === 'function' ? val.bind(target) : val;
+          },
           set(target, prop, value) {
             if (prop === 'onmessage') {
               window.__LM_LOGS__.calls.push({ method: 'session.promptStreaming.onmessage' });
@@ -490,4 +500,198 @@ test('15. contextUsage and contextWindow should be used', async ({ page }) => {
       logs.calls.some((c: any) => c.method === 'session.contextWindow.access')
     );
   }, { timeout: 1000 }).toBe(true);
+});
+
+test('16. downloadprogress events update the value of a <progress> element with an accessible name', async ({ page }) => {
+  await page.addInitScript(() => {
+    const origCreate = window.LanguageModel.create;
+    window.LanguageModel.availability = async () => {
+      window.__LM_LOGS__.calls.push({ method: 'LanguageModel.availability' });
+      return 'downloadable';
+    };
+    let progressCb: ((e: { loaded: number; total: number }) => void) | null = null;
+    let resolveCreate: ((session: any) => void) | null = null;
+    (window as any).__fireDownloadProgress = (loaded: number, total = 1) => {
+      progressCb?.({ loaded, total });
+    };
+    (window as any).__finishCreate = () => {
+      if (resolveCreate) {
+        const cb = resolveCreate;
+        resolveCreate = null;
+        return cb;
+      }
+      return null;
+    };
+    window.LanguageModel.create = async (options: any) => {
+      if (options?.monitor) {
+        const mockMonitor = {
+          addEventListener: (event: string, cb: any) => {
+            window.__LM_LOGS__.calls.push({ method: 'monitor.addEventListener', event });
+            if (event === 'downloadprogress') {
+              progressCb = cb;
+            }
+          }
+        };
+        options.monitor(mockMonitor);
+      }
+      const session = await new Promise<any>((resolve) => {
+        resolveCreate = resolve;
+        (window as any).__resolveDownloadCreate = () => origCreate({ ...options, monitor: undefined }).then(resolve);
+      });
+      return session;
+    };
+  });
+
+  await page.reload();
+  await waitForPageReady(page);
+
+  const downloadBtn = page.locator('#download-btn, button:has-text("Download"), #ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  await clickWhenReady(downloadBtn);
+
+  await page.waitForFunction(
+    () => (window as any).__LM_LOGS__?.calls?.some((c: any) => c.method === 'monitor.addEventListener' && c.event === 'downloadprogress'),
+    undefined,
+    { timeout: 1500 }
+  );
+
+  await page.evaluate(() => (window as any).__fireDownloadProgress(0.42, 1));
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const bars = Array.from(document.querySelectorAll('progress'));
+      return bars.map((bar) => {
+        const max = bar.max || 1;
+        const ariaLabel = (bar.getAttribute('aria-label') || '').trim();
+        const labelledBy = (bar.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean)
+          .map((id) => document.getElementById(id)?.textContent?.trim() || '').join(' ').trim();
+        const labelText = Array.from(bar.labels || []).map((l) => l.textContent?.trim() || '').join(' ').trim();
+        const title = (bar.getAttribute('title') || '').trim();
+        const accessibleName = ariaLabel || labelledBy || labelText || title;
+        return {
+          ratio: bar.value / max,
+          hasAccessibleName: accessibleName.length > 0,
+        };
+      });
+    });
+  }, { timeout: 1000 }).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        hasAccessibleName: true,
+        ratio: expect.closeTo(0.42, 2),
+      }),
+    ])
+  );
+
+  await page.evaluate(() => (window as any).__resolveDownloadCreate?.());
+});
+
+test('17. The element that receives streamed output has aria-live="polite" and was in the page when it loaded', async ({ page }) => {
+  await waitForPageReady(page);
+  await page.evaluate(() => {
+    (window as any).__initialPoliteRegions = Array.from(document.querySelectorAll('[aria-live="polite"]'));
+  });
+
+  await fillInputsIfEmpty(page);
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
+  await clickWhenReady(actionBtn);
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const regions: Element[] = (window as any).__initialPoliteRegions || [];
+      return regions.some((el) => {
+        const text = el.textContent || '';
+        return el.isConnected && el.getAttribute('aria-live') === 'polite' && text.includes('Mock streaming response');
+      });
+    });
+  }, { timeout: 1500 }).toBe(true);
+});
+
+test('18. The element that receives streamed output has aria-busy="true" while the response streams in', async ({ page }) => {
+  await page.addInitScript(() => {
+    const origCreate = window.LanguageModel.create;
+    const wrapSession = (session: any) => {
+      const origStream = session.promptStreaming.bind(session);
+      session.promptStreaming = (text: any, options: any) => {
+        origStream(text, options);
+        const gated = (async function* () {
+          yield 'Mock ';
+          await new Promise<void>((resolve) => {
+            (window as any).__releaseStream = resolve;
+          });
+          yield 'streaming ';
+          yield 'response';
+        })();
+        return gated;
+      };
+      return session;
+    };
+    window.LanguageModel.create = async (options: any) => {
+      const session = await origCreate(options);
+      return wrapSession(session);
+    };
+  });
+
+  await page.reload();
+  await fillInputsIfEmpty(page);
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
+  await clickWhenReady(actionBtn);
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const busyPolite = Array.from(document.querySelectorAll('[aria-live="polite"][aria-busy="true"]'));
+      return busyPolite.some((el) => (el.textContent || '').includes('Mock '));
+    });
+  }, { timeout: 1500 }).toBe(true);
+
+  await page.evaluate(() => (window as any).__releaseStream?.());
+});
+
+test('19. After a streamed response finishes, the element that received it has aria-busy="false"', async ({ page }) => {
+  await fillInputsIfEmpty(page);
+  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
+  await clickWhenReady(actionBtn);
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll('[aria-busy="false"]'));
+      return els.some((el) => (el.textContent || '').includes('Mock streaming response'));
+    });
+  }, { timeout: 1500 }).toBe(true);
+});
+
+test('20. When LanguageModel.availability() returns downloadable or downloading, LanguageModel.create() is only called during transient user activation', async ({ page }) => {
+  for (const state of ['downloadable', 'downloading'] as const) {
+    await page.addInitScript((availState) => {
+      window.LanguageModel.availability = async () => {
+        window.__LM_LOGS__.calls.push({ method: 'LanguageModel.availability' });
+        return availState;
+      };
+    }, state);
+
+    await page.reload();
+    await waitForPageReady(page);
+
+    await expectNever(
+      page,
+      () => window.__LM_LOGS__.calls.some((c: any) => c.method === 'LanguageModel.create' && c.source === 'window.LanguageModel'),
+      { forMs: 300, message: `LanguageModel.create() must not run without user activation when availability is "${state}"` }
+    );
+
+    const downloadBtn = page.locator('#download-btn, button:has-text("Download"), #ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+    await downloadBtn.click({ timeout: 2000 });
+
+    await expect.poll(async () => {
+      const calls = await page.evaluate(() => window.__LM_LOGS__.calls.filter((c: any) => c.method === 'LanguageModel.create' && c.source === 'window.LanguageModel'));
+      return calls.length;
+    }, { timeout: 1500 }).toBeGreaterThan(0);
+
+    const logs = await page.evaluate(() => window.__LM_LOGS__.calls);
+    const availCalls = logs.filter((c: any) => c.method === 'LanguageModel.availability');
+    const createCalls = logs.filter((c: any) => c.method === 'LanguageModel.create' && c.source === 'window.LanguageModel');
+    expect(availCalls.length).toBeGreaterThan(0);
+    expect(createCalls.every((c: any) => c.userActivationActive === true)).toBe(true);
+  }
 });
