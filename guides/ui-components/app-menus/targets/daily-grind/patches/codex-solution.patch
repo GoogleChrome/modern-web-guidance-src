@@ -273,10 +273,10 @@ index 66c9173..3e9f731 100644
 +    [role="menubar"] > button:hover,
 +    [role="menubar"] > button[aria-expanded="true"] {
 +      background: #6d4c41;
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
-+    nav :focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
++    nav :focus-visible { outline: 2px solid var(--accent-on-dark); outline-offset: -3px; }
 +
 +    .app-menu {
 +      position: fixed;

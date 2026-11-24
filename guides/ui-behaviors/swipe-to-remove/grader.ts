@@ -54,7 +54,7 @@ test('Track has overscroll-behavior-x none', async ({ page }) => {
   expect(overscrollBehaviorX).toBe('none');
 });
 
-test('Track hides its scrollbar with scrollbar-width none', async ({ page }) => {
+test('Track hides its scrollbar (for example with scrollbar-width: none)', async ({ page }) => {
   await loadPage(page);
   const scrollbarWidth = await page.evaluate(() => {
     const track = document.querySelector('.SwipeableList-track');
@@ -620,4 +620,145 @@ test('Projects focus affordance onto content element when track has focus', asyn
   expect(result).not.toBeNull();
   expect(result!.hasInitClass).toBe(true);
   expect(result!.outlineStyleFocused).not.toBe('none');
+});
+
+test('Every swipe action can also be performed without a swipe, both with a pointer and with the keyboard', async ({ page }) => {
+  await loadPage(page);
+  const firstItem = page.locator('.SwipeableList-item').first();
+  const buttons = firstItem.locator('button');
+  expect(await buttons.count()).toBeGreaterThan(0);
+
+  await firstItem.evaluate((el) => { el.id = 'pointer-remove-target'; });
+  await buttons.first().click();
+  await expect.poll(async () => page.evaluate(() => !document.getElementById('pointer-remove-target'))).toBe(true);
+
+  const nextItem = page.locator('.SwipeableList-item').first();
+  const nextButton = nextItem.locator('button').first();
+  expect(await nextButton.count()).toBeGreaterThan(0);
+  await nextItem.evaluate((el) => { el.id = 'keyboard-remove-target'; });
+  await nextButton.focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => !document.getElementById('keyboard-remove-target'))).toBe(true);
+});
+
+test('Each control that performs a swipe action without a swipe does the same thing as that swipe', async ({ page }) => {
+  await loadPage(page);
+  const btnCount = await page.locator('.SwipeableList-item').first().locator('button').count();
+  expect(btnCount).toBeGreaterThan(0);
+
+  for (let i = 0; i < btnCount; i++) {
+    if (i > 0) await loadPage(page);
+    const firstItem = page.locator('.SwipeableList-item').first();
+    const btn = firstItem.locator('button').nth(i);
+    const direction = await btn.evaluate(
+      (el) => el.getAttribute('data-direction') || el.getAttribute('data-action-direction') || '',
+    );
+    expect(['left', 'right']).toContain(direction);
+
+    const statusEl = page.locator('[role="status"]').first();
+    expect(await statusEl.count()).toBeGreaterThan(0);
+
+    // Perform button action via click
+    await firstItem.evaluate((el) => { el.id = 'btn-action-item'; });
+    await btn.click();
+    await expect.poll(async () => page.evaluate(() => !document.getElementById('btn-action-item'))).toBe(true);
+    const btnStatus = (await statusEl.textContent() ?? '').trim();
+    expect(btnStatus.length).toBeGreaterThan(0);
+
+    // Reload and compare with matching swipe direction on the first item
+    await loadPage(page);
+    const swipeItem = page.locator('.SwipeableList-item').first();
+    await swipeItem.evaluate((el, dir) => {
+      el.id = 'swipe-action-item';
+      const track = el.querySelector('.SwipeableList-track') as HTMLElement;
+      if (track) {
+        track.style.scrollSnapType = 'none';
+        const delta = Math.round(track.clientWidth * 0.85);
+        track.scrollLeft = dir === 'right' ? track.scrollLeft + delta : track.scrollLeft - delta;
+      }
+    }, direction);
+    await expect.poll(async () => page.evaluate(() => !document.getElementById('swipe-action-item'))).toBe(true);
+    const swipeStatus = (await page.locator('[role="status"]').first().textContent() ?? '').trim();
+    expect(swipeStatus).toBe(btnStatus);
+  }
+});
+
+test('Each non-swipe action control has an accessible name that includes its item text', async ({ page }) => {
+  await loadPage(page);
+  const items = page.locator('.SwipeableList-item');
+  const count = await items.count();
+  expect(count).toBeGreaterThan(0);
+
+  const checkCount = Math.min(count, 3);
+  for (let i = 0; i < checkCount; i++) {
+    const item = items.nth(i);
+    const labelText = await item.evaluate((el) => {
+      const label = el.querySelector('.SwipeableList-label');
+      if (label) return (label.textContent ?? '').trim();
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('button').forEach((b) => b.remove());
+      return (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+    });
+    expect(labelText.length).toBeGreaterThan(0);
+
+    const buttons = item.locator('button');
+    const btnCount = await buttons.count();
+    expect(btnCount).toBeGreaterThan(0);
+    const escaped = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (let j = 0; j < btnCount; j++) {
+      await expect(buttons.nth(j)).toHaveAccessibleName(new RegExp(escaped, 'i'));
+    }
+  }
+});
+
+test('After the item containing focus is removed, focus is on an element inside the list or on the list heading, not on body', async ({ page }) => {
+  await loadPage(page);
+  const firstItem = page.locator('.SwipeableList-item').first();
+  const btn = firstItem.locator('button').first();
+  expect(await btn.count()).toBeGreaterThan(0);
+
+  await firstItem.evaluate((el) => { el.id = 'focused-remove-item'; });
+  await btn.focus();
+  await page.keyboard.press('Enter');
+
+  await expect.poll(async () => page.evaluate(() => !document.getElementById('focused-remove-item'))).toBe(true);
+
+  const focusValid = await page.evaluate(() => {
+    const active = document.activeElement;
+    if (!active || active === document.body) return false;
+    const list = document.querySelector('.SwipeableList, ul');
+    const headingId = list?.getAttribute('aria-labelledby');
+    const heading = headingId ? document.getElementById(headingId) : document.querySelector('h1, h2, h3');
+    return Boolean(list?.contains(active) || active === heading || heading?.contains(active));
+  });
+  expect(focusValid).toBe(true);
+});
+
+test('After an item is removed, an element with role="status" contains text naming the removed item', async ({ page }) => {
+  await loadPage(page);
+  const statusEl = page.locator('[role="status"]').first();
+  expect(await statusEl.count()).toBeGreaterThan(0);
+
+  const firstItem = page.locator('.SwipeableList-item').first();
+  const labelText = await firstItem.evaluate((el) => {
+    const label = el.querySelector('.SwipeableList-label');
+    return (label?.textContent ?? '').trim();
+  });
+  expect(labelText.length).toBeGreaterThan(0);
+
+  await firstItem.locator('button').first().click();
+  await expect(statusEl).toContainText(labelText);
+});
+
+test('The <ul> either has a list-style property value other than none or has the role="list" attribute', async ({ page }) => {
+  await loadPage(page);
+  const list = page.locator('ul.SwipeableList, ul').first();
+  expect(await list.count()).toBeGreaterThan(0);
+
+  const validListSemantics = await list.evaluate((el) => {
+    if (el.getAttribute('role') === 'list') return true;
+    const style = window.getComputedStyle(el);
+    return style.listStyleType !== 'none';
+  });
+  expect(validListSemantics).toBe(true);
 });

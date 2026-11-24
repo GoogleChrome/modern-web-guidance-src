@@ -88,7 +88,7 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     }
   });
 
-  test('Focusing and blurring an empty required field without typing keeps the field in a neutral state, while interacting with the field (such as typing and clearing it) and blurring triggers the :user-invalid error state', async ({ page }) => {
+  test('Focusing and then leaving an untouched required field leaves it without an error state', async ({ page }) => {
     const input = page.locator('form input[required]').first();
     expect(await input.count()).toBeGreaterThan(0);
     const initialStyle = await getStyling(input);
@@ -99,6 +99,12 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     const afterBareBlurStyle = await getStyling(input);
     expect(afterBareBlurStyle.hasUserInvalid).toBe(false);
     expect(differs(initialStyle, afterBareBlurStyle)).toBe(false);
+  });
+
+  test('Interacting with a required field (typing and clearing it) and blurring triggers the error state', async ({ page }) => {
+    const input = page.locator('form input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
+    const initialStyle = await getStyling(input);
 
     // Interacting with the field (typing and deleting) and blurring must trigger the error state
     await input.focus();
@@ -214,8 +220,23 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
         );
       };
 
-      const errId = el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
-      if (errId && isVisible(document.getElementById(errId))) return true;
+      const explicitErrId = el.getAttribute('aria-errormessage');
+      if (explicitErrId && explicitErrId.split(/\s+/).filter(Boolean).some((id) => isVisible(document.getElementById(id)))) {
+        return true;
+      }
+
+      const describedBy = el.getAttribute('aria-describedby');
+      if (describedBy) {
+        const hasErrorCandidate = describedBy.split(/\s+/).filter(Boolean).some((id) => {
+          const candidate = document.getElementById(id);
+          return Boolean(
+            candidate &&
+            (candidate.className.includes('error') || id.includes('error') || candidate.getAttribute('role') === 'alert') &&
+            isVisible(candidate)
+          );
+        });
+        if (hasErrorCandidate) return true;
+      }
 
       const next = el.nextElementSibling;
       if (next && next.matches('.error-msg, .error-message, [role="alert"], [id*="error"]')) {
@@ -233,5 +254,126 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     });
 
     expect(hasInputStyleChange && hasVisibleErrorMsg).toBe(true);
+  });
+
+  test('After Submit is clicked with empty required fields, focus is on the first of them', async ({ page }) => {
+    const inputs = page.locator('form input[required]');
+    expect(await inputs.count()).toBeGreaterThan(0);
+    const submitBtn = page.locator('button[type="submit"]');
+    expect(await submitBtn.count()).toBeGreaterThan(0);
+
+    await submitBtn.focus();
+    await submitBtn.click();
+
+    const isFirstFocused = await inputs.first().evaluate((el) => document.activeElement === el);
+    expect(isFirstFocused).toBe(true);
+  });
+
+  test('While a field has aria-invalid="true", its accessible description includes its visible error text', async ({ page }) => {
+    const input = page.locator('form input[required]').first();
+    expect(await input.count()).toBeGreaterThan(0);
+
+    await input.focus();
+    await page.keyboard.press('a');
+    await page.keyboard.press('Backspace');
+    await input.blur();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+
+    const errorText = await input.evaluate((el: HTMLInputElement) => {
+      const explicitErr = (el.dataset.error || el.getAttribute('aria-errormessage') || '')
+        .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)).find(Boolean) ?? null;
+      const describedErr = (el.getAttribute('aria-describedby') || '')
+        .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
+        .find((node) => node && (node.className.includes('error') || node.id.includes('error') || node.getAttribute('role') === 'alert')) ?? null;
+      const errEl = explicitErr ?? describedErr ??
+        (el.parentElement?.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]') as HTMLElement | null) ?? null;
+      if (!errEl) return '';
+      const s = window.getComputedStyle(errEl);
+      if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return '';
+      // Strip decorative icon elements with aria-hidden or role="img" so we match the core error message text
+      const clone = errEl.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
+      return (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+    });
+
+    expect(errorText.length).toBeGreaterThan(0);
+    const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(input).toHaveAccessibleDescription(new RegExp(escaped));
+  });
+
+  test('On page load, no field\'s accessible description includes its error text', async ({ page }) => {
+    const inputs = page.locator('form input[required], form select[required], form textarea[required]');
+    const count = await inputs.count();
+    expect(count).toBeGreaterThan(0);
+
+    const preLoad = await inputs.evaluateAll((els) => {
+      return els.map((el, idx) => {
+        const htmlEl = el as HTMLElement;
+        const errId = htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage');
+        let errEl = errId ? document.getElementById(errId) : null;
+        if (!errEl && htmlEl.parentElement) {
+          errEl = htmlEl.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
+        }
+        let staticErrorText = '';
+        if (errEl) {
+          const clone = errEl.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
+          staticErrorText = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+        }
+        const describedIds = (htmlEl.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const describedText = describedIds
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return { idx, staticErrorText, describedText };
+      });
+    });
+
+    expect(preLoad.length).toBeGreaterThan(0);
+    for (const { idx, staticErrorText } of preLoad) {
+      if (!staticErrorText) continue;
+      const escaped = staticErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(inputs.nth(idx)).not.toHaveAccessibleDescription(new RegExp(escaped));
+    }
+
+    // Pair with invalidation check: submitting empty required fields must surface visible error text and wire accessible description
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.click();
+
+    const postInvalid = await inputs.evaluateAll((els) => {
+      return els.map((el, idx) => {
+        const htmlEl = el as HTMLElement;
+        const explicitErr = (htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage') || '')
+          .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)).find(Boolean) ?? null;
+        const describedErr = (htmlEl.getAttribute('aria-describedby') || '')
+          .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
+          .find((node) => node && (node.className.includes('error') || node.id.includes('error') || node.getAttribute('role') === 'alert')) ?? null;
+        const errEl = explicitErr ?? describedErr ??
+          (htmlEl.parentElement?.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]') as HTMLElement | null) ?? null;
+        let errorText = '';
+        if (errEl) {
+          const s = window.getComputedStyle(errEl);
+          if (s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0') {
+            const clone = errEl.cloneNode(true) as HTMLElement;
+            clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
+            errorText = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+          }
+        }
+        return {
+          idx,
+          isInvalid: htmlEl.getAttribute('aria-invalid') === 'true',
+          errorText,
+        };
+      }).filter((item) => item.isInvalid && item.errorText.length > 0);
+    });
+
+    expect(postInvalid.length).toBeGreaterThan(0);
+    const preLoadByIdx = new Map(preLoad.map((p) => [p.idx, p.describedText]));
+    for (const { idx, errorText } of postInvalid) {
+      expect(preLoadByIdx.get(idx) ?? '').not.toContain(errorText);
+      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(inputs.nth(idx)).toHaveAccessibleDescription(new RegExp(escaped));
+    }
   });
 });

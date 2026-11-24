@@ -184,4 +184,77 @@ test.describe('Pull-to-Reveal Grader', () => {
     expect(scrollStatus?.hasScrolled).toBe(true);
     expect(scrollStatus?.topDiff).toBeLessThan(5);
   });
+
+  test('Each pull to reveal interaction has an associated trigger <button> for revealing the hidden content', async ({ page }) => {
+    const checkHiddenElState = () =>
+      page.evaluate(() => {
+        const snapPoints = Array.from(document.querySelectorAll('*')).filter((el) => {
+          const style = window.getComputedStyle(el);
+          return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+        });
+        if (snapPoints.length < 2) return null;
+        const hiddenEl = snapPoints[0] as HTMLElement;
+        const target = snapPoints[1] as HTMLElement;
+        let container: HTMLElement | null = target.parentElement;
+        while (container) {
+          const style = window.getComputedStyle(container);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') break;
+          container = container.parentElement;
+        }
+        if (!container) {
+          container = (document.scrollingElement || document.documentElement) as HTMLElement;
+        }
+        const isRoot = container === document.documentElement || container === document.scrollingElement;
+        const cRect = isRoot
+          ? { top: 0, bottom: window.innerHeight }
+          : container.getBoundingClientRect();
+        const hRect = hiddenEl.getBoundingClientRect();
+        return {
+          startsOutOfView: hRect.bottom <= cRect.top + 5,
+          isRevealed: hRect.bottom > cRect.top + 5 && hRect.top < cRect.bottom,
+        };
+      });
+
+    const initial = await checkHiddenElState();
+    expect(initial).not.toBeNull();
+    expect(initial?.startsOutOfView).toBe(true);
+
+    const visibleButtons = page.locator('button:visible');
+    const buttonCount = await visibleButtons.count();
+    expect(buttonCount).toBeGreaterThan(0);
+
+    const candidates: Array<{ index: number; accessibleName: string; preferred: boolean }> = [];
+    for (let i = 0; i < buttonCount; i++) {
+      const info = await visibleButtons.nth(i).evaluate((btn) => {
+        const ariaLabel = (btn.getAttribute('aria-label') || '').trim();
+        const labelledBy = (btn.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean)
+          .map((id) => document.getElementById(id)?.textContent?.trim() || '').join(' ').trim();
+        const text = (btn.textContent || '').trim();
+        const accessibleName = ariaLabel || labelledBy || text;
+        const hint = `${btn.id} ${btn.className} ${accessibleName}`;
+        return {
+          accessibleName,
+          preferred: /search|reveal|pull|show|filter|refresh|top/i.test(hint),
+        };
+      });
+      candidates.push({ index: i, ...info });
+    }
+    candidates.sort((a, b) => Number(b.preferred) - Number(a.preferred));
+
+    let revealedByNamedButton = false;
+    for (const candidate of candidates) {
+      if (!candidate.accessibleName) continue;
+      await visibleButtons.nth(candidate.index).click();
+      const revealed = await expect.poll(async () => (await checkHiddenElState())?.isRevealed ?? false, { timeout: 600 })
+        .toBe(true)
+        .then(() => true)
+        .catch(() => false);
+      if (revealed) {
+        revealedByNamedButton = true;
+        break;
+      }
+    }
+
+    expect(revealedByNamedButton).toBe(true);
+  });
 });

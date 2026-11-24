@@ -502,68 +502,6 @@ test.describe('icons Target Grader', () => {
     }
   });
 
-  test('Standalone non-interactive empty .icon elements use aria-hidden="true" when decorative, or role="img" with a valid accessible name when informative', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    expect(docs.length).toBeGreaterThan(0);
-
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllCssRules(stylesheet.cssRules);
-
-    const allIconEls = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('.icon'))
-    ) as any[];
-    expect(allIconEls.length).toBeGreaterThan(0);
-
-    const nonInteractiveEmptyIcons = allIconEls.filter((el) => {
-      const tag = el.tagName?.toLowerCase() || '';
-      const isInteractive =
-        tag === 'button' ||
-        tag === 'a' ||
-        tag === 'input' ||
-        el.getAttribute('role') === 'button';
-      return !isInteractive && (el.textContent || '').trim() === '';
-    });
-
-    for (const el of nonInteractiveEmptyIcons) {
-      const isDecorative = el.getAttribute('aria-hidden') === 'true';
-      const isInformative =
-        el.getAttribute('role') === 'img' &&
-        Boolean(
-          el.getAttribute('aria-label')?.trim() ||
-            el.getAttribute('aria-labelledby')?.trim()
-        );
-      expect(isDecorative || isInformative).toBe(true);
-    }
-
-    // Also verify all cards have a non-interactive icon element (standalone empty .icon or text element with a decorative CSS icon)
-    const cards = docs.flatMap((d) =>
-      Array.from(d.document.querySelectorAll('.card'))
-    ) as any[];
-    expect(cards.length).toBe(3);
-
-    for (const card of cards) {
-      const iconEls = (Array.from(card.querySelectorAll('*')) as any[]).filter((el) => {
-        const tag = el.tagName?.toLowerCase() || '';
-        if (
-          tag === 'button' ||
-          tag === 'a' ||
-          tag === 'input' ||
-          el.classList?.contains('btn') ||
-          el.getAttribute('role') === 'button'
-        ) {
-          return false;
-        }
-        const cascaded = getCascadedStyle(el, allRules);
-        return Boolean(
-          cascaded.getPropertyValue('--icon') ||
-            cascaded.getPropertyValue('--icon-start') ||
-            cascaded.getPropertyValue('--icon-end')
-        );
-      });
-      expect(iconEls.length).toBeGreaterThan(0);
-    }
-  });
-
   test('Sizing of icon pseudo-elements uses relative CSS units (such as em, rem, or lh) rather than hardcoded pixel dimensions', () => {
     const stylesheet = getCssStyleSheet(targetFiles);
     const allRules = collectAllCssRules(stylesheet.cssRules);

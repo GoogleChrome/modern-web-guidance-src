@@ -1,0 +1,12 @@
+- Before using the GPU path, the implementation verifies that `navigator.gpu.requestAdapter()` resolves to a non-null adapter.
+- The compute shader skips invocations whose index is greater than or equal to the element count, using a count passed in a buffer or `arrayLength()`.
+- The dispatched workgroups cover every element, including a partial last workgroup.
+- Results are copied from a buffer with `GPUBufferUsage.STORAGE` usage to a separate buffer with `GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST` usage before JavaScript reads them.
+- Mapped data is copied or processed before `unmap()` is called.
+- Every `device.queue.writeBuffer()` call uses a byte size that is a multiple of 4.
+- Repeated runs reuse the same `GPUDevice`, compute pipeline, and buffers.
+- GPU device creation, data upload, and readback run in a dedicated Web Worker rather than on the main thread.
+- When an error scope or the `uncapturederror` event reports a GPU validation error, the calculation returns a result from the CPU fallback.
+- A `device.lost` handler switches the calculation to the CPU fallback.
+- When `webgpu` is unsupported, the calculation returns a result from the CPU fallback.
+- When `navigator.gpu.requestAdapter()` resolves to `null`, the calculation returns a result from the CPU fallback.

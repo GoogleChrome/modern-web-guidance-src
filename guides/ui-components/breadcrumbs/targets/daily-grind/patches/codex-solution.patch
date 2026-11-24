@@ -25,10 +25,10 @@ index 0000000..1bb4c00
 +await mkdir(outputDirectory, { recursive: true });
 +await writeFile(new URL('index.html', outputDirectory), html);
 diff --git a/index.html b/index.html
-index 66c9173..fc27ca4 100644
+index 5db718e..6e9cbcd 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
      }
  
      /* Navigation */
@@ -37,7 +37,7 @@ index 66c9173..fc27ca4 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -46,23 +46,23 @@
+@@ -48,23 +48,23 @@
        letter-spacing: 1px;
      }
  
@@ -62,10 +62,10 @@ index 66c9173..fc27ca4 100644
  
 -    nav a:hover {
 +    .site-nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -93,6 +93,72 @@
+@@ -95,6 +95,72 @@
        margin-bottom: 1rem;
      }
  
@@ -138,7 +138,7 @@ index 66c9173..fc27ca4 100644
      /* Content Sections */
      .container {
        max-width: 1100px;
-@@ -157,7 +223,7 @@
+@@ -159,7 +225,7 @@
  
  <body>
  
@@ -147,7 +147,7 @@ index 66c9173..fc27ca4 100644
      <div class="logo">THE DAILY GRIND</div>
      <ul>
        <li><a href="/menu">Menu</a></li>
-@@ -174,6 +240,12 @@
+@@ -176,6 +242,12 @@
      <a href="/order-online" class="btn">Order Now</a>
    </header>
  
@@ -160,7 +160,7 @@ index 66c9173..fc27ca4 100644
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
-@@ -207,6 +279,54 @@
+@@ -209,6 +281,54 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

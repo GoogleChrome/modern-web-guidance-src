@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..20c3c8e 100644
+index 5db718e..662b905 100644
 --- a/index.html
 +++ b/index.html
-@@ -27,17 +27,52 @@
+@@ -29,17 +29,58 @@
        background-color: var(--light);
      }
  
@@ -30,12 +30,18 @@ index 66c9173..20c3c8e 100644
 +      border-radius: 4px;
 +      text-decoration: none;
 +      font-weight: bold;
-+      border: 2px solid var(--accent);
++      border: 2px solid var(--accent-on-dark);
 +    }
 +
 +    :where(a:any-link, button):focus-visible {
 +      outline: 3px solid var(--accent);
 +      outline-offset: 3px;
++    }
++
++    header > nav :where(a:any-link, button):focus-visible,
++    .hero :where(a:any-link, button):focus-visible,
++    .skip-link:focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
      /* Navigation */
@@ -59,7 +65,7 @@ index 66c9173..20c3c8e 100644
      }
  
      .logo {
-@@ -46,23 +81,26 @@
+@@ -48,23 +83,26 @@
        letter-spacing: 1px;
      }
  
@@ -87,10 +93,10 @@ index 66c9173..20c3c8e 100644
  
 -    nav a:hover {
 +    header > nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -105,6 +143,7 @@
+@@ -107,6 +145,7 @@
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
        gap: 20px;
        margin-top: 20px;
@@ -98,7 +104,7 @@ index 66c9173..20c3c8e 100644
      }
  
      .card {
-@@ -129,6 +168,8 @@
+@@ -131,6 +170,8 @@
        border-radius: 5px;
        margin-top: 15px;
        transition: background 0.3s;
@@ -107,7 +113,7 @@ index 66c9173..20c3c8e 100644
      }
  
      .btn:hover {
-@@ -144,66 +185,97 @@
+@@ -146,66 +187,97 @@
  
      .footer-links {
        margin-bottom: 20px;

@@ -100,9 +100,53 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
-  test('The drawer element uses the popover API with popover="manual"', async ({ page }) => {
-    const { drawer } = await getElements(page);
-    await expect(drawer).toHaveAttribute('popover', 'manual');
+  test('The drawer element has an accessible name (via aria-label or aria-labelledby)', async ({ page }) => {
+    const { trigger, drawer } = await getElements(page);
+    const hasLabelAttr = await drawer.evaluate((el) => {
+      const ariaLabel = el.getAttribute('aria-label')?.trim();
+      if (ariaLabel) return true;
+      const labelledBy = el.getAttribute('aria-labelledby')?.trim();
+      if (!labelledBy) return false;
+      return labelledBy.split(/\s+/).some((id) => (document.getElementById(id)?.textContent ?? '').trim().length > 0);
+    });
+    expect(hasLabelAttr).toBe(true);
+
+    await clickTrigger(trigger);
+    await expect(drawer).toBeVisible();
+    await expect(drawer).toHaveAccessibleName(/.+/);
+  });
+
+  test('Either the drawer is a <dialog> opened with showModal(), or it uses popover="manual" with role="dialog" while acting as a drawer', async ({ page }) => {
+    const { trigger, drawer } = await getElements(page);
+    await clickTrigger(trigger);
+    await expect(drawer).toBeVisible();
+    await waitForOpen(page, trigger);
+
+    const validPattern = await drawer.evaluate((el) => {
+      if (el.matches('dialog:modal')) return true;
+      return el.getAttribute('popover') === 'manual' && el.getAttribute('role') === 'dialog';
+    });
+    expect(validPattern).toBe(true);
+  });
+
+  test('Either the drawer is a modal <dialog> element, or it has aria-modal="true" while open and removes aria-modal when closed', async ({ page }) => {
+    const { trigger, drawer } = await getElements(page);
+    await clickTrigger(trigger);
+    await expect(drawer).toBeVisible();
+    await waitForOpen(page, trigger);
+
+    const openValid = await drawer.evaluate((el) => {
+      return el.matches('dialog:modal') || el.getAttribute('aria-modal') === 'true';
+    });
+    expect(openValid).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(drawer).not.toBeVisible();
+
+    const closedValid = await drawer.evaluate((el) => {
+      return el.tagName === 'DIALOG' || !el.hasAttribute('aria-modal');
+    });
+    expect(closedValid).toBe(true);
   });
 
   test('When the drawer is open, a dimmed backdrop (the ::backdrop pseudo-element) is visible behind it that covers the rest of the page', async ({ page }) => {
@@ -175,6 +219,18 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await expect(drawer).not.toBeVisible();
   });
 
+  test('Clicking the Close button while the drawer is open closes the drawer', async ({ page }) => {
+    const { trigger, drawer } = await getElements(page);
+    await clickTrigger(trigger);
+    await expect(drawer).toBeVisible();
+    await waitForOpen(page, trigger);
+
+    const closeBtn = drawer.locator('#drawer-close, button[aria-label*="close" i], button:has-text("Close")').first();
+    expect(await closeBtn.count()).toBeGreaterThan(0);
+    await closeBtn.click();
+    await expect(drawer).not.toBeVisible();
+  });
+
   test('Pressing the Escape key while the drawer is open closes the drawer', async ({ page }) => {
     const { trigger, drawer } = await getElements(page);
     await clickTrigger(trigger);
@@ -184,74 +240,61 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await expect(drawer).not.toBeVisible();
   });
 
-  test('The main page content has the inert attribute applied while the drawer is open', async ({ page }) => {
+  test('While the drawer is open, content outside it cannot be focused or interacted with, and it becomes focusable and interactive again after the drawer closes', async ({ page }) => {
     const { trigger, drawer } = await getElements(page);
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
 
-    const isModalDialog = await drawer.evaluate((el) => el.matches('dialog:modal'));
-    if (isModalDialog) return;
-
-    const main = page.locator('main');
-    const hasInertAncestor = (el: any) => {
-      let current = el;
-      while (current) {
-        if (current.inert || current.hasAttribute('inert')) return true;
-        current = current.parentElement;
+    const blockedWhileOpen = await page.evaluate(() => {
+      const triggerEl = document.querySelector('button[aria-expanded], button[aria-controls]') as HTMLElement | null;
+      const drawerEl = document.querySelector('dialog, [popover], [class*="drawer" i]') as HTMLElement | null;
+      if (!triggerEl || !drawerEl) return false;
+      const before = document.activeElement;
+      triggerEl.focus();
+      const after = document.activeElement;
+      // Either trigger could not take focus (modal dialog top-layer / inert), or main/trigger has inert ancestor
+      let curr: HTMLElement | null = triggerEl;
+      let hasInert = false;
+      while (curr) {
+        if (curr.inert || curr.hasAttribute('inert')) {
+          hasInert = true;
+          break;
+        }
+        curr = curr.parentElement;
       }
-      return false;
-    };
+      return (after !== triggerEl && drawerEl.contains(before)) || hasInert || drawerEl.matches('dialog:modal');
+    });
+    expect(blockedWhileOpen).toBe(true);
 
-    if (await main.count() > 0) {
-      const isInert = await main.evaluate(hasInertAncestor);
-      expect(isInert).toBe(true);
-    } else {
-      const parent = trigger.locator('..');
-      const isInert = await parent.evaluate(hasInertAncestor);
-      expect(isInert).toBe(true);
-    }
-  });
-
-  test('The main page content no longer has the inert attribute after the drawer is closed', async ({ page }) => {
-    const { trigger, drawer } = await getElements(page);
-    await clickTrigger(trigger);
-    await expect(drawer).toBeVisible();
-    await waitForOpen(page, trigger);
     await page.keyboard.press('Escape');
     await expect(drawer).not.toBeVisible();
-    
-    const main = page.locator('main');
-    const hasInertAncestor = (el: any) => {
-      let current = el;
-      while (current) {
-        if (current.inert || current.hasAttribute('inert')) return true;
-        current = current.parentElement;
-      }
-      return false;
-    };
 
-    if (await main.count() > 0) {
-      const isInert = await main.evaluate(hasInertAncestor);
-      expect(isInert).toBe(false);
-    } else {
-      const parent = trigger.locator('..');
-      const isInert = await parent.evaluate(hasInertAncestor);
-      expect(isInert).toBe(false);
-    }
+    const interactiveAfterClose = await page.evaluate(() => {
+      const triggerEl = document.querySelector('button[aria-expanded], button[aria-controls]') as HTMLElement | null;
+      if (!triggerEl) return false;
+      let curr: HTMLElement | null = triggerEl;
+      while (curr) {
+        if (curr.inert || curr.hasAttribute('inert')) return false;
+        curr = curr.parentElement;
+      }
+      triggerEl.focus();
+      return document.activeElement === triggerEl;
+    });
+    expect(interactiveAfterClose).toBe(true);
   });
 
-  test('Keyboard focus is moved inside the drawer after it opens', async ({ page }) => {
+  test('The drawer\'s close button has an autofocus attribute so that it receives focus when the drawer is opened', async ({ page }) => {
     const { trigger, drawer } = await getElements(page);
+    const closeBtn = drawer.locator('#drawer-close, button[aria-label*="close" i], button:has-text("Close")').first();
+    expect(await closeBtn.count()).toBeGreaterThan(0);
+    await expect(closeBtn).toHaveAttribute('autofocus', '');
+
     await clickTrigger(trigger);
     await expect(drawer).toBeVisible();
     await waitForOpen(page, trigger);
-    
-    const isFocusInside = await drawer.evaluate((el) => {
-      const active = document.activeElement;
-      return el === active || el.contains(active);
-    });
-    expect(isFocusInside).toBe(true);
+
+    await expect(closeBtn).toBeFocused();
   });
 
   test('After the drawer is closed, the menu trigger button\'s aria-expanded attribute returns to false', async ({ page }) => {
@@ -263,6 +306,18 @@ test.describe(`Swipeable Drawer Expectations: ${demoName}`, () => {
     await expect(drawer).not.toBeVisible();
     
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('After the drawer is closed, focus moves back to the menu trigger button', async ({ page }) => {
+    const { trigger, drawer } = await getElements(page);
+    await trigger.focus();
+    await clickTrigger(trigger);
+    await expect(drawer).toBeVisible();
+    await waitForOpen(page, trigger);
+    await page.keyboard.press('Escape');
+    await expect(drawer).not.toBeVisible();
+
+    await expect(trigger).toBeFocused();
   });
 
   test('The drawer\'s horizontal scroll container uses CSS scroll snap with scroll-snap-type: x mandatory', async ({ page }) => {

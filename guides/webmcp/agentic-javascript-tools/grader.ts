@@ -152,6 +152,19 @@ test.describe('With mocked WebMCP API', () => {
     expect(isExecuteAFunction).toBe(true);
   });
 
+  // Test: "Tool names contain 1 to 128 ASCII letters, digits, underscores (_), hyphens (-), or periods (.)."
+  test('Tool names contain 1 to 128 ASCII letters, digits, underscores, hyphens, or periods', async ({ page }) => {
+    const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
+    expect(registerCalls).toBeDefined();
+    expect(registerCalls.length).toBeGreaterThan(0);
+
+    for (const callArgs of registerCalls) {
+      const toolDef = callArgs[0];
+      expect(typeof toolDef?.name).toBe('string');
+      expect(toolDef.name).toMatch(/^[A-Za-z0-9_.-]{1,128}$/);
+    }
+  });
+
   // Test 4: "The inputSchema is a valid JSON Schema object with property descriptions."
   test('The inputSchema is a valid JSON Schema object with property descriptions', async ({ page }) => {
     const registerCalls = await page.evaluate(() => (window as any).__webmcp_register_calls);
