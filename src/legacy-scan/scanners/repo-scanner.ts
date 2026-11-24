@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, type Dirent } from 'node:fs';
 import { lstat, open, readdir, realpath } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { ScanFinding, ScanRule } from '../schema.ts';
 import {
@@ -56,11 +56,11 @@ const execFileAsync = promisify(execFile);
 const GIT_SYMLINK_MODE = '120000';
 
 /**
- * Returns `true` when `candidatePath` sits at or inside `rootPath`.
+ * Returns `true` when normalized `candidatePath` sits at or inside normalized `rootPath`.
  */
 export function isPathWithinRoot(candidatePath: string, rootPath: string): boolean {
-  const rel = relative(rootPath, candidatePath);
-  return !/^\.\.(?:[\\/]|$)/.test(rel) && !isAbsolute(rel);
+  const prefix = rootPath.endsWith(sep) ? rootPath : `${rootPath}${sep}`;
+  return candidatePath === rootPath || candidatePath.startsWith(prefix);
 }
 
 function setEmptyScanStats(stats: RepoScanStats | undefined): void {

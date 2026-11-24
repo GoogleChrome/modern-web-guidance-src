@@ -357,78 +357,6 @@ function groupFindingsByGuide(
     });
 }
 
-type ResolvedCliTarget =
-  | { readonly ok: true; readonly realTarget: string; readonly isDirectory: boolean }
-  | { readonly ok: false; readonly error: string };
-
-async function resolveCliTarget(
-  resolvedBaseCwd: string,
-  resolvedDir: string,
-  targetDir: string,
-): Promise<ResolvedCliTarget> {
-  const targetLstat = await lstat(resolvedDir).catch(() => null);
-  if (!targetLstat) {
-    return { ok: false, error: `Target path not found: ${targetDir}` };
-  }
-
-  const realTarget = await realpath(resolvedDir).catch(() => null);
-  if (!realTarget) {
-    return { ok: false, error: `Target path not found: ${targetDir}` };
-  }
-
-  const realBaseRoot = await realpath(resolvedBaseCwd).catch(() => null);
-  const escapeError = targetLstat.isSymbolicLink()
-    ? `Target symlink escapes scan root: ${targetDir}`
-    : `Target path escapes scan root via symlink: ${targetDir}`;
-
-  if (isPathWithinRoot(resolvedDir, resolvedBaseCwd)) {
-    if (!realBaseRoot || !isPathWithinRoot(realTarget, realBaseRoot)) {
-      return { ok: false, error: escapeError };
-    }
-  } else if (targetLstat.isSymbolicLink()) {
-    const realLinkParent = await realpath(dirname(resolvedDir)).catch(() => null);
-    if (!realLinkParent || !isPathWithinRoot(realTarget, realLinkParent)) {
-      return { ok: false, error: escapeError };
-    }
-  }
-
-  const targetStat = await stat(realTarget).catch(() => null);
-  if (!targetStat) {
-    return { ok: false, error: `Target path not found: ${targetDir}` };
-  }
-  if (!targetStat.isFile() && !targetStat.isDirectory()) {
-    return { ok: false, error: `Target path is not a file or directory: ${targetDir}` };
-  }
-
-  return { ok: true, realTarget, isDirectory: targetStat.isDirectory() };
-}
-
-async function readSingleTargetFile(
-  realTarget: string,
-  targetDir: string,
-): Promise<{ readonly ok: true; readonly content: string } | { readonly ok: false; readonly error: string }> {
-  try {
-    const handle = await open(realTarget, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
-    try {
-      const fdStat = await handle.stat();
-      if (!fdStat.isFile()) {
-        return { ok: false, error: `Target path is not a file or directory: ${targetDir}` };
-      }
-      if (fdStat.size > MAX_SOURCE_FILE_BYTES) {
-        return {
-          ok: false,
-          error: `Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`,
-        };
-      }
-      return { ok: true, content: await handle.readFile('utf8') };
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    return { ok: false, error: `Target path not found: ${targetDir}` };
-  }
-}
-
 /**
  * Deterministic CLI runner for modern-web-guidance legacy-scan.
  * Supports human-readable output, --json structured output, --guide filtering, and --max-files cap.
@@ -494,27 +422,62 @@ export async function runLegacyScanCli(
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
-  const target = await resolveCliTarget(resolvedBaseCwd, resolvedDir, targetDir);
-  if (!target.ok) {
-    return errorCliResult(target.error, isJson, targetDir);
+  const targetLstat = await lstat(resolvedDir).catch(() => null);
+  const realTarget = targetLstat ? await realpath(resolvedDir).catch(() => null) : null;
+  if (!targetLstat || !realTarget) {
+    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
+  }
+
+  const insideBaseCwd = isPathWithinRoot(resolvedDir, resolvedBaseCwd);
+  const boundaryRoot = insideBaseCwd
+    ? await realpath(resolvedBaseCwd).catch(() => null)
+    : targetLstat.isSymbolicLink()
+      ? await realpath(dirname(resolvedDir)).catch(() => null)
+      : realTarget;
+  if (!boundaryRoot || !isPathWithinRoot(realTarget, boundaryRoot)) {
+    const msg = targetLstat.isSymbolicLink()
+      ? `Target symlink escapes scan root: ${targetDir}`
+      : `Target path escapes scan root via symlink: ${targetDir}`;
+    return errorCliResult(msg, isJson, targetDir);
+  }
+
+  const targetStat = await stat(realTarget).catch(() => null);
+  if (!targetStat) {
+    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
+  }
+  if (!targetStat.isFile() && !targetStat.isDirectory()) {
+    return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
   }
 
   const scanStats: RepoScanStats = {};
   let findings: ScanFinding[];
 
-  if (!target.isDirectory) {
-    const fileRead = await readSingleTargetFile(target.realTarget, targetDir);
-    if (!fileRead.ok) {
-      return errorCliResult(fileRead.error, isJson, targetDir);
+  if (targetStat.isFile()) {
+    let content: string;
+    try {
+      const handle = await open(realTarget, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+      try {
+        const fdStat = await handle.stat();
+        if (!fdStat.isFile()) {
+          return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
+        }
+        if (fdStat.size > MAX_SOURCE_FILE_BYTES) {
+          return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
+        }
+        content = await handle.readFile('utf8');
+      } finally {
+        await handle.close();
+      }
+    } catch {
+      return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
     }
-    const rel = relative(resolvedBaseCwd, resolvedDir).replace(/\\/g, '/');
-    const fileKey = rel && isPathWithinRoot(resolvedDir, resolvedBaseCwd) ? rel : basename(resolvedDir);
-    findings = scanFiles(new Map([[fileKey, fileRead.content]]), activeRules, {
+    const rel = insideBaseCwd ? relative(resolvedBaseCwd, resolvedDir).replace(/\\/g, '/') : '';
+    findings = scanFiles(new Map([[rel || basename(resolvedDir), content]]), activeRules, {
       includeDocsAndTests: true,
       stats: scanStats,
     });
   } else {
-    findings = await scanRepoFiles(target.realTarget, activeRules, {
+    findings = await scanRepoFiles(realTarget, activeRules, {
       maxFiles: effectiveMaxFiles,
       includeDocsAndTests,
       stats: scanStats,

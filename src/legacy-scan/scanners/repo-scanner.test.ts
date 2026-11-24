@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { promisify } from 'node:util';
 import { SyntaxKind } from 'ts-morph';
@@ -340,12 +340,14 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
   });
 
   await t.test('isPathWithinRoot enforces directory boundaries without prefix or dot-dot bypasses', () => {
-    assert.equal(isPathWithinRoot('/repo', '/repo'), true);
-    assert.equal(isPathWithinRoot('/repo/src/app.ts', '/repo'), true);
-    assert.equal(isPathWithinRoot('/repo/..foo.ts', '/repo'), true);
-    assert.equal(isPathWithinRoot('/repo-other/app.ts', '/repo'), false);
-    assert.equal(isPathWithinRoot('/etc/passwd', '/repo'), false);
-    assert.equal(isPathWithinRoot('/repo/..', '/repo'), false);
+    const repo = resolve('/repo');
+    assert.equal(isPathWithinRoot(repo, repo), true);
+    assert.equal(isPathWithinRoot(resolve(repo, 'src/app.ts'), repo), true);
+    assert.equal(isPathWithinRoot(resolve(repo, '..foo.ts'), repo), true);
+    assert.equal(isPathWithinRoot(resolve('/repo-other/app.ts'), repo), false);
+    assert.equal(isPathWithinRoot(resolve('/etc/passwd'), repo), false);
+    assert.equal(isPathWithinRoot(resolve(repo, '..'), repo), false);
+    assert.equal(isPathWithinRoot(resolve('/repo/a'), resolve('/')), true);
   });
 
   await t.test('git mode skips tracked symlinks, untracked symlinks, and external directory symlinks', async () => {
