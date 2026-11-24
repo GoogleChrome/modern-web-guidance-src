@@ -1,0 +1,10 @@
+- Before using the GPU path, the implementation verifies that `navigator.gpu.requestAdapter()` resolves to a non-null adapter.
+- The `GPURenderBundleEncoder` is created with the same color formats, depth-stencil format, and sample count as the render pass that executes the bundle.
+- The render bundle is recorded outside the per-frame animation loop.
+- Each frame, the render pass draws the recorded objects with `executeBundles()`.
+- Per-frame changes to transforms, colors, or camera data are written with `device.queue.writeBuffer()` without re-recording the render bundle.
+- When an error scope or the `uncapturederror` event reports a GPU validation error, the scene is drawn with the fallback renderer.
+- A `device.lost` handler switches rendering to the fallback renderer.
+- When `adapter.requestDevice()` rejects, the scene is drawn with the fallback renderer.
+- When `webgpu` is unsupported, the scene is drawn with the fallback renderer.
+- When `navigator.gpu.requestAdapter()` resolves to `null`, the scene is drawn with the fallback renderer.
