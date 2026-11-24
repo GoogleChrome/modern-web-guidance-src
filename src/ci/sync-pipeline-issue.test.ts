@@ -6,6 +6,8 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
+  classifyExpectationsDiff,
+  collectGitGuideHistoryFromLog,
   computeScaleMax,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
@@ -13,6 +15,7 @@ import {
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
+  isBulkEvalSweepCommit,
   parseEvalReportFromPrBody,
   PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
@@ -307,14 +310,45 @@ describe('formatShortDate', () => {
   });
 });
 
-describe('findStaleEvals', () => {
-  it('flags complete guides with substantive expectations updates after evals', () => {
-    const g1 = makeGuide({ category: 'forms', name: 'forms' });
-    const g2 = makeGuide({ category: 'css', name: 'trivial-presence-only' });
+describe('classifyExpectationsDiff & findStaleEvals', () => {
+  it('classifies bullet diffs across unordered and ordered lists and cancels cosmetic edits', () => {
+    const cosmetic = [
+      '--- a/expectations.md',
+      '+++ b/expectations.md',
+      '- - The `dialog` MUST open.',
+      '+ * The dialog MUST  open.',
+      '-1. First rule.',
+      '+- First rule.',
+    ].join('\n');
+    assert.equal(classifyExpectationsDiff(cosmetic), null);
+
+    const addedOrdered = [
+      '+1. `downloadprogress` updates progress.',
+      '+2. Live region has `aria-live="polite"`.',
+    ].join('\n');
+    assert.deepEqual(classifyExpectationsDiff(addedOrdered), { kind: 'added', removed: 0, added: 2 });
+
+    const changed = [
+      '-1. Toasts must stay open.',
+      '+- Toasts must stay open.',
+      '-2. Multiple toasts must not close each other.',
+      '+- Multiple toasts must not close or obscure each other.',
+      '+- Every toast has a close button.',
+    ].join('\n');
+    assert.deepEqual(classifyExpectationsDiff(changed), { kind: 'changed', removed: 1, added: 2 });
+
+    const nonBulletEdit = ['-## Old Section', '+## New Section'].join('\n');
+    assert.deepEqual(classifyExpectationsDiff(nonBulletEdit), { kind: 'changed', removed: 0, added: 0 });
+  });
+
+  it('sorts changed above added alphabetically, drops cosmetic diffs, and annotates rendered markdown', () => {
+    const g1 = makeGuide({ category: 'ui-components', name: 'z-changed' });
+    const g2 = makeGuide({ category: 'built-in-ai', name: 'a-added' });
+    const g3 = makeGuide({ category: 'css', name: 'cosmetic-only' });
 
     const history = new Map<string, GitFileHistory>([
       [
-        'forms/forms',
+        'ui-components/z-changed',
         {
           expSha: 'aaa',
           expTs: 200,
@@ -323,11 +357,24 @@ describe('findStaleEvals', () => {
           evalSha: 'bbb',
           evalTs: 100,
           evalDate: '2026-05-18',
-          isSubstantiveDiff: true,
+          diffSummary: { kind: 'changed', removed: 1, added: 7 },
         },
       ],
       [
-        'css/trivial-presence-only',
+        'built-in-ai/a-added',
+        {
+          expSha: 'eee',
+          expTs: 200,
+          expDate: '2026-11-09',
+          expPr: 3355,
+          evalSha: 'fff',
+          evalTs: 100,
+          evalDate: '2026-11-08',
+          diffSummary: { kind: 'added', removed: 0, added: 3 },
+        },
+      ],
+      [
+        'css/cosmetic-only',
         {
           expSha: 'ccc',
           expTs: 200,
@@ -336,20 +383,83 @@ describe('findStaleEvals', () => {
           evalSha: 'ddd',
           evalTs: 100,
           evalDate: '2026-06-01',
-          isSubstantiveDiff: false,
+          diffSummary: null,
         },
       ],
     ]);
 
-    const stale = findStaleEvals([g1, g2], history);
+    const stale = findStaleEvals([g1, g2, g3], history);
     assert.deepEqual(stale, [
       {
-        slug: 'forms/forms',
+        slug: 'ui-components/z-changed',
         expDate: 'Oct 4',
         expPr: 1676,
         evalDate: 'May 18',
+        kind: 'changed',
+        removed: 1,
+        added: 7,
+      },
+      {
+        slug: 'built-in-ai/a-added',
+        expDate: 'Nov 9',
+        expPr: 3355,
+        evalDate: 'Nov 8',
+        kind: 'added',
+        removed: 0,
+        added: 3,
       },
     ]);
+
+    const md = renderPipelineIssueBody(
+      buildPipelineReportData({
+        readySinceBySlug: readySince(),
+        guides: [g1, g2, g3],
+        openPrs: [],
+        openUseCaseIssues: [],
+        openFeatureIssues: [],
+        gitHistory: history,
+        weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
+      })
+    );
+    assert.match(md, /#### Stale evals \(2\)/);
+    assert.match(md, /\*\*ui-components\/z-changed\*\*.*`changed \(-1\/\+7\)`/);
+    assert.match(md, /\*\*built-in-ai\/a-added\*\*.*`added \(\+3\)`/);
+  });
+
+  it('distinguishes batch stale-eval grader PRs (5-14 guides) from patch-only (5+) and repo-wide (15+) bulk sweeps', () => {
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 5, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 10, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 14, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 15, hasGraderChanges: true }), true);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 5, hasGraderChanges: false }), true);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 4, hasGraderChanges: false }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 1, evalSlugCount: 20, hasGraderChanges: false }), false);
+
+    const makeGraderPaths = (count: number) =>
+      Array.from({ length: count }, (_, i) => `guides/css/guide-${i}/targets/daily-grind/grader.ts`).join('\n');
+    const makePatchPaths = (count: number) =>
+      Array.from({ length: count }, (_, i) => `guides/css/guide-${i}/targets/daily-grind/patches/claude-solution.patch`).join('\n');
+
+    const log = [
+      // Repo-wide 15-grader sweep should be ignored when an earlier real eval commit exists
+      `COMMIT|sha-sweep15|400|2026-11-20|chore: lint graders (#3800)\n${makeGraderPaths(15)}`,
+      // Patch-only sweep of 5+ guides should be ignored
+      `COMMIT|sha-patches|350|2026-11-19|patches: clean node_modules (#3700)\n${makePatchPaths(5)}`,
+      // Real 8-guide stale-eval grader fix PR (#3691) MUST count as evalTs
+      `COMMIT|sha-batch8|300|2026-11-18|evals: fix stale graders (#3691)\n${makeGraderPaths(8)}`,
+      // Earlier expectations update
+      `COMMIT|sha-exp|200|2026-11-10|docs: update guide-0 expectations (#3500)\nguides/css/guide-0/expectations.md`,
+      // Initial eval
+      `COMMIT|sha-init|100|2026-11-01|evals: initial guide-0 (#3400)\nguides/css/guide-0/targets/daily-grind/grader.ts`,
+    ].join('\n');
+
+    const hist = collectGitGuideHistoryFromLog(log);
+    const guide0 = hist.get('css/guide-0');
+    assert.ok(guide0);
+    assert.equal(guide0.evalSha, 'sha-batch8');
+    assert.equal(guide0.evalTs, 300);
+    assert.equal(guide0.expTs, 200);
+    assert.ok(guide0.evalTs > guide0.expTs, 'batch grader PR should clear stale status');
   });
 });
 

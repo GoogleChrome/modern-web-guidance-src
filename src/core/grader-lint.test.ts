@@ -428,4 +428,168 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
       assert.deepStrictEqual([...all.keys()], ['guides/css/demo/targets/app/grader.ts']);
     });
   });
+
+  describe('Gen2 vacuity, swallowed-assertion, and fixed-timeout rules', () => {
+    const GEN2 = 'guides/category/slug/targets/daily-grind/grader.ts';
+    const rules = (code: string, file = GEN2) => checkGraderSource(file, code).map(v => v.ruleId);
+
+    it('only applies the Gen2-specific rules to Gen2 target graders', () => {
+      const code = `test('t', async ({ page }) => { await page.waitForTimeout(350); expect(1).toBe(1); });`;
+      assert.deepStrictEqual(rules(code, 'guides/category/slug/grader.ts'), []);
+      assert.deepStrictEqual(rules(code), ['no-fixed-timeout']);
+    });
+
+    describe('no-early-return-before-assertion', () => {
+      it('flags early returns ahead of assertions, including mode/flag checks', () => {
+        const code = `
+          test('dialog closes on Escape', async ({ page }) => {
+            const dialog = page.locator('dialog');
+            if ((await dialog.count()) === 0) return;
+            if (!opener) { return; }
+            if (mode === 'skip') return;
+            await expect(dialog).not.toBeVisible();
+          });`;
+        assert.deepStrictEqual(rules(code), [
+          'no-early-return-before-assertion',
+          'no-early-return-before-assertion',
+          'no-early-return-before-assertion',
+        ]);
+      });
+
+      it('accepts returns that fail first, TypeScript narrowing after non-soft presence assertions, returns in helpers, and page.evaluate callbacks', () => {
+        const code = `
+          async function openParentChainForTrigger(page, triggerId) {
+            await page.evaluate(async (id) => { const btn = document.getElementById(id); if (!btn) return; btn.click(); });
+          }
+          test('t', async ({ page }) => {
+            const files = getTargetFiles();
+            if (files.length === 0) { expect(files.length).toBeGreaterThan(0); return; }
+            const box = await page.locator('.card').boundingBox();
+            expect(box).not.toBeNull();
+            if (!box) return;
+            expect(box.width).toBeGreaterThan(0);
+            const definedBox = await page.locator('.card').boundingBox();
+            expect(definedBox).toBeDefined();
+            if (definedBox === undefined) return;
+            expect(definedBox?.width).toBeGreaterThan(0);
+            const ok = await page.evaluate(() => { const orig = document.startViewTransition; if (!orig) return false; return true; });
+            expect(ok).toBe(true);
+          });`;
+        assert.deepStrictEqual(rules(code), []);
+      });
+
+      it('still flags early returns after expect.soft or falsy assertions', () => {
+        const code = `
+          test('t', async ({ page }) => {
+            const box = await page.locator('.card').boundingBox();
+            expect.soft(box).not.toBeNull();
+            if (!box) return;
+            expect(box).toBeNull();
+            if (!box) return;
+            expect(box.width).toBeGreaterThan(0);
+          });`;
+        assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion', 'no-early-return-before-assertion']);
+      });
+    });
+
+    describe('no-unguarded-every', () => {
+      it('flags .every() over a list with no non-empty guard, after toBeTruthy/toBeDefined, with bare && guards, or when only a sibling property was asserted', () => {
+        const code = `
+          test('videos are lazy', () => {
+            const offscreenVideos = getVideos();
+            expect(offscreenVideos).toBeTruthy();
+            expect(offscreenVideos).toBeDefined();
+            expect(offscreenVideos.every((v) => v.getAttribute('loading') === 'lazy')).toBe(true);
+            const allLazy = offscreenVideos.every((v) => v.loading === 'lazy');
+            expect(allLazy).toBeTruthy();
+            expect(flag && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            expect(offscreenVideos && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            const bareGuard = offscreenVideos && offscreenVideos.every((v) => v.loading === 'lazy');
+            expect(bareGuard).toBe(true);
+            expect(result.extCount).toBeGreaterThan(0);
+            expect(result.extStylesheets.every((s) => !s.hasSheet)).toBe(true);
+          });`;
+        const violations = checkGraderSource(GEN2, code);
+        assert.deepStrictEqual(violations.map(v => v.ruleId), [
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+        ]);
+        assert.ok(violations[0].message.includes('.some(bad)'));
+      });
+
+      it('accepts a non-empty assertion first (including negated zero checks), a length/size guard in &&, literal lists, and negated .some()', () => {
+        const code = `
+          test('videos are lazy', () => {
+            const offscreenVideos = getVideos();
+            const hasLazyOffscreenVideo = offscreenVideos.length > 0 && offscreenVideos.every((v) => v.loading === 'lazy');
+            expect(hasLazyOffscreenVideo).toBe(true);
+            expect(offscreenVideos.size > 0 && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            const propSet = getPropSet();
+            expect(propSet.size > 0 && Array.from(propSet).every((p) => p.length > 0)).toBe(true);
+            const decls = getDecls();
+            expect(decls.length).toBeGreaterThan(0);
+            expect(decls.every((d) => d.ok)).toBe(true);
+            const notEmptyLen = getDecls();
+            expect(notEmptyLen).not.toHaveLength(0);
+            expect(notEmptyLen.every((d) => d.ok)).toBe(true);
+            const notZeroLen = getDecls();
+            expect(notZeroLen.length).not.toBe(0);
+            expect(notZeroLen.every((d) => d.ok)).toBe(true);
+            expect(['a', 'b'].every((s) => s.length === 1)).toBe(true);
+            const hasNearZeroOverride = decls.some((d) => /0\\.01ms/.test(d.text));
+            expect(hasNearZeroOverride).toBe(false);
+          });`;
+        assert.deepStrictEqual(rules(code), []);
+      });
+    });
+
+    describe('no-swallowed-assertion', () => {
+      it('flags try/catch and .catch() that swallow an assertion', () => {
+        const code = `
+          test('t', async ({ page, locator }) => {
+            try { await expect(page.locator('dialog')).toBeVisible(); } catch {}
+            await expect(page.locator('dialog')).toBeVisible({ timeout: 2000 }).catch(() => {});
+            await expect(locator).toBeEnabled({ timeout: 2000 }).catch(() => {});
+          });`;
+        assert.deepStrictEqual(rules(code), ['no-swallowed-assertion', 'no-swallowed-assertion', 'no-swallowed-assertion']);
+      });
+
+      it('accepts catches that rethrow, waitFor* settle catches, or try/catch without assertions', () => {
+        const code = `
+          test('t', async ({ page }) => {
+            await page.waitForLoadState('networkidle').catch(() => {});
+            try { await expect(a).toBeVisible(); } catch (e) { throw new Error('dialog never opened'); }
+            try { JSON.parse(raw); } catch {}
+          });`;
+        assert.deepStrictEqual(rules(code), []);
+      });
+    });
+
+    describe('no-fixed-timeout', () => {
+      it('flags waitForTimeout and awaited setTimeout sleeps', () => {
+        const code = `
+          test('t', async ({ page }) => {
+            await page.waitForTimeout(350);
+            await new Promise((r) => setTimeout(r, 30));
+            const settle = () => new Promise((r) => setTimeout(() => r(), 50));
+            expect(1).toBe(1);
+          });`;
+        assert.deepStrictEqual(rules(code), ['no-fixed-timeout', 'no-fixed-timeout', 'no-fixed-timeout']);
+      });
+
+      it('accepts expectNever, setTimeout as a Promise.race cap, and fallback timers', () => {
+        const code = `
+          test('t', async ({ page }) => {
+            await expectNever(page, () => window.__bad, { forMs: 400 });
+            await Promise.race([finished.catch(() => {}), new Promise((r) => setTimeout(r, 600))]);
+            await new Promise((resolve) => { const timer = setTimeout(finish, 1000); el.addEventListener('done', () => { clearTimeout(timer); resolve(); }); });
+          });`;
+        assert.deepStrictEqual(rules(code), []);
+      });
+    });
+  });
 });

@@ -18,6 +18,7 @@ import {
   detectEvals,
   EXPECTATIONS_FILE,
   getPendingGuideStage,
+  GRADER_FILE,
   GUIDE_FILE,
   isEvalFile,
   parseGuideMetadata,
@@ -40,7 +41,20 @@ const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
 const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
-const BULK_EVAL_SWEEP_MIN_SLUGS = 5;
+const BULK_PATCH_SWEEP_MIN_SLUGS = 5;
+const BULK_EVAL_SWEEP_MIN_SLUGS = 15;
+
+export function isBulkEvalSweepCommit(params: {
+  expSlugCount: number;
+  evalSlugCount: number;
+  hasGraderChanges: boolean;
+}): boolean {
+  if (params.expSlugCount > 0) return false;
+  return (
+    params.evalSlugCount >= BULK_EVAL_SWEEP_MIN_SLUGS ||
+    (!params.hasGraderChanges && params.evalSlugCount >= BULK_PATCH_SWEEP_MIN_SLUGS)
+  );
+}
 
 export function computeScaleMax(maxVal: number): number {
   return Math.max(PIPELINE_SCALE_MAX, Math.ceil(maxVal / 50) * 50);
@@ -81,6 +95,12 @@ export interface EvalPrMetrics {
   isHealthy: boolean;
 }
 
+export interface ExpectationsDiffSummary {
+  kind: 'changed' | 'added';
+  removed: number;
+  added: number;
+}
+
 export interface GitFileHistory {
   expSha: string;
   expTs: number;
@@ -89,7 +109,7 @@ export interface GitFileHistory {
   evalSha: string;
   evalTs: number;
   evalDate: string;
-  isSubstantiveDiff?: boolean;
+  diffSummary?: ExpectationsDiffSummary | null;
 }
 
 export interface StaleEvalItem {
@@ -97,6 +117,9 @@ export interface StaleEvalItem {
   expDate: string;
   expPr: number | null;
   evalDate: string;
+  kind: 'changed' | 'added';
+  removed: number;
+  added: number;
 }
 
 export interface NeedsGuidancePrItem {
@@ -219,39 +242,34 @@ export function formatShortDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
-function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, filePaths: readonly string[]): boolean {
-  try {
-    gitExec(
-      [
-        'diff',
-        '--quiet',
-        '--unified=0',
-        '--find-renames',
-        '--ignore-blank-lines',
-        '--ignore-matching-lines=Basic presence:',
-        evalSha,
-        expSha,
-        '--',
-        ...filePaths,
-      ],
-      { cwd, stdio: 'ignore' }
-    );
-    return false;
-  } catch (error) {
-    // `git diff --quiet` exits 1 when any file differs; any other status is a real failure.
-    if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
-    return true;
+const BULLET_LINE_RE = /^([+-])\s*(?:[-*+]|\d+[.)])\s+(.+)$/;
+
+export function classifyExpectationsDiff(diffText: string): ExpectationsDiffSummary | null {
+  const bulletCounts = new Map<string, number>();
+  const otherCounts = new Map<string, number>();
+  for (const line of diffText.split('\n')) {
+    if ((line[0] !== '+' && line[0] !== '-') || line.startsWith('+++') || line.startsWith('---')) continue;
+    const bullet = BULLET_LINE_RE.exec(line);
+    const body = (bullet ? bullet[2] : line.slice(1)).replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!body) continue;
+    const map = bullet ? bulletCounts : otherCounts;
+    map.set(body, (map.get(body) ?? 0) + (line[0] === '+' ? 1 : -1));
   }
+  let added = 0;
+  let removed = 0;
+  for (const delta of bulletCounts.values()) {
+    if (delta > 0) added += delta;
+    else if (delta < 0) removed += -delta;
+  }
+  const hasNonBulletDiff = [...otherCounts.values()].some(delta => delta !== 0);
+  if (removed > 0 || hasNonBulletDiff) return { kind: 'changed', removed, added };
+  if (added > 0) return { kind: 'added', removed: 0, added };
+  return null;
 }
 
-function collectGitGuideHistory(): Map<string, GitFileHistory> {
-  const cwd = rootDir;
+export function collectGitGuideHistoryFromLog(output: string): Map<string, GitFileHistory> {
   const history = new Map<string, GitFileHistory>();
   const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
-  const output = gitExec(
-    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
-    { cwd }
-  );
 
   for (const block of output.split('\nCOMMIT|')) {
     const trimmed = block.trim();
@@ -268,17 +286,28 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
 
     const expSlugs = new Set<string>();
     const evalSlugs = new Set<string>();
+    let hasGraderChanges = false;
 
     for (const rawLine of lines.slice(1)) {
       const parsed = parseGuidePath(rawLine.trim());
       if (!parsed) continue;
       if (parsed.relPath === EXPECTATIONS_FILE) expSlugs.add(parsed.slug);
-      if (isEvalFile(parsed.relPath)) evalSlugs.add(parsed.slug);
+      if (isEvalFile(parsed.relPath)) {
+        evalSlugs.add(parsed.slug);
+        if (path.posix.basename(parsed.relPath) === GRADER_FILE) {
+          hasGraderChanges = true;
+        }
+      }
     }
 
-    // Repo-wide grader formatting/lint sweeps touch many evals with zero expectations updates;
-    // ignore them unless a guide has no other eval commit in history.
-    const isBulkEvalSweep = evalSlugs.size >= BULK_EVAL_SWEEP_MIN_SLUGS && expSlugs.size === 0;
+    // Repo-wide formatting/lint sweeps (15+ guides) or non-grader eval sweeps (5+ guides with
+    // zero grader.ts edits, e.g. patch hygiene sweeps) shouldn't mask earlier expectations updates
+    // unless a guide has no other eval commit in history.
+    const isBulkEvalSweep = isBulkEvalSweepCommit({
+      expSlugCount: expSlugs.size,
+      evalSlugCount: evalSlugs.size,
+      hasGraderChanges,
+    });
 
     for (const slug of new Set([...expSlugs, ...evalSlugs])) {
       let entry = history.get(slug);
@@ -314,11 +343,24 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
     }
   }
 
+  return history;
+}
+
+function collectGitGuideHistory(): Map<string, GitFileHistory> {
+  const cwd = rootDir;
+  const output = gitExec(
+    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+    { cwd }
+  );
+  const history = collectGitGuideHistoryFromLog(output);
+
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
-    entry.isSubstantiveDiff = hasAnySubstantiveDiff(cwd, entry.evalSha, entry.expSha, [
-      `guides/${slug}/${EXPECTATIONS_FILE}`,
-    ]);
+    const diffText = gitExec(
+      ['diff', '--unified=0', '--find-renames', '--ignore-blank-lines', '--ignore-matching-lines=Basic presence:', entry.evalSha, entry.expSha, '--', `guides/${slug}/${EXPECTATIONS_FILE}`],
+      { cwd }
+    );
+    entry.diffSummary = classifyExpectationsDiff(diffText);
   }
 
   return history;
@@ -334,23 +376,18 @@ export function findStaleEvals(
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
-    if (
-      hist &&
-      hist.expTs > 0 &&
-      hist.evalTs > 0 &&
-      hist.expTs > hist.evalTs &&
-      (hist.isSubstantiveDiff ?? true)
-    ) {
+    if (hist && hist.expTs > 0 && hist.evalTs > 0 && hist.expTs > hist.evalTs && hist.diffSummary != null) {
       items.push({
         slug,
         expDate: formatShortDate(hist.expDate),
         expPr: hist.expPr ?? null,
         evalDate: formatShortDate(hist.evalDate),
+        ...hist.diffSummary,
       });
     }
   }
 
-  return items.sort((a, b) => a.slug.localeCompare(b.slug));
+  return items.sort((a, b) => (a.kind === b.kind ? a.slug.localeCompare(b.slug) : a.kind === 'changed' ? -1 : 1));
 }
 
 export function countGen2Evals(guides: GuideInventory[]): {
@@ -871,8 +908,9 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   }
   for (const item of data.staleEvals) {
     const prPart = item.expPr ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))` : '';
+    const diffPart = item.kind === 'changed' ? `changed (-${item.removed}/+${item.added})` : `added (+${item.added})`;
     lines.push(
-      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
+      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`${diffPart}\` · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
     );
   }
 

@@ -6,6 +6,7 @@ import { GRADER_FILE, TARGETS_DIR } from './guide-validation.ts';
 import { rootDir } from './paths.ts';
 
 const MAX_SNIPPET_LENGTH = 120;
+const WAIT_GUIDANCE = "wait on readiness; for a claim that something doesn't happen, use expectNever(page, predicate, { forMs })";
 
 export type GraderRuleId =
   | 'no-vacuous-boolean-expect'
@@ -13,7 +14,11 @@ export type GraderRuleId =
   | 'no-test-skip'
   | 'no-gen2-file-goto'
   | 'no-unguarded-conditional-assertions'
-  | 'invalid-skip-unless';
+  | 'invalid-skip-unless'
+  | 'no-early-return-before-assertion'
+  | 'no-unguarded-every'
+  | 'no-swallowed-assertion'
+  | 'no-fixed-timeout';
 
 export interface GraderLintViolation {
   filePath: string;
@@ -49,6 +54,7 @@ function isVacuousBoolean(node: TsMorphNode): boolean {
 function isAssertionCall(node: TsMorphNode): boolean {
   if (!Node.isCallExpression(node)) return false;
   const expr = node.getExpression().getText();
+  if (expr === 'expectNever') return true;
   const isExp = expr === 'expect' || expr.startsWith('expect.');
   const isAss = expr === 'assert' || expr.startsWith('assert.');
   if (!isExp && !isAss) return false;
@@ -82,8 +88,6 @@ function branchGuaranteed(node?: TsMorphNode): boolean {
     .some(t => !isWithinInnerIf(t, node));
   if (hasDirectThrow) return true;
 
-  // Note: hasDirectAssertion treats any assertion outside an inner if as guaranteed to execute,
-  // but does not trace early return exits (e.g. `if (!el) return; expect(el)`). A future CFG pass can model exits.
   const hasDirectAssertion = node
     .getDescendantsOfKind(SyntaxKind.CallExpression)
     .some(c => isAssertionCall(c) && !isWithinInnerIf(c, node));
@@ -92,6 +96,251 @@ function branchGuaranteed(node?: TsMorphNode): boolean {
   return node
     .getDescendantsOfKind(SyntaxKind.IfStatement)
     .some(innerIf => !isWithinInnerIf(innerIf, node) && branchGuaranteed(innerIf));
+}
+
+function unwrap(node: TsMorphNode): TsMorphNode {
+  let curr = node;
+  while (
+    Node.isParenthesizedExpression(curr) ||
+    Node.isAwaitExpression(curr) ||
+    Node.isAsExpression(curr) ||
+    Node.isSatisfiesExpression(curr) ||
+    Node.isTypeAssertion(curr) ||
+    Node.isNonNullExpression(curr)
+  ) {
+    curr = curr.getExpression();
+  }
+  return curr;
+}
+
+function enclosingFunction(node: TsMorphNode): TsMorphNode | undefined {
+  return node.getFirstAncestor(a => Node.isFunctionLikeDeclaration(a));
+}
+
+function enclosingTest(node: TsMorphNode): TsMorphNode | undefined {
+  let fn = enclosingFunction(node);
+  while (fn) {
+    const call = fn.getParent();
+    if (Node.isCallExpression(call) && /^(?:test|it)(?:\.only)?$/.test(call.getExpression().getText())) return fn;
+    fn = enclosingFunction(fn);
+  }
+  return undefined;
+}
+
+function assertionsIn(node: TsMorphNode): TsMorphNode[] {
+  return node.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isAssertionCall);
+}
+
+function failsLoudly(node: TsMorphNode): boolean {
+  return node.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0 || assertionsIn(node).length > 0;
+}
+
+function readMatcher(expectCall: TsMorphNode): { negated: boolean; matcher: string; arg?: string } | undefined {
+  let negated = false;
+  let curr = expectCall.getParent();
+  while (Node.isPropertyAccessExpression(curr)) {
+    const name = curr.getName();
+    if (name === 'not') {
+      negated = !negated;
+      curr = curr.getParent();
+      continue;
+    }
+    const call = curr.getParent();
+    if (!Node.isCallExpression(call)) return undefined;
+    return { negated, matcher: name, arg: call.getArguments()[0]?.getText() };
+  }
+  return undefined;
+}
+
+function isPresenceAssertion(call: TsMorphNode, idName: string): boolean {
+  if (!Node.isCallExpression(call) || !isAssertionCall(call)) return false;
+  const callee = call.getExpression().getText();
+  if (callee.startsWith('expect.soft')) return false;
+  const arg = call.getArguments()[0];
+  if (!arg || !arg.getDescendantsOfKind(SyntaxKind.Identifier).some(i => i.getText() === idName) && arg.getText() !== idName) return false;
+  if (callee !== 'expect') return true;
+  const m = readMatcher(call);
+  if (!m) return false;
+  if (m.matcher === 'toBeTruthy' || m.matcher === 'toBeDefined') return !m.negated;
+  if (m.matcher === 'toBeFalsy' || m.matcher === 'toBeNull' || m.matcher === 'toBeUndefined') return m.negated;
+  if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher)) {
+    return m.negated ? ['0', 'false', 'null', 'undefined'].includes(m.arg ?? '') : !['0', 'false', 'null', 'undefined'].includes(m.arg ?? '');
+  }
+  return !m.negated || !['toBeGreaterThan', 'toBeGreaterThanOrEqual', 'toHaveLength', 'toHaveCount'].includes(m.matcher);
+}
+
+function isPositiveListAssertion(call: TsMorphNode, listKey: string): boolean {
+  if (!Node.isCallExpression(call) || !isAssertionCall(call)) return false;
+  const callee = call.getExpression().getText();
+  if (callee !== 'expect' && callee !== 'assert' && callee !== 'assert.ok') return false;
+  const arg = call.getArguments()[0];
+  if (!arg) return false;
+  const argKey = unwrap(arg).getText().replace(/\s+/g, '');
+  if (!argKey.includes(listKey)) return false;
+  if (callee !== 'expect') return argKey.includes(`${listKey}.length`) || argKey.includes('.some(');
+  const m = readMatcher(call);
+  if (!m) return false;
+  const numArg = m.arg !== undefined ? Number(m.arg) : NaN;
+  if (m.matcher === 'toBeGreaterThan') return !m.negated && !Number.isNaN(numArg) && numArg >= 0;
+  if (m.matcher === 'toBeGreaterThanOrEqual') return !m.negated && !Number.isNaN(numArg) && numArg >= 1;
+  if (m.matcher === 'toHaveLength' || m.matcher === 'toHaveCount') return m.negated ? numArg === 0 : numArg > 0;
+  if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher)) {
+    if (argKey === `${listKey}.length` || argKey === `${listKey}.size`) {
+      return m.negated ? m.arg === '0' : m.arg !== '0';
+    }
+    if (m.arg === String(!m.negated)) {
+      return argKey.includes('.some(') || new RegExp(`${listKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(?:length|size)\\s*(?:>|>=)`).test(argKey);
+    }
+  }
+  return false;
+}
+
+function collectConjuncts(node: TsMorphNode, seen = new Set<TsMorphNode>()): TsMorphNode[] {
+  let curr = unwrap(node);
+  if (Node.isIdentifier(curr)) {
+    const decl = curr.getSymbol()?.getDeclarations()[0];
+    if (Node.isVariableDeclaration(decl) && decl.getInitializer() && !seen.has(decl)) {
+      seen.add(decl);
+      curr = unwrap(decl.getInitializer()!);
+    }
+  }
+  if (Node.isBinaryExpression(curr) && curr.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken) {
+    return [...collectConjuncts(curr.getLeft(), seen), ...collectConjuncts(curr.getRight(), seen)];
+  }
+  return [curr];
+}
+
+function checkGen2ExtraRules(
+  sourceFile: SourceFile,
+  addViolation: (node: TsMorphNode, ruleId: GraderRuleId, message: string) => void
+): void {
+  // no-early-return-before-assertion: `if (...) return;` ahead of assertions without prior narrowing assertion
+  for (const ifStmt of sourceFile.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+    const testFn = enclosingTest(ifStmt);
+    if (!testFn || enclosingFunction(ifStmt) !== testFn || isWithinInnerIf(ifStmt, testFn)) continue;
+    const thenStmt = ifStmt.getThenStatement();
+    const returns = Node.isReturnStatement(thenStmt) || (Node.isBlock(thenStmt) && thenStmt.getStatements().some(s => Node.isReturnStatement(s)));
+    if (!returns || failsLoudly(thenStmt)) continue;
+    if (!assertionsIn(testFn).some(a => a.getStart() > ifStmt.getEnd())) continue;
+    const condIds = ifStmt
+      .getExpression()
+      .getDescendantsOfKind(SyntaxKind.Identifier)
+      .filter(id => {
+        const p = id.getParent();
+        return (
+          id.getText() !== 'undefined' &&
+          !(Node.isPropertyAccessExpression(p) && p.getNameNode() === id) &&
+          !(Node.isCallExpression(p) && p.getExpression() === id)
+        );
+      })
+      .map(id => id.getText());
+    const narrowed =
+      condIds.length > 0 &&
+      condIds.every(id =>
+        assertionsIn(testFn).some(
+          a => enclosingFunction(a) === testFn && !isWithinInnerIf(a, testFn) && a.getEnd() <= ifStmt.getStart() && isPresenceAssertion(a, id)
+        )
+      );
+    if (narrowed) continue;
+    addViolation(
+      ifStmt,
+      'no-early-return-before-assertion',
+      'Early return skips the assertions that follow when the thing under test is missing, so the test passes vacuously. Assert presence instead.'
+    );
+  }
+
+  for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const callee = call.getExpression();
+    const exprText = callee.getText();
+
+    // no-unguarded-every: expect(list.every(...)).toBe(true) / .toBeTruthy() without non-empty guard
+    if (exprText === 'expect' || exprText === 'expect.soft' || exprText === 'assert' || exprText === 'assert.ok') {
+      const m = exprText.startsWith('expect') ? readMatcher(call) : { negated: false, matcher: 'toBe', arg: 'true' };
+      const truthyAssert =
+        m && ((m.matcher === 'toBeTruthy' && !m.negated) || (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher) && m.arg === String(!m.negated)));
+      const arg = call.getArguments()[0];
+      if (truthyAssert && arg) {
+        const conjuncts = collectConjuncts(arg);
+        const scope = enclosingTest(call) ?? enclosingFunction(call);
+        for (let i = 0; i < conjuncts.length; i++) {
+          const target = conjuncts[i];
+          const targetCallee = Node.isCallExpression(target) ? target.getExpression() : undefined;
+          if (!Node.isPropertyAccessExpression(targetCallee) || targetCallee.getName() !== 'every') continue;
+
+          let list = unwrap(targetCallee.getExpression());
+          if (Node.isCallExpression(list) && list.getExpression().getText() === 'Array.from' && list.getArguments()[0]) {
+            list = unwrap(list.getArguments()[0]);
+          }
+          const listKey = list.getText().replace(/\s+/g, '');
+          const isNonEmptyLiteral = Node.isArrayLiteralExpression(list) && list.getElements().length > 0 && !list.getElements().some(e => Node.isSpreadElement(e));
+          const escapedListKey = listKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const lengthOrSizeRe = new RegExp(`(?:^|[^A-Za-z0-9_$.])${escapedListKey}\\??\\.(?:length|size)\\b`);
+          const hasInlineGuard = conjuncts.some(
+            (other, idx) => idx !== i && lengthOrSizeRe.test(other.getText().replace(/\s+/g, ''))
+          );
+          const guarded =
+            isNonEmptyLiteral ||
+            hasInlineGuard ||
+            (scope !== undefined &&
+              (assertionsIn(scope).some(a => a !== call && a.getEnd() <= call.getStart() && isPositiveListAssertion(a, listKey)) ||
+                scope
+                  .getDescendantsOfKind(SyntaxKind.IfStatement)
+                  .some(s => s.getEnd() <= call.getStart() && s.getExpression().getText().replace(/\s+/g, '').includes(listKey) && failsLoudly(s.getThenStatement()))));
+          if (!guarded) {
+            addViolation(
+              call,
+              'no-unguarded-every',
+              `\`.every()\` over \`${list.getText().slice(0, 60)}\` passes when the list is empty. Assert it is non-empty first (expect(list.length).toBeGreaterThan(0)), or for a negative invariant use \`.some(bad)\` with \`.toBe(false)\`.`
+            );
+          }
+        }
+      }
+    }
+
+    // no-swallowed-assertion: expect(...).catch(() => {})
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'catch') {
+      const receiver = callee.getExpression();
+      const handler = call.getArguments()[0];
+      if ((isAssertionCall(receiver) || assertionsIn(receiver).length > 0) && handler && !failsLoudly(handler)) {
+        addViolation(call, 'no-swallowed-assertion', 'A `.catch()` handler swallows a failed assertion, so the test cannot fail.');
+      }
+    }
+
+    // no-fixed-timeout: page.waitForTimeout(n)
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'waitForTimeout') {
+      addViolation(call, 'no-fixed-timeout', `Fixed waitForTimeout() makes the verdict timing-dependent: ${WAIT_GUIDANCE}.`);
+    }
+  }
+
+  // no-swallowed-assertion: try { expect(...) } catch {}
+  for (const tryStmt of sourceFile.getDescendantsOfKind(SyntaxKind.TryStatement)) {
+    const catchClause = tryStmt.getCatchClause();
+    if (!catchClause || assertionsIn(tryStmt.getTryBlock()).length === 0) continue;
+    const catchBlock = catchClause.getBlock();
+    if (!failsLoudly(catchBlock)) {
+      addViolation(tryStmt, 'no-swallowed-assertion', 'This catch block swallows a failed assertion from its try block, so the test cannot fail.');
+    }
+  }
+
+  // no-fixed-timeout: new Promise(r => setTimeout(r, n)) outside Promise.race/any
+  for (const newExpr of sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)) {
+    if (newExpr.getExpression().getText() !== 'Promise') continue;
+    const executor = newExpr.getArguments()[0];
+    if (!executor || !(Node.isArrowFunction(executor) || Node.isFunctionExpression(executor))) continue;
+    const resolveName = executor.getParameters()[0]?.getName();
+    const isSleep =
+      resolveName !== undefined &&
+      executor
+        .getDescendantsOfKind(SyntaxKind.CallExpression)
+        .filter(c => c.getExpression().getText() === 'setTimeout')
+        .some(t => {
+          const cb = t.getArguments()[0];
+          return cb !== undefined && (cb.getText() === resolveName || (Node.isArrowFunction(cb) && cb.getBody().getText().replace(/[{};\s]/g, '') === `${resolveName}()`));
+        });
+    if (isSleep && !newExpr.getAncestors().some(a => Node.isCallExpression(a) && /^Promise\.(race|any)$/.test(a.getExpression().getText()))) {
+      addViolation(newExpr, 'no-fixed-timeout', `A fixed setTimeout() sleep makes the verdict timing-dependent: ${WAIT_GUIDANCE}.`);
+    }
+  }
 }
 
 export function checkGraderAst(filePath: string, sourceFile: SourceFile): GraderLintViolation[] {
@@ -121,7 +370,6 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
     if (exprText === 'expect' || exprText === 'expect.soft') {
       const firstArg = call.getArguments()[0];
       if (firstArg) {
-        // Rule 1: Vacuous expect(true) / expect(false)
         if (isVacuousBoolean(firstArg)) {
           addViolation(
             call,
@@ -130,7 +378,6 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
           );
         }
 
-        // Rule 2: Tautological boolean expressions inside expect()
         const binaries = Node.isBinaryExpression(firstArg)
           ? [firstArg, ...firstArg.getDescendantsOfKind(SyntaxKind.BinaryExpression)]
           : firstArg.getDescendantsOfKind(SyntaxKind.BinaryExpression);
@@ -249,6 +496,8 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
       }
     }
   }
+
+  if (isGen2) checkGen2ExtraRules(sourceFile, addViolation);
 
   return violations;
 }
