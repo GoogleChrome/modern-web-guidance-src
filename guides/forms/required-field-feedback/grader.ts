@@ -285,37 +285,78 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
   });
 
   test('On page load, no field\'s accessible description includes its error text', async ({ page }) => {
-    const inputs = page.locator('form input[required]');
+    const inputs = page.locator('form input[required], form select[required], form textarea[required]');
     const count = await inputs.count();
     expect(count).toBeGreaterThan(0);
 
-    const pairs = await page.evaluate(() => {
-      const res: Array<{ selector: string; errorText: string }> = [];
+    const preLoad = await page.evaluate(() => {
       const els = Array.from(document.querySelectorAll<HTMLElement>('form input[required], form select[required], form textarea[required]'));
-      els.forEach((el, idx) => {
+      return els.map((el, idx) => {
+        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea)[required]:nth-of-type(${idx + 1})`;
         const errId = el.dataset.error || el.getAttribute('aria-errormessage');
         let errEl = errId ? document.getElementById(errId) : null;
         if (!errEl && el.parentElement) {
           errEl = el.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
         }
-        if (!errEl) return;
-        const clone = errEl.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
-        const text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
-        if (text) {
-          res.push({
-            selector: el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea)[required]:nth-of-type(${idx + 1})`,
-            errorText: text,
-          });
+        let staticErrorText = '';
+        if (errEl) {
+          const clone = errEl.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
+          staticErrorText = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
         }
+        const describedIds = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const describedText = describedIds
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return { selector, staticErrorText, describedText };
       });
-      return res;
     });
 
-    expect(pairs.length).toBeGreaterThan(0);
-    for (const { selector, errorText } of pairs) {
-      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    expect(preLoad.length).toBeGreaterThan(0);
+    for (const { selector, staticErrorText } of preLoad) {
+      if (!staticErrorText) continue;
+      const escaped = staticErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       await expect(page.locator(selector).first()).not.toHaveAccessibleDescription(new RegExp(escaped));
+    }
+
+    // Pair with invalidation check: submitting empty required fields must surface visible error text and wire accessible description
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.click();
+
+    const postInvalid = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>('form input[required], form select[required], form textarea[required]'));
+      return els.map((el, idx) => {
+        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea)[required]:nth-of-type(${idx + 1})`;
+        const errId = el.dataset.error || el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
+        let errEl = errId ? document.getElementById(errId.split(/\s+/)[0]) : null;
+        if (!errEl && el.parentElement) {
+          errEl = el.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
+        }
+        let errorText = '';
+        if (errEl) {
+          const s = window.getComputedStyle(errEl);
+          if (s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0') {
+            const clone = errEl.cloneNode(true) as HTMLElement;
+            clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
+            errorText = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
+          }
+        }
+        return {
+          selector,
+          isInvalid: el.getAttribute('aria-invalid') === 'true',
+          errorText,
+        };
+      }).filter((item) => item.isInvalid && item.errorText.length > 0);
+    });
+
+    expect(postInvalid.length).toBeGreaterThan(0);
+    const preLoadBySelector = new Map(preLoad.map((p) => [p.selector, p.describedText]));
+    for (const { selector, errorText } of postInvalid) {
+      expect(preLoadBySelector.get(selector) ?? '').not.toContain(errorText);
+      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(page.locator(selector).first()).toHaveAccessibleDescription(new RegExp(escaped));
     }
   });
 });

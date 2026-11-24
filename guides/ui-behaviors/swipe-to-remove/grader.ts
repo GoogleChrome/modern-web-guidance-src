@@ -643,35 +643,44 @@ test('Every swipe action can also be performed without a swipe, both with a poin
 
 test('Each control that performs a swipe action without a swipe does the same thing as that swipe', async ({ page }) => {
   await loadPage(page);
-  const firstItem = page.locator('.SwipeableList-item').first();
-  const buttons = firstItem.locator('button');
-  const btnCount = await buttons.count();
+  const btnCount = await page.locator('.SwipeableList-item').first().locator('button').count();
   expect(btnCount).toBeGreaterThan(0);
 
-  const statusEl = page.locator('[role="status"]').first();
-  expect(await statusEl.count()).toBeGreaterThan(0);
+  for (let i = 0; i < btnCount; i++) {
+    if (i > 0) await loadPage(page);
+    const firstItem = page.locator('.SwipeableList-item').first();
+    const btn = firstItem.locator('button').nth(i);
+    const direction = await btn.evaluate(
+      (el) => el.getAttribute('data-direction') || el.getAttribute('data-action-direction') || '',
+    );
+    expect(['left', 'right']).toContain(direction);
 
-  // Perform first button action via click
-  await firstItem.evaluate((el) => { el.id = 'btn-action-item'; });
-  await buttons.first().click();
-  await expect.poll(async () => page.evaluate(() => !document.getElementById('btn-action-item'))).toBe(true);
-  const btnStatus = (await statusEl.textContent() ?? '').trim();
-  expect(btnStatus.length).toBeGreaterThan(0);
+    const statusEl = page.locator('[role="status"]').first();
+    expect(await statusEl.count()).toBeGreaterThan(0);
 
-  // Reload and compare with swipe on the first item
-  await loadPage(page);
-  const swipeItem = page.locator('.SwipeableList-item').first();
-  await swipeItem.evaluate((el) => {
-    el.id = 'swipe-action-item';
-    const track = el.querySelector('.SwipeableList-track') as HTMLElement;
-    if (track) {
-      track.style.scrollSnapType = 'none';
-      track.scrollLeft = track.scrollLeft - Math.round(track.clientWidth * 0.85);
-    }
-  });
-  await expect.poll(async () => page.evaluate(() => !document.getElementById('swipe-action-item'))).toBe(true);
-  const swipeStatus = (await statusEl.textContent() ?? '').trim();
-  expect(swipeStatus).toBe(btnStatus);
+    // Perform button action via click
+    await firstItem.evaluate((el) => { el.id = 'btn-action-item'; });
+    await btn.click();
+    await expect.poll(async () => page.evaluate(() => !document.getElementById('btn-action-item'))).toBe(true);
+    const btnStatus = (await statusEl.textContent() ?? '').trim();
+    expect(btnStatus.length).toBeGreaterThan(0);
+
+    // Reload and compare with matching swipe direction on the first item
+    await loadPage(page);
+    const swipeItem = page.locator('.SwipeableList-item').first();
+    await swipeItem.evaluate((el, dir) => {
+      el.id = 'swipe-action-item';
+      const track = el.querySelector('.SwipeableList-track') as HTMLElement;
+      if (track) {
+        track.style.scrollSnapType = 'none';
+        const delta = Math.round(track.clientWidth * 0.85);
+        track.scrollLeft = dir === 'right' ? track.scrollLeft + delta : track.scrollLeft - delta;
+      }
+    }, direction);
+    await expect.poll(async () => page.evaluate(() => !document.getElementById('swipe-action-item'))).toBe(true);
+    const swipeStatus = (await page.locator('[role="status"]').first().textContent() ?? '').trim();
+    expect(swipeStatus).toBe(btnStatus);
+  }
 });
 
 test('Each non-swipe action control has an accessible name that includes its item text', async ({ page }) => {

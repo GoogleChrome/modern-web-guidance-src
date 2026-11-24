@@ -193,12 +193,12 @@ function auditColors(scheme: string): ColorAudit {
     parseFloat(cs.getPropertyValue(`border-${s}-width`)) > 0 &&
     !/^(none|hidden)$/.test(cs.getPropertyValue(`border-${s}-style`)) &&
     toRgba(cs.getPropertyValue(`border-${s}-color`))[3] > 0);
-  const controls = Array.from(document.body.querySelectorAll(
+  const focusableControls = Array.from(document.body.querySelectorAll(
     'button, input:not([type="hidden"]), select, textarea, [role="button"], a[href]',
-  )).filter((el) => {
-    if (!isVisible(el) || isInactive(el)) return false;
+  )).filter((el) => isVisible(el) && !isInactive(el));
+  // Links only count for boundary contrast when styled as buttons (own fill or a full border).
+  const controls = focusableControls.filter((el) => {
     if (el.tagName !== 'A') return true;
-    // Links only count as controls when styled as buttons (own fill or a full border).
     const cs = getComputedStyle(el);
     return toRgba(cs.backgroundColor)[3] > 0 || hasFullBorder(cs);
   });
@@ -223,7 +223,7 @@ function auditColors(scheme: string): ColorAudit {
     }
   }
 
-  for (const el of controls) {
+  for (const el of focusableControls) {
     if (!(el instanceof HTMLElement)) continue;
     const adjacent = effectiveBackground(el.parentElement);
     if (!adjacent) continue;
@@ -235,15 +235,16 @@ function auditColors(scheme: string): ColorAudit {
         fcs.outlineStyle !== 'auto' &&
         parseFloat(fcs.outlineWidth) > 0;
       if (isCustomOutline) {
-        const outlineColor = over(toRgba(fcs.outlineColor), adjacent);
-        const outlineRatio = ratio(outlineColor, adjacent);
+        const outlineBg = (parseFloat(fcs.outlineOffset) < 0 ? effectiveBackground(el) : null) ?? adjacent;
+        const outlineColor = over(toRgba(fcs.outlineColor), outlineBg);
+        const outlineRatio = ratio(outlineColor, outlineBg);
         if (outlineRatio + TOLERANCE < 3) {
           focusFailures.push({
             scheme,
             kind: 'focus-visible',
             element: describe(el),
             fg: fmt(outlineColor),
-            bg: fmt(adjacent),
+            bg: fmt(outlineBg),
             ratio: +outlineRatio.toFixed(2),
             required: 3,
           });

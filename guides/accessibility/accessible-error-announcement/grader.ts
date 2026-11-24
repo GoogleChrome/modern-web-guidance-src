@@ -210,28 +210,66 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     const count = await fields.count();
     expect(count).toBeGreaterThan(0);
 
-    // Discover error texts on page load (or by triggering invalid then reloading if error text is injected dynamically)
-    let pairs = await page.evaluate(() => {
-      const result: Array<{ selector: string; errorText: string }> = [];
+    // Verify on load no field exposes its error text in its accessible description,
+    // then trigger invalidation to verify error descriptions are genuinely wired up.
+    const preLoad = await page.evaluate(() => {
       const inputs = Array.from(document.querySelectorAll<HTMLElement>('form input:not([type="hidden"]):not([type="submit"]):not([type="reset"]):not([type="button"]), form select, form textarea'));
-      inputs.forEach((el, idx) => {
+      return inputs.map((el, idx) => {
+        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea):nth-of-type(${idx + 1})`;
         const errId = el.dataset.error || el.getAttribute('aria-errormessage');
         let errEl = errId ? document.getElementById(errId) : null;
         if (!errEl && el.parentElement) {
           errEl = el.parentElement.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]');
         }
-        const text = (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim();
-        if (text) {
-          result.push({ selector: el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea):nth-of-type(${idx + 1})`, errorText: text });
-        }
+        const describedIds = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const describedText = describedIds
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return {
+          selector,
+          staticErrorText: (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          describedText,
+        };
       });
-      return result;
     });
 
-    expect(pairs.length).toBeGreaterThan(0);
-    for (const { selector, errorText } of pairs) {
-      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    expect(preLoad.length).toBeGreaterThan(0);
+    for (const { selector, staticErrorText } of preLoad) {
+      if (!staticErrorText) continue;
+      const escaped = staticErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       await expect(page.locator(selector).first()).not.toHaveAccessibleDescription(new RegExp(escaped));
+    }
+
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.click();
+
+    const postInvalid = await page.evaluate(() => {
+      const inputs = Array.from(document.querySelectorAll<HTMLElement>('form input:not([type="hidden"]):not([type="submit"]):not([type="reset"]):not([type="button"]), form select, form textarea'));
+      return inputs.map((el, idx) => {
+        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea):nth-of-type(${idx + 1})`;
+        const errId = el.dataset.error || el.getAttribute('aria-errormessage');
+        let errEl = errId ? document.getElementById(errId) : null;
+        if (!errEl && el.parentElement) {
+          errEl = el.parentElement.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]');
+        }
+        const visible = Boolean(errEl && window.getComputedStyle(errEl).display !== 'none' && window.getComputedStyle(errEl).visibility !== 'hidden');
+        return {
+          selector,
+          isInvalid: el.getAttribute('aria-invalid') === 'true',
+          errorText: visible ? (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim() : '',
+        };
+      }).filter((item) => item.isInvalid && item.errorText.length > 0);
+    });
+
+    expect(postInvalid.length).toBeGreaterThan(0);
+    const preLoadBySelector = new Map(preLoad.map((p) => [p.selector, p.describedText]));
+    for (const { selector, errorText } of postInvalid) {
+      const initialDesc = preLoadBySelector.get(selector) ?? '';
+      expect(initialDesc).not.toContain(errorText);
+      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(page.locator(selector).first()).toHaveAccessibleDescription(new RegExp(escaped));
     }
   });
 
@@ -274,6 +312,7 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
   test('After a submit attempt with an invalid field, focus is on the first invalid field or on an error summary.', async ({ page }) => {
     const firstRequired = page.locator('form input[required], form textarea[required], form select[required]').first();
     await expect(firstRequired).toBeVisible();
+    await expect(firstRequired).not.toHaveAttribute('aria-invalid', 'true');
 
     const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
     await submitBtn.focus();
@@ -282,8 +321,8 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     const focusTargetValid = await page.evaluate(() => {
       const active = document.activeElement;
       if (!active || active === document.body) return false;
-      const firstInvalid = document.querySelector('form [aria-invalid="true"], form :invalid');
-      if (active === firstInvalid) return true;
+      const firstInvalid = document.querySelector('form [aria-invalid="true"]');
+      if (active === firstInvalid && active.getAttribute('aria-invalid') === 'true') return true;
       // Or an error summary container/heading with links to invalid fields
       const summary = active.closest('[role="alert"], [aria-labelledby], .error-summary, #error-summary, section, div');
       if (summary && summary.querySelector('a[href^="#"]')) return true;

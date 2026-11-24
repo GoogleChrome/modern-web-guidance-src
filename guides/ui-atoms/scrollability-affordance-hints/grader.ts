@@ -460,6 +460,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
     expect(scrollers.length).toBeGreaterThan(0);
 
     for (const scroller of scrollers) {
+      expect(scroller.hintType).not.toBe('none');
       await page.evaluate(({ idx, ax }) => {
         const el = document.querySelector<HTMLElement>(`[data-grader-scroller="${idx}"]`);
         if (!el) return;
@@ -476,7 +477,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
       await expect.poll(async () => {
         const st = await readHintStates(page, scroller.index);
-        return st ? !st.startVisible && !st.endVisible : false;
+        return st && st.hintType !== 'none' ? !st.startVisible && !st.endVisible : false;
       }).toBe(true);
     }
   });
@@ -566,6 +567,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollStateScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
     // For hidden-scrollbar scrollers using scroll-state container queries, verify fallback rules or IO fallback exist
     const cssInfo = await page.evaluate(() => {
@@ -606,6 +608,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
 
     if (hiddenScrollers.length > 0) {
@@ -643,6 +646,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
 
     const fallbackCheck = await page.evaluate(() => {
