@@ -1,22 +1,25 @@
 diff --git a/index.html b/index.html
-index 66c9173..cf9d6d8 100644
+index 66c9173..9a03566 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,64 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -115,6 +115,130 @@
+       text-align: center;
      }
-+
-+    .SwipeReveal {
+ 
++    /* Swipe to reveal: Seasonal Favorites drink cards */
++    .card.SwipeReveal {
++      padding: 0;
++      /* Column 1: full-width drink content. Column 2: auto-sized actions. */
 +      display: grid;
 +      grid-template-columns: 100% max-content;
 +      overflow-x: auto;
++      overflow-y: hidden;
 +      scroll-snap-type: x mandatory;
 +      scrollbar-width: none;
++      /* Fall back to chaining if `chain` is unsupported, then prevent the
++         action strip from bouncing while still chaining to the document. */
 +      overscroll-behavior: auto;
 +      overscroll-behavior: chain;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 +    }
 +
 +    @media (prefers-reduced-motion: no-preference) {
@@ -26,10 +29,11 @@ index 66c9173..cf9d6d8 100644
 +    }
 +
 +    .SwipeReveal-content {
++      position: relative;
++      padding: 20px 48px;
 +      scroll-snap-align: start;
 +      scroll-initial-target: nearest;
 +      background: white;
-+      box-shadow: none;
 +    }
 +
 +    .SwipeReveal-content:focus-visible {
@@ -37,37 +41,99 @@ index 66c9173..cf9d6d8 100644
 +      outline-offset: -2px;
 +    }
 +
-+    .SwipeReveal-panel {
-+      scroll-snap-align: end;
-+      display: flex;
++    .SwipeReveal-trigger {
++      position: absolute;
++      top: 8px;
++      right: 8px;
++      min-width: 32px;
++      min-height: 32px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      border: 1px solid var(--secondary);
++      border-radius: 50%;
++      background: white;
++      color: var(--primary);
++      font-size: 1.1rem;
++      line-height: 1;
++      cursor: pointer;
++      transition: background 0.3s;
 +    }
 +
-+    .SwipeReveal-panel button {
++    .SwipeReveal-trigger:hover,
++    .SwipeReveal-trigger[aria-expanded="true"] {
++      background: var(--secondary);
++    }
++
++    .SwipeReveal-hint {
++      display: block;
++      margin-top: 10px;
++      font-size: 0.75rem;
++      color: #6d4c41;
++    }
++
++    .SwipeReveal-panel {
++      /* Snapping the trailing panel to `end` brings all actions fully into view. */
++      scroll-snap-align: end;
++      display: flex;
++
++      &:first-child {
++        scroll-snap-align: start;
++      }
++    }
++
++    .SwipeReveal-action {
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 4px;
++      min-width: 80px;
++      min-height: 24px;
++      padding: 0 12px;
 +      border: 0;
-+      padding: 0 20px;
 +      font: inherit;
++      font-size: 0.85rem;
++      font-weight: 600;
 +      color: white;
++      text-decoration: none;
 +      cursor: pointer;
++    }
++
++    .SwipeReveal-action:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .SwipeReveal-action--order {
 +      background: var(--primary);
 +    }
 +
-+    .SwipeReveal-panel button + button {
-+      background: #6d4c41;
-+    }
-+
-+    .SwipeReveal-panel button:last-child {
++    .SwipeReveal-action--favorite {
 +      background: #8d6e63;
 +    }
 +
-+    .SwipeReveal-panel button:hover,
-+    .SwipeReveal-panel button:focus-visible {
-+      background: var(--accent);
-+      color: var(--text);
++    .SwipeReveal-action--favorite[aria-pressed="true"] {
++      background: #c62828;
 +    }
-   </style>
- </head>
- 
-@@ -178,20 +236,41 @@
++
++    .SwipeReveal-action--share {
++      background: #ef6c00;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
++
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
+@@ -178,22 +302,50 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
@@ -75,64 +141,193 @@ index 66c9173..cf9d6d8 100644
 -          <h3>Maple Oat Latte</h3>
 -          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+        <div class="SwipeReveal">
-+          <div class="card SwipeReveal-content">
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
 +            <h3>Maple Oat Latte</h3>
 +            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 +            <a href="/menu/seasonal" class="btn">View Details</a>
++            <span class="SwipeReveal-hint" aria-hidden="true">Swipe left for more options</span>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Maple Oat Latte actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Add to Order</button>
-+            <button type="button">Share</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Actions for Maple Oat Latte">
++            <a href="/order-online?item=maple-oat-latte" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Maple Oat Latte">Order</a>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-pressed="false" aria-label="Favorite Maple Oat Latte">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" data-share-url="/menu/seasonal" aria-label="Share Maple Oat Latte">Share</button>
 +          </div>
          </div>
 -        <div class="card">
 -          <h3>Dark Roast Espresso</h3>
 -          <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+        <div class="SwipeReveal">
-+          <div class="card SwipeReveal-content">
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
 +            <h3>Dark Roast Espresso</h3>
 +            <p>Bold, smokey, and perfect for a morning boost.</p>
 +            <a href="/menu/espresso" class="btn">View Details</a>
++            <span class="SwipeReveal-hint" aria-hidden="true">Swipe left for more options</span>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Dark Roast Espresso actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Add to Order</button>
-+            <button type="button">Share</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Actions for Dark Roast Espresso">
++            <a href="/order-online?item=dark-roast-espresso" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Dark Roast Espresso">Order</a>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-pressed="false" aria-label="Favorite Dark Roast Espresso">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" data-share-url="/menu/espresso" aria-label="Share Dark Roast Espresso">Share</button>
 +          </div>
          </div>
 -        <div class="card">
 -          <h3>Cold Brew</h3>
 -          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+        <div class="SwipeReveal">
-+          <div class="card SwipeReveal-content">
++        <div class="card SwipeReveal">
++          <div class="SwipeReveal-content">
 +            <h3>Cold Brew</h3>
 +            <p>Steeped for 18 hours for maximum smoothness.</p>
 +            <a href="/menu/cold-brew" class="btn">View Details</a>
++            <span class="SwipeReveal-hint" aria-hidden="true">Swipe left for more options</span>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Cold Brew actions" aria-expanded="false"><span aria-hidden="true">&hellip;</span></button>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Add to Order</button>
-+            <button type="button">Share</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Actions for Cold Brew">
++            <a href="/order-online?item=cold-brew" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Cold Brew">Order</a>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-pressed="false" aria-label="Favorite Cold Brew">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" data-share-url="/menu/cold-brew" aria-label="Share Cold Brew">Share</button>
 +          </div>
          </div>
        </div>
++      <p class="visually-hidden" role="status" aria-live="polite" id="swipe-status"></p>
      </section>
-@@ -207,6 +286,16 @@
+   </main>
+ 
+@@ -207,6 +359,136 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
-+      content.addEventListener('focusin', (event) => {
-+        if (event.target.matches(':focus-visible')) {
-+          content.scrollIntoView({ block: 'nearest', inline: 'start' });
++    (() => {
++      const TRIGGER_SELECTOR = '.SwipeReveal-content [aria-label$="actions"]';
++      const statusRegion = document.getElementById('swipe-status');
++
++      function announce(message) {
++        if (!statusRegion) return;
++        statusRegion.textContent = '';
++        // Defer so repeated identical messages are still announced.
++        requestAnimationFrame(() => {
++          statusRegion.textContent = message;
++        });
++      }
++
++      function setActionTabIndexes(reveal, isOpen) {
++        for (const panel of reveal.querySelectorAll('.SwipeReveal-panel')) {
++          for (const control of panel.querySelectorAll('a, button')) {
++            control.setAttribute('tabindex', isOpen ? '0' : '-1');
++          }
 +        }
-+      });
-+    }
++      }
++
++      function setExpanded(reveal, isOpen) {
++        for (const actionButton of reveal.querySelectorAll(TRIGGER_SELECTOR)) {
++          actionButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
++        }
++        setActionTabIndexes(reveal, isOpen);
++      }
++
++      // Determine whether the trailing panel is currently revealed based on the
++      // resting scroll position (works for both LTR and RTL writing modes).
++      function isPanelRevealed(reveal) {
++        const panel = reveal.querySelector('.SwipeReveal-panel');
++        if (!panel) return false;
++        return Math.abs(reveal.scrollLeft) > panel.offsetWidth / 2;
++      }
++
++      function syncState(reveal, snapTarget) {
++        const isOpen = snapTarget instanceof Element
++          ? snapTarget.classList.contains('SwipeReveal-panel')
++          : isPanelRevealed(reveal);
++        const trigger = reveal.querySelector(TRIGGER_SELECTOR);
++        const wasOpen = trigger?.getAttribute('aria-expanded') === 'true';
++        if (wasOpen !== isOpen) setExpanded(reveal, isOpen);
++      }
++
++      for (const reveal of document.querySelectorAll('.SwipeReveal')) {
++        // Keep accessibility state in sync when the panel is swiped open/closed
++        // rather than toggled with the trigger button.
++        if ('onscrollsnapchange' in window) {
++          reveal.addEventListener('scrollsnapchange', (event) => {
++            syncState(reveal, event.snapTargetInline);
++          });
++        } else if ('onscrollend' in window) {
++          reveal.addEventListener('scrollend', () => syncState(reveal));
++        } else {
++          let timer;
++          reveal.addEventListener('scroll', () => {
++            clearTimeout(timer);
++            timer = setTimeout(() => syncState(reveal), 150);
++          }, { passive: true });
++        }
++
++        // Tabbing back into the content closes the panel (keyboard only, so
++        // pointer interactions are unaffected).
++        const content = reveal.querySelector('.SwipeReveal-content');
++        content?.addEventListener('focusin', (event) => {
++          const target = event.target;
++          if (!(target instanceof Element) || !target.matches(':focus-visible')) return;
++          if (target.matches(TRIGGER_SELECTOR)) return;
++          if (isPanelRevealed(reveal)) {
++            content.scrollIntoView({ block: 'nearest', inline: 'start' });
++            setExpanded(reveal, false);
++          }
++        });
++      }
++
++      for (const trigger of document.querySelectorAll(TRIGGER_SELECTOR)) {
++        trigger.addEventListener('click', () => {
++          const reveal = trigger.closest('.SwipeReveal');
++          if (!reveal) return;
++
++          const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
++          if (isExpanded) {
++            reveal.scrollTo({ left: 0 });
++            setExpanded(reveal, false);
++            return;
++          }
++
++          if (!reveal.querySelector('.SwipeReveal-panel')) return;
++
++          const isRtl = getComputedStyle(reveal).direction === 'rtl';
++          reveal.scrollTo({ left: isRtl ? -reveal.scrollWidth : reveal.scrollWidth });
++          setExpanded(reveal, true);
++        });
++      }
++
++      // Actions are only executed when the user explicitly activates them.
++      for (const favorite of document.querySelectorAll('.SwipeReveal-action--favorite')) {
++        favorite.addEventListener('click', () => {
++          const pressed = favorite.getAttribute('aria-pressed') === 'true';
++          favorite.setAttribute('aria-pressed', pressed ? 'false' : 'true');
++          favorite.textContent = pressed ? 'Favorite' : 'Favorited';
++          const name = (favorite.getAttribute('aria-label') || '').replace(/^Favorite\s+/, '');
++          announce(pressed ? `${name} removed from favorites` : `${name} added to favorites`);
++        });
++      }
++
++      for (const share of document.querySelectorAll('.SwipeReveal-action--share')) {
++        share.addEventListener('click', async () => {
++          const name = (share.getAttribute('aria-label') || '').replace(/^Share\s+/, '');
++          const url = new URL(share.dataset.shareUrl || '/', window.location.href).href;
++          try {
++            if (navigator.share) {
++              await navigator.share({ title: name, url });
++            } else if (navigator.clipboard) {
++              await navigator.clipboard.writeText(url);
++              announce(`Link to ${name} copied to clipboard`);
++            } else {
++              announce(`Sharing is not supported in this browser`);
++            }
++          } catch (error) {
++            if (error instanceof DOMException && error.name === 'AbortError') return;
++            announce(`Could not share ${name}`);
++          }
++        });
++      }
++    })();
 +  </script>
 +
  </body>
