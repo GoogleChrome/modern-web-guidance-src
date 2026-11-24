@@ -6,9 +6,13 @@ import { gitExec } from './git-utils.ts';
 
 const MAX_BUFFER = 50 * 1024 * 1024; // 50MB buffer to handle large diffs/assets
 
-const EXCLUDED_FILES_RE = /(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|guide\.md|expectations\.md|task\.md|pnpm-workspace\.yaml)$/;
+const EXCLUDED_FILES_RE = /(?:^|\/)(?:node_modules\/|dist\/|(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|guide\.md|expectations\.md|task\.md|pnpm-workspace\.yaml)$)/;
 
 const EXCLUDED_PATCH_PATHSPECS = [
+  ':(exclude)node_modules',
+  ':(exclude)**/node_modules',
+  ':(exclude)dist',
+  ':(exclude)**/dist',
   ':(exclude)package-lock.json',
   ':(exclude)**/package-lock.json',
   ':(exclude)pnpm-lock.yaml',

@@ -10,7 +10,6 @@ import {
   isGen2Grader,
   isGraderFile,
   formatViolations,
-  GRADER_RULES,
   type GraderLintViolation,
 } from './grader-lint.ts';
 
@@ -60,70 +59,30 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
       );
     });
 
-    it('flags expect(!false), expect(!true), and constant boolean helpers', () => {
+    it('flags expect(!false) and expect(!true)', () => {
       const code = `
         import { test, expect } from '@playwright/test';
-        function alwaysTrue() { return true; }
-        const arrowTrue = () => true;
         test('example', () => {
           expect(!false).toBe(true);
-          expect(alwaysTrue()).toBe(true);
-          expect(arrowTrue()).toBe(true);
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
       assert.deepStrictEqual(
         violations.map(v => v.ruleId),
-        ['no-vacuous-boolean-expect', 'no-vacuous-boolean-expect', 'no-vacuous-boolean-expect']
+        ['no-vacuous-boolean-expect']
       );
     });
 
-    it('permits dynamic boolean expressions and real or recursive predicate helpers in expect()', () => {
+    it('permits dynamic boolean expressions in expect()', () => {
       const code = `
         import { test, expect } from '@playwright/test';
-        function hasPolicy(items) {
-          for (const item of items) { if (item.ok) return true; }
-          return false;
-        }
-        function isInsideDialog(el) {
-          if (!el) return false;
-          return isInsideDialog(el.parentElement);
-        }
-        function assertAndPass(val) {
-          expect(val).toBeGreaterThan(0);
-          return true;
-        }
-        const leafTrue = () => true;
-        const bothTrue = () => leafTrue() && leafTrue();
         test('example', () => {
           expect(someValue === true).toBe(true);
           expect(items.length > 0).toBe(true);
-          expect(hasPolicy(items)).toBe(true);
-          expect(isInsideDialog(node)).toBe(true);
-          expect(assertAndPass(count)).toBe(true);
-          expect((val satisfies boolean)).toBe(true);
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
       assert.deepStrictEqual(violations.map(v => v.ruleId), []);
-    });
-
-    it('detects constant helpers reused across sibling branches without mutating cycle state', () => {
-      const code = `
-        import { test, expect } from '@playwright/test';
-        const leaf = () => true;
-        function both(flag) {
-          if (flag) return leaf();
-          return leaf();
-        }
-        test('example', () => {
-          expect(both(cond)).toBe(true);
-        });
-      `;
-      assert.deepStrictEqual(
-        checkGraderSource('guides/category/slug/grader.ts', code).map(v => v.ruleId),
-        ['no-vacuous-boolean-expect']
-      );
     });
   });
 
@@ -474,12 +433,6 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     const GEN2 = 'guides/category/slug/targets/daily-grind/grader.ts';
     const rules = (code: string, file = GEN2) => checkGraderSource(file, code).map(v => v.ruleId);
 
-    it('references a Red Line (1..8) for every rule', () => {
-      for (const [id, meta] of Object.entries(GRADER_RULES)) {
-        assert.ok(meta.redLine >= 1 && meta.redLine <= 8, id);
-      }
-    });
-
     it('only applies the Gen2-specific rules to Gen2 target graders', () => {
       const code = `test('t', async ({ page }) => { await page.waitForTimeout(350); expect(1).toBe(1); });`;
       assert.deepStrictEqual(rules(code, 'guides/category/slug/grader.ts'), []);
@@ -487,15 +440,20 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
 
     describe('no-early-return-before-assertion', () => {
-      it('flags an absence guard that returns ahead of assertions', () => {
+      it('flags early returns ahead of assertions, including mode/flag checks', () => {
         const code = `
           test('dialog closes on Escape', async ({ page }) => {
             const dialog = page.locator('dialog');
             if ((await dialog.count()) === 0) return;
             if (!opener) { return; }
+            if (mode === 'skip') return;
             await expect(dialog).not.toBeVisible();
           });`;
-        assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion', 'no-early-return-before-assertion']);
+        assert.deepStrictEqual(rules(code), [
+          'no-early-return-before-assertion',
+          'no-early-return-before-assertion',
+          'no-early-return-before-assertion',
+        ]);
       });
 
       it('accepts returns that fail first, TypeScript narrowing after non-soft presence assertions, returns in helpers, and page.evaluate callbacks', () => {
@@ -516,34 +474,39 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
         assert.deepStrictEqual(rules(code), []);
       });
 
-      it('still flags early returns after expect.soft or non-presence assertions', () => {
+      it('still flags early returns after expect.soft or falsy assertions', () => {
         const code = `
           test('t', async ({ page }) => {
             const box = await page.locator('.card').boundingBox();
             expect.soft(box).not.toBeNull();
             if (!box) return;
+            expect(box).toBeNull();
+            if (!box) return;
             expect(box.width).toBeGreaterThan(0);
           });`;
-        assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion']);
+        assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion', 'no-early-return-before-assertion']);
       });
     });
 
     describe('no-unguarded-every', () => {
-      it('flags .every() over a list with no presence assertion, directly, through a const, or after a weak assertion like toBeDefined', () => {
+      it('flags .every() over a list with no non-empty guard, after toBeTruthy/toBeDefined, or when only a sibling property was asserted', () => {
         const code = `
           test('videos are lazy', () => {
             const offscreenVideos = getVideos();
+            expect(offscreenVideos).toBeTruthy();
             expect(offscreenVideos).toBeDefined();
             expect(offscreenVideos.every((v) => v.getAttribute('loading') === 'lazy')).toBe(true);
             const allLazy = offscreenVideos.every((v) => v.loading === 'lazy');
             expect(allLazy).toBeTruthy();
+            expect(result.extCount).toBeGreaterThan(0);
+            expect(result.extStylesheets.every((s) => !s.hasSheet)).toBe(true);
           });`;
         const violations = checkGraderSource(GEN2, code);
-        assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-unguarded-every', 'no-unguarded-every']);
+        assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-unguarded-every', 'no-unguarded-every', 'no-unguarded-every']);
         assert.ok(violations[0].message.includes('.some(bad)'));
       });
 
-      it('accepts a presence assertion first, a length guard in the value, literal lists, and negated .some()', () => {
+      it('accepts a non-empty assertion first, a length guard in the value, literal lists, and negated .some()', () => {
         const code = `
           test('videos are lazy', () => {
             const offscreenVideos = getVideos();
@@ -561,83 +524,22 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
 
     describe('no-swallowed-assertion', () => {
-      it('flags try/catch, unasserted assigned wait catches, and .catch() that swallow an assertion or readiness wait', () => {
+      it('flags try/catch and .catch() that swallow an assertion', () => {
         const code = `
           test('t', async ({ page, locator }) => {
             try { await expect(page.locator('dialog')).toBeVisible(); } catch {}
-            try { await page.waitForFunction(() => window.__ready); } catch {}
-            const unused = await page.waitForFunction(() => window.__ready).catch(() => false);
             await expect(page.locator('dialog')).toBeVisible({ timeout: 2000 }).catch(() => {});
             await expect(locator).toBeEnabled({ timeout: 2000 }).catch(() => {});
-            await page.waitForFunction(() => window.__ready, undefined, { timeout: 1000 }).catch(() => {});
           });`;
-        const violations = checkGraderSource(GEN2, code);
-        assert.deepStrictEqual(
-          violations.map(v => v.ruleId),
-          [
-            'no-swallowed-assertion',
-            'no-swallowed-assertion',
-            'no-swallowed-assertion',
-            'no-swallowed-assertion',
-            'no-swallowed-assertion',
-            'no-swallowed-assertion',
-          ]
-        );
+        assert.deepStrictEqual(rules(code), ['no-swallowed-assertion', 'no-swallowed-assertion', 'no-swallowed-assertion']);
       });
 
-      it('accepts catches that rethrow, non-test boolean-returning wait helpers, wait catches assigned and asserted later, or try/catch recording failures', () => {
+      it('accepts catches that rethrow, waitFor* settle catches, or try/catch without assertions', () => {
         const code = `
-          async function clickUntilTransition(page, button) {
-            for (let attempt = 0; attempt < 5; attempt++) {
-              await button.click();
-              const recorded = await page.waitForFunction(() => window.__transitions?.length > 0).then(() => true).catch(() => false);
-              if (recorded) return;
-            }
-          }
-          async function tryWait(page) {
-            try { await page.waitForSelector('.ready'); return true; } catch { return false; }
-          }
           test('t', async ({ page }) => {
-            let ready = false;
-            ready = await page.waitForFunction(() => window.__ready).catch(() => false);
-            expect(ready).toBe(true);
+            await page.waitForLoadState('networkidle').catch(() => {});
             try { await expect(a).toBeVisible(); } catch (e) { throw new Error('dialog never opened'); }
-            let visible = true;
-            try { await expect(b).toBeVisible(); } catch { visible = false; }
-            expect(visible || other).toBe(true);
-            let allowsMigration = false;
-            try { allowsMigration = JSON.parse(text).migrate_from.length > 0; } catch { allowsMigration = false; }
-            expect(allowsMigration).toBe(true);
-          });`;
-        assert.deepStrictEqual(rules(code), []);
-      });
-    });
-
-    describe('no-absent-or-correct', () => {
-      it('flags empty-or-correct disjunctions that reach a truthy assertion', () => {
-        const code = `
-          test('glue uses ES6 export', () => {
-            const glueFiles = targetFiles.filter((f) => isGlue(f));
-            const glueUsesEs6Export =
-              glueFiles.length === 0 ||
-              glueFiles.some((filePath) => /export default/.test(read(filePath)));
-            expect(hasEs6 && glueUsesEs6Export).toBe(true);
-            const closedByNoneDialogs = getClosedByNone();
-            const closedByNoneConsistentWithExplicitClose =
-              closedByNoneDialogs.length === 0 ||
-              project.getSourceFiles().some((sf) => sf.getFullText().includes('.close('));
-            expect(closedByNoneConsistentWithExplicitClose).toBe(true);
-          });`;
-        assert.deepStrictEqual(rules(code), ['no-absent-or-correct', 'no-absent-or-correct']);
-      });
-
-      it('accepts the same shape asserted falsy and control-flow conditions', () => {
-        const code = `
-          test('paragraphs stay selectable', () => {
-            const paragraphs = docs.flatMap((d) => Array.from(d.document.querySelectorAll('p')));
-            const anyParagraphOrAncestorUnselectable = paragraphs.length === 0 || paragraphs.some((p) => isUnselectable(p));
-            expect(anyParagraphOrAncestorUnselectable).toBe(false);
-            for (const rule of rules) { if (rule.args.length === 0 || rule.args[0] === '') continue; }
+            try { JSON.parse(raw); } catch {}
           });`;
         assert.deepStrictEqual(rules(code), []);
       });
@@ -652,8 +554,7 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
             const settle = () => new Promise((r) => setTimeout(() => r(), 50));
             expect(1).toBe(1);
           });`;
-        const violations = checkGraderSource(GEN2, code);
-        assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-fixed-timeout', 'no-fixed-timeout', 'no-fixed-timeout']);
+        assert.deepStrictEqual(rules(code), ['no-fixed-timeout', 'no-fixed-timeout', 'no-fixed-timeout']);
       });
 
       it('accepts expectNever, setTimeout as a Promise.race cap, and fallback timers', () => {
@@ -665,21 +566,6 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
           });`;
         assert.deepStrictEqual(rules(code), []);
       });
-    });
-
-    it('checkAllGraders returns only blocking rules unless includeReportOnly is set', () => {
-      const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grader-lint-report-'));
-      try {
-        const grader = path.join(tmpRoot, 'guides', 'css', 'demo', 'targets', 'app', 'grader.ts');
-        fs.mkdirSync(path.dirname(grader), { recursive: true });
-        fs.writeFileSync(grader, `test('t', async ({ page }) => { await page.waitForTimeout(100); expect(1).toBe(1); });\n`);
-        assert.deepStrictEqual([...checkAllGraders({ repoRoot: tmpRoot }).keys()], []);
-        assert.deepStrictEqual([...checkAllGraders({ repoRoot: tmpRoot, includeReportOnly: true }).keys()], [
-          'guides/css/demo/targets/app/grader.ts',
-        ]);
-      } finally {
-        fs.rmSync(tmpRoot, { recursive: true, force: true });
-      }
     });
   });
 });

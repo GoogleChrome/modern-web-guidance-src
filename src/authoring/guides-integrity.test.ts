@@ -30,19 +30,15 @@ const LEGACY_GRADER_VIOLATION_LIMITS: Record<string, Partial<Record<GraderRuleId
   'guides/forms/switch/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 2 },
   'guides/html/prerendering-custom-elements/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/html/shadow-dom/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
-  'guides/ui-atoms/single-line-overflow/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 2 },
-  'guides/ui-behaviors/2d-panning/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 1, 'no-unguarded-every': 2 },
+  'guides/security/secure-external-subresources/targets/daily-grind/grader.ts': { 'no-unguarded-every': 1 },
+  'guides/ui-behaviors/2d-panning/targets/daily-grind/grader.ts': { 'no-unguarded-every': 2 },
   'guides/ui-behaviors/drag-and-drop/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-components/app-menus/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-components/breadcrumbs/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-components/carousel/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 2 },
   'guides/ui-components/menu/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 43 },
   'guides/ui-components/progress-ring/targets/daily-grind/grader.ts': { 'no-early-return-before-assertion': 1 },
-  'guides/ui-components/tabs/targets/daily-grind/grader.ts': { 'no-swallowed-assertion': 2 },
   'guides/user-experience/natural-interactions/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 5 },
-  'guides/wasm/cpp-on-the-web/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 1 },
-  'guides/wasm/cpp-on-the-web/targets/devtools-times/grader.ts': { 'no-absent-or-correct': 1 },
-  'guides/webmcp/agentic-forms/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 1 },
 };
 
 const LEGACY_DIRTY_PATCHES = new Set([
@@ -62,7 +58,6 @@ const LEGACY_DIRTY_PATCHES = new Set([
   'guides/webmcp/agentic-forms/targets/daily-grind/patches/codex-solution.patch',
 ]);
 
-const LEGACY_NON_SINGLE_LINE_TASKS = new Set(['guides/ui-components/navbar/targets/daily-grind/task.md']);
 const LEGACY_HEDGED_EXPECTATIONS = new Set([
   'guides/accessibility/respect-os-text-scale/expectations.md',
   'guides/css/calculate-with-intrinsic-sizes/expectations.md',
@@ -345,7 +340,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
 
   it('validates that all graders conform to static anti-pattern checks (ratcheted)', async () => {
     const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
-    const violations = checkAllGraders({ repoRoot: REPO_ROOT, includeReportOnly: true });
+    const violations = checkAllGraders({ repoRoot: REPO_ROOT });
     const regressions = new Map<string, GraderLintViolation[]>();
 
     for (const [file, list] of violations) {
@@ -398,7 +393,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
       const content = fs.readFileSync(path.join(REPO_ROOT, relTask), 'utf8');
       const nonEmpty = content.split('\n').filter(l => l.trim() !== '');
       const prompt = content.replace(/^\s*-\s+/, '').trim();
-      if (!LEGACY_NON_SINGLE_LINE_TASKS.has(relTask) && (nonEmpty.length !== 1 || !/^- \S/.test(nonEmpty[0]) || prompt.endsWith('?'))) {
+      if (nonEmpty.length !== 1 || !/^- \S/.test(nonEmpty[0]) || prompt.endsWith('?')) {
         errors.push(`${relTask}: task.md must be a single imperative "- " line`);
       }
       if (guideMentionRe.test(prompt)) {

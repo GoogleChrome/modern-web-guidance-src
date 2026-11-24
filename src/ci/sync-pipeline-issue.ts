@@ -104,8 +104,8 @@ export interface StaleEvalItem {
   expPr: number | null;
   evalDate: string;
   kind: 'changed' | 'added';
-  removed?: number;
-  added?: number;
+  removed: number;
+  added: number;
 }
 
 export interface NeedsGuidancePrItem {
@@ -231,24 +231,23 @@ export function formatShortDate(isoDate: string): string {
 const BULLET_LINE_RE = /^([+-])\s*(?:[-*+]|\d+[.)])\s+(.+)$/;
 
 export function classifyExpectationsDiff(diffText: string): ExpectationsDiffSummary | null {
-  const counts = new Map<string, number>();
+  const bulletCounts = new Map<string, number>();
+  const otherCounts = new Map<string, number>();
   for (const line of diffText.split('\n')) {
     if ((line[0] !== '+' && line[0] !== '-') || line.startsWith('+++') || line.startsWith('---')) continue;
     const bullet = BULLET_LINE_RE.exec(line);
     const body = (bullet ? bullet[2] : line.slice(1)).replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     if (!body) continue;
-    const key = bullet ? body : `\0${body}`;
-    counts.set(key, (counts.get(key) ?? 0) + (line[0] === '+' ? 1 : -1));
+    const map = bullet ? bulletCounts : otherCounts;
+    map.set(body, (map.get(body) ?? 0) + (line[0] === '+' ? 1 : -1));
   }
   let added = 0;
   let removed = 0;
-  let hasNonBulletDiff = false;
-  for (const [key, delta] of counts) {
-    if (delta === 0) continue;
-    if (key.startsWith('\0')) hasNonBulletDiff = true;
-    else if (delta > 0) added += delta;
-    else removed += -delta;
+  for (const delta of bulletCounts.values()) {
+    if (delta > 0) added += delta;
+    else if (delta < 0) removed += -delta;
   }
+  const hasNonBulletDiff = [...otherCounts.values()].some(delta => delta !== 0);
   if (removed > 0 || hasNonBulletDiff) return { kind: 'changed', removed, added };
   if (added > 0) return { kind: 'added', removed: 0, added };
   return null;
@@ -346,13 +345,13 @@ export function findStaleEvals(
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
-    if (hist && hist.expTs > 0 && hist.evalTs > 0 && hist.expTs > hist.evalTs && hist.diffSummary !== null) {
+    if (hist && hist.expTs > 0 && hist.evalTs > 0 && hist.expTs > hist.evalTs && hist.diffSummary != null) {
       items.push({
         slug,
         expDate: formatShortDate(hist.expDate),
         expPr: hist.expPr ?? null,
         evalDate: formatShortDate(hist.evalDate),
-        ...(hist.diffSummary ?? { kind: 'changed' as const }),
+        ...hist.diffSummary,
       });
     }
   }
@@ -878,12 +877,7 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   }
   for (const item of data.staleEvals) {
     const prPart = item.expPr ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))` : '';
-    const diffPart =
-      item.removed === undefined || item.added === undefined
-        ? item.kind
-        : item.kind === 'changed'
-          ? `changed (-${item.removed}/+${item.added})`
-          : `added (+${item.added})`;
+    const diffPart = item.kind === 'changed' ? `changed (-${item.removed}/+${item.added})` : `added (+${item.added})`;
     lines.push(
       `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`${diffPart}\` · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
     );
