@@ -104,7 +104,7 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
   return out;
 }
 
-  test('The stylesheet includes a :not(:defined) rule scoped to the custom element tag name that fails open via CSS animation', () => {
+  test('The stylesheet includes a :not(:defined) rule scoped to the custom element tag name that hides with visibility: hidden and fails open via CSS animation', () => {
     const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
     const rules = collectAllRules(stylesheet.cssRules);
 
@@ -135,24 +135,31 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
       const displayVal = r.style.getPropertyValue('display').trim();
       if (displayVal === 'none') return false;
 
-      const animation = r.style.getPropertyValue('animation').trim();
-      const animationName = r.style.getPropertyValue('animation-name').trim();
-      const hasAnimation =
-        (animation.length > 0 && animation !== 'none') ||
-        (animationName.length > 0 && animationName !== 'none');
-
-      const animationDelay = r.style.getPropertyValue('animation-delay').trim();
-      const timeTokens = animation
-        .split(/[\s,]+/)
-        .filter(token => /^(?:\d*\.\d+|\d+)(?:ms|s)$/i.test(token));
-      const hasDelay =
-        (timeTokens.length >= 2 && parseTimeMs(timeTokens[1]) > 0) ||
-        (animationDelay.length > 0 && parseTimeMs(animationDelay) > 0);
-
-      if (!hasAnimation || !hasDelay) return false;
-
       const visibilityVal = r.style.getPropertyValue('visibility').trim();
+      const opacityVal = r.style.getPropertyValue('opacity').trim();
+
+      // opacity: 0 alone leaves focusable descendants in tab order and does not pass
+      if (opacityVal !== '' && parseFloat(opacityVal) < 1 && visibilityVal !== 'hidden') {
+        return false;
+      }
+
       if (visibilityVal === 'hidden') {
+        const animation = r.style.getPropertyValue('animation').trim();
+        const animationName = r.style.getPropertyValue('animation-name').trim();
+        const hasAnimation =
+          (animation.length > 0 && animation !== 'none') ||
+          (animationName.length > 0 && animationName !== 'none');
+
+        const animationDelay = r.style.getPropertyValue('animation-delay').trim();
+        const timeTokens = animation
+          .split(/[\s,]+/)
+          .filter(token => /^(?:\d*\.\d+|\d+)(?:ms|s)$/i.test(token));
+        const hasDelay =
+          (timeTokens.length >= 2 && parseTimeMs(timeTokens[1]) > 0) ||
+          (animationDelay.length > 0 && parseTimeMs(animationDelay) > 0);
+
+        if (!hasAnimation || !hasDelay) return false;
+
         const animTokens = `${animation} ${animationName}`
           .split(/[\s,]+/)
           .map(t => t.replace(/^["']|["']$/g, '').trim())
@@ -172,7 +179,6 @@ function collectAllRules(ruleList: Iterable<unknown>): unknown[] {
     });
 
     expect(validRule).toBeDefined();
-    expect(keyframesRules.length).toBeGreaterThan(0);
   });
 
   test('observedAttributes is a static field or static getter present when customElements.define() runs', () => {

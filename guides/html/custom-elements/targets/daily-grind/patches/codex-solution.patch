@@ -1,143 +1,196 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..849ddff
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1 @@
-+dist/
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..0dbacdb
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,6 @@
-+import { mkdir, copyFile } from 'node:fs/promises';
-+
-+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-+for (const file of ['index.html', 'coffee-card.js']) {
-+  await copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url));
-+}
 diff --git a/coffee-card.js b/coffee-card.js
 new file mode 100644
-index 0000000..d89d25a
+index 0000000..2112d7a
 --- /dev/null
 +++ b/coffee-card.js
-@@ -0,0 +1,110 @@
-+// Attributes are the source of truth for this component's public API.
-+export class CoffeeCard extends HTMLElement {
-+  static observedAttributes = ['name', 'description', 'href', 'price', 'disabled'];
+@@ -0,0 +1,174 @@
++// @ts-check
 +
-+  #initialized = false;
++const template = document.querySelector('template#coffee-card-template');
++
++class CoffeeCard extends HTMLElement {
++  static observedAttributes = ['name', 'description', 'brew-hours', 'details-url', 'disabled'];
++
 +  #heading;
 +  #description;
-+  #price;
++  #brewTime;
 +  #link;
 +
 +  constructor() {
 +    super();
-+    const root = this.attachShadow({ mode: 'open' });
-+    const style = document.createElement('style');
-+    style.textContent = `
-+      :host { display: block; }
-+      * { box-sizing: border-box; margin: 0; padding: 0; }
-+      h3 { margin-bottom: 10px; color: var(--primary, #4e342e); }
-+      a {
-+        display: inline-block; background: var(--primary, #4e342e);
-+        color: white; padding: 10px 20px; text-decoration: none;
-+        border-radius: 5px; margin-top: 15px; transition: background 0.3s;
-+      }
-+      a:hover { background: #3e2723; }
-+      a:focus-visible { outline: 2px solid var(--accent, #ffab40); outline-offset: 3px; }
-+      a[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
-+    `;
-+    this.#heading = document.createElement('h3');
-+    this.#description = document.createElement('p');
-+    this.#price = document.createElement('p');
-+    this.#link = document.createElement('a');
-+    this.#link.textContent = 'View Details';
-+    root.append(style, this.#heading, this.#description, this.#price, this.#link);
++
++    if (!(template instanceof HTMLTemplateElement)) {
++      throw new Error('The coffee card template is missing.');
++    }
++
++    const shadow = this.attachShadow({ mode: 'open' });
++    shadow.append(template.content.cloneNode(true));
++
++    const heading = shadow.querySelector('h3');
++    const description = shadow.querySelector('p[data-description]');
++    const brewTime = shadow.querySelector('p[data-brew-time]');
++    const link = shadow.querySelector('a');
++
++    if (!heading || !description || !(brewTime instanceof HTMLParagraphElement) || !link) {
++      throw new Error('The coffee card template is incomplete.');
++    }
++
++    this.#heading = heading;
++    this.#description = description;
++    this.#brewTime = brewTime;
++    this.#link = link;
 +  }
 +
-+  get name() { return this.getAttribute('name') ?? ''; }
-+  set name(value) { this.setAttribute('name', String(value)); }
-+
-+  get description() { return this.getAttribute('description') ?? ''; }
-+  set description(value) { this.setAttribute('description', String(value)); }
-+
-+  get href() { return this.getAttribute('href') ?? ''; }
-+  set href(value) { this.setAttribute('href', String(value)); }
-+
-+  get price() {
-+    const value = Number(this.getAttribute('price'));
-+    return Number.isFinite(value) && value >= 0 ? value : 0;
-+  }
-+  set price(value) {
-+    const number = Number(value);
-+    this.setAttribute('price', String(Number.isFinite(number) && number >= 0 ? number : 0));
++  get name() {
++    return this.getAttribute('name') ?? '';
 +  }
 +
-+  get disabled() { return this.hasAttribute('disabled'); }
-+  set disabled(value) { this.toggleAttribute('disabled', Boolean(value)); }
++  set name(value) {
++    this.setAttribute('name', value);
++  }
++
++  get description() {
++    return this.getAttribute('description') ?? '';
++  }
++
++  set description(value) {
++    this.setAttribute('description', value);
++  }
++
++  get brewHours() {
++    const hours = Number(this.getAttribute('brew-hours'));
++    return Number.isFinite(hours) && hours > 0 ? hours : 0;
++  }
++
++  set brewHours(value) {
++    if (Number.isFinite(value) && value > 0) {
++      this.setAttribute('brew-hours', String(value));
++    } else {
++      this.removeAttribute('brew-hours');
++    }
++  }
++
++  get detailsUrl() {
++    return this.getAttribute('details-url') ?? '';
++  }
++
++  set detailsUrl(value) {
++    this.setAttribute('details-url', value);
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(value) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
 +
 +  connectedCallback() {
-+    if (!this.#initialized) {
-+      this.#initialized = true;
-+      // Replay properties assigned while this was still an unknown element.
-+      for (const property of CoffeeCard.observedAttributes) {
-+        if (Object.prototype.hasOwnProperty.call(this, property)) {
-+          const value = Reflect.get(this, property);
-+          Reflect.deleteProperty(this, property);
-+          Reflect.set(this, property, value);
-+        }
++    // Property assignments made before registration can shadow the accessors.
++    for (const property of /** @type {const} */ (['name', 'description', 'brewHours', 'detailsUrl', 'disabled'])) {
++      this.#upgradeProperty(property);
++    }
++
++    this.#renderName();
++    this.#renderDescription();
++    this.#renderBrewTime();
++    this.#renderLink();
++  }
++
++  /**
++   * @param {string} attribute
++   * @param {string | null} previous
++   * @param {string | null} current
++   */
++  attributeChangedCallback(attribute, previous, current) {
++    if (previous === current) return;
++
++    switch (attribute) {
++      case 'name':
++        this.#renderName();
++        break;
++      case 'description':
++        this.#renderDescription();
++        break;
++      case 'brew-hours':
++        this.#renderBrewTime();
++        break;
++      case 'details-url':
++      case 'disabled':
++        this.#renderLink();
++        break;
++    }
++  }
++
++  /** @param {'name' | 'description' | 'brewHours' | 'detailsUrl' | 'disabled'} property */
++  #upgradeProperty(property) {
++    if (!Object.hasOwn(this, property)) return;
++
++    const value = this[property];
++    if (Reflect.deleteProperty(this, property)) {
++      Reflect.set(this, property, value);
++    }
++  }
++
++  #renderName() {
++    this.#heading.textContent = this.name;
++    this.#link.setAttribute('aria-label', this.name ? `View Details for ${this.name}` : 'View Details');
++  }
++
++  #renderDescription() {
++    this.#description.textContent = this.description;
++  }
++
++  #renderBrewTime() {
++    const hours = this.brewHours;
++    this.#brewTime.textContent = hours ? `Brew time: ${hours} ${hours === 1 ? 'hour' : 'hours'}` : '';
++    this.#brewTime.hidden = hours === 0;
++  }
++
++  #renderLink() {
++    const destination = this.detailsUrl.trim();
++    let hasDestination = false;
++    if (destination) {
++      try {
++        const { protocol } = new URL(destination, this.baseURI);
++        hasDestination = protocol === 'https:' || protocol === 'http:';
++      } catch {
++        // Leave malformed destinations unavailable.
 +      }
 +    }
-+    this.#link.addEventListener('click', this.#onClick);
-+    this.#render();
-+  }
 +
-+  disconnectedCallback() {
-+    this.#link.removeEventListener('click', this.#onClick);
-+  }
-+
-+  // A state-preserving move needs no teardown or setup.
-+  connectedMoveCallback() {}
-+
-+  attributeChangedCallback(name, oldValue, newValue) {
-+    if (oldValue !== newValue) this.#render();
-+  }
-+
-+  #onClick = (event) => {
-+    if (this.disabled) event.preventDefault();
-+  };
-+
-+  #render() {
-+    this.#heading.textContent = this.name;
-+    this.#description.textContent = this.description;
-+    this.#price.hidden = !this.hasAttribute('price');
-+    this.#price.textContent = new Intl.NumberFormat('en-US', {
-+      style: 'currency', currency: 'USD',
-+    }).format(this.price);
-+    this.#link.setAttribute('aria-disabled', String(this.disabled));
-+    if (this.disabled || !this.href) {
++    this.#link.hidden = !hasDestination;
++    if (!hasDestination || this.disabled) {
 +      this.#link.removeAttribute('href');
-+      this.#link.setAttribute('role', 'link');
-+      this.#link.tabIndex = -1;
 +    } else {
-+      this.#link.setAttribute('href', this.href);
++      this.#link.setAttribute('href', destination);
++    }
++
++    if (hasDestination && this.disabled) {
++      this.#link.setAttribute('role', 'link');
++      this.#link.setAttribute('aria-disabled', 'true');
++    } else {
 +      this.#link.removeAttribute('role');
-+      this.#link.removeAttribute('tabindex');
++      this.#link.removeAttribute('aria-disabled');
 +    }
 +  }
 +}
 +
-+if (!customElements.get('coffee-card')) {
-+  customElements.define('coffee-card', CoffeeCard);
-+}
++customElements.define('coffee-card', CoffeeCard);
 diff --git a/index.html b/index.html
-index 66c9173..0b8fe3c 100644
+index 66c9173..18d27b8 100644
 --- a/index.html
 +++ b/index.html
-@@ -107,7 +107,8 @@
+@@ -5,6 +5,7 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script type="module" src="./coffee-card.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -107,7 +108,8 @@
        margin-top: 20px;
      }
  
@@ -147,48 +200,98 @@ index 66c9173..0b8fe3c 100644
        background: white;
        padding: 20px;
        border-radius: 8px;
-@@ -115,11 +116,20 @@
+@@ -115,7 +117,20 @@
        text-align: center;
      }
  
 -    .card h3 {
++    coffee-card[hidden] {
++      display: none;
++    }
++
++    coffee-card:not(:defined) {
++      visibility: hidden;
++      animation: reveal-coffee-card 0s 2s forwards;
++    }
++
++    @keyframes reveal-coffee-card {
++      to { visibility: visible; }
++    }
++
 +    coffee-card h3 {
        margin-bottom: 10px;
        color: var(--primary);
      }
+@@ -157,6 +172,46 @@
  
-+    coffee-card:not(:defined) {
-+      opacity: 0;
-+      animation: coffee-card-fallback 0.2s 2s forwards;
-+    }
+ <body>
+ 
++  <template id="coffee-card-template">
++    <style>
++      h3, p {
++        margin: 0;
++      }
 +
-+    @keyframes coffee-card-fallback {
-+      to { opacity: 1; }
-+    }
++      h3 {
++        margin-bottom: 10px;
++        color: var(--primary);
++      }
 +
-     .btn {
-       display: inline-block;
-       background: var(--primary);
-@@ -178,21 +188,21 @@
++      a {
++        display: inline-block;
++        background: var(--primary);
++        color: white;
++        padding: 10px 20px;
++        text-decoration: none;
++        border-radius: 5px;
++        margin-top: 15px;
++        transition: background 0.3s;
++      }
++
++      a[href]:hover {
++        background: #3e2723;
++      }
++
++      a[aria-disabled="true"] {
++        opacity: 0.65;
++      }
++
++      [hidden] {
++        display: none;
++      }
++    </style>
++    <h3></h3>
++    <p data-description></p>
++    <p data-brew-time hidden></p>
++    <a>View Details</a>
++  </template>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+@@ -178,21 +233,24 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
 -        <div class="card">
-+        <coffee-card name="Maple Oat Latte" description="Creamy oat milk with a hint of Vermont maple syrup." href="/menu/seasonal">
++        <coffee-card name="Maple Oat Latte" description="Creamy oat milk with a hint of Vermont maple syrup."
++          details-url="/menu/seasonal">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
            <a href="/menu/seasonal" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 +        </coffee-card>
-+        <coffee-card name="Dark Roast Espresso" description="Bold, smokey, and perfect for a morning boost." href="/menu/espresso">
++        <coffee-card name="Dark Roast Espresso" description="Bold, smokey, and perfect for a morning boost."
++          details-url="/menu/espresso">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
            <a href="/menu/espresso" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
 +        </coffee-card>
-+        <coffee-card name="Cold Brew" description="Steeped for 18 hours for maximum smoothness." href="/menu/cold-brew">
++        <coffee-card name="Cold Brew" description="Slow-steeped for maximum smoothness." brew-hours="18"
++          details-url="/menu/cold-brew">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
            <a href="/menu/cold-brew" class="btn">View Details</a>
@@ -197,23 +300,38 @@ index 66c9173..0b8fe3c 100644
        </div>
      </section>
    </main>
-@@ -207,6 +217,7 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+  <script type="module" src="./coffee-card.js"></script>
- </body>
- 
- </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..fbbbd1b 100644
+index 2bd4d77..0cfce1e 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,7 @@
+@@ -2,8 +2,12 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node --check coffee-card.js && node build.mjs",
++    "build": "tsc --project tsconfig.json",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
++  "devDependencies": {
++    "typescript": "^5.9.3"
++  },
    "pnpm": {
+     "onlyBuiltDependencies": []
+   }
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..0d5ead4
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2022",
++    "lib": ["DOM", "ES2022"],
++    "types": []
++  },
++  "files": ["coffee-card.js"]
++}

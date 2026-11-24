@@ -1,108 +1,739 @@
-diff --git a/index.html b/index.html
-index 66c9173..cd9fcb9 100644
---- a/index.html
-+++ b/index.html
-@@ -107,19 +107,73 @@
-       margin-top: 20px;
-     }
- 
--    .card {
-+    .card,
-+    coffee-card {
-+      display: block;
-       background: white;
-       padding: 20px;
-       border-radius: 8px;
-       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-       text-align: center;
-+      position: relative;
-+      transition: transform 0.2s, box-shadow 0.2s;
-     }
- 
--    .card h3 {
-+    coffee-card:not(:defined) {
-+      opacity: 0;
-+      /* Reveal anyway after 2s, so a failed or slow script never hides content for good. */
-+      animation: defined-fallback 0.2s 2s forwards;
+diff --git a/coffee-card.js b/coffee-card.js
+new file mode 100644
+index 0000000..1948381
+--- /dev/null
++++ b/coffee-card.js
+@@ -0,0 +1,698 @@
++const template = document.createElement('template');
++template.innerHTML = /* html */ `
++  <style>
++    :host {
++      display: flex;
++      flex-direction: column;
++      background: #ffffff;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      text-align: center;
++      color: var(--text, #3e2723);
++      border: 2px solid transparent;
++      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 +    }
 +
-+    @keyframes defined-fallback {
-+      to {
-+        opacity: 1;
-+      }
++    :host([hidden]) {
++      display: none;
 +    }
 +
-+    coffee-card[featured] {
-+      border: 2px solid var(--accent);
-+      box-shadow: 0 4px 12px rgba(255, 171, 64, 0.25);
++    :host([featured]) {
++      border-color: var(--accent, #ffab40);
++      box-shadow: 0 4px 12px rgba(78, 52, 46, 0.15);
 +    }
 +
-+    coffee-card[disabled] {
++    :host([disabled]) {
 +      opacity: 0.65;
 +    }
 +
-+    coffee-card:state(busy) .btn {
-+      opacity: 0.7;
-+      cursor: wait;
++    .card {
++      display: flex;
++      flex-direction: column;
++      flex: 1;
++      height: 100%;
 +    }
 +
-+    coffee-card:state(selected) {
-+      outline: 2px solid var(--primary);
-+    }
-+
-+    .card h3,
-+    coffee-card h3 {
-       margin-bottom: 10px;
-       color: var(--primary);
-     }
- 
-+    .card-badge {
-+      display: inline-block;
-+      background: var(--accent);
-+      color: var(--text);
-+      font-size: 0.75rem;
-+      font-weight: bold;
-+      padding: 2px 8px;
-+      border-radius: 12px;
++    .badges {
++      display: flex;
++      justify-content: center;
++      gap: 8px;
++      min-height: 24px;
 +      margin-bottom: 8px;
++    }
++
++    .badges:empty,
++    .badges.is-empty {
++      display: none;
++    }
++
++    .badge {
++      display: inline-block;
++      padding: 2px 10px;
++      border-radius: 999px;
++      font-size: 0.75rem;
++      font-weight: 700;
++      letter-spacing: 0.03em;
 +      text-transform: uppercase;
 +    }
 +
-+    .card-meta {
-+      font-size: 0.9rem;
-+      color: var(--primary);
-+      font-weight: 600;
-+      margin-top: 8px;
++    .badge[hidden] {
++      display: none;
 +    }
 +
-     .btn {
-       display: inline-block;
-       background: var(--primary);
-@@ -129,12 +183,23 @@
-       border-radius: 5px;
-       margin-top: 15px;
-       transition: background 0.3s;
-+      border: none;
-+      cursor: pointer;
-+      font-size: 1rem;
-     }
- 
-     .btn:hover {
-       background: #3e2723;
-     }
- 
-+    .btn[aria-disabled="true"],
-+    .btn:disabled {
-+      background: var(--secondary);
-+      color: var(--text);
++    .badge-featured {
++      background: var(--accent, #ffab40);
++      color: #3e2723;
++    }
++
++    .badge-unavailable {
++      background: var(--secondary, #d7ccc8);
++      color: #3e2723;
++    }
++
++    .title {
++      margin: 0 0 10px;
++      color: var(--primary, #4e342e);
++      font-size: 1.17rem;
++      line-height: 1.3;
++    }
++
++    .description {
++      margin: 0;
++      flex: 1;
++      color: var(--text, #3e2723);
++    }
++
++    .meta {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 12px;
++      margin-top: 12px;
++      font-size: 0.9rem;
++      color: var(--primary, #4e342e);
++      font-weight: 600;
++    }
++
++    .meta[hidden] {
++      display: none;
++    }
++
++    .price[hidden],
++    .caffeine[hidden] {
++      display: none;
++    }
++
++    .caffeine {
++      font-weight: 400;
++      color: #6d4c41;
++      font-size: 0.85rem;
++    }
++
++    .actions {
++      display: flex;
++      justify-content: center;
++      align-items: center;
++      gap: 10px;
++      margin-top: 15px;
++      flex-wrap: wrap;
++    }
++
++    .btn {
++      display: inline-block;
++      background: var(--primary, #4e342e);
++      color: #ffffff;
++      padding: 10px 20px;
++      text-decoration: none;
++      border-radius: 5px;
++      font-size: 0.95rem;
++      transition: background 0.3s ease;
++    }
++
++    .btn:hover:not([aria-disabled="true"]) {
++      background: #3e2723;
++    }
++
++    .btn[aria-disabled="true"] {
++      background: #8d6e63;
 +      cursor: not-allowed;
 +      pointer-events: none;
 +    }
 +
-     footer {
-       background: var(--secondary);
-       text-align: center;
-@@ -178,21 +243,28 @@
++    .favorite-btn {
++      appearance: none;
++      background: transparent;
++      color: var(--primary, #4e342e);
++      border: 1px solid var(--primary, #4e342e);
++      padding: 9px 14px;
++      border-radius: 5px;
++      font: inherit;
++      font-size: 0.9rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
++    }
++
++    .favorite-btn:hover:not(:disabled) {
++      background: #efebe9;
++    }
++
++    .favorite-btn:disabled {
++      opacity: 0.6;
++      cursor: not-allowed;
++    }
++
++    :host(:state(saved)) .favorite-btn {
++      background: var(--accent, #ffab40);
++      border-color: var(--accent, #ffab40);
++      color: #3e2723;
++    }
++
++    .btn:focus-visible,
++    .favorite-btn:focus-visible {
++      outline: 2px solid var(--accent, #ffab40);
++      outline-offset: 2px;
++    }
++
++    .sr-only {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++  </style>
++
++  <article class="card">
++    <div class="badges is-empty">
++      <span class="badge badge-featured" hidden>Featured</span>
++      <span class="badge badge-unavailable" hidden>Unavailable</span>
++    </div>
++    <h3 class="title">
++      <slot name="name"><span class="title-text"></span></slot>
++    </h3>
++    <p class="description">
++      <slot><span class="description-text"></span></slot>
++    </p>
++    <div class="meta" hidden>
++      <span class="price" hidden></span>
++      <span class="caffeine" hidden></span>
++    </div>
++    <div class="actions">
++      <a class="btn"><span class="btn-label">View Details</span></a>
++      <button type="button" class="favorite-btn" aria-pressed="false">Save</button>
++    </div>
++    <p class="sr-only status" role="status" aria-live="polite"></p>
++  </article>
++`;
++
++const UPGRADEABLE_PROPERTIES = /** @type {const} */ ([
++  'name',
++  'description',
++  'href',
++  'cta',
++  'price',
++  'caffeine',
++  'featured',
++  'disabled',
++  'saved',
++]);
++
++/**
++ * Autonomous custom element representing a coffee menu card.
++ * Supports string, numeric, and boolean attribute/property reflection,
++ * idempotent lifecycle management, move preservation, and ElementInternals custom states.
++ */
++export class CoffeeCard extends HTMLElement {
++  static observedAttributes = [
++    'name',
++    'description',
++    'href',
++    'cta',
++    'price',
++    'caffeine',
++    'featured',
++    'disabled',
++  ];
++
++  /** @type {ElementInternals} */
++  #internals;
++
++  /** @type {ShadowRoot} */
++  #shadow;
++
++  /** @type {AbortController | null} */
++  #abortController = null;
++
++  /** @type {boolean} */
++  #saved = false;
++
++  /** @type {HTMLElement} */
++  #badgesEl;
++
++  /** @type {HTMLElement} */
++  #featuredBadgeEl;
++
++  /** @type {HTMLElement} */
++  #unavailableBadgeEl;
++
++  /** @type {HTMLSlotElement} */
++  #nameSlotEl;
++
++  /** @type {HTMLElement} */
++  #titleTextEl;
++
++  /** @type {HTMLSlotElement} */
++  #descSlotEl;
++
++  /** @type {HTMLElement} */
++  #descTextEl;
++
++  /** @type {HTMLElement} */
++  #metaEl;
++
++  /** @type {HTMLElement} */
++  #priceEl;
++
++  /** @type {HTMLElement} */
++  #caffeineEl;
++
++  /** @type {HTMLAnchorElement} */
++  #linkEl;
++
++  /** @type {HTMLElement} */
++  #linkLabelEl;
++
++  /** @type {HTMLButtonElement} */
++  #favoriteBtnEl;
++
++  /** @type {HTMLElement} */
++  #statusEl;
++
++  constructor() {
++    super();
++    this.#internals = this.attachInternals();
++    this.#shadow = this.attachShadow({ mode: 'open' });
++    this.#shadow.appendChild(template.content.cloneNode(true));
++
++    this.#badgesEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.badges'));
++    this.#featuredBadgeEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.badge-featured'));
++    this.#unavailableBadgeEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.badge-unavailable'));
++    this.#nameSlotEl = /** @type {HTMLSlotElement} */ (this.#shadow.querySelector('slot[name="name"]'));
++    this.#titleTextEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.title-text'));
++    this.#descSlotEl = /** @type {HTMLSlotElement} */ (this.#shadow.querySelector('slot:not([name])'));
++    this.#descTextEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.description-text'));
++    this.#metaEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.meta'));
++    this.#priceEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.price'));
++    this.#caffeineEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.caffeine'));
++    this.#linkEl = /** @type {HTMLAnchorElement} */ (this.#shadow.querySelector('.btn'));
++    this.#linkLabelEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.btn-label'));
++    this.#favoriteBtnEl = /** @type {HTMLButtonElement} */ (this.#shadow.querySelector('.favorite-btn'));
++    this.#statusEl = /** @type {HTMLElement} */ (this.#shadow.querySelector('.status'));
++  }
++
++  /** @returns {string} */
++  get name() {
++    return this.getAttribute('name') ?? '';
++  }
++
++  /** @param {string | null | undefined} value */
++  set name(value) {
++    this.#setStringAttribute('name', value);
++  }
++
++  /** @returns {string} */
++  get description() {
++    return this.getAttribute('description') ?? '';
++  }
++
++  /** @param {string | null | undefined} value */
++  set description(value) {
++    this.#setStringAttribute('description', value);
++  }
++
++  /** @returns {string} */
++  get href() {
++    return this.getAttribute('href') ?? '';
++  }
++
++  /** @param {string | null | undefined} value */
++  set href(value) {
++    this.#setStringAttribute('href', value);
++  }
++
++  /** @returns {string} */
++  get cta() {
++    return this.getAttribute('cta') ?? '';
++  }
++
++  /** @param {string | null | undefined} value */
++  set cta(value) {
++    this.#setStringAttribute('cta', value);
++  }
++
++  /** @returns {number} */
++  get price() {
++    return this.#parseNumericAttribute('price') ?? 0;
++  }
++
++  /** @param {number | string | null | undefined} value */
++  set price(value) {
++    this.#setNumericAttribute('price', value);
++  }
++
++  /** @returns {number} */
++  get caffeine() {
++    return this.#parseNumericAttribute('caffeine') ?? 0;
++  }
++
++  /** @param {number | string | null | undefined} value */
++  set caffeine(value) {
++    this.#setNumericAttribute('caffeine', value);
++  }
++
++  /** @returns {boolean} */
++  get featured() {
++    return this.hasAttribute('featured');
++  }
++
++  /** @param {boolean} value */
++  set featured(value) {
++    this.toggleAttribute('featured', Boolean(value));
++  }
++
++  /** @returns {boolean} */
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  /** @param {boolean} value */
++  set disabled(value) {
++    this.toggleAttribute('disabled', Boolean(value));
++  }
++
++  /**
++   * Runtime-only saved state exposed to CSS via `:state(saved)`.
++   * @returns {boolean}
++   */
++  get saved() {
++    return this.#saved;
++  }
++
++  /** @param {boolean} value */
++  set saved(value) {
++    const next = Boolean(value);
++    if (this.#saved === next) return;
++    this.#saved = next;
++    this.#renderSavedState(true);
++  }
++
++  connectedCallback() {
++    this.#upgradeProperties();
++    this.#attachListeners();
++    this.#syncAll();
++  }
++
++  /**
++   * Preserves listeners, focus, and internal state when moved via `Node.moveBefore()`.
++   */
++  connectedMoveCallback() {
++    if (!this.#abortController || this.#abortController.signal.aborted) {
++      this.#attachListeners();
++    }
++    this.#syncAll();
++  }
++
++  disconnectedCallback() {
++    this.#abortController?.abort();
++    this.#abortController = null;
++  }
++
++  /**
++   * @param {string} attrName
++   * @param {string | null} oldValue
++   * @param {string | null} newValue
++   */
++  attributeChangedCallback(attrName, oldValue, newValue) {
++    if (oldValue === newValue) return;
++
++    switch (attrName) {
++      case 'name':
++        this.#renderName();
++        break;
++      case 'description':
++        this.#renderDescription();
++        break;
++      case 'href':
++      case 'cta':
++        this.#renderAction();
++        break;
++      case 'price':
++        this.#renderPrice();
++        break;
++      case 'caffeine':
++        this.#renderCaffeine();
++        break;
++      case 'featured':
++        this.#renderBadges();
++        break;
++      case 'disabled':
++        this.#renderDisabled();
++        this.#renderAction();
++        this.#renderBadges();
++        break;
++    }
++  }
++
++  /**
++   * Toggles the runtime `saved` custom state unless the card is disabled.
++   * @returns {boolean} Current saved state after toggling.
++   */
++  toggleSaved() {
++    if (this.disabled) return this.#saved;
++    this.saved = !this.#saved;
++    this.dispatchEvent(
++      new CustomEvent('coffee-card-save-change', {
++        bubbles: true,
++        composed: true,
++        detail: {
++          saved: this.#saved,
++          name: this.#getDisplayName(),
++        },
++      })
++    );
++    return this.#saved;
++  }
++
++  #upgradeProperties() {
++    for (const prop of UPGRADEABLE_PROPERTIES) {
++      if (Object.prototype.hasOwnProperty.call(this, prop)) {
++        const ownValue = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (this))[prop];
++        delete /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (this))[prop];
++        /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (this))[prop] = ownValue;
++      }
++    }
++  }
++
++  #attachListeners() {
++    this.#abortController?.abort();
++    const controller = new AbortController();
++    this.#abortController = controller;
++    const { signal } = controller;
++
++    this.#favoriteBtnEl.addEventListener(
++      'click',
++      () => {
++        this.toggleSaved();
++      },
++      { signal }
++    );
++
++    this.#linkEl.addEventListener(
++      'click',
++      (event) => {
++        if (this.disabled || !this.href) {
++          event.preventDefault();
++          event.stopImmediatePropagation();
++        }
++      },
++      { signal }
++    );
++
++    const handleSlotChange = () => {
++      this.#renderName();
++      this.#renderDescription();
++    };
++
++    this.#nameSlotEl.addEventListener('slotchange', handleSlotChange, { signal });
++    this.#descSlotEl.addEventListener('slotchange', handleSlotChange, { signal });
++  }
++
++  #syncAll() {
++    this.#renderName();
++    this.#renderDescription();
++    this.#renderPrice();
++    this.#renderCaffeine();
++    this.#renderDisabled();
++    this.#renderAction();
++    this.#renderBadges();
++    this.#renderSavedState(false);
++  }
++
++  /**
++   * @param {string} attrName
++   * @param {string | null | undefined} value
++   */
++  #setStringAttribute(attrName, value) {
++    if (value === null || value === undefined || value === '') {
++      this.removeAttribute(attrName);
++      return;
++    }
++    const next = String(value);
++    if (this.getAttribute(attrName) !== next) {
++      this.setAttribute(attrName, next);
++    }
++  }
++
++  /**
++   * @param {string} attrName
++   * @returns {number | null}
++   */
++  #parseNumericAttribute(attrName) {
++    const raw = this.getAttribute(attrName);
++    if (raw === null || raw.trim() === '') return null;
++    const parsed = Number(raw);
++    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
++  }
++
++  /**
++   * @param {string} attrName
++   * @param {number | string | null | undefined} value
++   */
++  #setNumericAttribute(attrName, value) {
++    if (value === null || value === undefined || value === '') {
++      this.removeAttribute(attrName);
++      return;
++    }
++    const parsed = Number(value);
++    if (!Number.isFinite(parsed) || parsed < 0) {
++      this.removeAttribute(attrName);
++      return;
++    }
++    const next = String(parsed);
++    if (this.getAttribute(attrName) !== next) {
++      this.setAttribute(attrName, next);
++    }
++  }
++
++  /** @returns {string} */
++  #getDisplayName() {
++    const slotted = this.#nameSlotEl
++      .assignedNodes({ flatten: false })
++      .map((node) => node.textContent ?? '')
++      .join('')
++      .trim();
++    return slotted || this.name || 'Coffee item';
++  }
++
++  #updateFavoriteButtonLabel() {
++    this.#favoriteBtnEl.setAttribute('aria-label', `${this.#saved ? 'Saved' : 'Save'} ${this.#getDisplayName()}`);
++  }
++
++  #renderName() {
++    this.#titleTextEl.textContent = this.name;
++    this.#updateFavoriteButtonLabel();
++  }
++
++  #renderDescription() {
++    this.#descTextEl.textContent = this.description;
++  }
++
++  #renderPrice() {
++    const price = this.#parseNumericAttribute('price');
++    if (price === null) {
++      this.#priceEl.hidden = true;
++      this.#priceEl.textContent = '';
++    } else {
++      this.#priceEl.hidden = false;
++      this.#priceEl.textContent = `$${price.toFixed(2)}`;
++    }
++    this.#updateMetaVisibility();
++  }
++
++  #renderCaffeine() {
++    const caffeine = this.#parseNumericAttribute('caffeine');
++    if (caffeine === null) {
++      this.#caffeineEl.hidden = true;
++      this.#caffeineEl.textContent = '';
++    } else {
++      this.#caffeineEl.hidden = false;
++      this.#caffeineEl.textContent = `${Math.round(caffeine)} mg caffeine`;
++    }
++    this.#updateMetaVisibility();
++  }
++
++  #updateMetaVisibility() {
++    this.#metaEl.hidden = this.#priceEl.hidden && this.#caffeineEl.hidden;
++  }
++
++  #renderBadges() {
++    this.#featuredBadgeEl.hidden = !this.featured;
++    this.#unavailableBadgeEl.hidden = !this.disabled;
++    const empty = this.#featuredBadgeEl.hidden && this.#unavailableBadgeEl.hidden;
++    this.#badgesEl.classList.toggle('is-empty', empty);
++  }
++
++  #renderDisabled() {
++    const isDisabled = this.disabled;
++    this.#internals.ariaDisabled = isDisabled ? 'true' : null;
++    this.#favoriteBtnEl.disabled = isDisabled;
++  }
++
++  #renderAction() {
++    const isDisabled = this.disabled;
++    const href = this.href;
++    const label = this.cta || (isDisabled ? 'Unavailable' : 'View Details');
++
++    this.#linkLabelEl.textContent = label;
++
++    if (isDisabled || !href) {
++      this.#linkEl.removeAttribute('href');
++      this.#linkEl.setAttribute('aria-disabled', 'true');
++      this.#linkEl.tabIndex = -1;
++    } else {
++      this.#linkEl.setAttribute('href', href);
++      this.#linkEl.removeAttribute('aria-disabled');
++      this.#linkEl.removeAttribute('tabindex');
++    }
++  }
++
++  /** @param {boolean} announce */
++  #renderSavedState(announce) {
++    if (this.#saved) {
++      this.#internals.states.add('saved');
++    } else {
++      this.#internals.states.delete('saved');
++    }
++
++    this.#favoriteBtnEl.setAttribute('aria-pressed', this.#saved ? 'true' : 'false');
++    this.#favoriteBtnEl.textContent = this.#saved ? 'Saved' : 'Save';
++    this.#updateFavoriteButtonLabel();
++
++    if (announce) {
++      const displayName = this.#getDisplayName();
++      this.#statusEl.textContent = this.#saved
++        ? `${displayName} saved to favorites.`
++        : `${displayName} removed from favorites.`;
++    }
++  }
++}
++
++if (!customElements.get('coffee-card')) {
++  customElements.define('coffee-card', CoffeeCard);
++}
+diff --git a/index.html b/index.html
+index 66c9173..f9190a1 100644
+--- a/index.html
++++ b/index.html
+@@ -107,17 +107,17 @@
+       margin-top: 20px;
+     }
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    coffee-card:not(:defined) {
++      visibility: hidden;
++      opacity: 0;
++      animation: defined-fallback 0.2s 2s forwards;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    @keyframes defined-fallback {
++      to {
++        visibility: visible;
++        opacity: 1;
++      }
+     }
+ 
+     .btn {
+@@ -178,21 +178,28 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
@@ -126,223 +757,31 @@ index 66c9173..cd9fcb9 100644
 +          description="Creamy oat milk with a hint of Vermont maple syrup."
 +          href="/menu/seasonal"
 +          price="5.50"
-+          count="1"
++          caffeine="150"
 +          featured>
 +        </coffee-card>
 +        <coffee-card
 +          name="Dark Roast Espresso"
 +          description="Bold, smokey, and perfect for a morning boost."
 +          href="/menu/espresso"
-+          price="3.75"
-+          count="1">
++          price="4.00"
++          caffeine="180">
 +        </coffee-card>
 +        <coffee-card
 +          name="Cold Brew"
 +          description="Steeped for 18 hours for maximum smoothness."
 +          href="/menu/cold-brew"
 +          price="4.50"
-+          count="1">
++          caffeine="200">
 +        </coffee-card>
        </div>
      </section>
    </main>
-@@ -207,6 +279,199 @@
+@@ -207,6 +214,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script type="module">
-+    class CoffeeCard extends HTMLElement {
-+      static observedAttributes = [
-+        'name',
-+        'description',
-+        'href',
-+        'label',
-+        'price',
-+        'count',
-+        'featured',
-+        'disabled'
-+      ];
-+
-+      #internals;
-+      #initialized = false;
-+      #boundHandleClick;
-+
-+      constructor() {
-+        super();
-+        if (typeof this.attachInternals === 'function') {
-+          this.#internals = this.attachInternals();
-+        }
-+        this.#boundHandleClick = this.#handleClick.bind(this);
-+      }
-+
-+      // String attributes reflected via getter/setter
-+      get name() {
-+        return this.getAttribute('name') ?? '';
-+      }
-+      set name(v) {
-+        v ? this.setAttribute('name', String(v)) : this.removeAttribute('name');
-+      }
-+
-+      get description() {
-+        return this.getAttribute('description') ?? '';
-+      }
-+      set description(v) {
-+        v ? this.setAttribute('description', String(v)) : this.removeAttribute('description');
-+      }
-+
-+      get href() {
-+        return this.getAttribute('href') ?? '';
-+      }
-+      set href(v) {
-+        v ? this.setAttribute('href', String(v)) : this.removeAttribute('href');
-+      }
-+
-+      get label() {
-+        return this.getAttribute('label') ?? '';
-+      }
-+      set label(v) {
-+        v ? this.setAttribute('label', String(v)) : this.removeAttribute('label');
-+      }
-+
-+      // Numeric attributes: coerce from string on read, serialize on write
-+      get price() {
-+        return Number(this.getAttribute('price')) || 0;
-+      }
-+      set price(v) {
-+        this.setAttribute('price', String(Number(v) || 0));
-+      }
-+
-+      get count() {
-+        return Number(this.getAttribute('count')) || 0;
-+      }
-+      set count(v) {
-+        this.setAttribute('count', String(Number(v) || 0));
-+      }
-+
-+      // Boolean attributes: present = true, absent = false. Never set to "false"
-+      get featured() {
-+        return this.hasAttribute('featured');
-+      }
-+      set featured(on) {
-+        this.toggleAttribute('featured', !!on);
-+      }
-+
-+      get disabled() {
-+        return this.hasAttribute('disabled');
-+      }
-+      set disabled(on) {
-+        this.toggleAttribute('disabled', !!on);
-+      }
-+
-+      connectedCallback() {
-+        // Make setup idempotent since connectedCallback can run more than once
-+        this.removeEventListener('click', this.#boundHandleClick);
-+        this.addEventListener('click', this.#boundHandleClick);
-+
-+        if (!this.#initialized) {
-+          this.#upgradeProperties();
-+          this.#initialized = true;
-+        }
-+
-+        this.render();
-+      }
-+
-+      disconnectedCallback() {
-+        // Tear down listeners so we don't leak, while allowing re-insertion later
-+        this.removeEventListener('click', this.#boundHandleClick);
-+      }
-+
-+      connectedMoveCallback() {
-+        // Preserve state and DOM without running full disconnect/reconnect teardown
-+      }
-+
-+      attributeChangedCallback(name, oldVal, newVal) {
-+        if (oldVal !== newVal && this.isConnected) {
-+          this.render();
-+        }
-+      }
-+
-+      #upgradeProperties() {
-+        for (const prop of CoffeeCard.observedAttributes) {
-+          if (Object.prototype.hasOwnProperty.call(this, prop)) {
-+            const value = this[prop];
-+            delete this[prop];
-+            this[prop] = value;
-+          }
-+        }
-+      }
-+
-+      #handleClick(event) {
-+        const actionBtn = event.target.closest('[data-action="select"]');
-+        if (!actionBtn) return;
-+
-+        if (this.disabled) {
-+          event.preventDefault();
-+          return;
-+        }
-+
-+        if (this.#internals?.states) {
-+          if (this.#internals.states.has('selected')) {
-+            this.#internals.states.delete('selected');
-+          } else {
-+            this.#internals.states.add('selected');
-+          }
-+        }
-+      }
-+
-+      render() {
-+        const nameText = this.name;
-+        const descText = this.description;
-+        const hrefVal = this.href || '#';
-+        const ctaLabel = this.label || 'View Details';
-+        const priceVal = this.price;
-+        const countVal = this.count;
-+        const isFeatured = this.featured;
-+        const isDisabled = this.disabled;
-+
-+        this.classList.add('card');
-+        this.replaceChildren();
-+
-+        if (isFeatured) {
-+          const badge = document.createElement('span');
-+          badge.className = 'card-badge';
-+          badge.textContent = 'Featured';
-+          this.appendChild(badge);
-+        }
-+
-+        const heading = document.createElement('h3');
-+        heading.textContent = nameText;
-+        this.appendChild(heading);
-+
-+        const paragraph = document.createElement('p');
-+        paragraph.textContent = descText;
-+        this.appendChild(paragraph);
-+
-+        if (priceVal > 0) {
-+          const meta = document.createElement('div');
-+          meta.className = 'card-meta';
-+          const total = (priceVal * (countVal > 0 ? countVal : 1)).toFixed(2);
-+          meta.textContent = countVal > 1 ? `$${total} (${countVal}x)` : `$${priceVal.toFixed(2)}`;
-+          this.appendChild(meta);
-+        }
-+
-+        const link = document.createElement('a');
-+        link.className = 'btn';
-+        link.href = hrefVal;
-+        link.dataset.action = 'select';
-+        link.textContent = isDisabled ? 'Unavailable' : ctaLabel;
-+        if (isDisabled) {
-+          link.setAttribute('aria-disabled', 'true');
-+          link.tabIndex = -1;
-+        }
-+        this.appendChild(link);
-+      }
-+    }
-+
-+    if (!customElements.get('coffee-card')) {
-+      customElements.define('coffee-card', CoffeeCard);
-+    }
-+  </script>
++  <script type="module" src="./coffee-card.js"></script>
  </body>
  
  </html>
