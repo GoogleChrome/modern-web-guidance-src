@@ -1,24 +1,15 @@
 diff --git a/index.html b/index.html
-index 66c9173..d6c8de1 100644
+index 5db718e..3559894 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,28 @@
-       --accent: #ffab40;
+@@ -14,6 +14,19 @@
+       --border: #795548;
        --text: #3e2723;
        --light: #fafafa;
-+
-+      /* Derived palette (color-mix interpolated in oklch/oklab) */
-+      --accent-deep: color-mix(in oklch, var(--accent), #bf360c 45%);
-+      --accent-glow: color-mix(in oklab, var(--accent), white 35%);
-+      --primary-soft: color-mix(in oklab, var(--primary), white 25%);
-+      --shadow-color: 25deg 40% 18%;
-+
-+      /* Flavor-profile chart colors */
-+      --flavor-sweet: var(--accent);
-+      --flavor-bold: var(--primary);
-+      --flavor-smooth: color-mix(in oklab, var(--secondary), #a1887f 50%);
-+
-+      /* Gradient interpolation tokens (empty in browsers without support) */
++      --flavor-sweet: #b45309;
++      --flavor-bold: #3e2723;
++      --flavor-smooth: #a1887f;
++      /* Interpolation tokens: empty unless supported (see @supports below) */
 +      --in-oklab: ;
 +      --in-oklch: ;
 +    }
@@ -31,101 +22,95 @@ index 66c9173..d6c8de1 100644
      }
  
      * {
-@@ -74,9 +96,15 @@
+@@ -76,8 +89,14 @@
  
      /* Hero Section */
      .hero {
 +      position: relative;
++      /* Contain the blend-mode overlay to the hero only */
 +      isolation: isolate;
        height: 60vh;
 -      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+      background-color: var(--primary);
++      /* Dark warm scrim keeps white text readable over every part of the photo */
++      background-color: #2b1a14;
 +      background-image:
-+        linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)),
-+        linear-gradient(to bottom right var(--in-oklab), var(--accent-glow), var(--primary)),
++        linear-gradient(160deg var(--in-oklab), rgba(43, 26, 20, 0.78), rgba(78, 52, 46, 0.62) 55%, rgba(124, 45, 18, 0.7)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-+      background-blend-mode: normal, multiply, normal;
        background-size: cover;
        background-position: center;
-       display: flex;
-@@ -88,6 +116,30 @@
+@@ -90,6 +109,27 @@
        padding: 0 20px;
      }
  
-+    /* Warm lighting overlay, blended only within the hero (isolation above) */
++    /* Warm lighting overlay blended onto the photo */
 +    .hero::before {
 +      content: "";
 +      position: absolute;
 +      inset: 0;
 +      z-index: -1;
-+      background: radial-gradient(circle at 25% 20% var(--in-oklab),
-+          color-mix(in oklab, var(--accent), white 20%) 0%,
-+          color-mix(in oklab, var(--accent), transparent 60%) 40%,
-+          transparent 75%);
++      background: radial-gradient(circle at 30% 25% var(--in-oklab), rgba(255, 171, 64, 0.55), rgba(255, 171, 64, 0) 65%);
 +      mix-blend-mode: soft-light;
 +      pointer-events: none;
 +    }
 +
-+    /* Decorative diagonal stripe band along the bottom edge of the hero */
++    /* Decorative diagonal stripe along the bottom edge of the hero */
 +    .hero::after {
 +      content: "";
 +      position: absolute;
 +      inset: auto 0 0;
-+      height: 10px;
-+      background: repeating-linear-gradient(-45deg, var(--accent) 0 10px, var(--primary) 0 20px);
++      height: 8px;
++      background: repeating-linear-gradient(-45deg, var(--accent-on-dark) 0 8px, var(--primary) 0 16px);
 +      pointer-events: none;
 +    }
 +
      .hero h1 {
        font-size: 3rem;
        margin-bottom: 1rem;
-@@ -107,12 +159,141 @@
+@@ -109,12 +149,118 @@
        margin-top: 20px;
      }
  
-+    /* Decorative polka-dot accent under the section heading */
-+    .section-title {
-+      text-align: center;
++    section > h2 {
++      position: relative;
++      padding-bottom: 14px;
 +    }
 +
-+    .section-title::after {
-+      --distance: 6px;
-+      --radius: 2px;
-+      --polka: radial-gradient(circle, var(--accent) var(--radius), transparent calc(var(--radius) + 1px));
++    /* Decorative checkerboard accent under the section heading */
++    section > h2::after {
 +      content: "";
-+      display: block;
-+      width: 120px;
-+      height: 12px;
-+      margin: 8px auto 0;
-+      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance);
-+      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
++      position: absolute;
++      left: 50%;
++      bottom: 0;
++      width: 96px;
++      height: 8px;
++      transform: translateX(-50%);
++      background: repeating-conic-gradient(var(--primary) 0 25%, var(--secondary) 0 50%) 0 / 8px 8px;
++      border-radius: 2px;
 +    }
 +
      .card {
-+      position: relative;
-+      overflow: hidden;
        background: white;
--      padding: 20px;
-+      padding: 28px 20px 20px;
+       padding: 20px;
        border-radius: 8px;
 -      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-       text-align: center;
 +      /* Layered shadows for soft, realistic depth */
 +      box-shadow:
-+        0 1px 1px hsl(var(--shadow-color) / 0.08),
-+        0 2px 4px hsl(var(--shadow-color) / 0.08),
-+        0 6px 12px hsl(var(--shadow-color) / 0.08),
-+        0 14px 28px hsl(var(--shadow-color) / 0.1);
-+      transition: transform 0.3s, box-shadow 0.3s;
++        0 1px 1px rgba(62, 39, 35, 0.08),
++        0 2px 4px rgba(62, 39, 35, 0.08),
++        0 6px 12px rgba(62, 39, 35, 0.08),
++        0 14px 28px rgba(62, 39, 35, 0.1);
+       text-align: center;
++      transition: box-shadow 0.3s, transform 0.3s;
 +    }
 +
-+    .card:hover {
-+      transform: translateY(-4px);
++    .card:hover,
++    .card:focus-within {
++      transform: translateY(-3px);
 +      box-shadow:
-+        0 1px 2px hsl(var(--shadow-color) / 0.08),
-+        0 4px 8px hsl(var(--shadow-color) / 0.08),
-+        0 10px 20px hsl(var(--shadow-color) / 0.1),
-+        0 24px 48px hsl(var(--shadow-color) / 0.14);
++        0 1px 2px rgba(62, 39, 35, 0.08),
++        0 4px 8px rgba(62, 39, 35, 0.08),
++        0 10px 20px rgba(62, 39, 35, 0.1),
++        0 22px 44px rgba(62, 39, 35, 0.12);
 +    }
 +
 +    @media (prefers-reduced-motion: reduce) {
@@ -133,124 +118,103 @@ index 66c9173..d6c8de1 100644
 +        transition: none;
 +      }
 +
-+      .card:hover {
++      .card:hover,
++      .card:focus-within {
 +        transform: none;
 +      }
 +    }
 +
-+    /* Decorative checkerboard strip along the top of each card */
-+    .card::before {
-+      content: "";
-+      position: absolute;
-+      inset: 0 0 auto;
-+      height: 8px;
-+      background: repeating-conic-gradient(var(--primary) 0 25%, var(--secondary) 0 50%) 0 / 8px 8px;
-+    }
-+
-+    /* Flavor-profile pie chart */
++    /* Flavor profile pie chart (data also exposed as text in the <dl>) */
 +    .flavor {
 +      display: flex;
 +      align-items: center;
 +      justify-content: center;
-+      flex-wrap: wrap;
 +      gap: 16px;
-+      margin-top: 15px;
-+    }
-+
-+    .flavor figcaption {
-+      flex-basis: 100%;
-+      font-size: 0.8rem;
-+      font-weight: bold;
-+      text-transform: uppercase;
-+      letter-spacing: 1px;
-+      color: var(--primary-soft);
++      margin: 16px 0 4px;
 +    }
 +
 +    .pie {
 +      --sweet: 33%;
 +      --bold: 33%;
++      flex: none;
 +      width: 72px;
 +      aspect-ratio: 1;
 +      border-radius: 50%;
-+      background:
-+        conic-gradient(var(--flavor-sweet) var(--sweet),
++      background: conic-gradient(var(--flavor-sweet) 0 var(--sweet),
 +          var(--flavor-bold) 0 calc(var(--sweet) + var(--bold)),
-+          transparent 0%) var(--flavor-smooth);
-+      /* drop-shadow follows the circular shape */
-+      filter: drop-shadow(0 2px 3px hsl(var(--shadow-color) / 0.3));
++          var(--flavor-smooth) 0);
++      /* drop-shadow follows the round shape */
++      filter: drop-shadow(0 2px 3px rgba(62, 39, 35, 0.3));
 +    }
 +
-+    .flavor-legend {
++    .flavor dl {
++      display: grid;
++      grid-template-columns: auto auto;
++      column-gap: 8px;
 +      text-align: left;
 +      font-size: 0.85rem;
 +    }
 +
-+    .flavor-legend div {
++    .flavor dt {
 +      display: flex;
 +      align-items: center;
 +      gap: 6px;
 +    }
 +
-+    .flavor-legend dt::before {
++    .flavor dt::before {
 +      content: "";
-+      display: inline-block;
-+      width: 0.75em;
-+      height: 0.75em;
-+      margin-right: 6px;
-+      border-radius: 2px;
-+      vertical-align: -0.05em;
++      width: 10px;
++      height: 10px;
++      border-radius: 50%;
 +      background: var(--swatch);
 +    }
 +
-+    .flavor-legend dt::after {
-+      content: ":";
++    .flavor dd {
++      font-weight: 600;
 +    }
 +
-+    .flavor-legend dd {
-+      font-weight: bold;
-+    }
-+
-+    .flavor-legend .sweet {
++    .swatch-sweet {
 +      --swatch: var(--flavor-sweet);
 +    }
 +
-+    .flavor-legend .bold {
++    .swatch-bold {
 +      --swatch: var(--flavor-bold);
 +    }
 +
-+    .flavor-legend .smooth {
++    .swatch-smooth {
 +      --swatch: var(--flavor-smooth);
      }
  
      .card h3 {
-@@ -135,8 +316,25 @@
+@@ -137,8 +283,26 @@
        background: #3e2723;
      }
  
++    /* White label keeps >= 4.5:1 contrast against every gradient stop */
 +    .btn-order {
-+      color: var(--text);
-+      font-weight: bold;
-+      background: linear-gradient(135deg var(--in-oklch), var(--accent-glow), var(--accent) 50%, var(--accent-deep));
++      background: linear-gradient(135deg var(--in-oklab), #9a3412, var(--primary));
 +      box-shadow:
-+        0 1px 2px hsl(var(--shadow-color) / 0.25),
-+        0 4px 10px hsl(var(--shadow-color) / 0.3);
++        0 1px 2px rgba(0, 0, 0, 0.2),
++        0 4px 10px rgba(0, 0, 0, 0.25);
++      font-weight: 600;
 +    }
 +
 +    .btn-order:hover {
-+      background: linear-gradient(135deg var(--in-oklch), var(--accent), var(--accent-deep));
++      background: linear-gradient(135deg var(--in-oklab), #7c2d12, #3e2723);
 +    }
 +
      footer {
 -      background: var(--secondary);
-+      --distance: 14px;
++      --distance: 12px;
 +      --radius: 2px;
-+      --polka: radial-gradient(circle, color-mix(in oklab, var(--secondary), var(--primary) 15%) var(--radius), transparent calc(var(--radius) + 1px));
++      --polka: radial-gradient(circle, color-mix(in oklab, var(--border) 25%, var(--secondary)) var(--radius), transparent calc(var(--radius) + 1px));
++      /* Subtle decorative polka-dot texture */
 +      background: var(--polka) 0 0, var(--polka) var(--distance) var(--distance) var(--secondary);
 +      background-size: calc(var(--distance) * 2) calc(var(--distance) * 2);
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -171,26 +369,53 @@
+@@ -173,7 +337,7 @@
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
@@ -259,50 +223,44 @@ index 66c9173..d6c8de1 100644
    </header>
  
    <main class="container">
-     <section>
--      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <h2 class="section-title">Seasonal Favorites</h2>
-       <div class="grid">
+@@ -183,16 +347,40 @@
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+          <figure class="flavor">
-+            <figcaption>Flavor profile</figcaption>
-+            <div class="pie" style="--sweet: 45%; --bold: 15%;" aria-hidden="true"></div>
-+            <dl class="flavor-legend">
-+              <div><dt class="sweet">Sweet</dt><dd>45%</dd></div>
-+              <div><dt class="bold">Bold</dt><dd>15%</dd></div>
-+              <div><dt class="smooth">Smooth</dt><dd>40%</dd></div>
++          <div class="flavor">
++            <div class="pie" style="--sweet: 50%; --bold: 15%;" aria-hidden="true"></div>
++            <dl>
++              <dt class="swatch-sweet">Sweet</dt><dd>50%</dd>
++              <dt class="swatch-bold">Bold</dt><dd>15%</dd>
++              <dt class="swatch-smooth">Smooth</dt><dd>35%</dd>
 +            </dl>
-+          </figure>
++          </div>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
-+          <figure class="flavor">
-+            <figcaption>Flavor profile</figcaption>
-+            <div class="pie" style="--sweet: 10%; --bold: 70%;" aria-hidden="true"></div>
-+            <dl class="flavor-legend">
-+              <div><dt class="sweet">Sweet</dt><dd>10%</dd></div>
-+              <div><dt class="bold">Bold</dt><dd>70%</dd></div>
-+              <div><dt class="smooth">Smooth</dt><dd>20%</dd></div>
++          <div class="flavor">
++            <div class="pie" style="--sweet: 10%; --bold: 65%;" aria-hidden="true"></div>
++            <dl>
++              <dt class="swatch-sweet">Sweet</dt><dd>10%</dd>
++              <dt class="swatch-bold">Bold</dt><dd>65%</dd>
++              <dt class="swatch-smooth">Smooth</dt><dd>25%</dd>
 +            </dl>
-+          </figure>
++          </div>
            <a href="/menu/espresso" class="btn">View Details</a>
          </div>
          <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
-+          <figure class="flavor">
-+            <figcaption>Flavor profile</figcaption>
++          <div class="flavor">
 +            <div class="pie" style="--sweet: 20%; --bold: 30%;" aria-hidden="true"></div>
-+            <dl class="flavor-legend">
-+              <div><dt class="sweet">Sweet</dt><dd>20%</dd></div>
-+              <div><dt class="bold">Bold</dt><dd>30%</dd></div>
-+              <div><dt class="smooth">Smooth</dt><dd>50%</dd></div>
++            <dl>
++              <dt class="swatch-sweet">Sweet</dt><dd>20%</dd>
++              <dt class="swatch-bold">Bold</dt><dd>30%</dd>
++              <dt class="swatch-smooth">Smooth</dt><dd>50%</dd>
 +            </dl>
-+          </figure>
++          </div>
            <a href="/menu/cold-brew" class="btn">View Details</a>
          </div>
        </div>

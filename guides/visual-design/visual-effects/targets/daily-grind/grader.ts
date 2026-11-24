@@ -5,6 +5,7 @@
  * - Expectation 3: TESTED - A lighting or texture overlay uses background-blend-mode, or uses mix-blend-mode on an element inside an isolation: isolate stacking context.
  * - Expectation 4: TESTED - Decorative patterns (stripes, dots, checkerboards) are drawn with CSS gradients that use hard color stops, not with image or SVG files.
  * - Expectation 5: TESTED - A chart drawn with a CSS gradient (such as a conic-gradient() pie) is accompanied by accessible text or markup (such as visible percentage labels, an accessible name or description, or a semantic <table>) that exposes the same data to assistive technologies.
+ * - Expectation 6: TESTED - Text and icons over a gradient or pattern background, and text filled with a gradient, have a contrast ratio against each color stop of at least 4.5:1 for text, 3:1 for large text (at least 24px, or at least 18.66px bold), and 3:1 for icons.
  */
 
 import {
@@ -687,5 +688,275 @@ test.describe('visual-effects Target Grader', () => {
         hasAccessibleTable || hasAccessibleDl || hasAccessiblePercentageText || hasAccessibleMeterOrProgress
       ).toBe(true);
     }
+  });
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Text and icons over a gradient or pattern background, and text filled with a gradient, have WCAG contrast against each color stop', async ({
+      page,
+    }) => {
+      const report = await page.evaluate(() => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d')!;
+
+        const resolveColor = (cssColor: string): [number, number, number, number] | null => {
+          const trimmed = cssColor.trim();
+          if (!trimmed || trimmed === 'none') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = trimmed;
+          // Detect invalid color by checking if fillStyle stayed transparent when input wasn't transparent
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]! / 255];
+        };
+
+        const composite = (
+          fg: [number, number, number, number],
+          bg: [number, number, number, number],
+        ): [number, number, number, number] => {
+          const a = fg[3] + bg[3] * (1 - fg[3]);
+          if (a === 0) return [255, 255, 255, 1];
+          return [
+            (fg[0] * fg[3] + bg[0] * bg[3] * (1 - fg[3])) / a,
+            (fg[1] * fg[3] + bg[1] * bg[3] * (1 - fg[3])) / a,
+            (fg[2] * fg[3] + bg[2] * bg[3] * (1 - fg[3])) / a,
+            a,
+          ];
+        };
+
+        const luminance = ([r, g, b]: [number, number, number, number]): number => {
+          const chan = [r, g, b].map((v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * chan[0]! + 0.7152 * chan[1]! + 0.0722 * chan[2]!;
+        };
+
+        const contrast = (c1: [number, number, number, number], c2: [number, number, number, number]): number => {
+          const l1 = luminance(c1);
+          const l2 = luminance(c2);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const getEffectiveSolidBg = (startEl: Element | null): [number, number, number, number] => {
+          const layers: Array<[number, number, number, number]> = [];
+          let curr: Element | null = startEl;
+          while (curr) {
+            const bg = resolveColor(window.getComputedStyle(curr).backgroundColor);
+            if (bg && bg[3] > 0) layers.push(bg);
+            curr = curr.parentElement;
+          }
+          let acc: [number, number, number, number] = [255, 255, 255, 1];
+          for (let i = layers.length - 1; i >= 0; i--) {
+            acc = composite(layers[i]!, acc);
+          }
+          return acc;
+        };
+
+        const splitTopLevelComma = (input: string): string[] => {
+          const parts: string[] = [];
+          let depth = 0;
+          let cur = '';
+          for (let i = 0; i < input.length; i++) {
+            const ch = input[i]!;
+            if (ch === '(') depth++;
+            else if (ch === ')' && depth > 0) depth--;
+            if (ch === ',' && depth === 0) {
+              if (cur.trim()) parts.push(cur.trim());
+              cur = '';
+            } else {
+              cur += ch;
+            }
+          }
+          if (cur.trim()) parts.push(cur.trim());
+          return parts;
+        };
+
+        const extractGradientStops = (bgImage: string): string[] => {
+          const stops: string[] = [];
+          const gradRe = /(?:repeating-)?(?:linear|radial|conic)-gradient\(/gi;
+          let m: RegExpExecArray | null;
+          while ((m = gradRe.exec(bgImage)) !== null) {
+            let depth = 1;
+            let i = m.index + m[0].length;
+            let cur = '';
+            const segs: string[] = [];
+            while (i < bgImage.length && depth > 0) {
+              const ch = bgImage[i]!;
+              if (ch === '(') depth++;
+              else if (ch === ')') {
+                depth--;
+                if (depth === 0) break;
+              }
+              if (ch === ',' && depth === 1) {
+                segs.push(cur.trim());
+                cur = '';
+              } else {
+                cur += ch;
+              }
+              i++;
+            }
+            if (cur.trim()) segs.push(cur.trim());
+
+            for (let sIdx = 0; sIdx < segs.length; sIdx++) {
+              const seg = segs[sIdx]!;
+              if (
+                sIdx === 0 &&
+                /^(?:to\b|from\b|at\b|in\b|circle\b|ellipse\b|closest-|farthest-|-?\d)/i.test(seg)
+              ) {
+                continue;
+              }
+              // Extract color function or hex/named color at start of stop
+              const fnMatch = seg.match(/^((?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^)]+\)|#[0-9a-f]{3,8}|[a-z]+)/i);
+              if (fnMatch) {
+                stops.push(fnMatch[1]!);
+              }
+            }
+          }
+          return stops;
+        };
+
+        // Composite any upper normal-blend gradient layers over a lower stop using the worst-case (lowest-contrast) upper stop.
+        const getLayerAwareStops = (
+          bgImage: string,
+          blendModeStr: string,
+          baseBg: [number, number, number, number],
+          fgRaw: [number, number, number, number],
+        ): Array<{ label: string; color: [number, number, number, number] }> => {
+          const layers = splitTopLevelComma(bgImage);
+          const blendModes = blendModeStr
+            .split(',')
+            .map((b) => b.trim().toLowerCase())
+            .filter(Boolean);
+          const parsedLayers = layers.map((layer, idx) => ({
+            stops: extractGradientStops(layer)
+              .map((s) => ({ label: s, rgba: resolveColor(s) }))
+              .filter((x): x is { label: string; rgba: [number, number, number, number] } => Boolean(x.rgba)),
+            blend: blendModes[idx % Math.max(1, blendModes.length)] ?? 'normal',
+          }));
+
+          const results: Array<{ label: string; color: [number, number, number, number] }> = [];
+          for (let i = 0; i < parsedLayers.length; i++) {
+            const layer = parsedLayers[i]!;
+            for (const stop of layer.stops) {
+              if (stop.rgba[3] === 0) continue;
+              let eff = composite(stop.rgba, baseBg);
+              for (let j = i - 1; j >= 0; j--) {
+                const upper = parsedLayers[j]!;
+                if (upper.blend !== 'normal' || upper.stops.length === 0) continue;
+                let worstColor = eff;
+                let worstRatio = Infinity;
+                for (const uStop of upper.stops) {
+                  const candidate = composite(uStop.rgba, eff);
+                  const r = contrast(composite(fgRaw, candidate), candidate);
+                  if (r < worstRatio) {
+                    worstRatio = r;
+                    worstColor = candidate;
+                  }
+                }
+                eff = worstColor;
+              }
+              results.push({ label: stop.label, color: eff });
+            }
+          }
+          return results;
+        };
+
+        const failures: string[] = [];
+        let checked = 0;
+
+        for (const el of Array.from(document.querySelectorAll<HTMLElement>('*'))) {
+          const cs = window.getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+          const rect = el.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) continue;
+
+          const hasOwnText = Array.from(el.childNodes).some(
+            (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? '').trim().length > 0,
+          );
+          const isIcon = el.tagName.toLowerCase() === 'svg';
+          if (!hasOwnText && !isIcon) continue;
+
+          // Find effective gradient background on self or nearest non-occluded ancestor
+          let gradientHost: Element | null = null;
+          let bgClipText =
+            cs.backgroundClip === 'text' ||
+            (cs as CSSStyleDeclaration & { webkitBackgroundClip?: string }).webkitBackgroundClip === 'text';
+
+          let curr: Element | null = el;
+          while (curr) {
+            const ccs = window.getComputedStyle(curr);
+            if (ccs.backgroundImage && ccs.backgroundImage.includes('gradient(')) {
+              gradientHost = curr;
+              break;
+            }
+            const cBg = resolveColor(ccs.backgroundColor);
+            if (cBg && cBg[3] >= 0.99) {
+              break;
+            }
+            curr = curr.parentElement;
+          }
+
+          if (!gradientHost) continue;
+
+          const hostCs = window.getComputedStyle(gradientHost);
+          const baseBg = getEffectiveSolidBg(gradientHost);
+          const fgRaw = isIcon ? resolveColor(cs.fill && cs.fill !== 'none' ? cs.fill : cs.color) : resolveColor(cs.color);
+          if (!fgRaw) continue;
+
+          const fontSize = parseFloat(cs.fontSize) || 16;
+          const fontWeight = parseFloat(cs.fontWeight) || 400;
+          const isLargeText = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700);
+          const minContrast = isIcon || isLargeText ? 3.0 : 4.5;
+
+          if (bgClipText && gradientHost === el) {
+            const stops = extractGradientStops(hostCs.backgroundImage);
+            if (stops.length === 0) continue;
+            const pageBg = getEffectiveSolidBg(el.parentElement);
+            checked++;
+            for (const stopStr of stops) {
+              const stopCol = resolveColor(stopStr);
+              if (!stopCol || stopCol[3] === 0) continue;
+              const effStop = composite(stopCol, pageBg);
+              const ratio = contrast(effStop, pageBg);
+              if (ratio < minContrast) {
+                failures.push(
+                  `<${el.tagName.toLowerCase()}> gradient-filled text "${(el.textContent ?? '').trim().slice(0, 25)}" stop ${stopStr} contrast ${ratio.toFixed(2)} < ${minContrast}`,
+                );
+              }
+            }
+          } else {
+            const layerStops = getLayerAwareStops(
+              hostCs.backgroundImage,
+              hostCs.backgroundBlendMode || 'normal',
+              baseBg,
+              fgRaw,
+            );
+            if (layerStops.length === 0) continue;
+            checked++;
+            for (const { label: stopStr, color: effStop } of layerStops) {
+              const effFg = composite(fgRaw, effStop);
+              const ratio = contrast(effFg, effStop);
+              if (ratio < minContrast) {
+                failures.push(
+                  `<${el.tagName.toLowerCase()}> "${(el.textContent ?? '').trim().slice(0, 25)}" vs stop ${stopStr} contrast ${ratio.toFixed(2)} < ${minContrast}`,
+                );
+              }
+            }
+          }
+        }
+
+        return { checked, failures };
+      });
+
+      expect(report.checked).toBeGreaterThan(0);
+      expect(report.failures).toEqual([]);
+    });
   });
 });
