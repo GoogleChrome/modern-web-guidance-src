@@ -192,7 +192,18 @@ export const FORMAT_REGISTRY: readonly FormatEntry[] = [
   },
   {
     id: 'server-templates',
-    extensions: ['.ejs', '.jsp', '.erb', '.cshtml', '.twig'],
+    extensions: [
+      '.ejs',
+      '.jsp',
+      '.erb',
+      '.cshtml',
+      '.twig',
+      '.phtml',
+      '.hbs',
+      '.handlebars',
+      '.njk',
+      '.liquid',
+    ],
     engines: ['dom'],
     status: 'unsupported',
   },
@@ -227,6 +238,16 @@ const SUPPORTED_ENTRIES = FORMAT_REGISTRY.filter((f) => f.status === 'supported'
 /** All file extensions scanned by legacy-scan (e.g. '.js', '.css', '.vue'). */
 export const SUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(
   SUPPORTED_ENTRIES.flatMap((f) => f.extensions).filter((ext) => ext.startsWith('.')),
+);
+
+/**
+ * Unsupported web file extensions explicitly tracked by FORMAT_REGISTRY
+ * (excluding extensions that also appear on supported entries, such as `.js`/`.ts`).
+ */
+export const UNSUPPORTED_SOURCE_EXTENSIONS: ReadonlySet<string> = new Set(
+  FORMAT_REGISTRY.filter((f) => f.status === 'unsupported')
+    .flatMap((f) => f.extensions)
+    .filter((ext) => ext.startsWith('.') && !SUPPORTED_SOURCE_EXTENSIONS.has(ext)),
 );
 
 /** File extensions for standalone JS/TS script files (not markup/SFC). */
@@ -327,4 +348,14 @@ export function getEnginesForPath(relPath: string): ReadonlySet<FormatEngine> | 
     return PACKAGE_JSON_ENGINES;
   }
   return ENGINES_BY_EXTENSION.get(posix.extname(normalized));
+}
+
+/**
+ * Returns the lowercase unsupported format extension (e.g. `.phtml`, `.twig`, `.sass`)
+ * if `relPath` matches an `unsupported` entry in `FORMAT_REGISTRY`, or `undefined`.
+ */
+export function getUnsupportedFormatExtension(relPath: string): string | undefined {
+  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
+  const ext = posix.extname(normalized);
+  return UNSUPPORTED_SOURCE_EXTENSIONS.has(ext) ? ext : undefined;
 }

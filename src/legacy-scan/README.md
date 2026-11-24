@@ -118,6 +118,8 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 When the scan hits the `--max-files` cap with remaining unread candidates, the JSON payload also includes `"truncatedByMaxFiles": true` and `"eligibleFileCount": <total>`, and `note` explicitly warns about partial coverage with the `--max-files 0` / subdirectory hint.
 
+When unsupported web formats listed in [`format-support.md`](./format-support.md) are encountered outside ignored directories, `--json` includes `"skippedUnsupportedFiles": { "<ext>": <count> }` (omitted when empty) and human output prints a summary line of skipped extensions. When one or more files hit parse failures (e.g. malformed CSS, `package.json`, HTML, or JS), `--json` includes `"parseErrorCount": <count>` (deduplicated per file, omitted when `0`) and human output reports the skipped file count while preserving findings from unaffected blocks and files. In both `--json` (`note`) and human output, incomplete scans or `scannedFileCount: 0` avoid claiming an unqualified clean scan across all guides.
+
 ---
 
 ## 2. Modernize Workflow

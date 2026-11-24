@@ -11,7 +11,7 @@ This doc covers what `supported` guarantees, the bar for adding a format, and wh
 3. It stays covered by `scanFiles()` contract tests and a per-format release check. **If a supported format stops producing findings, it blocks the release.**
 4. Parse failures are **reported visibly**, never silently counted as 0 findings.
 
-(FWIW, the release check and visible parse/skip reporting in #3 and #4 are still being wired up.. until those land, `scanFiles()` contract tests are the gate.)
+(FWIW, the per-format release check in #3 is still being wired up.. until that lands, `scanFiles()` contract tests are the gate.)
 
 ## Statuses
 
@@ -21,7 +21,7 @@ This doc covers what `supported` guarantees, the bar for adding a format, and wh
 | `expected-skip` | Deliberately doesn't scan it: either our rules can't apply (no stylesheet syntax to match), or we measured it on real code and our rules found nothing worth the cost. |
 | `unsupported` | Doesn't scan it. |
 
-For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": the planned skip reporting (#4 above) will count skipped files by extension in the scan output. (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
+For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": skip reporting counts skipped unsupported files by extension (`skippedUnsupportedFiles`) and parse errors (`parseErrorCount`) in the scan output. (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
 
 ## The bar for adding a format
 
@@ -67,7 +67,7 @@ The single source of truth for all formats, applicable engines, and scan statuse
 | Lit `html` templates, markup in `innerHTML` strings | expected-skip | Measured; found nothing |
 | Untagged template literals that look like CSS | unsupported | Not declared |
 | `.sass` (indented), `.styl`, `.mdx`, `.pug` | unsupported | Would need a compiler, or too small |
-| Server-side templates other than PHP (`.ejs`, `.jsp`, `.erb`, `.cshtml`, `.twig`, ...) | unsupported | Candidates |
+| Server-side templates other than PHP (`.ejs`, `.jsp`, `.erb`, `.cshtml`, `.twig`, `.phtml`, `.hbs`, `.handlebars`, `.njk`, `.liquid`) | unsupported | Candidates |
 | Non-web languages | unsupported | |
 
 Why are styled-components and Emotion component styles `expected-skip` instead of `supported`? Their blocks are mostly bare declarations with no selector, and our CSS rules match against selectors. Scanning them finds almost nothing.

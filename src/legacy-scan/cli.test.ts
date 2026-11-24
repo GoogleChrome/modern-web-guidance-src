@@ -116,9 +116,28 @@ describe('runLegacyScanCli', () => {
     });
   });
 
-  it('reports zero findings cleanly in default qualified mode', async () => {
+  it('reports zero findings cleanly in default qualified mode and distinguishes empty dirs', async () => {
     await withTempDir(async (emptyDir) => {
-      const resDefault = await runLegacyScanCli([emptyDir]);
+      const resEmpty = await runLegacyScanCli([emptyDir]);
+      assert.equal(resEmpty.exitCode, 0);
+      assert.match(resEmpty.output, new RegExp(`0 scannable files found in ${emptyDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`));
+      assert.doesNotMatch(resEmpty.output, /0 findings from \d+ qualified guides/);
+
+      const resEmptyJson = await runLegacyScanCli([emptyDir, '--json']);
+      assert.equal(resEmptyJson.exitCode, 0);
+      const parsedEmpty = JSON.parse(resEmptyJson.output) as ScanJsonOutput;
+      assert.equal(parsedEmpty.totalFindings, 0);
+      assert.equal(parsedEmpty.scannedFileCount, 0);
+      assert.deepEqual(parsedEmpty.guides, []);
+      assert.equal(parsedEmpty.skippedUnsupportedFiles, undefined);
+      assert.equal(parsedEmpty.parseErrorCount, undefined);
+      assert.doesNotMatch(parsedEmpty.note ?? '', /No legacy patterns found/);
+      assert.match(parsedEmpty.note ?? '', /0 scannable files found; checked 0 of/);
+    });
+
+    await withTempDir(async (cleanDir) => {
+      await writeFile(join(cleanDir, 'index.html'), '<main><p>Clean page</p></main>\n', 'utf8');
+      const resDefault = await runLegacyScanCli([cleanDir]);
       assert.equal(resDefault.exitCode, 0);
       assert.match(
         resDefault.output,
@@ -131,12 +150,13 @@ describe('runLegacyScanCli', () => {
         ),
       );
 
-      const resDefaultJson = await runLegacyScanCli([emptyDir, '--json']);
+      const resDefaultJson = await runLegacyScanCli([cleanDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
       const parsedDefault = JSON.parse(resDefaultJson.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
+      assert.equal(parsedDefault.scannedFileCount, 1);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.targetDir, emptyDir);
+      assert.equal(parsedDefault.targetDir, cleanDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
       assert.equal(
@@ -170,9 +190,11 @@ describe('runLegacyScanCli', () => {
       assert.equal(resJson.exitCode, 0);
       assert.ok(resJson.data);
       assert.equal(resJson.data.totalFindings, 0);
-      assert.equal(
-        resJson.data.note,
-        `No legacy patterns found across ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      assert.match(
+        resJson.data.note ?? '',
+        new RegExp(
+          `^0 scannable files found; checked 0 of ${QUALIFIED_GUIDE_IDS.length} guides \\(${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus\\)\\.`,
+        ),
       );
     });
   });
@@ -985,6 +1007,131 @@ describe('runLegacyScanCli', () => {
         const resDirEmptyRules = await runLegacyScanCli([edgeDir, '--json'], { rules: [] });
         assert.equal(resDirEmptyRules.exitCode, 0);
         assert.equal(resDirEmptyRules.data?.scannedFileCount, 0);
+      });
+    });
+
+    it('reports skippedUnsupportedFiles, parseErrorCount, and honest diagnostics across single-file, repo, and truncated scans', async () => {
+      // 1. Single unsupported file (e.g. legacy-scan template.phtml)
+      await withTempDir(async (singleDir) => {
+        const phtmlPath = join(singleDir, 'template.phtml');
+        await writeFile(phtmlPath, '<form><input type="password"></form>\n', 'utf8');
+
+        const singleJson = await runLegacyScanCli([phtmlPath, '--json']);
+        assert.equal(singleJson.exitCode, 0);
+        assert.equal(singleJson.data?.totalFindings, 0);
+        assert.equal(singleJson.data?.scannedFileCount, 0);
+        assert.deepEqual(singleJson.data?.skippedUnsupportedFiles, { '.phtml': 1 });
+        assert.equal(singleJson.data?.parseErrorCount, undefined);
+        assert.doesNotMatch(singleJson.data?.note ?? '', /No legacy patterns found/);
+        assert.match(singleJson.data?.note ?? '', /Skipped 1 unsupported file \(\.phtml: 1\)\./);
+
+        const singleHuman = await runLegacyScanCli([phtmlPath]);
+        assert.equal(singleHuman.exitCode, 0);
+        assert.match(singleHuman.output, /0 scannable files found in /);
+        assert.match(singleHuman.output, /Skipped 1 unsupported file \(\.phtml: 1\)\./);
+      });
+
+      // 2. Repo with mixed unsupported extensions + ignored dirs + clean HTML
+      await withTempDir(async (unsupportedDir) => {
+        await mkdir(join(unsupportedDir, 'views'), { recursive: true });
+        await mkdir(join(unsupportedDir, 'node_modules', 'pkg'), { recursive: true });
+        await mkdir(join(unsupportedDir, 'docs'), { recursive: true });
+
+        await writeFile(join(unsupportedDir, 'views', 'clean.html'), '<p>ok</p>\n', 'utf8');
+        for (let i = 1; i <= 5; i++) {
+          await writeFile(join(unsupportedDir, 'views', `v${i}.phtml`), '<p>phtml</p>\n', 'utf8');
+        }
+        await writeFile(join(unsupportedDir, 'views', 'a.hbs'), '<p>hbs</p>\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'views', 'b.hbs'), '<p>hbs</p>\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'views', 'c.twig'), '<p>twig</p>\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'node_modules', 'pkg', 'ignored.twig'), '<p/>\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'docs', 'ignored.phtml'), '<p/>\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'README.md'), '# readme\n', 'utf8');
+        await writeFile(join(unsupportedDir, 'logo.png'), 'png', 'utf8');
+
+        const resJson = await runLegacyScanCli([unsupportedDir, '--json']);
+        assert.equal(resJson.exitCode, 0);
+        assert.equal(resJson.data?.totalFindings, 0);
+        assert.equal(resJson.data?.scannedFileCount, 1);
+        assert.deepEqual(resJson.data?.skippedUnsupportedFiles, {
+          '.hbs': 2,
+          '.phtml': 5,
+          '.twig': 1,
+        });
+        assert.equal(resJson.data?.parseErrorCount, undefined);
+        assert.doesNotMatch(resJson.data?.note ?? '', /No legacy patterns found/);
+        assert.match(
+          resJson.data?.note ?? '',
+          /Skipped 8 unsupported files \(\.phtml: 5, \.hbs: 2, \.twig: 1\)\./,
+        );
+
+        const resHuman = await runLegacyScanCli([unsupportedDir]);
+        assert.equal(resHuman.exitCode, 0);
+        assert.match(resHuman.output, /0 findings in scanned subset across \d+ qualified guides\./);
+        assert.match(
+          resHuman.output,
+          /Skipped 8 unsupported files \(\.phtml: 5, \.hbs: 2, \.twig: 1\)\./,
+        );
+      });
+
+      // 3. Parse errors in malformed .css and package.json alongside valid finding and truncation
+      await withTempDir(async (parseDir) => {
+        const brokenCss = '.accordion-panel { max-height: 0; transition: max-height 0.3s;\n' + '{\n'.repeat(3000);
+        await writeFile(join(parseDir, 'broken.css'), brokenCss, 'utf8');
+        await writeFile(join(parseDir, 'package.json'), '{ "dependencies": {', 'utf8');
+        await writeFile(join(parseDir, 'view.phtml'), '<p>template</p>\n', 'utf8');
+        await writeFile(
+          join(parseDir, 'a-login.html'),
+          '<form action="/login"><input type="password" name="pwd"></form>\n',
+          'utf8',
+        );
+        await writeFile(
+          join(parseDir, 'z-login.html'),
+          '<form action="/login"><input type="password" name="pwd2"></form>\n',
+          'utf8',
+        );
+
+        const fullJson = await runLegacyScanCli([parseDir, '--json']);
+        assert.equal(fullJson.exitCode, 0);
+        assert.equal(fullJson.data?.totalFindings, 2);
+        assert.equal(fullJson.data?.parseErrorCount, 2);
+        assert.deepEqual(fullJson.data?.skippedUnsupportedFiles, { '.phtml': 1 });
+        assert.match(fullJson.data?.note ?? '', /Skipped 1 unsupported file \(\.phtml: 1\)\./);
+        assert.match(fullJson.data?.note ?? '', /Skipped 2 files due to parse errors\./);
+
+        const fullHuman = await runLegacyScanCli([parseDir]);
+        assert.equal(fullHuman.exitCode, 0);
+        assert.match(fullHuman.output, /Found 2 modernization opportunities/);
+        assert.match(fullHuman.output, /Skipped 1 unsupported file \(\.phtml: 1\)\./);
+        assert.match(fullHuman.output, /Skipped 2 files due to parse errors\./);
+
+        // Combined with --max-files truncation (package.json + a-login.html + broken.css = 3 files; z-login.html unread)
+        const truncJson = await runLegacyScanCli([parseDir, '--max-files', '3', '--json']);
+        assert.equal(truncJson.exitCode, 0);
+        assert.equal(truncJson.data?.truncatedByMaxFiles, true);
+        assert.equal(truncJson.data?.parseErrorCount, 2);
+        assert.deepEqual(truncJson.data?.skippedUnsupportedFiles, { '.phtml': 1 });
+        assert.match(truncJson.data?.note ?? '', /Partial scan only: scanned 3 of 4 eligible files/);
+        assert.match(truncJson.data?.note ?? '', /Skipped 1 unsupported file \(\.phtml: 1\)\./);
+        assert.match(truncJson.data?.note ?? '', /Skipped 2 files due to parse errors\./);
+      });
+
+      // 4. Parse error only (0 findings) must never claim "No legacy patterns found"
+      await withTempDir(async (onlyParseErrDir) => {
+        const brokenCss = '.accordion-panel { max-height: 0; transition: max-height 0.3s;\n' + '{\n'.repeat(3000);
+        await writeFile(join(onlyParseErrDir, 'broken.css'), brokenCss, 'utf8');
+
+        const resJson = await runLegacyScanCli([onlyParseErrDir, '--json']);
+        assert.equal(resJson.exitCode, 0);
+        assert.equal(resJson.data?.totalFindings, 0);
+        assert.equal(resJson.data?.parseErrorCount, 1);
+        assert.doesNotMatch(resJson.data?.note ?? '', /No legacy patterns found/);
+        assert.match(resJson.data?.note ?? '', /Skipped 1 file due to parse errors\./);
+
+        const resHuman = await runLegacyScanCli([onlyParseErrDir]);
+        assert.equal(resHuman.exitCode, 0);
+        assert.match(resHuman.output, /0 findings in scanned subset across \d+ qualified guides\./);
+        assert.match(resHuman.output, /Skipped 1 file due to parse errors\./);
       });
     });
   });

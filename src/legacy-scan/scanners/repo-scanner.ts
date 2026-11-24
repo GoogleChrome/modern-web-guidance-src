@@ -12,8 +12,10 @@ import {
 } from './file-filter.ts';
 import { isPackageJsonPath } from './format-registry.ts';
 import {
+  buildSortedExtensionCounts,
   classifyFile,
   createScanSession,
+  recordUnsupportedFile,
   scanLoadedFile,
   type ScanOptions,
   type ScanSession,
@@ -24,9 +26,11 @@ const FILE_READ_CONCURRENCY = 64;
 
 export interface RepoScanStats {
   skippedDocsAndTestsCount?: number;
+  skippedUnsupportedFiles?: Readonly<Record<string, number>>;
   scannedFileCount?: number;
   eligibleFileCount?: number;
   truncatedByMaxFiles?: boolean;
+  parseErrorCount?: number;
 }
 
 export interface RepoScanOptions extends ScanOptions {
@@ -163,9 +167,11 @@ export async function scanRepoFiles(
   if (session.activeEngines.size === 0) {
     if (options?.stats) {
       options.stats.skippedDocsAndTestsCount = 0;
+      options.stats.skippedUnsupportedFiles = undefined;
       options.stats.scannedFileCount = 0;
       options.stats.eligibleFileCount = 0;
       options.stats.truncatedByMaxFiles = false;
+      options.stats.parseErrorCount = 0;
     }
     return [];
   }
@@ -178,6 +184,7 @@ export async function scanRepoFiles(
   const pkgCandidates: string[] = [];
   const otherCandidates: string[] = [];
   let skippedDocsAndTestsCount = 0;
+  const unsupportedCounts = new Map<string, number>();
 
   for (const rawPath of rawPaths) {
     if (!rawPath) continue;
@@ -185,6 +192,8 @@ export async function scanRepoFiles(
     const disposition = classifyFile(relPath, undefined, session);
     if (disposition === 'skipped-docs-tests') {
       skippedDocsAndTestsCount++;
+    } else if (disposition === 'skipped-unsupported') {
+      recordUnsupportedFile(unsupportedCounts, relPath);
     } else if (disposition !== 'skip') {
       if (isPackageJsonPath(relPath)) {
         pkgCandidates.push(relPath);
@@ -197,6 +206,7 @@ export async function scanRepoFiles(
   const candidates = [...pkgCandidates, ...otherCandidates];
   const findings: ScanFinding[] = [];
   let scannedFileCount = 0;
+  let parseErrorCount = 0;
   let idx = 0;
 
   while (idx < candidates.length && scannedFileCount < maxFiles) {
@@ -214,7 +224,11 @@ export async function scanRepoFiles(
       const read = reads[i];
       if (relPath !== undefined && read !== undefined) {
         scannedFileCount++;
-        findings.push(...scanLoadedFile(session, relPath, read.content, read.kind));
+        const result = scanLoadedFile(session, relPath, read.content, read.kind);
+        findings.push(...result.findings);
+        if (result.hadParseError) {
+          parseErrorCount++;
+        }
       }
     }
   }
@@ -222,9 +236,11 @@ export async function scanRepoFiles(
   const remainingCandidateCount = candidates.length - idx;
   if (options?.stats) {
     options.stats.skippedDocsAndTestsCount = skippedDocsAndTestsCount;
+    options.stats.skippedUnsupportedFiles = buildSortedExtensionCounts(unsupportedCounts);
     options.stats.scannedFileCount = scannedFileCount;
     options.stats.eligibleFileCount = scannedFileCount + remainingCandidateCount;
     options.stats.truncatedByMaxFiles = remainingCandidateCount > 0;
+    options.stats.parseErrorCount = parseErrorCount;
   }
 
   return findings;

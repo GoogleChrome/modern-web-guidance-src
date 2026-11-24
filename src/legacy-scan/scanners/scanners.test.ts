@@ -7,6 +7,7 @@ import { SyntaxKind } from 'ts-morph';
 import type {
   ScanRule,
   CssRuleMatcher,
+  DependencyRuleMatcher,
   DomRuleMatcher,
 } from '../schema.ts';
 import {
@@ -14,6 +15,7 @@ import {
   scanCss,
   scanCssRules,
 } from './css-scanner.ts';
+import { scanPackageJson, scanPackageJsonRules } from './dependency-scanner.ts';
 import { scanHtml, scanJsx, tokenizeHtmlTags } from './dom-scanner.ts';
 import { isProtectedByFeatureGuard } from './ast-helpers.ts';
 import { withVirtualSourceFile } from './js-scanner.ts';
@@ -23,6 +25,7 @@ import {
   createInMemoryProject,
   scanFiles,
   scanRepoFiles,
+  type RepoScanStats,
 } from './index.ts';
 
 void test('scanFiles: Lit CSS tag whitespace preserves finding locations', async (t) => {
@@ -1657,6 +1660,203 @@ void test('scanFiles: lazy SourceFile proxy skips AST creation on early ctx.file
   assert.equal(createSourceFileCalls, 1);
   assert.equal(sawHasOperator, true);
   assert.equal(sawPrototype, true);
+});
+
+void test('parse error isolation & deduplicated parseErrorCount across CSS, package.json, and multi-block SFCs (#3587)', async (t) => {
+  const brokenCss = '.hit {\n' + '{\n'.repeat(3000);
+  const cssRule: ScanRule & { readonly matcher: CssRuleMatcher } = {
+    id: 'test/parse-css',
+    guideId: 'css-guide',
+    guideHash: '000000000000',
+    summary: 'CSS rule',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'css',
+      fastTokens: ['.hit'],
+      matchRule: (view) => (view.selectorText === '.hit' ? { message: 'css hit' } : null),
+    },
+  };
+  const depRule: ScanRule & { readonly matcher: DependencyRuleMatcher } = {
+    id: 'test/parse-dep',
+    guideId: 'dep-guide',
+    guideHash: '000000000000',
+    summary: 'Dep rule',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'dependency',
+      packages: ['legacy-pkg'],
+      matchPackage: (pkg) => ({ message: `dep ${pkg}` }),
+    },
+  };
+  const domRule: ScanRule = {
+    id: 'test/parse-dom',
+    guideId: 'dom-guide',
+    guideHash: '000000000000',
+    summary: 'DOM rule',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'dom',
+      selector: 'legacy-el',
+      fastTokens: ['legacy-el'],
+      matchElement: () => ({ message: 'dom hit' }),
+    },
+  };
+  const jsRule: ScanRule = {
+    id: 'test/parse-js',
+    guideId: 'js-guide',
+    guideHash: '000000000000',
+    summary: 'JS rule',
+    verifierRubric: { keepWhen: ['a'], dropWhen: ['b'] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['legacyCall'],
+      matchFile: (sf) =>
+        sf.getDescendantsOfKind(SyntaxKind.CallExpression).map((c) => ({
+          line: c.getStartLineNumber(),
+          message: 'js hit',
+        })),
+    },
+  };
+
+  await t.test('direct helper exports remain backward-compatible and return [] on malformed input', () => {
+    assert.deepEqual(scanCss('broken.css', brokenCss, [cssRule.matcher]), []);
+    assert.deepEqual(scanCssRules('broken.css', brokenCss, [cssRule]), []);
+    assert.deepEqual(
+      scanPackageJson('package.json', '{ "dependencies": {', [depRule.matcher]),
+      [],
+    );
+    assert.deepEqual(scanPackageJsonRules('package.json', '{ "dependencies": {', [depRule]), []);
+  });
+
+  await t.test('counts malformed .css and package.json once per file without aborting remaining files', () => {
+    const stats: RepoScanStats = {};
+    const findings = scanFiles(
+      new Map([
+        ['src/broken.css', brokenCss],
+        ['package.json', '{ "dependencies": {'],
+        ['src/good.css', '.hit { color: red; }'],
+        ['apps/web/package.json', '{"dependencies":{"react":"^18.0.0","legacy-pkg":"^1.0.0"}}'],
+      ]),
+      [cssRule, depRule],
+      { stats },
+    );
+
+    assert.deepEqual(
+      findings.map((f) => f.file).sort(),
+      ['apps/web/package.json', 'src/good.css'],
+    );
+    assert.equal(stats.parseErrorCount, 2);
+    assert.equal(stats.scannedFileCount, 4);
+  });
+
+  await t.test('multi-block .vue/.html preserves valid findings from unaffected blocks and deduplicates parseErrorCount per file', () => {
+    const vueWithTwoBrokenStyles = [
+      '<template>',
+      '  <legacy-el></legacy-el>',
+      '</template>',
+      '<script>',
+      '  legacyCall();',
+      '</script>',
+      `<style>\n${brokenCss}\n</style>`,
+      `<style>\n${brokenCss}\n</style>`,
+    ].join('\n');
+
+    const htmlWithOneBrokenOneValidStyle = [
+      `<style>\n${brokenCss}\n</style>`,
+      '<style>\n.hit { color: blue; }\n</style>',
+    ].join('\n');
+
+    const stats: RepoScanStats = {};
+    const findings = scanFiles(
+      new Map([
+        ['src/BrokenStyles.vue', vueWithTwoBrokenStyles],
+        ['src/MixedStyles.html', htmlWithOneBrokenOneValidStyle],
+      ]),
+      [domRule, jsRule, cssRule],
+      { stats },
+    );
+
+    assert.deepEqual(
+      findings.map((f) => `${f.file}:${f.ruleId}`).sort(),
+      [
+        'src/BrokenStyles.vue:test/parse-dom',
+        'src/BrokenStyles.vue:test/parse-js',
+        'src/MixedStyles.html:test/parse-css',
+      ],
+    );
+    assert.equal(stats.parseErrorCount, 2, 'two broken <style> blocks in one file must count once');
+  });
+
+  await t.test('isolates DOM/JS block errors in .vue and .ts files while preserving sibling engine findings', () => {
+    const throwingDomRule: ScanRule = {
+      ...domRule,
+      id: 'test/throwing-dom',
+      matcher: {
+        kind: 'dom',
+        selector: 'legacy-el',
+        fastTokens: ['legacy-el'],
+        matchElement: () => {
+          throw new Error('simulated DOM failure');
+        },
+      },
+    };
+    const throwingJsRule: ScanRule = {
+      ...jsRule,
+      id: 'test/throwing-js',
+      matcher: {
+        kind: 'js',
+        fastTokens: ['legacyCall'],
+        matchFile: () => {
+          throw new Error('simulated JS AST failure');
+        },
+      },
+    };
+
+    const vueContent = [
+      '<template><legacy-el></legacy-el></template>',
+      '<script>legacyCall();</script>',
+      '<style>.hit { color: red; }</style>',
+    ].join('\n');
+    const tsContent = [
+      "import { css } from 'lit';",
+      'legacyCall();',
+      'export const s = css`.hit { color: red; }`;',
+    ].join('\n');
+
+    const stats: RepoScanStats = {};
+    const findings = scanFiles(
+      new Map([
+        ['src/App.vue', vueContent],
+        ['src/Card.ts', tsContent],
+      ]),
+      [throwingDomRule, throwingJsRule, cssRule],
+      { stats },
+    );
+
+    assert.deepEqual(
+      findings.map((f) => `${f.file}:${f.ruleId}`).sort(),
+      ['src/App.vue:test/parse-css', 'src/Card.ts:test/parse-css'],
+    );
+    assert.equal(stats.parseErrorCount, 2);
+  });
+
+  await t.test('scanRepoFiles tracks parseErrorCount across disk files', async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), 'parse-err-repo-'));
+    try {
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+      await writeFile(join(tempDir, 'src', 'broken.css'), brokenCss);
+      await writeFile(join(tempDir, 'package.json'), '{ invalid json');
+      await writeFile(join(tempDir, 'src', 'valid.css'), '.hit { color: green; }');
+
+      const stats: RepoScanStats = {};
+      const findings = await scanRepoFiles(tempDir, [cssRule, depRule], { stats });
+      assert.deepEqual(findings.map((f) => f.file), ['src/valid.css']);
+      assert.equal(stats.parseErrorCount, 2);
+      assert.equal(stats.scannedFileCount, 3);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 

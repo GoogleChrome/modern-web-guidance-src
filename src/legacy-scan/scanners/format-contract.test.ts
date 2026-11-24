@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import test, { describe } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { SyntaxKind } from 'ts-morph';
 import type {
   ScanMatch,
@@ -14,6 +17,9 @@ import {
   FORMAT_REGISTRY,
   getEnginesForPath,
   getEnginesForSourceExtension,
+  getUnsupportedFormatExtension,
+  SUPPORTED_SOURCE_EXTENSIONS,
+  UNSUPPORTED_SOURCE_EXTENSIONS,
   type FormatEngine,
 } from './format-registry.ts';
 import { scanFiles } from './index.ts';
@@ -445,6 +451,34 @@ describe('FORMAT_REGISTRY scanFiles contract tests', () => {
     assert.deepEqual([...(getEnginesForPath('src/App.vue') ?? [])].sort(), ['css', 'dom', 'js']);
     assert.equal(getEnginesForPath('src/.vue'), undefined);
     assert.equal(getEnginesForPath('src\\.vue'), undefined);
+  });
+
+  test('UNSUPPORTED_SOURCE_EXTENSIONS and getUnsupportedFormatExtension stay synced with FORMAT_REGISTRY and format-support.md', () => {
+    const expectedUnsupported = new Set(
+      FORMAT_REGISTRY.filter((f) => f.status === 'unsupported')
+        .flatMap((f) => f.extensions)
+        .filter((ext) => ext.startsWith('.') && !SUPPORTED_SOURCE_EXTENSIONS.has(ext)),
+    );
+    assert.deepEqual([...UNSUPPORTED_SOURCE_EXTENSIONS].sort(), [...expectedUnsupported].sort());
+
+    for (const ext of ['.phtml', '.twig', '.hbs', '.handlebars', '.njk', '.liquid', '.sass', '.styl', '.mdx', '.pug', '.ejs', '.jsp', '.erb', '.cshtml']) {
+      assert.equal(UNSUPPORTED_SOURCE_EXTENSIONS.has(ext), true, `Expected ${ext} in UNSUPPORTED_SOURCE_EXTENSIONS`);
+      assert.equal(getUnsupportedFormatExtension(`views/item${ext}`), ext);
+      assert.equal(getUnsupportedFormatExtension(`views\\ITEM${ext.toUpperCase()}`), ext);
+      assert.equal(getUnsupportedFormatExtension(`views/${ext}`), undefined);
+    }
+
+    for (const nonUnsupported of ['src/App.tsx', 'src/main.js', 'README.md', 'logo.png', 'data.json', 'config.yaml', 'pnpm-lock.yaml']) {
+      assert.equal(getUnsupportedFormatExtension(nonUnsupported), undefined);
+    }
+
+    const formatSupportDoc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', 'format-support.md'),
+      'utf8',
+    );
+    for (const ext of UNSUPPORTED_SOURCE_EXTENSIONS) {
+      assert.ok(formatSupportDoc.includes(`\`${ext}\``), `format-support.md should list ${ext}`);
+    }
   });
 
   describe('expected-skip formats produce 0 findings', () => {

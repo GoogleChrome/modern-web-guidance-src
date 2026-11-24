@@ -148,6 +148,7 @@ describe('modern-web CLI', () => {
   it('handles legacy-scan with leading and trailing --skill-version without shifting positional arguments', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
+      fs.writeFileSync(path.join(tempDir, 'index.html'), '<main><p>clean</p></main>\n');
       // Leading --skill-version
       const leadingRes = runCLI(['--skill-version', '2026_01_01-test', 'legacy-scan', tempDir, '--json']);
       assert.strictEqual(leadingRes.status, 0);

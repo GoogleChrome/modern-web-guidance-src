@@ -13,9 +13,9 @@ import type {
   RuleMatcher,
 } from '../schema.ts';
 import { sliceStructuredContext } from './context-slicer.ts';
-import { scanCssRules } from './css-scanner.ts';
+import { scanCssRulesStrict } from './css-scanner.ts';
 import {
-  scanPackageJsonRules,
+  scanPackageJsonRulesStrict,
   scanVendoredLibraryRules,
 } from './dependency-scanner.ts';
 import { scanHtmlRules, scanJsxRules } from './dom-scanner.ts';
@@ -24,11 +24,13 @@ import {
   isDocsOrTestsPath,
   isMinifiedContent,
   isPackageJsonPath,
+  isVendoredOrGeneratedPath,
   shouldScanFile,
   type FileFilterOptions,
 } from './file-filter.ts';
 import {
   getEnginesForPath,
+  getUnsupportedFormatExtension,
   JS_EXTENSIONS,
   JSX_EXTENSIONS,
   STYLESHEET_EXTENSIONS,
@@ -45,6 +47,7 @@ import {
   isMarkupPath,
   prepareHtmlForDomScan,
   stripPreprocessorLineComments,
+  type ScriptBlock,
 } from './sfc-extractor.ts';
 
 export * from './ast-helpers.ts';
@@ -283,53 +286,92 @@ function scanJsAst(
   return findings;
 }
 
+export interface FileScanResult {
+  readonly findings: readonly ScanFinding[];
+  readonly hadParseError: boolean;
+}
+
 function scanExtractedStyles(
   ctx: FileContext,
   rules: readonly RuleWith<CssRuleMatcher>[],
-): ScanFinding[] {
+): FileScanResult {
   if (rules.length === 0) {
-    return [];
+    return { findings: [], hadParseError: false };
   }
   const findings: ScanFinding[] = [];
-  for (const strippedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
-    if (!isMinifiedContent(strippedCss)) {
+  let hadParseError = false;
+  let styleBlocks: readonly string[];
+  try {
+    styleBlocks = extractStyleBlocks(ctx.relPath, ctx.content);
+  } catch {
+    return { findings: [], hadParseError: true };
+  }
+  for (const strippedCss of styleBlocks) {
+    if (isMinifiedContent(strippedCss)) {
+      continue;
+    }
+    try {
       findings.push(
-        ...materializeRuleMatches(ctx, scanCssRules(ctx.relPath, strippedCss, rules, ctx.content)),
+        ...materializeRuleMatches(
+          ctx,
+          scanCssRulesStrict(ctx.relPath, strippedCss, rules, ctx.content),
+        ),
       );
+    } catch {
+      hadParseError = true;
     }
   }
-  return findings;
+  return { findings, hadParseError };
 }
 
 function processMultiBlockFile(
   ctx: FileContext,
   rules: FileRuleBundle,
   pool: JsProjectPool,
-): ScanFinding[] {
+): FileScanResult {
   const findings: ScanFinding[] = [];
+  let hadParseError = false;
 
   if (rules.dom.length > 0) {
-    const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
-    findings.push(
-      ...materializeRuleMatches(
-        ctx,
-        scanHtmlRules(ctx.relPath, preparedHtml, rules.dom, ctx.content),
-      ),
-    );
+    try {
+      const preparedHtml = prepareHtmlForDomScan(ctx.relPath, ctx.content);
+      findings.push(
+        ...materializeRuleMatches(
+          ctx,
+          scanHtmlRules(ctx.relPath, preparedHtml, rules.dom, ctx.content),
+        ),
+      );
+    } catch {
+      hadParseError = true;
+    }
   }
 
   if (rules.js.length > 0) {
-    for (const block of extractScriptBlocks(ctx.relPath, ctx.content)) {
-      if (!isMinifiedContent(block.strippedContent)) {
+    let scriptBlocks: readonly ScriptBlock[] = [];
+    try {
+      scriptBlocks = extractScriptBlocks(ctx.relPath, ctx.content);
+    } catch {
+      hadParseError = true;
+    }
+    for (const block of scriptBlocks) {
+      if (isMinifiedContent(block.strippedContent)) {
+        continue;
+      }
+      try {
         findings.push(
           ...scanJsAst(ctx, block.virtualPath, block.strippedContent, rules.js, [], pool),
         );
+      } catch {
+        hadParseError = true;
       }
     }
   }
 
-  findings.push(...scanExtractedStyles(ctx, rules.css));
-  return findings;
+  const styleResult = scanExtractedStyles(ctx, rules.css);
+  findings.push(...styleResult.findings);
+  hadParseError ||= styleResult.hadParseError;
+
+  return { findings, hadParseError };
 }
 
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
@@ -419,7 +461,12 @@ function pathMatchesActiveEngines(
   return false;
 }
 
-export type FileDisposition = 'source' | 'vendored' | 'skipped-docs-tests' | 'skip';
+export type FileDisposition =
+  | 'source'
+  | 'vendored'
+  | 'skipped-docs-tests'
+  | 'skipped-unsupported'
+  | 'skip';
 
 /**
  * Classifies a file (with optional content) against active rule modalities and path/content filters.
@@ -456,7 +503,34 @@ export function classifyFile(
     return 'vendored';
   }
 
+  if (
+    !isVendoredOrGeneratedPath(relPath, session.filterOpts) &&
+    getUnsupportedFormatExtension(relPath) !== undefined
+  ) {
+    return 'skipped-unsupported';
+  }
+
   return 'skip';
+}
+
+export function recordUnsupportedFile(counts: Map<string, number>, relPath: string): void {
+  const ext = getUnsupportedFormatExtension(relPath);
+  if (ext) {
+    counts.set(ext, (counts.get(ext) ?? 0) + 1);
+  }
+}
+
+export function buildSortedExtensionCounts(
+  counts: ReadonlyMap<string, number>,
+): Readonly<Record<string, number>> | undefined {
+  if (counts.size === 0) {
+    return undefined;
+  }
+  const sorted: Record<string, number> = {};
+  for (const [ext, count] of [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    sorted[ext] = count;
+  }
+  return sorted;
 }
 
 export function scanLoadedFile(
@@ -464,7 +538,7 @@ export function scanLoadedFile(
   relPath: string,
   content: string,
   kind: 'source' | 'vendored',
-): ScanFinding[] {
+): FileScanResult {
   try {
     const ctx: FileContext = {
       relPath,
@@ -474,34 +548,51 @@ export function scanLoadedFile(
     };
 
     if (kind === 'vendored') {
-      return session.rules.dep.length > 0
-        ? materializeRuleMatches(ctx, scanVendoredLibraryRules(relPath, content, session.rules.dep))
-        : [];
+      return {
+        findings:
+          session.rules.dep.length > 0
+            ? materializeRuleMatches(
+                ctx,
+                scanVendoredLibraryRules(relPath, content, session.rules.dep),
+              )
+            : [],
+        hadParseError: false,
+      };
     }
 
     const lowerPath = relPath.replace(/\\/g, '/').toLowerCase();
 
     if (isPackageJsonPath(lowerPath)) {
-      return session.rules.dep.length > 0
-        ? materializeRuleMatches(ctx, scanPackageJsonRules(relPath, content, session.rules.dep))
-        : [];
+      return {
+        findings:
+          session.rules.dep.length > 0
+            ? materializeRuleMatches(
+                ctx,
+                scanPackageJsonRulesStrict(relPath, content, session.rules.dep),
+              )
+            : [],
+        hadParseError: false,
+      };
     }
 
     const ext = posix.extname(lowerPath);
 
     if (STYLESHEET_EXTENSIONS.has(ext)) {
       if (session.rules.css.length === 0) {
-        return [];
+        return { findings: [], hadParseError: false };
       }
       // Strip SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
       const cssContent =
         ext === '.scss' || ext === '.less'
           ? stripPreprocessorLineComments(content)
           : content;
-      return materializeRuleMatches(
-        ctx,
-        scanCssRules(relPath, cssContent, session.rules.css, content),
-      );
+      return {
+        findings: materializeRuleMatches(
+          ctx,
+          scanCssRulesStrict(relPath, cssContent, session.rules.css, content),
+        ),
+        hadParseError: false,
+      };
     }
 
     if (isMarkupPath(lowerPath)) {
@@ -510,17 +601,26 @@ export function scanLoadedFile(
 
     if (JS_EXTENSIONS.has(ext)) {
       const activeDom = JSX_EXTENSIONS.has(ext) ? session.rules.dom : [];
-      return [
-        ...scanJsAst(ctx, relPath, content, session.rules.js, activeDom, session.pool),
-        ...scanExtractedStyles(ctx, session.rules.css),
-      ];
+      const findings: ScanFinding[] = [];
+      let hadParseError = false;
+      try {
+        findings.push(
+          ...scanJsAst(ctx, relPath, content, session.rules.js, activeDom, session.pool),
+        );
+      } catch {
+        hadParseError = true;
+      }
+      const styleResult = scanExtractedStyles(ctx, session.rules.css);
+      findings.push(...styleResult.findings);
+      hadParseError ||= styleResult.hadParseError;
+      return { findings, hadParseError };
     }
 
-    return [];
+    return { findings: [], hadParseError: false };
   } catch {
     // Per-file exception boundary: an unexpected parser/AST exception on one malformed
     // file must not abort the entire repository scan.
-    return [];
+    return { findings: [], hadParseError: true };
   }
 }
 
@@ -536,6 +636,8 @@ export function scanFiles(
   const findings: ScanFinding[] = [];
   let skippedDocsAndTestsCount = 0;
   let scannedFileCount = 0;
+  let parseErrorCount = 0;
+  const unsupportedCounts = new Map<string, number>();
 
   for (const [relPath, content] of files) {
     const disposition = classifyFile(relPath, content, session);
@@ -543,18 +645,28 @@ export function scanFiles(
       skippedDocsAndTestsCount++;
       continue;
     }
+    if (disposition === 'skipped-unsupported') {
+      recordUnsupportedFile(unsupportedCounts, relPath);
+      continue;
+    }
     if (disposition === 'skip') {
       continue;
     }
     scannedFileCount++;
-    findings.push(...scanLoadedFile(session, relPath, content, disposition));
+    const result = scanLoadedFile(session, relPath, content, disposition);
+    findings.push(...result.findings);
+    if (result.hadParseError) {
+      parseErrorCount++;
+    }
   }
 
   if (options?.stats) {
     options.stats.skippedDocsAndTestsCount = skippedDocsAndTestsCount;
+    options.stats.skippedUnsupportedFiles = buildSortedExtensionCounts(unsupportedCounts);
     options.stats.scannedFileCount = scannedFileCount;
     options.stats.eligibleFileCount = scannedFileCount;
     options.stats.truncatedByMaxFiles = false;
+    options.stats.parseErrorCount = parseErrorCount;
   }
 
   return findings;

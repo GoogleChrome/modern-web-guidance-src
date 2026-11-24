@@ -67,13 +67,8 @@ function prepareCssContext(
   filePath: string,
   cssContent: string,
   rawFileText?: string,
-): PreparedCssContext | null {
-  let sheet;
-  try {
-    sheet = parseCss(cssContent);
-  } catch {
-    return null;
-  }
+): PreparedCssContext {
+  const sheet = parseCss(cssContent);
 
   let rawAndConditionProperties: Set<string> | null = null;
   const propertyResultCache = new Map<string, boolean>();
@@ -160,15 +155,12 @@ function prepareCssContext(
   return { styleRules, ctx };
 }
 
-/**
- * Scans a CSS string using cssomnom against a list of rules with CssRuleMatchers
- * in a single parse pass.
- */
-export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
+function runCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   filePath: string,
   cssContent: string,
   rules: readonly T[],
-  rawFileText?: string,
+  rawFileText: string | undefined,
+  ignoreParseError: boolean,
 ): { rule: T; match: ScanMatch }[] {
   const activeRules = rules.filter((rule) =>
     matchesFastTokens(cssContent, rule.matcher.fastTokens),
@@ -177,9 +169,14 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
     return [];
   }
 
-  const prepared = prepareCssContext(filePath, cssContent, rawFileText);
-  if (!prepared) {
-    return [];
+  let prepared: PreparedCssContext;
+  try {
+    prepared = prepareCssContext(filePath, cssContent, rawFileText);
+  } catch (err) {
+    if (ignoreParseError) {
+      return [];
+    }
+    throw err;
   }
 
   const { styleRules, ctx } = prepared;
@@ -203,6 +200,32 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   }
 
   return results;
+}
+
+/**
+ * Scans a CSS string using cssomnom against a list of rules in a single parse pass,
+ * propagating CSS parse exceptions to the caller.
+ */
+export function scanCssRulesStrict<T extends { readonly matcher: CssRuleMatcher }>(
+  filePath: string,
+  cssContent: string,
+  rules: readonly T[],
+  rawFileText?: string,
+): { rule: T; match: ScanMatch }[] {
+  return runCssRules(filePath, cssContent, rules, rawFileText, false);
+}
+
+/**
+ * Scans a CSS string using cssomnom against a list of rules with CssRuleMatchers
+ * in a single parse pass, returning `[]` if CSS parsing fails.
+ */
+export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
+  filePath: string,
+  cssContent: string,
+  rules: readonly T[],
+  rawFileText?: string,
+): { rule: T; match: ScanMatch }[] {
+  return runCssRules(filePath, cssContent, rules, rawFileText, true);
 }
 
 export function normalizeCssDeclValue(raw: string | null | undefined): string {
