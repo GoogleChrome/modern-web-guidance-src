@@ -150,4 +150,94 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     // We check both initial and after state to fail the negative demo
     expect(`initial:${initialRed}, afterSubmit:${afterSubmitRed}`).toBe('initial:false, afterSubmit:true');
   });
+
+  test(`The select has aria-invalid="true" while its error state is shown, and doesn't have aria-invalid="true" before the error appears or after it clears`, async ({ page }) => {
+    const select = page.locator('select').first();
+    expect(await select.count()).toBeGreaterThan(0);
+
+    const initialAriaInvalid = await select.getAttribute('aria-invalid');
+    expect(initialAriaInvalid).not.toBe('true');
+
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    if (await submitBtn.count() > 0) {
+      await submitBtn.first().click();
+    } else {
+      await page.evaluate(() => document.querySelector('form')?.requestSubmit());
+    }
+
+    await expect(select).toHaveAttribute('aria-invalid', 'true');
+    expect(await isErrorVisible(select)).toBe(true);
+
+    let validValue: string | null = null;
+    const options = select.locator('option');
+    for (let i = 0; i < await options.count(); i++) {
+      const val = await options.nth(i).getAttribute('value');
+      if (val && val.trim() !== '') {
+        validValue = val;
+        break;
+      }
+    }
+    expect(validValue).not.toBeNull();
+    await select.selectOption(validValue!);
+    await select.blur();
+
+    await expect.poll(() => select.getAttribute('aria-invalid')).not.toBe('true');
+  });
+
+  test(`While the select has aria-invalid="true", its accessible description includes its visible error text`, async ({ page }) => {
+    const select = page.locator('select').first();
+    expect(await select.count()).toBeGreaterThan(0);
+
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    if (await submitBtn.count() > 0) {
+      await submitBtn.first().click();
+    } else {
+      await page.evaluate(() => document.querySelector('form')?.requestSubmit());
+    }
+
+    await expect(select).toHaveAttribute('aria-invalid', 'true');
+
+    const visibleErrorText = await select.evaluate((el) => {
+      const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+      const candidates = Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+      const visible = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+      if (!visible) return '';
+      const clone = visible.cloneNode(true) as Element;
+      clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+      return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+    });
+    expect(visibleErrorText.length).toBeGreaterThan(0);
+
+    const escaped = visibleErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(select).toHaveAccessibleDescription(new RegExp(escaped));
+  });
+
+  test(`On page load, the select's accessible description doesn't include its error text`, async ({ page }) => {
+    const select = page.locator('select').first();
+    expect(await select.count()).toBeGreaterThan(0);
+
+    const errorTextOnPage = await select.evaluate((el) => {
+      const errId = el.getAttribute('data-error');
+      const errEl = errId
+        ? document.getElementById(errId)
+        : (el.closest('.form-group, .field') || el.parentElement || document.body).querySelector('.error-msg, .error-message, [role="alert"], [id*="error"]');
+      if (!errEl) return '';
+      const clone = errEl.cloneNode(true) as Element;
+      clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+      return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+    });
+    expect(errorTextOnPage.length).toBeGreaterThan(0);
+
+    const escaped = errorTextOnPage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(select).not.toHaveAccessibleDescription(new RegExp(escaped));
+
+    // Positive presence check: submitting empty links the error text to the accessible description
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
+    if (await submitBtn.count() > 0) {
+      await submitBtn.first().click();
+    } else {
+      await page.evaluate(() => document.querySelector('form')?.requestSubmit());
+    }
+    await expect(select).toHaveAccessibleDescription(new RegExp(escaped));
+  });
 });
