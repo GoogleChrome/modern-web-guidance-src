@@ -292,5 +292,101 @@ test.describe('spinner Target Grader', () => {
 
       await expect(page.locator('progress').first()).toBeVisible();
     });
+
+    test('With prefers-reduced-motion: reduce, the spinner shows an arc in the spinner color, not only the track', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.goto(TARGET_URL);
+
+      const progressCountBefore = await page.locator('progress:visible').count();
+      if (progressCountBefore === 0) {
+        await page.evaluate(() => {
+          document.addEventListener('click', (e) => e.preventDefault(), { capture: false });
+        });
+        await page.locator('a.btn').first().click();
+      }
+
+      const progress = page.locator('progress').first();
+      await expect(progress).toBeVisible();
+
+      const arcState = await progress.evaluate((el) => {
+        const cs = window.getComputedStyle(el);
+        const bgImage = cs.backgroundImage;
+        const bgColor = cs.backgroundColor;
+
+        const evalDeg = (expr: string): number | null => {
+          const cleaned = expr.trim();
+          const simple = cleaned.match(/^(-?\d+(?:\.\d+)?)deg$/);
+          if (simple) return parseFloat(simple[1]!);
+          const calcSub = cleaned.match(/^calc\(\s*(-?\d+(?:\.\d+)?)deg\s*-\s*(-?\d+(?:\.\d+)?)deg\s*\)$/);
+          if (calcSub) return parseFloat(calcSub[1]!) - parseFloat(calcSub[2]!);
+          const calcAdd = cleaned.match(/^calc\(\s*(-?\d+(?:\.\d+)?)deg\s*\+\s*(-?\d+(?:\.\d+)?)deg\s*\)$/);
+          if (calcAdd) return parseFloat(calcAdd[1]!) + parseFloat(calcAdd[2]!);
+          // Handle nested calc like calc((90deg + 158deg) - (90deg + 0deg))
+          const nums = cleaned.replace(/deg/g, '').replace(/^calc/, '');
+          if (/^[\s0-9.+\-*/()]+$/.test(nums)) {
+            try {
+              const val = Function(`"use strict"; return (${nums});`)();
+              if (typeof val === 'number' && Number.isFinite(val)) return val;
+            } catch {}
+          }
+          return null;
+        };
+
+        // Parse conic-gradient(from ..., <color> <stop>, ...)
+        let arcSweepDeg: number | null = null;
+        let arcColor: string | null = null;
+        const cgMatch = bgImage.match(/conic-gradient\((.*)\)/);
+        if (cgMatch) {
+          const inner = cgMatch[1]!;
+          const parts: string[] = [];
+          let depth = 0;
+          let cur = '';
+          for (const ch of inner) {
+            if (ch === '(') depth++;
+            else if (ch === ')') depth--;
+            if (ch === ',' && depth === 0) {
+              parts.push(cur.trim());
+              cur = '';
+            } else {
+              cur += ch;
+            }
+          }
+          if (cur.trim()) parts.push(cur.trim());
+
+          const firstColorStop = parts[0]?.startsWith('from ') ? parts[1] : parts[0];
+          if (firstColorStop) {
+            const colorMatch = firstColorStop.match(/^(rgba?\([^)]+\)|oklch\([^)]+\)|oklab\([^)]+\)|#[0-9a-f]+|[a-z]+)\s+(.+)$/i);
+            if (colorMatch) {
+              arcColor = colorMatch[1]!.trim();
+              arcSweepDeg = evalDeg(colorMatch[2]!);
+            }
+          }
+        }
+
+        // Fallback check on --_from / --_to if backgroundImage didn't resolve calc
+        const fromVal = evalDeg(cs.getPropertyValue('--_from'));
+        const toVal = evalDeg(cs.getPropertyValue('--_to'));
+        const varSweep = fromVal !== null && toVal !== null ? toVal - fromVal : null;
+
+        return {
+          bgImage,
+          bgColor,
+          arcColor,
+          arcSweepDeg,
+          varSweep,
+        };
+      });
+
+      expect(arcState.bgImage).toContain('conic-gradient');
+      const sweep = arcState.arcSweepDeg ?? arcState.varSweep ?? 0;
+      expect(sweep).toBeGreaterThan(0);
+      expect(arcState.arcColor).toBeTruthy();
+      expect(arcState.arcColor).not.toBe('rgba(0, 0, 0, 0)');
+      expect(arcState.arcColor).not.toBe('transparent');
+      expect(arcState.arcColor).not.toBe(arcState.bgColor);
+    });
   });
 });
