@@ -23,7 +23,7 @@ import {
   type GuideInventory,
 } from '../core/guide-validation.ts';
 import { rootDir, getGuideResultsDir } from '../core/paths.ts';
-import type { SuiteConfig } from '../harness/config.ts';
+import type { JobConfig } from '../harness/config.ts';
 import { devPrBranch, devPrTitle, runDevPr, type DevPrRerunLabel } from './pr.ts';
 
 export interface OpenPr {
@@ -58,7 +58,7 @@ export interface FixEvalGapsOptions {
   dryRun?: boolean;
   limit?: number;
   verbose?: boolean;
-  suiteConfig?: SuiteConfig;
+  jobConfig?: JobConfig;
   targets?: readonly string[];
   prContext?: PrReviewContext;
 }
@@ -311,7 +311,7 @@ query($owner: String!, $repo: String!, $pr: Int!) {
     return devGuide(inv.dir, {
       test: true,
       verbose: options.verbose,
-      suiteConfig: options.suiteConfig,
+      jobConfig: options.jobConfig,
       targets: options.targets ?? ['daily-grind'],
       prContext: options.prContext,
     });

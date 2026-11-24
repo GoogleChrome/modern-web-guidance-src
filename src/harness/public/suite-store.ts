@@ -4,30 +4,30 @@ import { Storage } from '@google-cloud/storage';
 import { mapWithConcurrency } from '../../core/concurrency.ts';
 
 /**
- * Read-only access to raw eval suites. The builder only needs two operations,
+ * Read-only access to raw eval jobs. The builder only needs two operations,
  * so both the GCS bucket and a local directory (for tests and offline runs)
  * implement this interface.
  */
-export interface SuiteStore {
-  /** Every suite that has an `evals.json`, with enough metadata to skip unchanged ones. */
-  listSuites(): Promise<SuiteRef[]>;
+export interface JobStore {
+  /** Every job that has an `evals.json`, with enough metadata to skip unchanged ones. */
+  listJobs(): Promise<JobRef[]>;
   /** File contents, or `undefined` if the file does not exist. */
   readFile(relPath: string): Promise<Buffer | undefined>;
 }
 
-export interface SuiteRef {
+export interface JobRef {
   id: string;
-  /** Changes whenever the suite's `evals.json` is rewritten; opaque. */
+  /** Changes whenever the job's `evals.json` is rewritten; opaque. */
   generation: string;
-  /** When the suite's `evals.json` was written. Used for retention. */
+  /** When the job's `evals.json` was written. Used for retention. */
   createdAt: Date;
 }
 
 const PROJECT_ID = 'chrome-kiwi-air-force-dev';
 const BUCKET_NAME = 'guidance-evals';
 
-/** Reads suites from `gs://guidance-evals` using Application Default Credentials. */
-export class GcsSuiteStore implements SuiteStore {
+/** Reads jobs from `gs://guidance-evals` using Application Default Credentials. */
+export class GcsJobStore implements JobStore {
   private readonly bucket;
 
   constructor(bucketName = BUCKET_NAME) {
@@ -35,12 +35,12 @@ export class GcsSuiteStore implements SuiteStore {
   }
 
   /**
-   * Lists top-level prefixes, then reads each suite's `evals.json` metadata
+   * Lists top-level prefixes, then reads each job's `evals.json` metadata
    * concurrently. A `matchGlob` listing would be one call but makes GCS scan
    * every object in the bucket (~16 s for ~1.5M objects); this takes well
-   * under a second for a few hundred suites.
+   * under a second for a few hundred jobs.
    */
-  async listSuites(): Promise<SuiteRef[]> {
+  async listJobs(): Promise<JobRef[]> {
     const prefixes: string[] = [];
     let pageToken: string | undefined;
     do {
@@ -59,12 +59,12 @@ export class GcsSuiteStore implements SuiteStore {
         };
       } catch (err) {
         if (isNotFound(err)) {
-          return undefined; // A folder with no evals.json is not a suite.
+          return undefined; // A folder with no evals.json is not a job.
         }
         throw err;
       }
     });
-    return refs.filter((ref): ref is SuiteRef => ref !== undefined);
+    return refs.filter((ref): ref is JobRef => ref !== undefined);
   }
 
   async readFile(relPath: string): Promise<Buffer | undefined> {
@@ -84,16 +84,16 @@ function isNotFound(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 404;
 }
 
-/** Reads suites from a directory laid out like the bucket (`<root>/<suiteId>/...`). */
-export class LocalSuiteStore implements SuiteStore {
+/** Reads jobs from a directory laid out like the bucket (`<root>/<jobId>/...`). */
+export class LocalJobStore implements JobStore {
   private readonly root: string;
 
   constructor(root: string) {
     this.root = path.resolve(root);
   }
 
-  async listSuites(): Promise<SuiteRef[]> {
-    const refs: SuiteRef[] = [];
+  async listJobs(): Promise<JobRef[]> {
+    const refs: JobRef[] = [];
     for (const entry of fs.readdirSync(this.root, { withFileTypes: true })) {
       const evalsPath = path.join(this.root, entry.name, 'evals.json');
       if (entry.isDirectory() && fs.existsSync(evalsPath)) {

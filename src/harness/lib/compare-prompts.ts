@@ -1,10 +1,10 @@
-import type { GuideContext, RunContext, TaggedStep } from './compare-evals.ts';
+import type { GuideContext, TrialContext, TaggedStep } from './compare-evals.ts';
 
 export const MAX_GUIDE_PROMPT_CHARS = 8000;
 export const MAX_EXPECTATIONS_PROMPT_CHARS = 6000;
 export const MAX_GRADER_PROMPT_CHARS = 8000;
 export const MAX_DIFF_PROMPT_CHARS = 10000;
-export const MAX_INLINE_STEPS_PER_RUN = 50;
+export const MAX_INLINE_STEPS_PER_TRIAL = 50;
 export const MAX_TOTAL_COMBINED_PROMPT_BYTES = 92000;
 const MAX_PROMPT_FIELD_CHARS = 1500;
 const MAX_FAILED_TRACES_CHARS = 2500;
@@ -19,7 +19,7 @@ function truncateAtLineBoundary(text: string, limit: number): string {
 
 export function formatCappedStepsOverview(
   steps: TaggedStep[],
-  maxSteps = MAX_INLINE_STEPS_PER_RUN
+  maxSteps = MAX_INLINE_STEPS_PER_TRIAL
 ): string {
   const nonNoise = steps.filter(s => s.category !== 'incidental_noise');
   const noise = steps.filter(s => s.category === 'incidental_noise');
@@ -52,32 +52,32 @@ export function formatCappedStepsOverview(
 
 export function getComparisonPrompts(
   guideCtx: GuideContext,
-  ctxA: RunContext,
-  ctxB: RunContext,
+  ctxA: TrialContext,
+  ctxB: TrialContext,
   diffBaseVsA: string,
   diffBaseVsB: string,
   diffAvsB: string,
   statusA: string,
   statusB: string
 ): { systemInstruction: string; prompt: string } {
-  const systemInstruction = `You are an expert Lead Diagnostic Engineer performing a variance diagnosis between two AI agent evaluation runs (Run A vs Run B).
+  const systemInstruction = `You are an expert Lead Diagnostic Engineer performing a variance diagnosis between two AI agent evaluation trials (Trial A vs Trial B).
 
 ### Execution & Orchestration Protocol
 1. **Subagent Delegation (When Available)**:
    When subagent tools are available in your runtime, use your subagents to independently audit the two orthogonal diagnostic axes in parallel before synthesizing:
    - **Audit Track 1 — Guide Compliance & Chronological Sequencing**:
-     - Verify whether Run A and Run B received identical initial evaluation prompts. If identical, state clearly that both runs started from an identical prompt.
+     - Verify whether Trial A and Trial B received identical initial evaluation prompts. If identical, state clearly that both trials started from an identical prompt.
      - Check step numbers and chronological order: did the agent search for and retrieve \`guide.md\` *before* mutating code (\`code_mutation\`)? Flag any code edits made prior to guide retrieval as "Premature coding before guide retrieval".
      - Compare search queries, retrieved guide IDs, and adoption of MANDATORY requirements from \`guide.md\` and \`expectations.md\`.
    - **Audit Track 2 — Code Diffs, Grader Alignment & Execution Friction**:
      - Inspect \`grader.ts\` and exact Playwright failure traces/locations to pinpoint the exact locator, DOM structure, CSS rule, or timing mismatch.
-     - Compare Base App vs Run A and Base App vs Run B diffs. Distinguish between existing Base App lines deleted by a run vs new lines added exclusively by the other run.
+     - Compare Base App vs Trial A and Base App vs Trial B diffs. Distinguish between existing Base App lines deleted by a trial vs new lines added exclusively by the other trial.
      - Check trajectory tool outcomes (\`status: success\` vs \`status: error\`) and error retry loops. Only cite context noise or tool friction if trajectory logs show actual errors or blind retries.
    If subagents are unavailable, execute both audit tracks systematically yourself and synthesize the results.
 
 2. **Strict Payload-Only Constraint (MANDATORY)**:
-   - Diagnose **strictly** from the provided prompt payload and the uncapped reference files written inside your current isolated comparison workspace (\`comparison_context.md\`, \`guide.md\`, \`expectations.md\`, \`grader.ts\`, \`diff_base_vs_a.patch\`, \`diff_base_vs_b.patch\`, \`diff_a_vs_b.patch\`, \`run_a_trajectory.json\`, \`run_b_trajectory.json\`).
-   - **DO NOT** read, search, or inspect the main repository (\`guides/\`, \`tasks/\`, \`harness/\`, \`base-apps/\`, etc.) or run repository-wide search tools outside your current working directory. Never confuse current repository \`HEAD\` or live guides with what Run A and Run B actually produced.
+   - Diagnose **strictly** from the provided prompt payload and the uncapped reference files written inside your current isolated comparison workspace (\`comparison_context.md\`, \`guide.md\`, \`expectations.md\`, \`grader.ts\`, \`diff_base_vs_a.patch\`, \`diff_base_vs_b.patch\`, \`diff_a_vs_b.patch\`, \`trial_a_trajectory.json\`, \`trial_b_trajectory.json\`).
+   - **DO NOT** read, search, or inspect the main repository (\`guides/\`, \`tasks/\`, \`harness/\`, \`base-apps/\`, etc.) or run repository-wide search tools outside your current working directory. Never confuse current repository \`HEAD\` or live guides with what Trial A and Trial B actually produced.
    - Do NOT emit \`file://\` links to workspace files; the workspace is deleted after this run. Cite files by name and line instead (e.g. \`grader.ts:L45\`).
 
 3. **Required Output Format (No Preamble)**:
@@ -113,7 +113,7 @@ Provide clear, concrete recommendations on whether to update:
 
 ### 4. Guide Compliance & Milestone Matrix
 Provide a Markdown table summarizing key milestones:
-| Milestone / Metric | Run A (Score: ${ctxA.score}%) | Run B (Score: ${ctxB.score}%) | Status |
+| Milestone / Metric | Trial A (Score: ${ctxA.score}%) | Trial B (Score: ${ctxB.score}%) | Status |
 | :--- | :--- | :--- | :---: |
 | **Initial Eval / Starting Prompt** | ... | ... | ... |
 | **Skill Search Query** | ... | ... | ... |
@@ -122,13 +122,13 @@ Provide a Markdown table summarizing key milestones:
 | **Context Noise / Retries** | ... | ... | ... |`;
 
   const failedTracesA = (ctxA.resultsJson || []).filter((c) => !c.passed).map((c) => ({
-    assertion: c.message,
+    check: c.message,
     location: c.location ? `Line ${c.location.line}` : 'Unknown',
     errors: c.errors || ['Unknown error']
   }));
 
   const failedTracesB = (ctxB.resultsJson || []).filter((c) => !c.passed).map((c) => ({
-    assertion: c.message,
+    check: c.message,
     location: c.location ? `Line ${c.location.line}` : 'Unknown',
     errors: c.errors || ['Unknown error']
   }));
@@ -138,8 +138,8 @@ Provide a Markdown table summarizing key milestones:
 - Task Name: ${guideCtx.taskName}
 
 ### Initial Eval / Task Prompts (Starting Points)
-- Run A Initial Prompt: """${truncateAtLineBoundary(ctxA.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
-- Run B Initial Prompt: """${truncateAtLineBoundary(ctxB.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
+- Trial A Initial Prompt: """${truncateAtLineBoundary(ctxA.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
+- Trial B Initial Prompt: """${truncateAtLineBoundary(ctxB.initialPrompt, MAX_PROMPT_FIELD_CHARS)}"""
 
 ### Task Prompt
 """
@@ -161,43 +161,43 @@ ${truncateAtLineBoundary(guideCtx.expectationsContent, MAX_EXPECTATIONS_PROMPT_C
 ${truncateAtLineBoundary(guideCtx.graderContent, MAX_GRADER_PROMPT_CHARS)}
 """
 
-### Run A (${statusA} - Score: ${ctxA.score}%)
+### Trial A (${statusA} - Score: ${ctxA.score}%)
 - Dir: ${ctxA.dir}
 - Search Queries: ${JSON.stringify(ctxA.preprocessed.searchQueries)}
 - Retrieved Guide IDs: ${JSON.stringify(ctxA.preprocessed.retrievedGuideIds)}
 - Key Adopted Thoughts / Rules: ${JSON.stringify(ctxA.preprocessed.mandatoryRulesAdopted.slice(0, 15))}
-- Passed Assertions: ${JSON.stringify((ctxA.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
+- Passed Checks: ${JSON.stringify((ctxA.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
 - Failed Test Traces:
 ${truncateAtLineBoundary(JSON.stringify(failedTracesA, null, 2), MAX_FAILED_TRACES_CHARS)}
 - Trajectory Metrics: Code Mutations=${ctxA.preprocessed.codeMutationCount}, Noise Steps=${ctxA.preprocessed.noiseCount}, Error/Retry Loops=${ctxA.preprocessed.errorLoopCount}
-- Tagged Trajectory Steps Overview (Run A):
+- Tagged Trajectory Steps Overview (Trial A):
 ${formatCappedStepsOverview(ctxA.preprocessed.taggedSteps)}
 
-### Run B (${statusB} - Score: ${ctxB.score}%)
+### Trial B (${statusB} - Score: ${ctxB.score}%)
 - Dir: ${ctxB.dir}
 - Search Queries: ${JSON.stringify(ctxB.preprocessed.searchQueries)}
 - Retrieved Guide IDs: ${JSON.stringify(ctxB.preprocessed.retrievedGuideIds)}
 - Key Adopted Thoughts / Rules: ${JSON.stringify(ctxB.preprocessed.mandatoryRulesAdopted.slice(0, 15))}
-- Passed Assertions: ${JSON.stringify((ctxB.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
+- Passed Checks: ${JSON.stringify((ctxB.resultsJson || []).filter((c) => c.passed).map((c) => c.message))}
 - Failed Test Traces:
 ${truncateAtLineBoundary(JSON.stringify(failedTracesB, null, 2), MAX_FAILED_TRACES_CHARS)}
 - Trajectory Metrics: Code Mutations=${ctxB.preprocessed.codeMutationCount}, Noise Steps=${ctxB.preprocessed.noiseCount}, Error/Retry Loops=${ctxB.preprocessed.errorLoopCount}
-- Tagged Trajectory Steps Overview (Run B):
+- Tagged Trajectory Steps Overview (Trial B):
 ${formatCappedStepsOverview(ctxB.preprocessed.taggedSteps)}
 
 ### Code Diffs (Unified Diff Format)
 
-#### Diff 1: Base App vs Run A Output
+#### Diff 1: Base App vs Trial A Output
 """
 ${truncateAtLineBoundary(diffBaseVsA, MAX_DIFF_PROMPT_CHARS)}
 """
 
-#### Diff 2: Base App vs Run B Output
+#### Diff 2: Base App vs Trial B Output
 """
 ${truncateAtLineBoundary(diffBaseVsB, MAX_DIFF_PROMPT_CHARS)}
 """
 
-#### Diff 3: Run A Output vs Run B Output
+#### Diff 3: Trial A Output vs Trial B Output
 """
 ${truncateAtLineBoundary(diffAvsB, MAX_DIFF_PROMPT_CHARS)}
 """

@@ -1,18 +1,18 @@
 import fs from 'fs';
 import path from 'path';
-import type { Metrics, RunResult, ScenarioCheck, EvalsReport } from './metrics.ts';
+import type { Metrics, TrialResult, TrialCheck, EvalsReport } from './metrics.ts';
 import type { ReasoningEffort } from './reasoning-effort.ts';
 
-function pickDisplayRun(runs: RunResult[] | undefined, medianPassRate: number): RunResult | undefined {
-  if (!runs || runs.length === 0) return undefined;
-  const medianRunIndex = runs.findIndex((run: RunResult) => {
-    const checks = run.results;
-    const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
+function pickDisplayTrial(trials: TrialResult[] | undefined, medianPassRate: number): TrialResult | undefined {
+  if (!trials || trials.length === 0) return undefined;
+  const medianTrialIndex = trials.findIndex((trial: TrialResult) => {
+    const checks = trial.results;
+    const passCount = checks.filter((c: TrialCheck) => c.passed).length;
     const totalCount = checks.length;
     const rate = totalCount > 0 ? Math.round((passCount / totalCount) * 100) : 0;
     return rate === medianPassRate;
   });
-  return medianRunIndex >= 0 ? runs[medianRunIndex] : runs[0];
+  return medianTrialIndex >= 0 ? trials[medianTrialIndex] : trials[0];
 }
 
 function escapeMarkdownCell(text: string): string {
@@ -24,13 +24,13 @@ function escapeMarkdownCell(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
-function formatPassRates(runPassRates: number[] | undefined): string {
-  return runPassRates && runPassRates.length > 0 ? `${runPassRates.join('%, ')}%` : 'N/A';
+function formatPassRates(trialPassRates: number[] | undefined): string {
+  return trialPassRates && trialPassRates.length > 0 ? `${trialPassRates.join('%, ')}%` : 'N/A';
 }
 
-export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, RunResult[]>): string {
+export function generateMarkdownReport(metrics: Metrics, allResults: Record<string, TrialResult[]>): string {
   const { summary, testStats, sortedKeys } = metrics;
-  let md = `| Group | Pass Rate | Test Runs |
+  let md = `| Group | Pass Rate | Trials |
 |---|---|---|
 | **Unguided** | ${summary.unguidedPassRate}% (${summary.unguidedPassed}/${summary.unguidedTotal}) | ${summary.runsPerTest} |
 | **Guided** | ${summary.guidedPassRate}% (${summary.guidedPassed}/${summary.guidedTotal}) | ${summary.runsPerTest} |
@@ -52,8 +52,8 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     const guidedKey = `${prefix} - guided`;
     const unguidedStats = testStats[unguidedKey];
     const guidedStats = testStats[guidedKey];
-    const unguidedDisplay = unguidedStats ? pickDisplayRun(allResults[unguidedKey], unguidedStats.medianPassRate) : undefined;
-    const guidedDisplay = guidedStats ? pickDisplayRun(allResults[guidedKey], guidedStats.medianPassRate) : undefined;
+    const unguidedDisplay = unguidedStats ? pickDisplayTrial(allResults[unguidedKey], unguidedStats.medianPassRate) : undefined;
+    const guidedDisplay = guidedStats ? pickDisplayTrial(allResults[guidedKey], guidedStats.medianPassRate) : undefined;
 
     md += `## ${prefix.toUpperCase()}\n\n`;
 
@@ -65,12 +65,12 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     const hasEmptyPassRates = activeStats.some(s => s.stats.runPassRates.length === 0);
     if (summary.runsPerTest > 1 || hasEmptyPassRates) {
       if (activeStats.length === 1) {
-        md += `**Pass rates across runs:** ${formatPassRates(activeStats[0].stats.runPassRates)}\n\n`;
+        md += `**Pass rates across trials:** ${formatPassRates(activeStats[0].stats.runPassRates)}\n\n`;
       } else if (activeStats.length > 1) {
         const parts = activeStats.map(
           s => `${s.label}: ${formatPassRates(s.stats.runPassRates)} (Median: ${s.stats.medianPassRate}%)`
         );
-        md += `**Pass rates across runs:** ${parts.join(' | ')}\n\n`;
+        md += `**Pass rates across trials:** ${parts.join(' | ')}\n\n`;
       }
     }
 
@@ -84,15 +84,15 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
     if (unguidedDisplay && guidedDisplay) {
       const uChecks = unguidedDisplay.results;
       const gChecks = guidedDisplay.results;
-      const uPass = uChecks.filter((c: ScenarioCheck) => c.passed).length;
-      const gPass = gChecks.filter((c: ScenarioCheck) => c.passed).length;
+      const uPass = uChecks.filter((c: TrialCheck) => c.passed).length;
+      const gPass = gChecks.filter((c: TrialCheck) => c.passed).length;
 
-      const rows = new Map<string, { message: string; unguided?: ScenarioCheck; guided?: ScenarioCheck }>();
-      uChecks.forEach((check: ScenarioCheck, idx: number) => {
+      const rows = new Map<string, { message: string; unguided?: TrialCheck; guided?: TrialCheck }>();
+      uChecks.forEach((check: TrialCheck, idx: number) => {
         const key = check.message || check.id || `u-${idx}`;
         rows.set(key, { message: check.message || '', unguided: check });
       });
-      gChecks.forEach((check: ScenarioCheck, idx: number) => {
+      gChecks.forEach((check: TrialCheck, idx: number) => {
         const key = check.message || check.id || `g-${idx}`;
         const existing = rows.get(key);
         if (existing && !existing.guided) {
@@ -115,7 +115,7 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
       const singleLabel = guidedDisplay ? 'Guided' : 'Unguided';
       if (singleDisplay) {
         const checks = singleDisplay.results;
-        const passCount = checks.filter((c: ScenarioCheck) => c.passed).length;
+        const passCount = checks.filter((c: TrialCheck) => c.passed).length;
         md += `| ${singleLabel} (${passCount}/${checks.length}) | Expectation |\n`;
         md += `|:---:|---|\n`;
         for (const check of checks) {
@@ -132,16 +132,16 @@ export function generateMarkdownReport(metrics: Metrics, allResults: Record<stri
 
 /**
  * Skills (CLI) is the only supported serving approach. The field is retained in
- * the report shape so the dashboard can keep comparing against historical runs
+ * the report shape so the dashboard can keep comparing against historical jobs
  * that were produced by now-removed approaches (`mcp`, `skills`).
  */
 const SERVING = 'skills_cli';
 
 export function generateJsonReport(
   metrics: Metrics,
-  allResults: Record<string, RunResult[]>,
+  allResults: Record<string, TrialResult[]>,
   timestamp: string,
-  runCount: number,
+  trialCount: number,
   agent: string,
   model: string,
   totalRuntime?: number,
@@ -154,7 +154,7 @@ export function generateJsonReport(
     results: allResults,
     stats: metrics.testStats,
     timestamp,
-    runCount,
+    runCount: trialCount,
     agent,
     serving: SERVING,
     model,

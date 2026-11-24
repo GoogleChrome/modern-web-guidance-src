@@ -1,13 +1,13 @@
 # Nightly Run Setup
 
-This directory contains scripts to automate nightly evaluation runs. 
+This directory contains scripts to automate nightly evaluation jobs.
 
 ## 1. Setup a Dedicated Nightly Repository
 To avoid interference with active work, clone a dedicated repository on your local gLinux cloudtop.
 Please make sure to follow `<repo_root>/docs/EVALS.md` on setting up credentials for Antigravity CLI, Claude and Codex.
 Related environment variables can be set at `<repo_root>/.env`.
 
-**Sandbox requirement:** Eval agents run inside a filesystem sandbox that hides the repo (so they can't read guides/graders). On Linux this requires bubblewrap: `sudo apt install bubblewrap`, then verify with `bwrap --dev-bind / / true`. Without it every agent run fails. See "Filesystem Sandbox" in `src/harness/README.md`.
+**Sandbox requirement:** Eval agents run inside a filesystem sandbox that hides the repo (so they can't read guides/graders). On Linux this requires bubblewrap: `sudo apt install bubblewrap`, then verify with `bwrap --dev-bind / / true`. Without it every agent trial fails. See "Filesystem Sandbox" in `src/harness/README.md`.
 
 **Safety Note:** The nightly scripts implement a strict fail-fast mechanism. They will immediately abort if the repository has **any uncommitted changes** (including untracked files). This ensures no user progress is accidentally lost. The workflow executes entirely within isolated `nightly-*` branches created directly from `origin/main`. Please avoid using the `nightly-*` prefix for your own active local branches to prevent any potential conflicts.
 
@@ -45,7 +45,7 @@ Or, to setup the cron job to run once a week on **Sunday night at 10:00 PM** (us
 ```
 
 To modify or remove the cron job later, run `crontab -e`.
-Nightly run outputs are logged to the `$HOME/.guidance_logs/` directory by default. You can check these log files if the cron job or manual run fails silently. The master run triggered by the cron job will automatically send an email notification (via `sendgmr`) with a summary of the results upon completion or failure.
+Nightly job outputs are logged to the `$HOME/.guidance_logs/` directory by default. You can check these log files if the cron job or manual run fails silently. The master run triggered by the cron job will automatically send an email notification (via `sendgmr`) with a summary of the results upon completion or failure.
 
 ## 3. Manual Runs
 To kick-start a dedicated run manually for a specific agent, you can use:

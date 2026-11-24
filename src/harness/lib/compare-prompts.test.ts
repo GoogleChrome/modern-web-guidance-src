@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert";
 import { formatCappedStepsOverview, getComparisonPrompts } from "./compare-prompts.ts";
-import type { GuideContext, RunContext } from "./compare-evals.ts";
+import type { GuideContext, TrialContext } from "./compare-evals.ts";
 
 function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext {
   return {
@@ -16,7 +16,7 @@ function createMockGuideContext(overrides?: Partial<GuideContext>): GuideContext
   };
 }
 
-function createMockRunContext(overrides?: Partial<RunContext>): RunContext {
+function createMockTrialContext(overrides?: Partial<TrialContext>): TrialContext {
   return {
     dir: "/tmp/results/trial-1/1/anchor-positioning/anchor-tooltip/guided",
     score: 85,
@@ -66,12 +66,12 @@ function createMockRunContext(overrides?: Partial<RunContext>): RunContext {
 describe("compare-prompts pipeline", () => {
   test("getComparisonPrompts formats unified system instruction and prompt with subagent tracks, strict payload constraint, and truncated references", () => {
     const guideCtx = createMockGuideContext();
-    const ctxA = createMockRunContext({ score: 100 });
-    const ctxB = createMockRunContext({ score: 50 });
+    const ctxA = createMockTrialContext({ score: 100 });
+    const ctxB = createMockTrialContext({ score: 50 });
 
-    const diffBaseVsA = "--- Base\n+++ Run A\n+ added line A";
-    const diffBaseVsB = "--- Base\n+++ Run B\n+ added line B";
-    const diffAvsB = "--- Run A\n+++ Run B\n- diff";
+    const diffBaseVsA = "--- Base\n+++ Trial A\n+ added line A";
+    const diffBaseVsB = "--- Base\n+++ Trial B\n+ added line B";
+    const diffAvsB = "--- Trial A\n+++ Trial B\n- diff";
 
     const { systemInstruction, prompt } = getComparisonPrompts(
       guideCtx,
@@ -99,24 +99,24 @@ describe("compare-prompts pipeline", () => {
     assert.ok(prompt.includes(ctxA.initialPrompt));
     assert.ok(prompt.includes(ctxB.initialPrompt));
     assert.ok(prompt.includes("anchor-positioning"));
-    assert.ok(prompt.includes("Run A (SUCCESSFUL - Score: 100%)"));
-    assert.ok(prompt.includes("Run B (FAILED/POORER - Score: 50%)"));
+    assert.ok(prompt.includes("Trial A (SUCCESSFUL - Score: 100%)"));
+    assert.ok(prompt.includes("Trial B (FAILED/POORER - Score: 50%)"));
     assert.ok(prompt.includes("### Validation Logic (grader.ts)"));
-    assert.ok(prompt.includes("#### Diff 1: Base App vs Run A Output"));
-    assert.ok(prompt.includes("#### Diff 2: Base App vs Run B Output"));
-    assert.ok(prompt.includes("#### Diff 3: Run A Output vs Run B Output"));
+    assert.ok(prompt.includes("#### Diff 1: Base App vs Trial A Output"));
+    assert.ok(prompt.includes("#### Diff 2: Base App vs Trial B Output"));
+    assert.ok(prompt.includes("#### Diff 3: Trial A Output vs Trial B Output"));
     assert.ok(prompt.includes("Expected anchor center to align with target center"));
     assert.ok(prompt.includes("Code Mutations=1"));
     assert.ok(prompt.length < guideCtx.guideContent.length + guideCtx.expectationsContent.length + guideCtx.graderContent.length);
   });
 
-  test("handles sparse and empty run contexts safely without exceptions", () => {
+  test("handles sparse and empty trial contexts safely without exceptions", () => {
     const sparseGuide = createMockGuideContext({ guideContent: "", expectationsContent: "", graderContent: "" });
-    const sparseRunA = createMockRunContext({ resultsJson: [], initialPrompt: "" });
-    const sparseRunB = createMockRunContext({ resultsJson: [], initialPrompt: "" });
+    const sparseTrialA = createMockTrialContext({ resultsJson: [], initialPrompt: "" });
+    const sparseTrialB = createMockTrialContext({ resultsJson: [], initialPrompt: "" });
 
     assert.doesNotThrow(() => {
-      getComparisonPrompts(sparseGuide, sparseRunA, sparseRunB, "", "", "", "COMPARED RUN", "COMPARED RUN");
+      getComparisonPrompts(sparseGuide, sparseTrialA, sparseTrialB, "", "", "", "COMPARED TRIAL", "COMPARED TRIAL");
     });
   });
 

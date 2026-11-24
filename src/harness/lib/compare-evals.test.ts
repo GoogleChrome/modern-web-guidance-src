@@ -30,7 +30,7 @@ describe('compare-evals pipeline', () => {
     );
   });
 
-  test('validates loadRunContext and preprocessTrajectory with mock trajectory and playwright report', async () => {
+  test('validates loadTrialContext and preprocessTrajectory with mock trajectory and playwright report', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-run-'));
 
     try {
@@ -131,9 +131,9 @@ describe('compare-evals pipeline', () => {
       const indexHtml = path.join(tmpDir, 'index.html');
       fs.writeFileSync(indexHtml, '<html><body><details><summary>Title</summary>Body</details></body></html>');
 
-      // Verify loadRunContext and preprocessTrajectory
-      const { loadRunContext, preprocessTrajectory } = await import('./compare-evals.ts');
-      const ctx = loadRunContext(tmpDir);
+      // Verify loadTrialContext and preprocessTrajectory
+      const { loadTrialContext, preprocessTrajectory } = await import('./compare-evals.ts');
+      const ctx = loadTrialContext(tmpDir);
 
       assert.strictEqual(ctx.score, 50);
       assert.strictEqual(ctx.resultsJson.length, 2);
@@ -205,7 +205,7 @@ describe('compare-evals pipeline', () => {
       dir: '/tmp/results/suite-1/1/huge-guide/complex-task/guided',
       score: 100,
       resultsJson: Array.from({ length: 20 }, (_, i) => ({
-        message: `Assertion ${i + 1}`,
+        message: `Check ${i + 1}`,
         passed: true
       })),
       codeOutput: 'A'.repeat(20_000),
@@ -226,7 +226,7 @@ describe('compare-evals pipeline', () => {
       dir: '/tmp/results/suite-1/2/huge-guide/complex-task/unguided',
       score: 25,
       resultsJson: Array.from({ length: 20 }, (_, i) => ({
-        message: `Assertion ${i + 1}`,
+        message: `Check ${i + 1}`,
         passed: false,
         errors: [`Failure stack trace ${'F'.repeat(500)}`]
       }))
@@ -261,35 +261,35 @@ describe('compare-evals pipeline', () => {
   test('runs runComparison end-to-end with single unified prompt and isolated workspace', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-e2e-'));
     try {
-      const suiteDir = path.join(baseDir, 'results', 'suite-test');
-      const runDirA = path.join(suiteDir, '1', 'details-styling', 'task', 'guided');
-      const runDirB = path.join(suiteDir, '2', 'details-styling', 'task', 'unguided');
-      fs.mkdirSync(runDirA, { recursive: true });
-      fs.mkdirSync(runDirB, { recursive: true });
+      const jobDir = path.join(baseDir, 'results', 'suite-test');
+      const trialDirA = path.join(jobDir, '1', 'details-styling', 'task', 'guided');
+      const trialDirB = path.join(jobDir, '2', 'details-styling', 'task', 'unguided');
+      fs.mkdirSync(trialDirA, { recursive: true });
+      fs.mkdirSync(trialDirB, { recursive: true });
 
-      // Run A setup (success)
-      fs.writeFileSync(path.join(runDirA, 'details-styling_results.json'), JSON.stringify({
+      // Trial A setup (success)
+      fs.writeFileSync(path.join(trialDirA, 'details-styling_results.json'), JSON.stringify({
         suites: [{ specs: [{ title: 'test 1', ok: true }] }]
       }));
-      fs.writeFileSync(path.join(runDirA, 'trajectory_summary.json'), JSON.stringify({
+      fs.writeFileSync(path.join(trialDirA, 'trajectory_summary.json'), JSON.stringify({
         normalizerVersion: 2,
         agent: 'claude_code',
         initialPrompt: 'Style details',
         steps: [{ stepNumber: 1, action: { type: 'run_command', name: 'npm' }, outcome: { status: 'success' } }]
       }));
-      fs.writeFileSync(path.join(runDirA, 'index.html'), '<details></details>');
+      fs.writeFileSync(path.join(trialDirA, 'index.html'), '<details></details>');
 
-      // Run B setup (failure)
-      fs.writeFileSync(path.join(runDirB, 'details-styling_results.json'), JSON.stringify({
+      // Trial B setup (failure)
+      fs.writeFileSync(path.join(trialDirB, 'details-styling_results.json'), JSON.stringify({
         suites: [{ specs: [{ title: 'test 1', ok: false, tests: [{ results: [{ error: { message: 'failed' } }] }] }] }]
       }));
-      fs.writeFileSync(path.join(runDirB, 'trajectory_summary.json'), JSON.stringify({
+      fs.writeFileSync(path.join(trialDirB, 'trajectory_summary.json'), JSON.stringify({
         normalizerVersion: 2,
         agent: 'claude_code',
         initialPrompt: 'Style details',
         steps: [{ stepNumber: 1, action: { type: 'run_command', name: 'npm' }, outcome: { status: 'error' } }]
       }));
-      fs.writeFileSync(path.join(runDirB, 'index.html'), '<div></div>');
+      fs.writeFileSync(path.join(trialDirB, 'index.html'), '<div></div>');
 
       const calls: string[] = [];
       let capturedWorkDir: string | undefined;
@@ -301,11 +301,11 @@ describe('compare-evals pipeline', () => {
         if (workDir && fs.existsSync(path.join(workDir, 'comparison_context.md'))) {
           workspaceContextExistedDuringCall = true;
         }
-        return `I will start analyzing the runs now...\n\n### 1. First Meaningful Divergence\nMock analysis from ${label}`;
+        return `I will start analyzing the trials now...\n\n### 1. First Meaningful Divergence\nMock analysis from ${label}`;
       };
 
       const { runComparison, buildComparisonReportPath } = await import('./compare-evals.ts');
-      const report = await runComparison(runDirA, runDirB, mockAgentCaller);
+      const report = await runComparison(trialDirA, trialDirB, mockAgentCaller);
 
       assert.strictEqual(typeof report, 'string');
       assert.ok(report.startsWith('### 1. First Meaningful Divergence'), 'Expected streamed narration to be stripped');
@@ -316,10 +316,10 @@ describe('compare-evals pipeline', () => {
       assert.ok(capturedWorkDir && !fs.existsSync(capturedWorkDir), 'Expected isolated workDir to be cleaned up after runComparison');
 
       // Check that report was saved to variance_diagnoses with disambiguated filename
-      const expectedReportPath = buildComparisonReportPath(runDirA, runDirB, 'details-styling', 'task');
+      const expectedReportPath = buildComparisonReportPath(trialDirA, trialDirB, 'details-styling', 'task');
       assert.strictEqual(
         expectedReportPath,
-        path.join(suiteDir, 'variance_diagnoses', 'details-styling-task-1-guided-vs-2-unguided.md')
+        path.join(jobDir, 'variance_diagnoses', 'details-styling-task-1-guided-vs-2-unguided.md')
       );
       assert.ok(fs.existsSync(expectedReportPath), `Expected report to be saved at ${expectedReportPath}`);
       const savedContent = fs.readFileSync(expectedReportPath, 'utf8');
@@ -329,62 +329,62 @@ describe('compare-evals pipeline', () => {
     }
   });
 
-  test('buildComparisonReportPath is deterministic regardless of which run won and avoids collisions', async () => {
+  test('buildComparisonReportPath is deterministic regardless of which trial won and avoids collisions', async () => {
     const { buildComparisonReportPath } = await import('./compare-evals.ts');
     const { resultsDir } = await import('../../core/paths.ts');
 
-    const suiteA = '/repo/harness/results/suite-alpha/1/details-styling/task/guided';
-    const suiteB = '/repo/harness/results/suite-beta/1/details-styling/task/guided';
-    const suiteA_run2 = '/repo/harness/results/suite-alpha/2/details-styling/task/unguided';
-    const suiteA_run3 = '/repo/harness/results/suite-alpha/3/details-styling/task/guided';
+    const jobA = '/repo/harness/results/suite-alpha/1/details-styling/task/guided';
+    const jobB = '/repo/harness/results/suite-beta/1/details-styling/task/guided';
+    const jobA_trial2 = '/repo/harness/results/suite-alpha/2/details-styling/task/unguided';
+    const jobA_trial3 = '/repo/harness/results/suite-alpha/3/details-styling/task/guided';
 
-    // 1. Cross-suite comparison always saves under ctxA's suiteDir regardless of who won
-    const pathCrossSuite = buildComparisonReportPath(suiteA, suiteB, 'details-styling', 'task');
-    assert.ok(pathCrossSuite.startsWith('/repo/harness/results/suite-alpha/variance_diagnoses/'));
-    assert.ok(pathCrossSuite.includes('suite-alpha-1-guided-vs-suite-beta-1-guided.md'));
+    // 1. Cross-job comparison always saves under ctxA's jobDir regardless of who won
+    const pathCrossJob = buildComparisonReportPath(jobA, jobB, 'details-styling', 'task');
+    assert.ok(pathCrossJob.startsWith('/repo/harness/results/suite-alpha/variance_diagnoses/'));
+    assert.ok(pathCrossJob.includes('suite-alpha-1-guided-vs-suite-beta-1-guided.md'));
 
     // 2. Comparing A vs B and A vs C produces distinct filenames (no overwrite)
-    const pathAvsB = buildComparisonReportPath(suiteA, suiteA_run2, 'details-styling', 'task');
-    const pathAvsC = buildComparisonReportPath(suiteA, suiteA_run3, 'details-styling', 'task');
+    const pathAvsB = buildComparisonReportPath(jobA, jobA_trial2, 'details-styling', 'task');
+    const pathAvsC = buildComparisonReportPath(jobA, jobA_trial3, 'details-styling', 'task');
     assert.notStrictEqual(pathAvsB, pathAvsC);
 
-    // 3. Runs outside results/ fall back to resultsDir/variance_diagnoses instead of skipping
+    // 3. Trials outside results/ fall back to resultsDir/variance_diagnoses instead of skipping
     const outsideA = '/tmp/custom-evals/trial-1/details-styling/task/guided';
     const outsideB = '/tmp/custom-evals/trial-2/details-styling/task/unguided';
     const pathOutside = buildComparisonReportPath(outsideA, outsideB, 'details-styling', 'task');
     assert.strictEqual(path.dirname(pathOutside), path.join(resultsDir, 'variance_diagnoses'));
     assert.ok(pathOutside.endsWith('details-styling-task-trial-1-guided-vs-trial-2-unguided.md'));
 
-    // 4. Suite paths under results/suites/<suiteName>/... resolve the suiteName directly instead of "suites"
-    const suiteSubA = '/repo/results/suites/nightly-2026-09-08/1/details-styling/task/guided';
-    const suiteSubB = '/repo/results/suites/nightly-2026-09-08/2/details-styling/task/guided';
-    const pathSuites = buildComparisonReportPath(suiteSubA, suiteSubB, 'details-styling', 'task');
+    // 4. Job paths under results/suites/<jobId>/... resolve the jobId directly instead of "suites"
+    const jobSubA = '/repo/results/suites/nightly-2026-09-08/1/details-styling/task/guided';
+    const jobSubB = '/repo/results/suites/nightly-2026-09-08/2/details-styling/task/guided';
+    const pathJobs = buildComparisonReportPath(jobSubA, jobSubB, 'details-styling', 'task');
     assert.strictEqual(
-      path.dirname(pathSuites),
+      path.dirname(pathJobs),
       '/repo/results/suites/nightly-2026-09-08/variance_diagnoses'
     );
-    assert.ok(pathSuites.endsWith('details-styling-task-1-guided-vs-2-guided.md'));
+    assert.ok(pathJobs.endsWith('details-styling-task-1-guided-vs-2-guided.md'));
   });
 
   test('runs runComparison using agent.patch when present', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'compare-patch-'));
     try {
-      const suiteDir = path.join(baseDir, 'results', 'suite-test');
-      const runDirA = path.join(suiteDir, '1', 'details-styling', 'task', 'guided');
-      const runDirB = path.join(suiteDir, '2', 'details-styling', 'task', 'unguided');
-      fs.mkdirSync(runDirA, { recursive: true });
-      fs.mkdirSync(runDirB, { recursive: true });
+      const jobDir = path.join(baseDir, 'results', 'suite-test');
+      const trialDirA = path.join(jobDir, '1', 'details-styling', 'task', 'guided');
+      const trialDirB = path.join(jobDir, '2', 'details-styling', 'task', 'unguided');
+      fs.mkdirSync(trialDirA, { recursive: true });
+      fs.mkdirSync(trialDirB, { recursive: true });
 
       const patchA = '--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1 +1 @@\n-old\n+newA\n';
       const patchB = '--- a/src/App.tsx\n+++ b/src/App.tsx\n@@ -1 +1 @@\n-old\n+newB\n';
 
-      fs.writeFileSync(path.join(runDirA, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: true }] }] }));
-      fs.writeFileSync(path.join(runDirA, 'agent.patch'), patchA);
-      fs.writeFileSync(path.join(runDirA, 'trajectory_summary.json'), JSON.stringify({ normalizerVersion: 2, agent: 'codex_cli', initialPrompt: 'Task A', steps: [] }));
+      fs.writeFileSync(path.join(trialDirA, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: true }] }] }));
+      fs.writeFileSync(path.join(trialDirA, 'agent.patch'), patchA);
+      fs.writeFileSync(path.join(trialDirA, 'trajectory_summary.json'), JSON.stringify({ normalizerVersion: 2, agent: 'codex_cli', initialPrompt: 'Task A', steps: [] }));
 
-      fs.writeFileSync(path.join(runDirB, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: false }] }] }));
-      fs.writeFileSync(path.join(runDirB, 'agent.patch'), patchB);
-      fs.writeFileSync(path.join(runDirB, 'trajectory_summary.json'), JSON.stringify({ normalizerVersion: 2, agent: 'codex_cli', initialPrompt: 'Task B', steps: [] }));
+      fs.writeFileSync(path.join(trialDirB, 'details-styling_results.json'), JSON.stringify({ suites: [{ specs: [{ title: 't1', ok: false }] }] }));
+      fs.writeFileSync(path.join(trialDirB, 'agent.patch'), patchB);
+      fs.writeFileSync(path.join(trialDirB, 'trajectory_summary.json'), JSON.stringify({ normalizerVersion: 2, agent: 'codex_cli', initialPrompt: 'Task B', steps: [] }));
 
       let capturedPrompt = '';
       const mockAgentCaller = async (_sys: string, prompt: string, label = 'agent'): Promise<string> => {
@@ -393,7 +393,7 @@ describe('compare-evals pipeline', () => {
       };
 
       const { runComparison } = await import('./compare-evals.ts');
-      const report = await runComparison(runDirA, runDirB, mockAgentCaller);
+      const report = await runComparison(trialDirA, trialDirB, mockAgentCaller);
       assert.ok(report.includes('Report from Compare Agent'));
       assert.ok(capturedPrompt.includes('+newA'), 'Expected patch A content in prompt');
       assert.ok(capturedPrompt.includes('+newB'), 'Expected patch B content in prompt');

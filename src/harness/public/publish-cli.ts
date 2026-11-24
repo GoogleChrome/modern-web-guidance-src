@@ -5,15 +5,15 @@ import { parseArgs } from 'node:util';
 import { cBold, cRed, cYellow } from '../../core/colors.ts';
 import { outDir as defaultOutRoot } from '../../core/paths.ts';
 import { loadValidatedAllowlist } from './allowlist.ts';
-import { buildSelectedSuites, PUBLIC_EVALS_DIR } from './builder.ts';
-import type { SuiteBuildResult } from './builder.ts';
+import { buildSelectedJobs, PUBLIC_EVALS_DIR } from './builder.ts';
+import type { JobBuildResult } from './builder.ts';
 import { forbiddenTokens, forbiddenTokensVersion } from './forbidden-tokens.ts';
 import { checkoutPublished, originRemoteUrl, publishPublicEvals, repoFromRemoteUrl } from './publish.ts';
 import { reportResults } from './report.ts';
-import { GcsSuiteStore } from './suite-store.ts';
+import { GcsJobStore } from './suite-store.ts';
 
 /**
- * CLI: publish the public copy of eval suites to `gh-pages` and dispatch the
+ * CLI: publish the public copy of eval jobs to `gh-pages` and dispatch the
  * Pages deployment workflow on `main`.
  *
  *   node src/harness/public/publish-cli.ts [--dry-run] [--force] [--no-dispatch]
@@ -22,11 +22,11 @@ import { GcsSuiteStore } from './suite-store.ts';
  * checked-in allowlist (incrementally, via the published `build-state.json`),
  * pushes the result to `gh-pages`, and dispatches `deploy-pages.yml` on `main`.
  * `--dry-run` builds and reports without pushing; `--force` rebuilds every
- * suite even when `build-state.json` says it is unchanged; `--no-dispatch`
+ * job even when `build-state.json` says it is unchanged; `--no-dispatch`
  * pushes to `gh-pages` without dispatching the Actions deployment workflow.
- * Nothing is published if any suite failed. Operator names come from
+ * Nothing is published if any job failed. Operator names come from
  * `PUBLIC_EVALS_FORBIDDEN_TOKENS` when set (required in CI); locally the OS
- * user and the usernames harvested from each suite's own paths cover the
+ * user and the usernames harvested from each job's own paths cover the
  * common case.
  */
 
@@ -49,10 +49,10 @@ function dispatchPagesDeployment(repo: string): void {
 }
 
 /** Throws when any result is `failed`, so a transient error never publishes a partial site. */
-function assertNoFailures(results: readonly SuiteBuildResult[]): void {
-  const failed = results.filter(result => result.status === 'failed').map(result => result.suiteId);
+function assertNoFailures(results: readonly JobBuildResult[]): void {
+  const failed = results.filter(result => result.status === 'failed').map(result => result.jobId);
   if (failed.length > 0) {
-    throw new Error(`${failed.length} suite(s) failed to build; nothing published: ${failed.join(', ')}`);
+    throw new Error(`${failed.length} job(s) failed to build; nothing published: ${failed.join(', ')}`);
   }
 }
 
@@ -75,15 +75,15 @@ async function main(): Promise<number> {
   const tokensVersion = forbiddenTokensVersion();
   const allowlist = loadValidatedAllowlist();
   if (allowlist.releasedModels.length === 0) {
-    console.warn(cYellow('releasedModels is empty in the allowlist; every suite will be skipped.'));
+    console.warn(cYellow('releasedModels is empty in the allowlist; every job will be skipped.'));
   }
 
   fs.mkdirSync(defaultOutRoot, { recursive: true });
   const outDir = fs.mkdtempSync(path.join(defaultOutRoot, 'public-evals-publish-'));
   try {
     const expectedHead = checkoutPublished(outDir);
-    const results = await buildSelectedSuites({
-      store: new GcsSuiteStore(),
+    const results = await buildSelectedJobs({
+      store: new GcsJobStore(),
       outDir,
       allowlist,
       forbiddenTokens: tokens,

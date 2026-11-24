@@ -156,9 +156,9 @@ function exportCodexTrajectories(workDir: string, targetDir: string): void {
 }
 
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('codex-cli-agent.ts');
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('codex-cli-agent.ts');
   if (!process.env[ISOLATED_HOME_ENV]) await ensureFreshHostCodexAuth();
-  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, templateDir, runType);
+  const workDir = setupIsolatedWorkDir(Agents.CODEX_CLI, baseAppDir, condition);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -178,7 +178,7 @@ async function run() {
         workDir,
         targetDir,
         'Codex CLI',
-        runType
+        condition
       );
     } finally {
       exportCodexTrajectories(workDir, targetDir);

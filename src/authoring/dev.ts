@@ -6,7 +6,7 @@ import { gitExec } from '../core/git-utils.ts';
 import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { ensureGuidedEvalDist } from '../harness/lib/eval-dist.ts';
-import { Agents, type SuiteConfig } from '../harness/config.ts';
+import { Agents, type JobConfig } from '../harness/config.ts';
 import { ensureFreshHostCodexAuth } from '../harness/agents/codex-cli-agent.ts';
 import { collectGuidesUsed } from '../harness/lib/guide-usage.ts';
 import { setupGuideDevWorkDir, runAgent, copyBaseAppToWorkspace } from '../harness/lib/utils.ts';
@@ -49,7 +49,7 @@ export interface DevGuideOptions {
   test?: boolean;        // default: true — run agent test after calibration
   guidedOnly?: boolean;  // skip calibration and only run the guided agent test
   verbose?: boolean;
-  suiteConfig?: SuiteConfig;
+  jobConfig?: JobConfig;
   targets?: readonly string[];
   prContext?: {
     branchCommits?: string;
@@ -476,7 +476,7 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
 
   // Step 4: Run agent evaluation test (runs by default unless --no-test is passed or calibration failed)
   if (options.test !== false && overallSuccess) {
-    await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.suiteConfig, targets);
+    await runAgentTest(targetDir, currentInv.name, options.guidedOnly, options.jobConfig, targets);
   }
 
   // Summary
@@ -598,7 +598,7 @@ async function runAgentTest(
   targetDir: string,
   guideName: string,
   guidedOnly = false,
-  suiteConfig?: SuiteConfig,
+  jobConfig?: JobConfig,
   targets: readonly string[] = SUPPORTED_BASE_APPS
 ): Promise<void> {
   console.log(cCyan(`\n--- Running agent tests ---`));
@@ -663,19 +663,19 @@ async function runAgentTest(
         'widely'
       );
 
-      // 2. Run agent suite across all baseline variants for this target
-      const { runSuite } = await import('../harness/run-suite.ts');
+      // 2. Run agent job across all baseline variants for this target
+      const { runJob } = await import('../harness/run-suite.ts');
       const testOutputDir = path.join(guideResultsDir, baseApp);
       const agent = getDefaultSolutionAgent();
-      await runSuite({
+      await runJob({
         name: `${guideName}-${baseApp}`,
         outputDir: testOutputDir,
         tasks: tasksToRun.map(v => v.taskKey),
         numRuns: 1,
         guidedOnly,
         skipSkillBuild: true,
-        suiteConfig: {
-          ...suiteConfig,
+        jobConfig: {
+          ...jobConfig,
           agent,
         },
       });

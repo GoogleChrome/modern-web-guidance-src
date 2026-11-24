@@ -207,7 +207,7 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
      */
     const jobGuideTasks = {};
     /** First trial of each condition for featured Spotlight guides, locked to the first task seen per guide.
-     * @type {Record<string, { task: string, guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} */
+     * @type {Record<string, { task: string, guided?: import('../harness/lib/metrics.ts').TrialResult, unguided?: import('../harness/lib/metrics.ts').TrialResult }>} */
     const showcaseTrials = {};
 
     resultKeys.forEach(key => {
@@ -256,7 +256,7 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
             const entry = (showcaseTrials[parsedKey.guide] ||= { task: parsedKey.baseApp });
             if (entry.task === parsedKey.baseApp) entry[parsedKey.condition] = firstTrial;
         }
-        trials.forEach((/** @type {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} */ trial) => {
+        trials.forEach((/** @type {import('../harness/lib/metrics.ts').TrialResult & { discipline?: string }} */ trial) => {
             if (isInfraErrorTrial(trial.results)) {
                 if (isGuided) guidedInfraErrors++;
                 else if (isUnguided) unguidedInfraErrors++;
@@ -513,11 +513,8 @@ export function extractJobSummary(jobId, evalsData, forcedTimestamp = null) {
     };
 }
 
-/** @deprecated Alias kept for cross-boundary harness callers. */
-export const extractSuiteSummary = extractJobSummary;
-
 /**
- * @param {Record<string, { guided?: import('../harness/lib/metrics.ts').RunResult, unguided?: import('../harness/lib/metrics.ts').RunResult }>} trialsByGuide
+ * @param {Record<string, { guided?: import('../harness/lib/metrics.ts').TrialResult, unguided?: import('../harness/lib/metrics.ts').TrialResult }>} trialsByGuide
  * @returns {Record<string, ShowcaseSlice>}
  */
 function buildShowcaseSlices(trialsByGuide) {
@@ -525,11 +522,11 @@ function buildShowcaseSlices(trialsByGuide) {
     const slices = {};
     for (const [guide, { guided, unguided }] of Object.entries(trialsByGuide)) {
         if (!guided || !unguided) continue;
-        /** @param {import('../harness/lib/metrics.ts').RunResult & { discipline?: string }} trial */
+        /** @param {import('../harness/lib/metrics.ts').TrialResult & { discipline?: string }} trial */
         const classify = (trial) => (trial.results || [])
             .filter(c => !c.isEarlyFailure)
             .map(c => ({ check: c, cls: classifyCheck(c, guide, trial.discipline) }));
-        /** @param {import('../harness/lib/metrics.ts').RunResult & { guidesUsed?: string[] }} trial @returns {ShowcaseConditionTrial} */
+        /** @param {import('../harness/lib/metrics.ts').TrialResult & { guidesUsed?: string[] }} trial @returns {ShowcaseConditionTrial} */
         const toConditionTrial = (trial) => {
             const stats = getTrialStats(trial.results);
             const a11y = classify(trial).filter(x => x.cls.isAccessibility);

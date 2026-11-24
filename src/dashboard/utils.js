@@ -259,19 +259,19 @@ export function getTokenBreakdown(tokenUsage) {
     return { total, cached, uncached, cachedPct };
 }
 /** Extracts agent-only task duration in milliseconds (excluding fixed grader overhead).
- * @param {(Partial<import('../harness/lib/metrics.ts').RunResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} trial */
+ * @param {(Partial<import('../harness/lib/metrics.ts').TrialResult> & { runtimeMs?: number, runtime?: { agentRuntime?: number, graderRuntime?: number } | null }) | undefined | null} trial */
 export function getAgentRuntimeMs(trial) {
     if (!trial) return 0;
     if (trial.runtime && typeof trial.runtime === 'object' && typeof trial.runtime.agentRuntime === 'number' && trial.runtime.agentRuntime > 0) { return trial.runtime.agentRuntime; }
     return (typeof trial.runtimeMs === 'number' && trial.runtimeMs > 0) ? trial.runtimeMs : 0;
 }
-/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
+/** @param {import('../harness/lib/metrics.ts').TrialCheck[] | undefined | null} checks */
 export function isInfraErrorTrial(checks) {
     return !!(checks && checks.some(c => c.isEarlyFailure));
 }
 
 /**
- * @param {import('../harness/lib/metrics.ts').RunResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} trial
+ * @param {import('../harness/lib/metrics.ts').TrialResult & { guideUsed?: { guidesUsed?: string[] } | null } | undefined | null} trial
  * @param {string} [fallbackGuide]
  */
 export function isUnguidedLeakTrial(trial, fallbackGuide = '') {
@@ -292,14 +292,14 @@ export function formatRatePct(count, total) {
     return raw > 0 && raw < 1 ? Number(raw.toFixed(1)) : Math.round(raw);
 }
 
-/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks */
+/** @param {import('../harness/lib/metrics.ts').TrialCheck[] | undefined | null} checks */
 export function getTrialStats(checks) {
     if (!checks || !checks.length || isInfraErrorTrial(checks)) return { rate: 0, passed: 0, total: 0 };
     const passed = checks.filter(c => c.passed).length;
     const total = checks.length;
     return { rate: Math.round((passed / total) * 100), passed, total };
 }
-/** @param {import('../harness/lib/metrics.ts').ScenarioCheck[] | undefined | null} checks
+/** @param {import('../harness/lib/metrics.ts').TrialCheck[] | undefined | null} checks
  * @param {string} guideName
  * @param {string} [discipline=''] */
 export function getA11yTrialStats(checks, guideName, discipline = '') {
@@ -556,7 +556,7 @@ export function parseResultKey(key) {
  * Returns the set of `${baseApp} - ${guide}` task IDs that have valid trials.
  * When both `guided` and `unguided` keys exist for a task, both must have at least one valid trial.
  *
- * @param {Record<string, import('../harness/lib/metrics.ts').RunResult[]>} results
+ * @param {Record<string, import('../harness/lib/metrics.ts').TrialResult[]>} results
  * @returns {Set<string>}
  */
 export function getEligibleTaskIds(results) {
@@ -576,7 +576,7 @@ export function getEligibleTaskIds(results) {
 /** @typedef {{ guided: number[], unguided: number[], guided_tokens: number[], unguided_tokens: number[], guided_uncached_tokens: number[], unguided_uncached_tokens: number[], guided_cached_pct: number[], unguided_cached_pct: number[], guided_runtime_ms: number[], unguided_runtime_ms: number[], guided_failed: boolean, unguided_failed: boolean, guided_err_rate: number, unguided_err_rate: number, a11y_total: number }} ChartTaskData */
 
 /**
- * @param {Record<string, Array<import('../harness/lib/metrics.ts').RunResult & { discipline?: string }>>} results
+ * @param {Record<string, Array<import('../harness/lib/metrics.ts').TrialResult & { discipline?: string }>>} results
  * @param {{ onlyA11y?: boolean, eligibleTasks?: Set<string> } | Set<string>} [optionsOrEligible={}]
  */
 export function calculateChartData(results, optionsOrEligible = {}) {

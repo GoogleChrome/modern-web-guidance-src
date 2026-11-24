@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
-import { defaultSuiteConfig, Agents } from '../config.ts';
+import { defaultJobConfig, Agents } from '../config.ts';
 import { collectResults } from './collection.ts';
-import type { ScenarioCheck } from './metrics.ts';
+import type { TrialCheck } from './metrics.ts';
 import { generateNormalizedTrajectory } from './trajectory-normalizer.ts';
 import { guidesDir, rootDir } from '../../core/paths.ts';
 
@@ -60,27 +60,27 @@ base_app: ${actualBaseAppName}
         fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
 
         // 6. Execute system under test
-        const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
+        const { allResults, trialsPerCondition } = await collectResults(resultsBase, defaultJobConfig);
 
         // 7. Verify E2E extraction output
-        assert.strictEqual(numRuns, 1, 'Expected 1 run detected');
+        assert.strictEqual(trialsPerCondition, 1, 'Expected 1 trial detected');
 
         const testKey = `task - ${guideName} - guided`;
         assert.ok(allResults[testKey], `allResults must explicitly composite the key correctly: ${testKey}`);
 
-        const runPayload = allResults[testKey][0];
+        const trialPayload = allResults[testKey][0];
 
         // Ensure variables correctly parsed to combat regressions seen in dashboard UI:
         assert.strictEqual(
-            runPayload.baseApp,
+            trialPayload.baseApp,
             actualBaseAppName,
             'baseApp must resolve mapped value from explicit markdown frontmatter'
         );
 
         // Ensure grader JSON parsing works correctly from disk when present
-        assert.strictEqual(runPayload.results.length, 1);
-        assert.strictEqual(runPayload.results[0].passed, true);
-        assert.strictEqual(runPayload.results[0].message, 'E2E Validation test successfully validated HTML');
+        assert.strictEqual(trialPayload.results.length, 1);
+        assert.strictEqual(trialPayload.results[0].passed, true);
+        assert.strictEqual(trialPayload.results[0].message, 'E2E Validation test successfully validated HTML');
 
     } finally {
         // Cleanup dynamically created e2e fixture files
@@ -129,18 +129,18 @@ base_app: test-app
         await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE);
 
         // Execute SUT
-        const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
+        const { allResults } = await collectResults(resultsBase, { ...defaultJobConfig, agent: Agents.CLAUDE_CODE });
 
         const testKey = `task - ${guideName} - guided`;
-        const runPayload = allResults[testKey][0];
+        const trialPayload = allResults[testKey][0];
 
-        assert.ok(runPayload.tokenUsage, 'tokenUsage should be extracted');
+        assert.ok(trialPayload.tokenUsage, 'tokenUsage should be extracted');
         // Expected total = (6 + 36344 + 0 + 204) + (6 + 841 + 36344 + 248) = 73993
-        assert.strictEqual(runPayload.tokenUsage.total, 73993, 'Total tokens should include cache_read_input_tokens and cache_creation_input_tokens');
+        assert.strictEqual(trialPayload.tokenUsage.total, 73993, 'Total tokens should include cache_read_input_tokens and cache_creation_input_tokens');
         // Expected cached = 36344
-        assert.strictEqual(runPayload.tokenUsage.cached, 36344, 'Cached tokens should accumulate cache_read_input_tokens');
+        assert.strictEqual(trialPayload.tokenUsage.cached, 36344, 'Cached tokens should accumulate cache_read_input_tokens');
         // Total - Cached should be 37649 (which is positive)
-        assert.strictEqual(runPayload.tokenUsage.total - runPayload.tokenUsage.cached, 37649, 'Net tokens should be positive and equal output + uncached input + cache creation');
+        assert.strictEqual(trialPayload.tokenUsage.total - trialPayload.tokenUsage.cached, 37649, 'Net tokens should be positive and equal output + uncached input + cache creation');
 
     } finally {
         if (fs.existsSync(performanceGuideDir)) fs.rmSync(performanceGuideDir, { recursive: true, force: true });
@@ -183,9 +183,9 @@ base_app: test-app
             steps: []
         }));
 
-        const { allResults, numRuns, model, reasoningEffort } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.CLAUDE_CODE });
+        const { allResults, trialsPerCondition, model, reasoningEffort } = await collectResults(resultsBase, { ...defaultJobConfig, agent: Agents.CLAUDE_CODE });
 
-        assert.strictEqual(numRuns, 1);
+        assert.strictEqual(trialsPerCondition, 1);
         assert.strictEqual(model, 'claude-3-7-sonnet-20250219');
         assert.deepStrictEqual(reasoningEffort, { source: 'agent-default' });
         assert.ok(allResults[`task - ${guideName} - guided`]);
@@ -259,7 +259,7 @@ test('collectResults extracts error, errorLocation, pageSnapshot, and browserErr
         };
         fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
 
-        const { allResults } = await collectResults(resultsBase, { ...defaultSuiteConfig, agent: Agents.ANTIGRAVITY_CLI });
+        const { allResults } = await collectResults(resultsBase, { ...defaultJobConfig, agent: Agents.ANTIGRAVITY_CLI });
         const runResult = allResults[`task - ${guideName} - unguided`];
         assert.ok(runResult && runResult[0]);
         const check = runResult[0].results.find((c: any) => c.id === 'spec-failed-1');
@@ -314,9 +314,9 @@ base_app: test-app
         fs.writeFileSync(path.join(unguidedDir, 'index.html'), '<html>Broken Build</html>');
         fs.writeFileSync(path.join(unguidedDir, `${guideName}_results.json`), JSON.stringify({ suites: [] }));
 
-        const { allResults, numRuns } = await collectResults(resultsBase, defaultSuiteConfig);
+        const { allResults, trialsPerCondition } = await collectResults(resultsBase, defaultJobConfig);
 
-        assert.strictEqual(numRuns, 1);
+        assert.strictEqual(trialsPerCondition, 1);
         const guidedKey = `task - ${guideName} - guided`;
         const unguidedKey = `task - ${guideName} - unguided`;
 
@@ -331,7 +331,7 @@ base_app: test-app
         const unguidedPayload = allResults[unguidedKey][0];
         assert.strictEqual(unguidedPayload.results.length, 3);
         assert.deepStrictEqual(
-            unguidedPayload.results.map((c: ScenarioCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure, message: c.message })),
+            unguidedPayload.results.map((c: TrialCheck) => ({ passed: c.passed, isEarlyFailure: c.isEarlyFailure, message: c.message })),
             [
                 { passed: false, isEarlyFailure: undefined, message: 'test 1: check element exists' },
                 { passed: false, isEarlyFailure: undefined, message: 'test 2: check styling applied' },
@@ -345,7 +345,7 @@ base_app: test-app
     }
 });
 
-test('collectResults preserves pageLoad diagnostics on RunResult without changing check scores', async (_t) => {
+test('collectResults preserves pageLoad diagnostics on TrialResult without changing check scores', async (_t) => {
     const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-pageload');
     const guideName = '_e2e_test_guide_pageload';
     const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
@@ -383,7 +383,7 @@ test('collectResults preserves pageLoad diagnostics on RunResult without changin
         };
         fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
 
-        const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
+        const { allResults } = await collectResults(resultsBase, defaultJobConfig);
         const guidedKey = `task - ${guideName} - guided`;
         assert.ok(allResults[guidedKey]);
         const guidedPayload = allResults[guidedKey][0];
@@ -407,7 +407,7 @@ test('collectResults preserves pageLoad diagnostics on RunResult without changin
 
 
 
-test('collectResults skips task dirs where the agent never ran (stopped or partial suite)', async (_t) => {
+test('collectResults skips trial dirs where the agent never ran (stopped or partial job)', async (_t) => {
     const resultsBase = path.resolve(testDir, 'fixtures-results-e2e-unrun');
     const guideName = '_e2e_test_guide_unrun';
     const performanceGuideDir = path.join(guidesDir, 'performance', guideName);
@@ -438,7 +438,7 @@ base_app: test-app
         fs.writeFileSync(path.join(unguidedDir, 'grade.mjs'), '// pre-created before agent starts');
         fs.writeFileSync(path.join(unguidedDir, 'package.json'), JSON.stringify({ scripts: { 'run-agent': 'node run.mjs' } }));
 
-        const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
+        const { allResults } = await collectResults(resultsBase, defaultJobConfig);
 
         assert.ok(allResults[`task - ${guideName} - guided`]);
         assert.strictEqual(allResults[`task - ${guideName} - unguided`], undefined);

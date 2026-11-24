@@ -112,15 +112,15 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
 }
 
 /**
- * Builds the sandbox policy for an agent run.
- * @param workDir The agent's working directory or isolated home directory
- * @param runType The run type; the skills-cli dist is only exposed for guided runs
+ * Builds the sandbox policy for an agent trial.
+ * @param homeOrWorkDir The agent's working directory or isolated home directory
+ * @param condition The trial condition; the skills-cli dist is only exposed for guided trials
  * @param repoRoot Repository root to hide (defaults to this repo)
  * @param extraHidden Directories outside the repo to hide (defaults to {@link defaultExtraHiddenPaths})
  */
 export function buildSandboxPolicy(
   homeOrWorkDir: string,
-  runType: string,
+  condition: string,
   repoRoot: string = rootDir,
   extraHidden: string[] = defaultExtraHiddenPaths()
 ): SandboxPolicy {
@@ -140,7 +140,7 @@ export function buildSandboxPolicy(
     path.join(repoRoot, 'node_modules'),
   ];
   const writablePaths: string[] = [];
-  if (runType === 'guided') {
+  if (condition === 'guided') {
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
     const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
     readOnlyPaths.push(skillsCliDir);

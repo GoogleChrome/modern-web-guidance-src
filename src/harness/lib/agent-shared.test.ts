@@ -57,17 +57,17 @@ describe('getGraderScriptContent', () => {
 });
 
 describe('createWorkDir', () => {
-  test('does not create a duplicate init commit when templateDir already contains .git', () => {
+  test('does not create a duplicate init commit when baseAppDir already contains .git', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-workdir-'));
-    const templateDir = path.join(tempDir, 'template_app');
+    const baseAppDir = path.join(tempDir, 'base_app');
     const homeDir = path.join(tempDir, 'home');
-    fs.mkdirSync(templateDir, { recursive: true });
+    fs.mkdirSync(baseAppDir, { recursive: true });
     fs.mkdirSync(homeDir, { recursive: true });
-    fs.writeFileSync(path.join(templateDir, 'index.js'), 'console.log("hello");\n');
+    fs.writeFileSync(path.join(baseAppDir, 'index.js'), 'console.log("hello");\n');
 
     try {
-      initGitRepo(templateDir);
-      const workDir = createWorkDir(templateDir, homeDir, 'guided');
+      initGitRepo(baseAppDir);
+      const workDir = createWorkDir(baseAppDir, homeDir, 'guided');
       const logResult = spawnSync('git', ['log', '--oneline'], { cwd: workDir, encoding: 'utf8' });
       const commits = logResult.stdout.trim().split('\n').filter(Boolean);
       assert.strictEqual(commits.length, 1, `Expected exactly 1 initial commit, got: ${logResult.stdout}`);
@@ -108,13 +108,13 @@ describe('createWorkDir', () => {
     }
   });
 
-  test('provisions .mwgrc with opt-in flags before git init in templated suite workDir', () => {
-    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
-    const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
-    fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
-    initGitRepo(templateDir); // suite templates already have .git (see setupWorkspaceBaseApp)
+  test('provisions .mwgrc with opt-in flags before git init in base-app job workDir', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-job-'));
+    const baseAppDir = fs.mkdtempSync(path.join(os.tmpdir(), 'baseapp-test-'));
+    fs.writeFileSync(path.join(baseAppDir, 'package.json'), '{"name":"test-app"}\n');
+    initGitRepo(baseAppDir); // job base apps already have .git (see setupWorkspaceBaseApp)
     try {
-      const workDir = createWorkDir(templateDir, tempHome, 'guided');
+      const workDir = createWorkDir(baseAppDir, tempHome, 'guided');
       const mwgrcPath = path.join(workDir, '.mwgrc');
       assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
       const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
@@ -127,7 +127,7 @@ describe('createWorkDir', () => {
       assert.ok(rootFiles.includes('.mwgrc'), '.mwgrc must be part of the initial git commit');
     } finally {
       fs.rmSync(tempHome, { recursive: true, force: true });
-      fs.rmSync(templateDir, { recursive: true, force: true });
+      fs.rmSync(baseAppDir, { recursive: true, force: true });
     }
   });
 

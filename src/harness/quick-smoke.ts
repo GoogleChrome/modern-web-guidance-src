@@ -17,15 +17,15 @@ const AGENT_CONFIGS: Record<string, { file: string; agent: string }> = {
   'antigravity-cli': { file: 'antigravity-cli-agent.ts', agent: Agents.ANTIGRAVITY_CLI },
 };
 
-const RUN_TYPES = ['guided', 'unguided'] as const;
-type RunType = typeof RUN_TYPES[number];
+const CONDITIONS = ['guided', 'unguided'] as const;
+type Condition = typeof CONDITIONS[number];
 
 /** Patch file written by the agent harness when results are stored patch-only. */
 const AGENT_PATCH_FILE = 'agent.patch';
 
 export interface SmokeTestOptions {
   agent?: string;
-  runType?: RunType;
+  condition?: Condition;
   outputFile?: string;
   outputContent?: string;
   prompt?: string;
@@ -37,7 +37,7 @@ export interface SmokeTestOptions {
  * Agents execute inside an isolated HOME, so `copyResultsToTarget` hands results back in one of
  * two shapes: workspace files copied directly (legacy task layout), or an `agent.patch` capturing
  * the diff. Applying the patch normalizes the patch-only case to the file case, which mirrors how
- * the real eval pipeline grades a run.
+ * the real eval pipeline grades a trial.
  *
  * @returns true if a patch was applied.
  */
@@ -67,9 +67,9 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
     );
   }
 
-  const runType = options.runType || 'unguided';
-  if (!RUN_TYPES.includes(runType)) {
-    throw new Error(`Unknown run type: ${runType}. Expected one of: ${RUN_TYPES.join(', ')}`);
+  const condition = options.condition || 'unguided';
+  if (!CONDITIONS.includes(condition)) {
+    throw new Error(`Unknown condition: ${condition}. Expected one of: ${CONDITIONS.join(', ')}`);
   }
 
   const tempProjectDir = fs.mkdtempSync(path.join(os.tmpdir(), `${agentName}-smoke-test-`));
@@ -79,8 +79,8 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
 
   console.log(`🚀 Starting smoke test for ${agentName} in: ${tempProjectDir}`);
 
-  // Create a mock suite config to satisfy getSuiteConfig
-  const suiteConfig = {
+  // Create a mock job config to satisfy getJobConfig
+  const jobConfig = {
     name: 'smoke-test',
     numRuns: 1,
     tasks: [],
@@ -92,14 +92,14 @@ export async function runSmokeTest(options: SmokeTestOptions = {}): Promise<void
     const result = spawnSync('node', [
       path.join(import.meta.dirname, 'agents', agentConfig.file),
       prompt,
-      runType,
+      condition,
       tempProjectDir, // targetDir
-      tempProjectDir  // templateDir (both are temp dir for smoke test)
+      tempProjectDir  // baseAppDir (both are temp dir for smoke test)
     ], {
       stdio: 'inherit',
       env: {
         ...process.env,
-        GD_SUITE_CONFIG: JSON.stringify(suiteConfig)
+        GD_SUITE_CONFIG: JSON.stringify(jobConfig)
       }
     });
 
@@ -147,9 +147,9 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   // Parse command line args: node quick-smoke.ts [agent] [guided|unguided]
   const args = process.argv.slice(2);
   const agent = args[0];
-  const runType = args[1] as RunType | undefined;
+  const condition = args[1] as Condition | undefined;
 
-  runSmokeTest({ agent, runType })
+  runSmokeTest({ agent, condition })
     .then(() => process.exit(0))
     .catch((err: unknown) => {
       console.error(`❌ ${err instanceof Error ? err.message : err}`);

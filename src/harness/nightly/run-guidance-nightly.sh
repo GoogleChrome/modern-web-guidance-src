@@ -116,7 +116,7 @@ trap send_summary_email EXIT
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)" || die "Failed to determine repo root"
 cd "$REPO_ROOT" || die "Failed to locate repo root"
 
-# Check whether this run meets the conditions to mirror suites to the public dashboard:
+# Check whether this run meets the conditions to mirror jobs to the public dashboard:
 # a clean main checkout matching origin/main without --local.
 will_publish() {
   [ "$RUN_LOCAL" != "true" ] && \
@@ -162,7 +162,7 @@ for agent in $AGENTS_TO_RUN; do
   run_agent "$agent"
 done
 
-# Mirror the newly uploaded suites to the public dashboard. Only from a clean
+# Mirror the newly uploaded jobs to the public dashboard. Only from a clean
 # `main` checkout that matches origin/main: a --local run, a feature branch, or
 # local edits would push a local allowlist and scrubber to the live site.
 publish_public_evals() {

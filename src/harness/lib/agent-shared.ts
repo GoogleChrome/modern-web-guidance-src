@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
-import { Agents, type SuiteConfig } from '../config.ts';
+import { Agents, type JobConfig } from '../config.ts';
 import {
   ALLOWED_CHILD_ENV_KEYS,
   ALLOWED_ENV_PREFIXES,
@@ -75,11 +75,11 @@ export function getAgentCommandAndArgs(
   }
 }
 
-export function setupInterceptorShims(homeDir: string, runType: string = 'guided'): string {
+export function setupInterceptorShims(homeDir: string, condition: string = 'guided'): string {
   const shimDir = path.join(homeDir, '.gd-bin');
   fs.mkdirSync(shimDir, { recursive: true });
   const templatePath = path.join(import.meta.dirname, '..', 'npx-intercept.template.ts');
-  const localCliPath = runType === 'guided'
+  const localCliPath = condition === 'guided'
     ? path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs')
     : '';
   const templateContent = fs.readFileSync(templatePath, 'utf8').replace('__LOCAL_CLI_PATH__', localCliPath);
@@ -93,21 +93,21 @@ export function setupInterceptorShims(homeDir: string, runType: string = 'guided
 
 export function setupIsolatedWorkDir(
   agent: Agents,
-  templateDir: string,
-  runType: string
+  baseAppDir: string,
+  condition: string
 ): string {
   const tempHome = createIsolatedHome(`ghh-${agent}`);
-  const shimDir = setupInterceptorShims(tempHome, runType);
+  const shimDir = setupInterceptorShims(tempHome, condition);
   setupIsolatedShellProfiles(tempHome, shimDir);
-  const workDir = createWorkDir(templateDir, tempHome, runType);
+  const workDir = createWorkDir(baseAppDir, tempHome, condition);
 
   setupAgentCredentials(agent, tempHome);
   process.env.HOME = tempHome;
   process.env.ZDOTDIR = tempHome;
 
-  if (runType === 'guided') {
-    const suiteConfig = getSuiteConfig();
-    copySkills(tempHome, agent, suiteConfig.skillsToEnable);
+  if (condition === 'guided') {
+    const jobConfig = getJobConfig();
+    copySkills(tempHome, agent, jobConfig.skillsToEnable);
   }
 
   return workDir;
@@ -119,9 +119,9 @@ export interface GuideUsage {
 }
 
 /**
- * Gets the suite configuration from environment variables or returns default.
+ * Gets the job configuration from environment variables or throws.
  */
-export function getSuiteConfig(): SuiteConfig {
+export function getJobConfig(): JobConfig {
   const configEnv = process.env.GD_SUITE_CONFIG;
   if (configEnv) {
     try {
@@ -364,14 +364,14 @@ export function copySkills(homeDir: string, agent: Agents, skillsToEnable: strin
 
 export interface AgentArgs {
   userPrompt: string;
-  runType: string;
+  condition: string;
   targetDir: string;
-  templateDir: string;
+  baseAppDir: string;
 }
 
 /**
  * Parses command line arguments for agents.
- * Usage: node <agent-script> <prompt> <runType> <targetDir> <templateDir>
+ * Usage: node <agent-script> <prompt> <condition> <targetDir> <baseAppDir>
  * 
  * @param scriptName Name of the script for usage message
  * @returns Parsed arguments
@@ -379,53 +379,53 @@ export interface AgentArgs {
 export function parseAgentArgs(scriptName: string): AgentArgs {
   const args = process.argv.slice(2);
   if (args.length < 4) {
-    // Single task scenario (no template directory is passed)
+    // Single task invocation (no base-app directory is passed)
     if (args.length === 3) {
       args.push('');
     } else {
-      console.error(`Usage: node ${scriptName} <prompt> <runType> <targetDir> <templateDir>`);
+      console.error(`Usage: node ${scriptName} <prompt> <condition> <targetDir> <baseAppDir>`);
       process.exit(1);
     }
   }
-  const [userPrompt, runType, targetDirectoryRaw, templateDirRaw] = args;
+  const [userPrompt, condition, targetDirectoryRaw, baseAppDirRaw] = args;
   const targetDir = path.resolve(targetDirectoryRaw);
-  let templateDir = '';
-  if (templateDirRaw !== '') {
-    templateDir = path.resolve(templateDirRaw);
+  let baseAppDir = '';
+  if (baseAppDirRaw !== '') {
+    baseAppDir = path.resolve(baseAppDirRaw);
   }
 
   return {
     userPrompt,
-    runType,
+    condition,
     targetDir,
-    templateDir
+    baseAppDir
   };
 }
 
 /**
  * Creates the working directory for the agent.
- * @param templateDir Path to the template directory
+ * @param baseAppDir Path to the base-app directory
  * @param homeDir Path to the isolated home directory
- * @param runType The type of run
+ * @param condition The trial condition ('guided' or 'unguided')
  * @returns The path to the working directory within the isolated home
  */
-export function createWorkDir(templateDir: string, homeDir: string, runType: string): string {
-  const isSingleTask = templateDir === '';
+export function createWorkDir(baseAppDir: string, homeDir: string, condition: string): string {
+  const isSingleTask = baseAppDir === '';
   const workDir = isSingleTask
-    ? path.join(homeDir, runType)
-    : path.join(homeDir, path.basename(templateDir));
+    ? path.join(homeDir, condition)
+    : path.join(homeDir, path.basename(baseAppDir));
 
   if (isSingleTask) {
     fs.mkdirSync(workDir, { recursive: true });
   } else {
-    execSync(`cp -R "${templateDir}" "${homeDir}/"`);
+    execSync(`cp -R "${baseAppDir}" "${homeDir}/"`);
   }
 
   // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
-  // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  // root commit so it stays out of agent.patch (job base apps arrive with .git already).
   // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
   // still resolve the sandbox's .mwgrc via the HOME fallback.
-  if (runType === 'guided') {
+  if (condition === 'guided') {
     const mwgConfig: MwgConfig = { ...DEFAULT_GUIDED_MWGRC };
     const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
     if (normalizedBaseline && normalizedBaseline !== 'widely') {
@@ -437,7 +437,7 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
   }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
-  } else if (runType === 'guided') {
+  } else if (condition === 'guided') {
     gitExec(['add', '.mwgrc'], { cwd: workDir, isolated: true, stdio: 'ignore' });
     gitExec(['commit', '-q', '--amend', '--no-edit'], { cwd: workDir, isolated: true, stdio: 'ignore' });
   }
@@ -526,7 +526,7 @@ export function sanitizeAgentChildEnv(
  * @param workDir The working directory
  * @param targetDir The target directory for logs and results
  * @param agentName Name of the agent (for error messages)
- * @param runType The run type ('guided' or 'unguided'); controls what the sandbox exposes
+ * @param condition The trial condition ('guided' or 'unguided'); controls what the sandbox exposes
  * @param envOverrides Optional environment variables to set after sanitizing process.env
  */
 export async function runCliAgentCommand(
@@ -535,7 +535,7 @@ export async function runCliAgentCommand(
   workDir: string,
   targetDir: string,
   agentName: string,
-  runType: string,
+  condition: string,
   envOverrides?: NodeJS.ProcessEnv,
 ): Promise<void> {
   const tempHome = path.dirname(workDir);
@@ -553,14 +553,14 @@ export async function runCliAgentCommand(
 
   const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
   let stopWatchingMcpLog = () => {};
-  if (runType === 'guided') {
+  if (condition === 'guided') {
     sanitizedEnv.MODERN_WEB_LOG_DIR = tempHome;
     sanitizedEnv.ENABLE_FILE_LOGGING = 'true';
     stopWatchingMcpLog = watchLogFile(isolatedLogPath);
   }
 
   // Hide the repo from the agent so it can't read guides/expectations/graders.
-  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, runType));
+  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, condition));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
     env: sanitizedEnv,
@@ -652,7 +652,7 @@ export async function runCliAgentCommand(
     console.error(`Error in runCliAgentCommand:`, err);
     const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
     
-    // Save generation failure info so results collector registers early failure
+    // Save generation failure info so results collector registers an infra error
     try {
       const failureFile = path.join(targetDir, 'generation_failed.json');
       const rawFailureStderr = (timedOut && !stderrData)
@@ -681,7 +681,7 @@ export async function runCliAgentCommand(
     throw err; // Re-throw to propagate failure
   } finally {
     stopWatchingMcpLog();
-    if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
+    if (condition === 'guided' && fs.existsSync(isolatedLogPath)) {
       const cleanLog = sanitizeTextSecrets(fs.readFileSync(isolatedLogPath, 'utf8'));
       fs.writeFileSync(path.join(targetDir, MODERN_WEB_LOG_FILE), cleanLog, 'utf8');
     }

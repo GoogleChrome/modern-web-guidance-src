@@ -139,23 +139,23 @@ cleanup() {
     if [ -f "${RESULTS_JSON:-}" ]; then
       summary_text=$(node "$SCRIPT_DIR/analyze-results.ts" "$RESULTS_JSON" summary || true)
     fi
-    body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nSuite ID: ${SUITE_ID}"
+    body="✅ ${DISPLAY_NAME} run for agent ${AGENT} completed successfully.\nJob ID: ${SUITE_ID}"
     if [ -n "$summary_text" ]; then
       body="${body}\n\n${summary_text}"
     fi
     body="${body}\n\nResults have been uploaded to the dashboard: ${DASHBOARD_URL}"
   elif [ "$exit_code" -eq 3 ]; then
-    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} FAILED due to CATASTROPHIC GENERATION ERRORS. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} FAILED due to CATASTROPHIC GENERATION ERRORS. Upload skipped.\nJob ID: ${SUITE_ID}\n"
     if [ -n "$FAIL_REASON" ]; then
       body="${body}\nReason: ${FAIL_REASON}"
     fi
   elif [ "$exit_code" -eq 2 ] || [ "$has_data" = "false" ]; then
-    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} completed but generated NO DATA. Upload skipped.\nSuite ID: ${SUITE_ID}\n"
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} completed but generated NO DATA. Upload skipped.\nJob ID: ${SUITE_ID}\n"
     if [ -n "$FAIL_REASON" ]; then
       body="${body}\nReason: ${FAIL_REASON}"
     fi
   else
-    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nSuite ID: ${SUITE_ID}\n"
+    body="❌ ${DISPLAY_NAME} run for agent ${AGENT} failed unexpectedly with exit code ${exit_code}. Last stage: ${STAGE}.\nJob ID: ${SUITE_ID}\n"
     if [ "$EVAL_EXIT_CODE" -ne 0 ]; then
       body="${body}\n\nEvaluation step (gd eval) failed with exit code ${EVAL_EXIT_CODE}."
     fi
@@ -267,8 +267,8 @@ if [ -f "$RESULTS_JSON" ]; then
 
   IS_CATASTROPHIC_FAILURE=$(node "$SCRIPT_DIR/analyze-results.ts" "$RESULTS_JSON" is-catastrophic-failure)
   if [ "$IS_CATASTROPHIC_FAILURE" = "true" ]; then
-    echo "❌ Error: Catastrophic generation failures (100% early failure rate). Skipping upload."
-    FAIL_REASON="Catastrophic generation failures (100% early failure rate). Upload skipped."
+    echo "❌ Error: Catastrophic generation failures (100% infra error rate). Skipping upload."
+    FAIL_REASON="Catastrophic generation failures (100% infra error rate). Upload skipped."
     exit 3
   fi
 else

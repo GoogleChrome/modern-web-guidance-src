@@ -138,8 +138,8 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
  * Executes the Claude CLI command and captures output.
  */
 async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType);
+  const { userPrompt, condition, targetDir, baseAppDir } = parseAgentArgs('claude-code-agent.ts');
+  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, baseAppDir, condition);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -159,7 +159,7 @@ async function run() {
         workDir,
         targetDir,
         'Claude Code',
-        runType
+        condition
       );
     } finally {
       exportClaudeCodeTrajectories(workDir, targetDir);

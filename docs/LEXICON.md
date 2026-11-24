@@ -42,7 +42,7 @@ One batch execution of the **Eval Harness** across a configured selection of **T
 
 A single execution of an **Agent Harness** on one **Task** under one **Condition** (**Guided** or **Unguided**), producing one **Trajectory** and one set of grader **Check** results. When a **Job** repeats tasks (`×N/task`), `N` specifies **trials per condition** (one guided trial and one unguided trial per repetition). Distinct from a Chrome `Origin Trial`.
 
-* _Reference_: `src/harness/lib/metrics.ts#RunResult`, `results/suites/<suiteId>/<n>/<guide>/<task>/<guided|unguided>/`
+* _Reference_: `src/harness/lib/metrics.ts#TrialResult`, `results/suites/<jobId>/<n>/<guide>/<task>/<guided|unguided>/`
 * _AKA_: Trial — Harbor Framework and `Agentic Benchmarks + Evals`; Attempt — Harbor Framework (`n_attempts`)
 * _Avoid_: Run / Task Run (for a leaf execution), Pass (for repetition count), Trial Pair
 
@@ -50,7 +50,7 @@ A single execution of an **Agent Harness** on one **Task** under one **Condition
 
 The A/B experimental treatment under which a **Trial** runs within a **Job**: **Guided** gives the **Agent Harness** access to `modern-web-guidance` skills and CLI retrieval, whereas **Unguided** runs the control condition without guidance tools or docs enabled.
 
-* _Reference_: `src/harness/run-suite.ts`, `src/harness/lib/metrics.ts#calculateMetrics` (`runType: 'guided' | 'unguided'`)
+* _Reference_: `src/harness/run-suite.ts`, `src/harness/lib/metrics.ts#calculateMetrics` (`condition: 'guided' | 'unguided'`)
 
 ### Agent Harness
 
@@ -86,7 +86,7 @@ A Playwright test file (`grader.ts`, authored from `expectations.md`) that verif
 
 A single deterministic assertion executed by a **Grader** during a **Trial**; pass rate equals checks passed divided by checks run across valid paired tasks. Distinct from the whole `grader.ts` **Grader** file.
 
-* _Reference_: `src/harness/lib/metrics.ts#ScenarioCheck`, `src/harness/lib/metrics.ts#calculateMetrics`
+* _Reference_: `src/harness/lib/metrics.ts#TrialCheck`, `src/harness/lib/metrics.ts#calculateMetrics`
 * _Avoid_: Assertion (in UI/metrics copy for a check)
 
 ### Uplift
@@ -105,7 +105,7 @@ Umbrella classification for **Trials** that fail due to harness, sandbox, enviro
 
 Not to be confused with solution-caused **`Page-Load / Build Error`** (`pageLoadFailed`), missing solution app files (`Target app missing`), **`Unguided Leak`**, or authoring-time **`Calibration Failure`**.
 
-* _Reference_: `src/harness/lib/metrics.ts#isEarlyFailureRun`, `src/harness/lib/collection.ts#evaluateScenarioResults`, `src/authoring/dev-report.ts#DevReportFlag` (`INFRASTRUCTURE_ERROR`)
+* _Reference_: `src/harness/lib/metrics.ts#isInfraErrorTrial`, `src/harness/lib/collection.ts#evaluateTrialChecks`, `src/authoring/dev-report.ts#DevReportFlag` (`INFRASTRUCTURE_ERROR`)
 * _Avoid_: Early Failure, Run failed before grading, System error (for runtime infra failures), Generation Error (when used as the top-level umbrella)
 
 ### Page-Load / Build Error
