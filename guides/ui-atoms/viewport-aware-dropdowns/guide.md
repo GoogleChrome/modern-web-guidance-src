@@ -13,13 +13,13 @@ A revealed action panel or popover button group is a useful pattern for users to
 CSS Anchor Positioning provides a declarative, performance-optimized way to handle these relationships entirely in CSS, allowing browsers to manage the positioning and overflow logic natively.
 
 > [!NOTE]
-> This guide demonstrates anchor-positioning and popover mechanics — it does not prescribe a specific accessible UI pattern. The trigger and panel below are shown as a plain **button-revealing-a-button-group**. If you need a true ARIA menu (`role="menu"` with arrow-key navigation), a combobox, a disclosure widget, or any other named pattern, layer that pattern's full semantics and keyboard contract on top of the positioning techniques shown here.
+> This guide demonstrates anchor-positioning and popover mechanics — it does not prescribe a specific accessible UI pattern. The trigger and panel below are shown as a plain **button-revealing-a-button-group**. If you need a true ARIA menu (`role="menu"` with arrow-key navigation), used to present a list of actions, resembling a traditional desktop menu, then use {{ GUIDE_REF("menu") }}. Similarly, for a combobox, a disclosure widget, or any other named pattern, layer that pattern's full semantics and keyboard contract on top of the positioning techniques shown here.
 
 ### 1. Define the Button and Panel Relationship
 
 The first step is to create a trigger button that opens the overlay container using the Popover API.
 
-**MANDATORY Accessibility Distinction:** This pattern explicitly models **buttons revealed inside a popover** rather than an ARIA menu, for the purposes of illustrating the viewport aware technique. Depending on the purpose of this pattern, use an appropriate `role` that matches the interaction facilitated. For example, if the popover is used to present a list of actions, resembling a traditional desktop menu, then apply `role="menu"` or `role="menuitem"`, along with spatial arrow-key navigation between item. For the same reason, do not add `aria-haspopup` to the trigger — its value (`menu`, `listbox`, `tree`, `grid`, or the legacy `true`) is a promise that the target exposes a matching role, which this pattern does not.
+**MANDATORY Accessibility Distinction:** This pattern explicitly models **buttons revealed inside a popover** rather than an ARIA menu, for the purposes of illustrating the viewport aware technique. Depending on the purpose of this pattern, use an appropriate `role` that matches the interaction facilitated. For the same reason, do not add `aria-haspopup` to the trigger — its value (`menu`, `listbox`, `tree`, `grid`, or the legacy `true`) is a promise that the target exposes a matching role, which this pattern does not.
 
 ```html
 <button popovertarget="action-panel">
