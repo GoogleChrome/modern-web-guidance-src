@@ -197,4 +197,89 @@ test.describe('Translator Target Grader', () => {
 
     expect(hasDownloadProgressMonitor).toBe(true);
   });
+
+  // Requirement 7: The translated text must be wrapped inside an element that contains the lang attribute matching the target BCP 47 code.
+  test.describe('Browser tests', () => {
+    test('Translated text is wrapped inside an element with a lang attribute matching the target BCP 47 language code', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.addInitScript(() => {
+        (window as any).Translator = {
+          availability: async () => 'available',
+          create: async (opts: { sourceLanguage?: string; targetLanguage?: string }) => {
+            const target = opts?.targetLanguage ?? 'es';
+            return {
+              translate: async (text: string) => `[${target}] ${text}`,
+              translateStreaming: async function* (text: string) {
+                yield `[${target}] ${text}`;
+              },
+            };
+          },
+        };
+      });
+
+      await page.goto(TARGET_URL);
+
+      const selectedLang = await page.evaluate(() => {
+        const selects = Array.from(document.querySelectorAll<HTMLSelectElement>('select'));
+        const targetSelect = selects.find((s) => {
+          if (s.disabled) return false;
+          const opts = Array.from(s.options).map((o) => o.value);
+          return opts.some((v) => /^(es|fr|de|ja|it|pt|zh|ko)$/i.test(v));
+        });
+        if (!targetSelect) return null;
+        const choice =
+          Array.from(targetSelect.options).find((o) => o.value.toLowerCase() === 'es') ??
+          Array.from(targetSelect.options).find((o) => /^(es|fr|de|ja|it|pt|zh|ko)$/i.test(o.value));
+        if (!choice) return null;
+        targetSelect.value = choice.value;
+        targetSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        return choice.value;
+      });
+
+      expect(selectedLang).toBeTruthy();
+
+      const translateBtn = page.locator('button:not([disabled])', { hasText: /translate/i }).first();
+      if ((await translateBtn.count()) > 0) {
+        await expect(translateBtn).toBeEnabled();
+        await translateBtn.click();
+      }
+
+      const marker = `[${selectedLang}]`;
+      await expect
+        .poll(() =>
+          page.evaluate((m) => (document.body.innerText ?? '').includes(m), marker),
+        )
+        .toBe(true);
+
+      const langMatches = await page.evaluate(
+        ({ m, expectedLang }) => {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          const matches: Array<{ text: string; lang: string | null }> = [];
+          let node: Node | null;
+          while ((node = walker.nextNode())) {
+            const val = node.nodeValue ?? '';
+            if (val.includes(m)) {
+              const parentEl = node.parentElement;
+              const langEl = parentEl?.closest('[lang]');
+              matches.push({
+                text: val.trim().slice(0, 40),
+                lang: langEl?.getAttribute('lang') ?? null,
+              });
+            }
+          }
+          return (
+            matches.length > 0 &&
+            matches.every(
+              (entry) => entry.lang !== null && entry.lang.toLowerCase() === expectedLang.toLowerCase(),
+            )
+          );
+        },
+        { m: marker, expectedLang: selectedLang! },
+      );
+
+      expect(langMatches).toBe(true);
+    });
+  });
 });

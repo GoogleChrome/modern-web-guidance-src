@@ -130,4 +130,153 @@ test.describe('devtools-times Translator Target Grader', () => {
 
     expect(hasDownloadProgressMonitor).toBe(true);
   });
+
+  test.describe('Browser tests', () => {
+    test('The translated text must be wrapped inside an element that contains the lang attribute matching the target BCP 47 language code', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.addInitScript(() => {
+        (window as any).Translator = {
+          availability: async () => 'available',
+          create: async (opts: { sourceLanguage?: string; targetLanguage?: string }) => {
+            const target = opts?.targetLanguage ?? 'es';
+            return {
+              translate: async (text: string) => `[${target}] ${text}`,
+              translateStreaming: async function* (text: string) {
+                yield `[${target}] ${text}`;
+              },
+            };
+          },
+        };
+      });
+
+      await page.goto(TARGET_URL);
+
+      const findAndTagTargetSelect = async (): Promise<boolean> => {
+        return page.evaluate(() => {
+          document
+            .querySelectorAll('[data-grader-target-select]')
+            .forEach((el) => el.removeAttribute('data-grader-target-select'));
+
+          const selects = Array.from(document.querySelectorAll<HTMLSelectElement>('select')).filter(
+            (s) => {
+              if (s.disabled) return false;
+              const style = window.getComputedStyle(s);
+              const rect = s.getBoundingClientRect();
+              if (
+                style.display === 'none' ||
+                style.visibility === 'hidden' ||
+                rect.width === 0 ||
+                rect.height === 0
+              ) {
+                return false;
+              }
+              return Array.from(s.options).some((o) => /^(es|fr|de)$/i.test(o.value));
+            },
+          );
+          if (selects.length === 0) return false;
+
+          const getLabelText = (s: HTMLSelectElement): string => {
+            const labelEl = s.id ? document.querySelector(`label[for="${CSS.escape(s.id)}"]`) : null;
+            const wrappingLabel = s.closest('label');
+            return [
+              s.id,
+              s.name,
+              s.getAttribute('aria-label') ?? '',
+              labelEl?.textContent ?? '',
+              wrappingLabel?.textContent ?? '',
+            ]
+              .join(' ')
+              .toLowerCase();
+          };
+
+          const nonSource = selects.filter((s) => {
+            const meta = getLabelText(s);
+            return !/\bsource\b|\bfrom\b/.test(meta) || /\btarget\b|\btranslate\s+to\b/.test(meta);
+          });
+
+          const chosen =
+            nonSource.find((s) => /\btarget\b|\btranslate\s+to\b/.test(getLabelText(s))) ??
+            nonSource[0] ??
+            selects[selects.length - 1];
+
+          chosen.setAttribute('data-grader-target-select', 'true');
+          return true;
+        });
+      };
+
+      const hasVisibleHomeSelect = await findAndTagTargetSelect();
+
+      if (!hasVisibleHomeSelect) {
+        const articleLink = page.locator('a[href*="/articles/"]').first();
+        await expect(articleLink).toBeVisible();
+        await articleLink.click();
+        await page.waitForURL(/\/articles\//);
+        const anyLangSelect = page
+          .locator('select')
+          .filter({ has: page.locator('option[value="es"], option[value="fr"], option[value="de"]') })
+          .first();
+        if ((await anyLangSelect.count()) > 0) {
+          await anyLangSelect.scrollIntoViewIfNeeded().catch(() => {});
+        }
+        await expect.poll(() => findAndTagTargetSelect()).toBe(true);
+      }
+
+      const targetSelect = page.locator('select[data-grader-target-select="true"]').first();
+      await expect(targetSelect).toBeVisible({ timeout: 5000 });
+
+      const hasEs = (await targetSelect.locator('option[value="es"]:not([disabled])').count()) > 0;
+      const chosenLang = hasEs ? 'es' : 'fr';
+      await targetSelect.selectOption(chosenLang);
+
+      const scopedBtn = targetSelect
+        .locator('xpath=ancestor::*[.//button][1]')
+        .locator('button', { hasText: /translate/i })
+        .first();
+      const translateBtn =
+        (await scopedBtn.count()) > 0
+          ? scopedBtn
+          : page.locator('button', { hasText: /translate/i }).first();
+      if ((await translateBtn.count()) > 0) {
+        await expect(translateBtn).toBeEnabled();
+        await translateBtn.click();
+      }
+
+      const marker = `[${chosenLang}]`;
+      await expect
+        .poll(() =>
+          page.evaluate((m) => (document.body.innerText ?? '').includes(m), marker),
+        )
+        .toBe(true);
+
+      const langMatches = await page.evaluate(
+        ({ m, expectedLang }) => {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          const matches: Array<{ text: string; lang: string | null }> = [];
+          let node: Node | null;
+          while ((node = walker.nextNode())) {
+            const val = node.nodeValue ?? '';
+            if (val.includes(m)) {
+              const parentEl = node.parentElement;
+              const langEl = parentEl?.closest('[lang]');
+              matches.push({
+                text: val.trim().slice(0, 40),
+                lang: langEl?.getAttribute('lang') ?? null,
+              });
+            }
+          }
+          return (
+            matches.length > 0 &&
+            matches.every(
+              (entry) => entry.lang !== null && entry.lang.toLowerCase() === expectedLang.toLowerCase(),
+            )
+          );
+        },
+        { m: marker, expectedLang: chosenLang },
+      );
+
+      expect(langMatches).toBe(true);
+    });
+  });
 });
