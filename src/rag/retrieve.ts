@@ -70,7 +70,7 @@ function formatGateMessage({
 >
 > **Project policy explicitly disables ${headingLabel} (\`.mwgrc\` sets \`"${optInKey}": false\`).** Never bypass this gate (do not edit \`.mwgrc\`, run \`${cliCommand}\` yourself, or read raw \`.md\` guide files from disk), and do not adopt ${featureIds}.
 >
-> Guide \`${guideId}\` covers ${guideSummary}, which ${verb} disabled by this project's \`.mwgrc\` configuration. Implement a standard cross-browser approach instead, and add a bullet for \`${guideId}\` under \`### Modern Web Guidance\` noting that ${featureIds} ${verb} disabled by \`.mwgrc\` (a human developer can enable it via \`${fullCommand}\`).`;
+> Guide \`${guideId}\` covers ${guideSummary}, which ${verb} disabled by this project's \`.mwgrc\` configuration. Implement a standard cross-browser approach instead; if the user specifically asked for ${featureIds}, note in your response that ${featureIds} ${verb} disabled by \`.mwgrc\` (a human developer can enable it via \`${fullCommand}\`).`;
   }
   return `> [!CAUTION]
 >
@@ -82,7 +82,7 @@ function formatGateMessage({
 > ${fullCommand}
 > \`\`\`
 >
-> If you still write ${featureIds} code without this guide (whether from model memory or external documentation), you MUST still add a bullet for \`${guideId}\` under your final \`### Modern Web Guidance\` section including the exact unlock command \`${fullCommand}\` and noting that unverified ${featureIds} code risks being outdated or incomplete.`;
+> If you still write ${featureIds} code without this guide (whether from model memory or external documentation), you MUST still note in your response that Modern Web Guidance gated the ${featureIds} guide (unlock via \`${fullCommand}\`), noting that unverified ${featureIds} code risks being outdated or incomplete.`;
 }
 
 export async function retrieveUseCase(useCaseId: string, options?: { cwd?: string }): Promise<string> {

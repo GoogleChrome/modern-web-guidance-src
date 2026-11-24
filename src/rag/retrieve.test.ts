@@ -67,6 +67,8 @@ describe('retrieveUseCase and Origin Trial gate', () => {
         assert.ok(err instanceof OriginTrialGateError);
         assert.ok(err.message.includes('"allowOriginTrials": false'));
         assert.ok(err.message.includes(`do not adopt ${otGuide.originTrials![0].id!}`));
+        assert.ok(err.message.includes('if the user specifically asked for'));
+        assert.ok(!err.message.includes('### Modern Web Guidance'));
         assert.ok(!err.message.includes('If you still write'));
         return true;
       }
@@ -179,6 +181,8 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
         assert.ok(err instanceof VolatileFeatureGateError);
         assert.ok(err.message.includes('"allowVolatileFeatures": false'));
         assert.ok(err.message.includes(`do not adopt ${volatileGuide.volatileFeatures![0].id!}`));
+        assert.ok(err.message.includes('if the user specifically asked for'));
+        assert.ok(!err.message.includes('### Modern Web Guidance'));
         assert.ok(!err.message.includes('If you still write'));
         return true;
       }
@@ -194,8 +198,10 @@ describe('retrieveUseCase and Volatile Feature gate', () => {
         const featureIds = volatileGuide.volatileFeatures!.map((vf) => vf.id).filter(Boolean).join(', ');
         assert.ok(err.message.includes('explicitly named that specific API/feature'));
         assert.ok(err.message.includes('whether from model memory or external documentation'));
+        assert.ok(err.message.includes(`Modern Web Guidance gated the ${featureIds} guide`));
         assert.ok(err.message.includes(`noting that unverified ${featureIds} code risks being outdated or incomplete.`));
         assert.ok(err.message.includes('npx modern-web-guidance@latest set-allow-volatile-features'));
+        assert.ok(!err.message.includes('### Modern Web Guidance'));
         return true;
       }
     );
