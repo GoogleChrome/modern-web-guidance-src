@@ -376,7 +376,7 @@ test.describe('motion Target Grader', () => {
       TARGET_URL,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.goto(TARGET_URL);
+      await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
       // Verify the page actually implements reduced-motion media queries in its stylesheets
       const hasReducedMotionMediaRule = await page.evaluate(() => {
@@ -536,7 +536,6 @@ test.describe('motion Target Grader', () => {
       TARGET_URL,
     }) => {
       await page.emulateMedia({ reducedMotion: 'no-preference' });
-      await page.goto(TARGET_URL);
 
       const viewDetailsNoPref = page
         .locator('.card')
@@ -574,7 +573,7 @@ test.describe('motion Target Grader', () => {
       });
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.goto(TARGET_URL);
+      await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
       const viewDetailsReduce = page
         .locator('.card')
