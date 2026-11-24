@@ -81,6 +81,12 @@ export interface EvalPrMetrics {
   isHealthy: boolean;
 }
 
+export interface ExpectationsDiffSummary {
+  kind: 'changed' | 'added';
+  removed: number;
+  added: number;
+}
+
 export interface GitFileHistory {
   expSha: string;
   expTs: number;
@@ -89,7 +95,7 @@ export interface GitFileHistory {
   evalSha: string;
   evalTs: number;
   evalDate: string;
-  isSubstantiveDiff?: boolean;
+  diffSummary?: ExpectationsDiffSummary | null;
 }
 
 export interface StaleEvalItem {
@@ -97,6 +103,9 @@ export interface StaleEvalItem {
   expDate: string;
   expPr: number | null;
   evalDate: string;
+  kind: 'changed' | 'added';
+  removed: number;
+  added: number;
 }
 
 export interface NeedsGuidancePrItem {
@@ -219,29 +228,26 @@ export function formatShortDate(isoDate: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
-function hasAnySubstantiveDiff(cwd: string, evalSha: string, expSha: string, filePaths: readonly string[]): boolean {
-  try {
-    gitExec(
-      [
-        'diff',
-        '--quiet',
-        '--unified=0',
-        '--find-renames',
-        '--ignore-blank-lines',
-        '--ignore-matching-lines=Basic presence:',
-        evalSha,
-        expSha,
-        '--',
-        ...filePaths,
-      ],
-      { cwd, stdio: 'ignore' }
-    );
-    return false;
-  } catch (error) {
-    // `git diff --quiet` exits 1 when any file differs; any other status is a real failure.
-    if (!(error instanceof Error && 'status' in error && error.status === 1)) throw error;
-    return true;
+const BULLET_LINE_RE = /^([+-])\s*(?:[-*+]|\d+[.)])\s+(.+)$/;
+
+export function classifyExpectationsDiff(diffText: string): ExpectationsDiffSummary | null {
+  const counts = new Map<string, number>();
+  for (const line of diffText.split('\n')) {
+    if (line.startsWith('+++') || line.startsWith('---')) continue;
+    const match = BULLET_LINE_RE.exec(line);
+    if (!match) continue;
+    const norm = match[2].replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (norm) counts.set(norm, (counts.get(norm) ?? 0) + (match[1] === '+' ? 1 : -1));
   }
+  let added = 0;
+  let removed = 0;
+  for (const delta of counts.values()) {
+    if (delta > 0) added += delta;
+    else if (delta < 0) removed += -delta;
+  }
+  if (removed > 0) return { kind: 'changed', removed, added };
+  if (added > 0) return { kind: 'added', removed: 0, added };
+  return null;
 }
 
 function collectGitGuideHistory(): Map<string, GitFileHistory> {
@@ -316,9 +322,11 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
 
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;
-    entry.isSubstantiveDiff = hasAnySubstantiveDiff(cwd, entry.evalSha, entry.expSha, [
-      `guides/${slug}/${EXPECTATIONS_FILE}`,
-    ]);
+    const diffText = gitExec(
+      ['diff', '--unified=0', '--find-renames', '--ignore-blank-lines', '--ignore-matching-lines=Basic presence:', entry.evalSha, entry.expSha, '--', `guides/${slug}/${EXPECTATIONS_FILE}`],
+      { cwd }
+    );
+    entry.diffSummary = classifyExpectationsDiff(diffText);
   }
 
   return history;
@@ -334,23 +342,19 @@ export function findStaleEvals(
 
     const slug = `${g.category}/${g.name}`;
     const hist = gitHistory.get(slug);
-    if (
-      hist &&
-      hist.expTs > 0 &&
-      hist.evalTs > 0 &&
-      hist.expTs > hist.evalTs &&
-      (hist.isSubstantiveDiff ?? true)
-    ) {
+    if (hist && hist.expTs > 0 && hist.evalTs > 0 && hist.expTs > hist.evalTs && hist.diffSummary !== null) {
+      const summary = hist.diffSummary ?? { kind: 'changed' as const, removed: 0, added: 0 };
       items.push({
         slug,
         expDate: formatShortDate(hist.expDate),
         expPr: hist.expPr ?? null,
         evalDate: formatShortDate(hist.evalDate),
+        ...summary,
       });
     }
   }
 
-  return items.sort((a, b) => a.slug.localeCompare(b.slug));
+  return items.sort((a, b) => (a.kind === b.kind ? a.slug.localeCompare(b.slug) : a.kind === 'changed' ? -1 : 1));
 }
 
 export function countGen2Evals(guides: GuideInventory[]): {
@@ -871,8 +875,9 @@ export function renderPipelineIssueBody(data: PipelineReportData): string {
   }
   for (const item of data.staleEvals) {
     const prPart = item.expPr ? ` ([PR #${item.expPr}](${REPO_URL}/pull/${item.expPr}))` : '';
+    const diffPart = item.kind === 'changed' ? `changed (-${item.removed}/+${item.added})` : `added (+${item.added})`;
     lines.push(
-      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
+      `- [**${item.slug}**](${REPO_URL}/tree/main/guides/${item.slug}) · \`${diffPart}\` · \`expectations.md\` updated ${item.expDate}${prPart}, \`grader.ts\` unchanged since ${item.evalDate}`
     );
   }
 
