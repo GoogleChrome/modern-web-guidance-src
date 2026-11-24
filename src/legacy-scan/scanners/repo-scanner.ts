@@ -76,18 +76,37 @@ interface ReadCandidateResult {
   readonly content: string;
 }
 
+function isParentWithinRoot(
+  parentDir: string,
+  realRepoRoot: string,
+  parentCache: Map<string, Promise<boolean>>,
+): Promise<boolean> {
+  if (parentDir === realRepoRoot) {
+    return Promise.resolve(true);
+  }
+  const cached = parentCache.get(parentDir);
+  if (cached) {
+    return cached;
+  }
+  const pending = realpath(parentDir)
+    .then((realParent) => isPathWithinRoot(realParent, realRepoRoot))
+    .catch(() => false);
+  parentCache.set(parentDir, pending);
+  return pending;
+}
+
 async function tryReadFileContent(
   realRepoRoot: string,
   relPath: string,
   session: ScanSession,
+  parentCache: Map<string, Promise<boolean>>,
 ): Promise<ReadCandidateResult | undefined> {
   const fullPath = resolve(realRepoRoot, relPath);
   if (!isPathWithinRoot(fullPath, realRepoRoot)) {
     return undefined;
   }
   try {
-    const realParent = await realpath(dirname(fullPath));
-    if (!isPathWithinRoot(realParent, realRepoRoot)) {
+    if (!(await isParentWithinRoot(dirname(fullPath), realRepoRoot, parentCache))) {
       return undefined;
     }
     const entryStat = await lstat(fullPath);
@@ -255,6 +274,7 @@ export async function scanRepoFiles(
   }
 
   const candidates = [...pkgCandidates, ...otherCandidates];
+  const parentCache = new Map<string, Promise<boolean>>();
   const findings: ScanFinding[] = [];
   let scannedFileCount = 0;
   let idx = 0;
@@ -265,7 +285,7 @@ export async function scanRepoFiles(
     idx += batch.length;
 
     const reads = await Promise.all(
-      batch.map((relPath) => tryReadFileContent(realRepoRoot, relPath, session)),
+      batch.map((relPath) => tryReadFileContent(realRepoRoot, relPath, session, parentCache)),
     );
     for (let i = 0; i < batch.length; i++) {
       const relPath = batch[i];
