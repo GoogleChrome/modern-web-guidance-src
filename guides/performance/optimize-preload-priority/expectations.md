@@ -1,6 +1,10 @@
-- The `<link rel="preload" as="image">` for 'poster.jpg' has the `fetchpriority="high"` attribute.
-- The `<link rel="preload" as="font">` for 'brand-font.woff2' does NOT use the `fetchpriority="high"` attribute.
-- The `<link rel="preload" as="font">` for 'secondary-font.woff2' has the `fetchpriority="low"` attribute.
-- The `<link rel="preload" as="font">` includes the `crossorigin` attribute.
-- No more than two `<link rel="preload" as="image">` elements on the entire page have the `fetchpriority="high"` attribute.
-- No `<link>` elements have the deprecated `importance` attribute.
+- The `<link rel="preload" as="image">` element for `'poster.jpg'` has the `fetchpriority="high"` attribute.
+- The `<link rel="preload" as="font">` element for `'brand-font.woff2'` does not set the `fetchpriority="high"` attribute.
+- Every `<link rel="preload" as="font">` element includes the `crossorigin` attribute.
+- The `<link rel="preload" as="font">` element for `'secondary-font.woff2'` has the `fetchpriority="low"` attribute.
+- The critical stylesheet `'critical-theme.css'` is preloaded with `<link rel="preload" as="style">` and is not deprioritized with `fetchpriority="low"`.
+- The critical ES module `'app.js'` is preloaded with `<link rel="modulepreload">` rather than `<link rel="preload" as="script">`.
+- The `<link rel="modulepreload">` element for `'app.js'` has the `fetchpriority="high"` attribute.
+- The background ES module `'analytics.js'` is deprioritized with `fetchpriority="low"` without using `fetchpriority="high"` or `<link rel="preload" as="script">`.
+- At least one `<link rel="preload" as="image">` element is present and no more than two `<link rel="preload" as="image">` elements on the page have the `fetchpriority="high"` attribute.
+- At least one preload or modulepreload `<link>` element is present and no `<link>` elements have the deprecated `importance` attribute.
