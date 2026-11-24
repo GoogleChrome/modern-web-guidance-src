@@ -563,7 +563,7 @@ test.describe('motion Target Grader', () => {
         for (let i = 0; i < all.length; i++) {
           const el = all[i]!;
           const cs = window.getComputedStyle(el);
-          const timeline = (cs as CSSStyleDeclaration & { animationTimeline?: string }).animationTimeline;
+          const timeline = cs.getPropertyValue('animation-timeline');
           if (timeline && timeline.includes('view(')) {
             el.scrollIntoView({ block: 'center', behavior: 'instant' });
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
