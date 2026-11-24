@@ -219,28 +219,33 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     const select = page.locator('select').first();
     expect(await select.count()).toBeGreaterThan(0);
 
-    const errorTextOnPage = await select.evaluate((el) => {
-      const errId = el.getAttribute('data-error');
-      const errEl = errId
-        ? document.getElementById(errId)
-        : (el.closest('.form-group, .field') || el.parentElement || document.body).querySelector('.error-msg, .error-message, [role="alert"], [id*="error"]');
-      if (!errEl) return '';
-      const clone = errEl.cloneNode(true) as Element;
-      clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
-      return (clone.textContent || '').replace(/\s+/g, ' ').trim();
-    });
-    expect(errorTextOnPage.length).toBeGreaterThan(0);
-
-    const escaped = errorTextOnPage.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    await expect(select).not.toHaveAccessibleDescription(new RegExp(escaped));
-
-    // Positive presence check: submitting empty links the error text to the accessible description
+    // Trigger validation first to collect the error copy and verify linkage when invalid
     const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])');
     if (await submitBtn.count() > 0) {
       await submitBtn.first().click();
     } else {
       await page.evaluate(() => document.querySelector('form')?.requestSubmit());
     }
+
+    const errorTextOnInvalid = await select.evaluate((el) => {
+      const errId = el.getAttribute('data-error');
+      const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+      const candidates = errId
+        ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+        : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+      const errEl = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+      if (!errEl) return '';
+      const clone = errEl.cloneNode(true) as Element;
+      clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+      return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+    });
+    expect(errorTextOnInvalid.length).toBeGreaterThan(0);
+
+    const escaped = errorTextOnInvalid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     await expect(select).toHaveAccessibleDescription(new RegExp(escaped));
+
+    // Reload and verify that on initial page load the select's accessible description doesn't include its error text
+    await page.reload();
+    await expect(page.locator('select').first()).not.toHaveAccessibleDescription(new RegExp(escaped));
   });
 });

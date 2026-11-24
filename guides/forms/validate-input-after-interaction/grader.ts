@@ -384,15 +384,21 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     const count = await fields.count();
     expect(count).toBeGreaterThan(0);
 
+    // Trigger validation first to collect each field's error copy and verify linkage when invalid
     const fieldErrorTexts: string[] = [];
     for (let i = 0; i < count; i++) {
       const field = fields.nth(i);
+      await field.focus();
+      await field.fill('invalid');
+      await field.blur();
+
       const errorText = await field.evaluate((el) => {
         const errId = el.getAttribute('data-error');
         const container = el.closest('.form-group, .field') || el.parentElement || document.body;
-        const errEl = errId
-          ? document.getElementById(errId)
-          : container.querySelector('.error-msg, .error-message, [role="alert"], [id*="error"]');
+        const candidates = errId
+          ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+          : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+        const errEl = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
         if (!errEl) return '';
         const clone = errEl.cloneNode(true) as Element;
         clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
@@ -402,17 +408,15 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
       fieldErrorTexts.push(errorText);
 
       const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(field).not.toHaveAccessibleDescription(new RegExp(escaped));
+      await expect(field).toHaveAccessibleDescription(new RegExp(escaped));
     }
 
-    // Positive presence check: triggering invalid state links each field's error text in its accessible description
+    // Reload and verify that on initial page load no field's accessible description includes its error text
+    await page.reload();
+    const reloadedFields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
     for (let i = 0; i < count; i++) {
-      const field = fields.nth(i);
-      await field.focus();
-      await field.fill('invalid');
-      await field.blur();
       const escaped = fieldErrorTexts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(field).toHaveAccessibleDescription(new RegExp(escaped));
+      await expect(reloadedFields.nth(i)).not.toHaveAccessibleDescription(new RegExp(escaped));
     }
   });
 });

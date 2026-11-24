@@ -171,11 +171,21 @@ test.describe('Platform controls dismiss dialog tests', () => {
       const dialogId = await dialog.getAttribute('id');
       const specificOpener = dialogId
         ? page.locator(`button[command="show-modal"][commandfor="${dialogId}"]`)
-        : page.locator('button:visible');
-      const opener = (await specificOpener.count()) > 0
-        ? specificOpener.first()
-        : page.locator('button:visible').first();
-      await opener.click();
+        : null;
+
+      if (specificOpener && (await specificOpener.count()) > 0) {
+        await specificOpener.first().click();
+      } else {
+        const buttons = await page.locator('button').all();
+        for (const button of buttons) {
+          if (!(await button.isVisible().catch(() => false))) continue;
+          await button.click({ timeout: 500 }).catch(() => {});
+          if (await dialog.isVisible()) break;
+          await page.evaluate(() => {
+            document.querySelectorAll('dialog[open]').forEach((d) => (d as HTMLDialogElement).close());
+          });
+        }
+      }
       await expect(dialog).toBeVisible();
 
       const closeBtn = dialog.locator('button[command="close"], form[method="dialog"] button, button:has-text("Close"), button[aria-label*="Close" i]').first();

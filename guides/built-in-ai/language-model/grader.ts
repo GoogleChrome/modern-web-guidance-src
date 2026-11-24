@@ -554,6 +554,7 @@ test('16. downloadprogress events update the value of a <progress> element with 
 
   await page.reload();
   await waitForPageReady(page);
+  await fillInputsIfEmpty(page);
 
   const downloadBtn = await pickVisibleButton(page, [
     '#download-btn',
@@ -696,6 +697,7 @@ test('20. When LanguageModel.availability() returns downloadable or downloading,
       { forMs: 300, message: `LanguageModel.create() must not run without user activation when availability is "${state}"` }
     );
 
+    await fillInputsIfEmpty(page);
     const downloadBtn = await pickVisibleButton(page, [
       '#download-btn',
       'button:has-text("Download")',
