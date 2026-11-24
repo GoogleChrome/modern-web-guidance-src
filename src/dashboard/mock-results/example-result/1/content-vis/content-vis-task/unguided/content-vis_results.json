@@ -1,7 +1,7 @@
 {
   "config": {
-    "configFile": "/Users/micahjo/guidance/use-cases/playwright.config.js",
-    "rootDir": "/Users/micahjo/guidance/use-cases",
+    "configFile": "guidance/use-cases/playwright.config.js",
+    "rootDir": "guidance/use-cases",
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -34,7 +34,7 @@
         },
         "id": "chromium",
         "name": "chromium",
-        "testDir": "/Users/micahjo/guidance/use-cases",
+        "testDir": "guidance/use-cases",
         "testIgnore": [],
         "testMatch": [
           "**/*.grader.js"

@@ -60,6 +60,33 @@ describe('selectSuites', () => {
   test('selects nothing when include is empty', () => {
     assert.deepEqual(selectSuites({ ...allowlist, include: [] }, ['nightly-x-codex_cli']), []);
   });
+
+  test('checked-in allowlist selects unsuffixed and model-suffixed nightlies while rejecting arbitrary suffixes', () => {
+    const checkedIn = loadValidatedAllowlist(DEFAULT_ALLOWLIST_PATH);
+    assert.deepEqual(
+      selectSuites(checkedIn, [
+        'nightly-2026-11-18_19-25-19-claude_code',
+        'nightly-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+        'nightly-2026-11-18_19-25-19-claude_code-jdoe',
+        'nightly-2026-11-18_19-25-18-antigravity_cli',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gemini-4-argon-medium',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gpt-6.1-sol',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-smoke',
+        'nightly-2026-11-18_19-25-20-codex_cli',
+        'nightly-2026-11-18_19-25-20-codex_cli-gpt-6.1-sol',
+        'trial-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+      ]),
+      [
+        'nightly-2026-11-18_19-25-18-antigravity_cli',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gemini-4-argon-medium',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gpt-6.1-sol',
+        'nightly-2026-11-18_19-25-19-claude_code',
+        'nightly-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+        'nightly-2026-11-18_19-25-20-codex_cli',
+        'nightly-2026-11-18_19-25-20-codex_cli-gpt-6.1-sol',
+      ],
+    );
+  });
 });
 
 describe('overrideFor', () => {

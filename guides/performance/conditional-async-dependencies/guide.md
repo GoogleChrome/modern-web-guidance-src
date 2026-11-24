@@ -13,7 +13,7 @@ By utilizing top-level await, you can encapsulate the conditional loading logic 
 
 ### Conditional polyfill pattern
 
-While top-level `await` can be used to conditionally load any async dependency that's a module, a good use of the conditional depenency loading pattern is to conditionally load polyfills for browsers that don't support a specific feature. This approach encapsulates feature detection and the dynamic import inside a single dependency module.
+While top-level `await` can be used to conditionally load any async dependency that's a module, a good use of the conditional dependency loading pattern is to conditionally load polyfills for browsers that don't support a specific feature. This approach encapsulates feature detection and the dynamic import inside a single dependency module.
 
 In the following case, the `popover` attribute polyfill is conditionally loaded if it isn't present on `HTMLElement.prototype`:
 

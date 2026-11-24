@@ -30,15 +30,24 @@ const ALL_OPTIONS = {
   'dry-run': { type: 'boolean', desc: 'List what would run without running it' },
   limit: { type: 'string', desc: 'Process at most <n> guides' },
   targets: { type: 'string', desc: 'Target base app(s), comma-separated (e.g. daily-grind,devtools-times)' },
-  json: { type: 'boolean', desc: 'Output analyzer findings in structured JSON format' },
-  guide: { type: 'string', desc: 'Filter analyzer to a specific guide ID' },
+  json: { type: 'boolean', desc: 'Output legacy-scan findings in structured JSON format' },
+  guide: { type: 'string', desc: 'Filter legacy-scan to a specific guide ID' },
   'include-docs-and-tests': { type: 'boolean', desc: 'Include documentation, example, demo, and test files in analysis' },
+  'max-files': { type: 'string', desc: 'Maximum eligible files to scan (default: 5000; 0 for unlimited)' },
 } as const;
 
 type OptionName = keyof typeof ALL_OPTIONS;
 
+const FLAG_ARG_PLACEHOLDER: Partial<Record<OptionName, string>> = {
+  config: ' <path>',
+  limit: ' <n>',
+  targets: ' <apps>',
+  guide: ' <id>',
+  'max-files': ' <count>',
+};
+
 const COMMAND_METADATA = {
-  'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
+  'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests', 'max-files'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the evaluation dataset, or specific tasks', flags: ['config', 'ui'] },
@@ -233,7 +242,7 @@ function showHelp() {
       if (meta.flags.length > 0) {
         for (const flagName of meta.flags) {
           const optVal = ALL_OPTIONS[flagName];
-          const arg = flagName === 'config' ? ' <path>' : flagName === 'limit' ? ' <n>' : flagName === 'targets' ? ' <apps>' : flagName === 'guide' ? ' <id>' : '';
+          const arg = FLAG_ARG_PLACEHOLDER[flagName] ?? '';
           console.log(`    ${cDim(('--' + flagName + arg).padEnd(26))} ${optVal.desc}`);
         }
       }
@@ -251,9 +260,9 @@ async function main() {
   const command = positionals[0];
 
   if (command === 'legacy-scan' || command === 'analyze') {
-    const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
-    const result = await runAnalyzeCli(process.argv.slice(3));
-    writeAnalyzeCliResult(result);
+    const { runLegacyScanCli, writeLegacyScanCliResult } = await import('../src/legacy-scan/cli.ts');
+    const result = await runLegacyScanCli(process.argv.slice(3));
+    writeLegacyScanCliResult(result);
     process.exit(result.exitCode);
   }
 

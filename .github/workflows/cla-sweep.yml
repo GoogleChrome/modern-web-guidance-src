@@ -1,0 +1,51 @@
+name: Sweep Awaiting-CLA PRs
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: cla-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Sweep awaiting-cla PRs
+    runs-on: ubuntu-latest
+    if: github.repository == 'GoogleChrome/modern-web-guidance-src'
+    permissions:
+      issues: write # PR labels and comments
+      pull-requests: write # reviewer assignment and demo preview updates
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Generate GitHub App token
+        if: ${{ vars.GH_APP_ID != '' }}
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-issues: write
+          permission-pull-requests: write
+          permission-contents: read
+
+      - name: Sweep awaiting-cla PRs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          node src/ci/atl-triage.ts
