@@ -84,7 +84,7 @@ MANDATORY: Put the pseudo-element on a parent of the faded element, not on the f
 
 Keep the fade on `.teaser`. The blurred text then fades into the background instead of ending at a hard edge.
 
-- MANDATORY: Start fading the text before the blur starts, so the fade is longer than the blur (the snippet fades over 9lh and blurs over 5lh).
+- MANDATORY: Start fading the text before the blur starts, so the fade is longer than the blur (the snippet fades over 9lh and blurs over 5lh). When applying the fade, ensure that it is applied in a way that maintains a contrast ratio of 4.5:1 for the text content before the blur.
   - Blurred text looks heavier than crisp text at the same opacity. If both start at the same point, the text gets more prominent where the blur begins, then fades.
   - The blur only has the already-faded text to work with, so the fade cannot be so long that the blurred part is nearly transparent.
 - Keep the blur radius small. The mask cross-fades sharp text with blurred text, so a large radius shows a ghost of the sharp text through the blur.

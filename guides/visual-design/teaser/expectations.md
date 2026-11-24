@@ -3,3 +3,4 @@
 - If a faded blur is applied, it is done on a pseudo-element over the end of the teaser, not on the teaser itself
 - If a faded blur is applied, the fade starts before the blur begins
 - The call to action that follows the preview is not inside the masked element.
+- If a faded blur is applied, the faded content before the blur, has a contrast ratio of 4.5:1.
