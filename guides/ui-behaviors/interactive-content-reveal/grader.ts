@@ -221,24 +221,35 @@ test('sets gradient stops via --inner-size and --outer-size properties', async (
   expect(stopsMatch).toBe(true);
 });
 
-test('uses immediate transition (duration 0) for reduced motion users', async ({ page }) => {
-  const hasReducedMotionText = await page.evaluate(() => {
-    const styles = Array.from(document.querySelectorAll('style'));
-    return styles.some((style) => {
-      const text = style.textContent || '';
-      if (!text.includes('prefers-reduced-motion')) return false;
-      const cleanText = text.replace(/\s+/g, '');
-      return (
-        cleanText.includes('transition:none') ||
-        cleanText.includes('transition-duration:0') ||
-        cleanText.includes('transition-duration:0s') ||
-        cleanText.includes('transition:0') ||
-        cleanText.includes('transition:0s') ||
-        cleanText.includes('transition-duration:none')
-      );
-    });
+test('uses immediate transition (duration 0s or transition: none) for reduced motion users', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const defaultHasTransition = await page.evaluate(() => {
+    for (const el of Array.from(document.querySelectorAll('*'))) {
+      const style = window.getComputedStyle(el);
+      const mask = style.maskImage || style.webkitMaskImage || '';
+      if (mask.includes('radial-gradient')) {
+        const durations = style.transitionDuration.split(',').map((s) => parseFloat(s.trim()));
+        return durations.some((d) => d > 0);
+      }
+    }
+    return false;
   });
-  expect(hasReducedMotionText).toBe(true);
+  expect(defaultHasTransition).toBe(true);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const reducedImmediate = await page.evaluate(() => {
+    for (const el of Array.from(document.querySelectorAll('*'))) {
+      const style = window.getComputedStyle(el);
+      const mask = style.maskImage || style.webkitMaskImage || '';
+      if (mask.includes('radial-gradient')) {
+        if (style.transitionProperty === 'none') return true;
+        const durations = style.transitionDuration.split(',').map((s) => parseFloat(s.trim()));
+        return durations.length > 0 && durations.every((d) => d === 0);
+      }
+    }
+    return false;
+  });
+  expect(reducedImmediate).toBe(true);
 });
 
 test('ensures size properties have a non-zero transition duration by default', async ({ page }) => {
