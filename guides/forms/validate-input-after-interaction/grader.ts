@@ -289,22 +289,61 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
   });
 
   test('After the form is submitted with an invalid field, focus is on the first invalid field', async ({ page }) => {
-    const emailField = page.locator('input[type="email"][required], input[required]').first();
-    expect(await emailField.count()).toBeGreaterThan(0);
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
 
+    const getFieldValidationState = (fieldLocator: ReturnType<typeof page.locator>) =>
+      fieldLocator.evaluate((el) => {
+        const errId = el.getAttribute('data-error');
+        const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+        const candidates = errId
+          ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+          : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+        const hasVisibleErrorText = candidates.some((node) => {
+          if (!node.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+          const clone = node.cloneNode(true) as Element;
+          clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+          return (clone.textContent || '').replace(/\s+/g, ' ').trim().length > 0;
+        });
+        return {
+          ariaInvalid: el.getAttribute('aria-invalid'),
+          matchesUserInvalid: el.matches(':user-invalid'),
+          hasVisibleErrorText,
+        };
+      });
+
+    // Pair with initial-load check so broken eager-invalid forms fail
+    for (let i = 0; i < count; i++) {
+      const initialState = await getFieldValidationState(fields.nth(i));
+      expect(initialState.ariaInvalid).not.toBe('true');
+      expect(initialState.matchesUserInvalid).toBe(false);
+      expect(initialState.hasVisibleErrorText).toBe(false);
+    }
+
+    const emailField = page.locator('input[type="email"][required], input[required]').first();
     const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])').first();
     expect(await submitBtn.count()).toBeGreaterThan(0);
     await submitBtn.click();
 
     await expect(emailField).toBeFocused();
+    await expect.poll(() => getFieldValidationState(emailField)).toEqual({
+      ariaInvalid: 'true',
+      matchesUserInvalid: true,
+      hasVisibleErrorText: true,
+    });
 
     // When the first field is valid and a subsequent field is invalid, focus moves to that first invalid field
-    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
-    if ((await fields.count()) > 1) {
+    if (count > 1) {
       const firstType = await fields.nth(0).getAttribute('type');
       await fields.nth(0).fill(firstType === 'password' ? 'Valid#Pass1' : 'user@example.com');
       await submitBtn.click();
       await expect(fields.nth(1)).toBeFocused();
+      await expect.poll(() => getFieldValidationState(fields.nth(1))).toEqual({
+        ariaInvalid: 'true',
+        matchesUserInvalid: true,
+        hasVisibleErrorText: true,
+      });
     }
   });
 

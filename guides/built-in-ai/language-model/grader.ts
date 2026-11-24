@@ -502,6 +502,16 @@ test('15. contextUsage and contextWindow should be used', async ({ page }) => {
   }, { timeout: 1000 }).toBe(true);
 });
 
+async function pickVisibleButton(page: any, selectors: string[]) {
+  for (const selector of selectors) {
+    const candidate = page.locator(selector).first();
+    if (await candidate.isVisible().catch(() => false)) {
+      return candidate;
+    }
+  }
+  return page.locator('button:not([disabled]):not([hidden])').first();
+}
+
 test('16. downloadprogress events update the value of a <progress> element with an accessible name', async ({ page }) => {
   await page.addInitScript(() => {
     const origCreate = window.LanguageModel.create;
@@ -545,7 +555,13 @@ test('16. downloadprogress events update the value of a <progress> element with 
   await page.reload();
   await waitForPageReady(page);
 
-  const downloadBtn = page.locator('#download-btn, button:has-text("Download"), #ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  const downloadBtn = await pickVisibleButton(page, [
+    '#download-btn',
+    'button:has-text("Download")',
+    '#ask-the-barista',
+    '#run',
+    '#prompt-btn',
+  ]);
   await clickWhenReady(downloadBtn);
 
   await page.waitForFunction(
@@ -592,7 +608,7 @@ test('17. The element that receives streamed output has aria-live="polite" and w
   });
 
   await fillInputsIfEmpty(page);
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  const actionBtn = await pickVisibleButton(page, ['#ask-the-barista', '#run', '#prompt-btn']);
   await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
   await clickWhenReady(actionBtn);
 
@@ -634,7 +650,7 @@ test('18. The element that receives streamed output has aria-busy="true" while t
 
   await page.reload();
   await fillInputsIfEmpty(page);
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  const actionBtn = await pickVisibleButton(page, ['#ask-the-barista', '#run', '#prompt-btn']);
   await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
   await clickWhenReady(actionBtn);
 
@@ -650,7 +666,7 @@ test('18. The element that receives streamed output has aria-busy="true" while t
 
 test('19. After a streamed response finishes, the element that received it has aria-busy="false"', async ({ page }) => {
   await fillInputsIfEmpty(page);
-  const actionBtn = page.locator('#ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+  const actionBtn = await pickVisibleButton(page, ['#ask-the-barista', '#run', '#prompt-btn']);
   await expect.poll(() => actionBtn.getAttribute('aria-disabled'), { timeout: 1500 }).not.toBe('true');
   await clickWhenReady(actionBtn);
 
@@ -680,7 +696,13 @@ test('20. When LanguageModel.availability() returns downloadable or downloading,
       { forMs: 300, message: `LanguageModel.create() must not run without user activation when availability is "${state}"` }
     );
 
-    const downloadBtn = page.locator('#download-btn, button:has-text("Download"), #ask-the-barista, #run, #prompt-btn, button:not([disabled]):not([hidden])').first();
+    const downloadBtn = await pickVisibleButton(page, [
+      '#download-btn',
+      'button:has-text("Download")',
+      '#ask-the-barista',
+      '#run',
+      '#prompt-btn',
+    ]);
     await downloadBtn.click({ timeout: 2000 });
 
     await expect.poll(async () => {

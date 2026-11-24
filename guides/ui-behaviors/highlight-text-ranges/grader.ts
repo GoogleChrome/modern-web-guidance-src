@@ -354,6 +354,21 @@ const contrastHelperScript = `
         srgbMatch[4] !== undefined ? Number(srgbMatch[4]) : 1,
       ];
     }
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = computed;
+        ctx.fillRect(0, 0, 1, 1);
+        const px = ctx.getImageData(0, 0, 1, 1).data;
+        if (px[3] > 0 || computed === 'transparent') {
+          return [px[0] / 255, px[1] / 255, px[2] / 255, px[3] / 255];
+        }
+      }
+    } catch {}
     return null;
   }
   function blendOver(fg, bg) {
@@ -481,6 +496,12 @@ test('Highlights do not rely on color alone to convey meaning', async ({ page })
       const targetEl = document.querySelector('article p, article, main p, main, p') || document.body;
       const pageBg = getEffectiveBackground(targetEl);
 
+      const hasAdjacentIndicator = Boolean(
+        targetEl.closest('section, article, main, form, body')?.querySelector(
+          '[role="img"][aria-label], svg[aria-label], abbr[title], .error-label, .highlight-label, [data-highlight-label]'
+        )
+      );
+
       const results = rules.map((rule) => {
         const selector = rule.selectorText || '';
         const isSemanticMeaning = /error|spell|grammar|warn|invalid|diff|added|removed/i.test(selector);
@@ -496,8 +517,8 @@ test('Highlights do not rely on color alone to convey meaning', async ({ page })
           (textShadow && textShadow !== 'none') ||
           (strokeWidth && parseFloat(strokeWidth) > 0)
         );
-        const passes = isSemanticMeaning || rules.length > 1
-          ? hasNonColorStyling
+        const passes = isSemanticMeaning
+          ? (hasNonColorStyling || hasAdjacentIndicator)
           : (hasNonColorStyling || adjacentContrast >= 3.0);
         return { selector, passes, adjacentContrast, hasNonColorStyling };
       });

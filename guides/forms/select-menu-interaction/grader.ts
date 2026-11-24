@@ -198,8 +198,11 @@ test.describe(`Select Menu Interaction Expectations: ${demoName}`, () => {
     await expect(select).toHaveAttribute('aria-invalid', 'true');
 
     const visibleErrorText = await select.evaluate((el) => {
+      const errId = el.getAttribute('data-error');
       const container = el.closest('.form-group, .field') || el.parentElement || document.body;
-      const candidates = Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+      const candidates = errId
+        ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+        : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
       const visible = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
       if (!visible) return '';
       const clone = visible.cloneNode(true) as Element;
