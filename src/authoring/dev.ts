@@ -3,7 +3,8 @@ import path from 'path';
 import matter from '@11ty/gray-matter';
 import { guidesDir, getGuideResultsDir } from '../core/paths.ts';
 import { gitExec } from '../core/git-utils.ts';
-import { testGrader, runPlaywright, type CalibrationResult } from '../grading/run-grader.ts';
+import { testGrader, runPlaywright, isGoldenPageLoadBroken, type CalibrationResult, type SolutionTestResult } from '../grading/run-grader.ts';
+import { runSelectorGatingProbe, type SelectorProbeResult } from './selector-probe.ts';
 import { generateTargetGrader } from '../grading/generate-grader.ts';
 import { ensureGuidedEvalDist } from '../harness/lib/eval-dist.ts';
 import { Agents, type SuiteConfig } from '../harness/config.ts';
@@ -355,6 +356,168 @@ export function exciseOldEvalArtifacts(guideDir: string): void {
   }
 }
 
+export type CalibrationFailureCategory =
+  | 'grader_bug'
+  | 'golden_missed_requirement'
+  | 'guide_gap';
+
+export interface CalibrationLoopResult {
+  success: boolean;
+  attempts: number;
+  classification?: CalibrationFailureCategory;
+  errorDetails?: string;
+}
+
+export interface CalibrateTargetDeps {
+  testGrader: () => Promise<CalibrationResult>;
+  rewriteGrader: (failureContext: string) => Promise<void>;
+  regenerateGolden: (agent: SolutionAgent) => Promise<void>;
+  runSelectorProbe: () => Promise<SelectorProbeResult>;
+  readGrader: () => string;
+  writeGrader: (content: string) => void;
+}
+
+/** Classifies a calibration failure into `grader_bug`, `golden_missed_requirement`, or `guide_gap`. */
+export function classifyCalibrationFailure(
+  res: CalibrationResult,
+  sharedFailureRetried: boolean
+): { category: CalibrationFailureCategory; reason: string } {
+  if (res.sharedFailingTests && res.sharedFailingTests.length > 0 && sharedFailureRetried) {
+    return {
+      category: 'guide_gap',
+      reason: `All golden solutions still failed shared check(s) after retry: ${res.sharedFailingTests.join(', ')}`,
+    };
+  }
+
+  const solutionEntries = Object.entries(res.solutions) as Array<[SolutionAgent, SolutionTestResult | undefined]>;
+  const brokenPageLoadAgents = solutionEntries
+    .filter(([, s]) => isGoldenPageLoadBroken(s?.pageLoad))
+    .map(([agent]) => agent);
+  if (brokenPageLoadAgents.length > 0) {
+    return {
+      category: 'golden_missed_requirement',
+      reason: `Golden solution(s) failed pageLoad check: ${brokenPageLoadAgents.join(', ')}`,
+    };
+  }
+
+  const passingAgents = solutionEntries.filter(([, s]) => s && s.passed > 0 && s.failed === 0);
+  const failingAgents = solutionEntries.filter(([, s]) => s && s.failed > 0);
+  if (res.zeroPassrate.passingTests.length === 0 && passingAgents.length > 0 && failingAgents.length > 0) {
+    return {
+      category: 'golden_missed_requirement',
+      reason: `Golden subset failed (${failingAgents.map(([a]) => a).join(', ')}) while other golden(s) passed`,
+    };
+  }
+
+  return {
+    category: 'grader_bug',
+    reason: res.zeroPassrate.passingTests.length > 0
+      ? `Baseline passed ${res.zeroPassrate.passingTests.length} test(s)`
+      : 'Grader failed calibration',
+  };
+}
+
+/**
+ * Calibrates one target with 1-shot retry on shared golden failures, golden `pageLoad` gating,
+ * baseline anti-loosening (`LOOSENING_BLOCKED`), and the selector-gating probe.
+ */
+export async function calibrateTargetWithRetries(
+  opts: { baseApp: string; maxRetries: number },
+  deps: CalibrateTargetDeps
+): Promise<CalibrationLoopResult> {
+  let prevGraderSource: string | null = null;
+  let prevBaselineFailingTests = new Set<string>();
+  let sharedFailureRetries = 0;
+  const regeneratedPageLoadAgents = new Set<SolutionAgent>();
+
+  for (let attempt = 1; attempt <= opts.maxRetries + 1; attempt++) {
+    const res = await deps.testGrader();
+
+    if (prevGraderSource !== null && prevBaselineFailingTests.size > 0) {
+      const newlyPassing = res.zeroPassrate.passingTests.filter(t => prevBaselineFailingTests.has(t));
+      const presentOnBaseline = new Set([...res.zeroPassrate.passingTests, ...(res.zeroPassrate.failingTests ?? [])]);
+      const dropped = res.zeroPassrate.failingTests
+        ? [...prevBaselineFailingTests].filter(t => !presentOnBaseline.has(t))
+        : [];
+      if (newlyPassing.length > 0 || dropped.length > 0) {
+        deps.writeGrader(prevGraderSource);
+        const reasons: string[] = [];
+        if (newlyPassing.length > 0) reasons.push(`now passing on baseline: ${newlyPassing.join(', ')}`);
+        if (dropped.length > 0) reasons.push(`missing/renamed from baseline: ${dropped.join(', ')}`);
+        const msg = `LOOSENING_BLOCKED: ${GRADER_FILE} rewrite loosened previously failing baseline check(s) (${reasons.join('; ')}) and was reverted.`;
+        console.error(cRed(`❌ ${msg}`));
+        return { success: false, attempts: attempt, classification: 'grader_bug', errorDetails: msg };
+      }
+    }
+
+    if (res.success) {
+      const probe = await deps.runSelectorProbe();
+      if (probe.passed) {
+        console.log(cGreen(`✅ ${opts.baseApp} calibrated successfully on attempt ${attempt}!`));
+        return { success: true, attempts: attempt };
+      }
+
+      const probeDiagnostic = probe.diagnostic || 'Grader appears coupled to non-contract class names.';
+      if (attempt <= opts.maxRetries) {
+        console.log(cYellow(`Attempt ${attempt} selector-gating probe failed for ${opts.baseApp}. Regenerating ${GRADER_FILE}...`));
+        prevGraderSource = deps.readGrader();
+        prevBaselineFailingTests = new Set(res.zeroPassrate.failingTests ?? []);
+        await deps.rewriteGrader(probeDiagnostic);
+        continue;
+      }
+
+      console.error(cRed(`❌ ${opts.baseApp} failed selector-gating probe after ${attempt} attempt(s):\n${probeDiagnostic}`));
+      return { success: false, attempts: attempt, classification: 'grader_bug', errorDetails: probeDiagnostic };
+    }
+
+    const brokenPageLoadAgents = (Object.entries(res.solutions) as Array<[SolutionAgent, SolutionTestResult | undefined]>)
+      .filter(([, s]) => isGoldenPageLoadBroken(s?.pageLoad))
+      .map(([a]) => a);
+    const unretriedBroken = brokenPageLoadAgents.filter(a => !regeneratedPageLoadAgents.has(a));
+    if (unretriedBroken.length > 0 && attempt <= opts.maxRetries) {
+      console.log(cYellow(`Attempt ${attempt}: regenerating golden patch(es) with broken pageLoad (${unretriedBroken.join(', ')})...`));
+      for (const a of unretriedBroken) regeneratedPageLoadAgents.add(a);
+      await Promise.all(unretriedBroken.map(a => deps.regenerateGolden(a)));
+      continue;
+    }
+    if (brokenPageLoadAgents.length > 0) {
+      const msg = `[golden_missed_requirement] Golden solution(s) failed clean pageLoad check (${brokenPageLoadAgents.join(', ')}).\n\n${res.errorDetails || ''}`.trim();
+      console.error(cRed(`❌ ${msg}`));
+      return { success: false, attempts: attempt, classification: 'golden_missed_requirement', errorDetails: msg };
+    }
+
+    if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
+      if (sharedFailureRetries < 1 && attempt <= opts.maxRetries) {
+        sharedFailureRetries++;
+        console.log(cYellow(`Attempt ${attempt}: all golden solutions failed shared check(s) on ${opts.baseApp}; running 1-shot grader retry...`));
+        prevGraderSource = deps.readGrader();
+        prevBaselineFailingTests = new Set(res.zeroPassrate.failingTests ?? []);
+        await deps.rewriteGrader(res.errorDetails || 'All golden solutions failed shared grader checks.');
+        continue;
+      }
+
+      const msg = `[guide_gap] All golden solutions failed the same check(s) on ${opts.baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}\n\n${res.errorDetails || ''}`.trim();
+      console.error(cRed(`❌ ${msg}`));
+      return { success: false, attempts: attempt, classification: 'guide_gap', errorDetails: msg };
+    }
+
+    if (attempt <= opts.maxRetries) {
+      console.log(cYellow(`Attempt ${attempt} calibration failed for ${opts.baseApp}. Regenerating ${GRADER_FILE}...`));
+      prevGraderSource = deps.readGrader();
+      prevBaselineFailingTests = new Set(res.zeroPassrate.failingTests ?? []);
+      await deps.rewriteGrader(res.errorDetails || 'Calibration failed.');
+      continue;
+    }
+
+    const { category, reason } = classifyCalibrationFailure(res, sharedFailureRetries > 0);
+    const msg = `[${category}] ${reason}\n\n${res.errorDetails || 'Calibration failed after maximum retries.'}`.trim();
+    console.error(cRed(`❌ ${opts.baseApp} failed calibration after ${attempt} attempt(s): ${reason}`));
+    return { success: false, attempts: attempt, classification: category, errorDetails: msg };
+  }
+
+  return { success: false, attempts: opts.maxRetries + 1, classification: 'grader_bug', errorDetails: 'Calibration failed after maximum retries.' };
+}
+
 export async function devGuide(targetDirRaw: string, options: DevGuideOptions = {}, inv?: GuideInventory): Promise<boolean> {
   const maxRetries = options.maxRetries ?? 4;
   const targetDir = path.resolve(process.cwd(), targetDirRaw);
@@ -444,32 +607,33 @@ export async function devGuide(targetDirRaw: string, options: DevGuideOptions = 
         await generateTargetGrader(targetDir, baseApp, undefined, options.prContext);
       }
 
-      // Calibrate target and retry grader if calibration fails
+      // Calibrate target with 1-shot shared-failure retry, baseline anti-loosening, golden pageLoad, and selector probe
       console.log(cCyan(`\n--- Calibrating target: ${baseApp} ---`));
-      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-        const res = await testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp));
-        if (res.success) {
-          console.log(cGreen(`✅ ${baseApp} calibrated successfully on attempt ${attempt}!`));
-          return true;
+      const firstGoldenPatch = solutionAgents
+        .map(agent => path.join(targetCapsuleDir, SOLUTION_PATCH_FILES[agent]))
+        .find(p => fs.existsSync(p));
+      const loopResult = await calibrateTargetWithRetries(
+        { baseApp, maxRetries },
+        {
+          testGrader: () => testGrader(path.join(targetDirRaw, TARGETS_DIR, baseApp)),
+          rewriteGrader: (failureContext) => generateTargetGrader(targetDir, baseApp, failureContext, options.prContext),
+          regenerateGolden: (agent) => generateTargetPatch(targetDir, baseApp, agent),
+          runSelectorProbe: () => firstGoldenPatch
+            ? runSelectorGatingProbe({
+                guideDirAbs: targetDir,
+                baseApp,
+                patchFile: firstGoldenPatch,
+                graderPath: graderFile,
+              })
+            : Promise.resolve({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+          readGrader: () => fs.readFileSync(graderFile, 'utf8'),
+          writeGrader: (content) => fs.writeFileSync(graderFile, content),
         }
-
-        if (res.sharedFailingTests && res.sharedFailingTests.length > 0) {
-          console.error(cRed(`❌ All golden solutions failed the same check(s) on ${baseApp}:\n${res.sharedFailingTests.map(t => `   - ${t}`).join('\n')}`));
-          console.error(cYellow(`Aborting calibration immediately (0 retries). Presuming guide.md / expectations.md misalignment or broken test.`));
-          calibrationFailures.set(baseApp, res.errorDetails || 'All golden solutions failed shared grader checks.');
-          return false;
-        }
-
-        if (attempt <= maxRetries) {
-          console.log(cYellow(`Attempt ${attempt} calibration failed for ${baseApp}. Regenerating ${GRADER_FILE}...`));
-          await generateTargetGrader(targetDir, baseApp, res.errorDetails, options.prContext);
-        } else {
-          console.error(cRed(`❌ ${baseApp} failed calibration after ${attempt} attempt(s): ${res.errorDetails || 'Unknown error'}`));
-          calibrationFailures.set(baseApp, res.errorDetails || 'Calibration failed after maximum retries.');
-          return false;
-        }
+      );
+      if (!loopResult.success) {
+        calibrationFailures.set(baseApp, loopResult.errorDetails || 'Calibration failed.');
       }
-      return false;
+      return loopResult.success;
     })
   );
   const overallSuccess = calibrationResults.every(Boolean);
@@ -654,11 +818,13 @@ async function runAgentTest(
       const [category, name] = relGuidePath.split(path.sep);
       const guideResultsDir = getGuideResultsDir({ category, name: name || guideName });
       const zeroPassratePatch = path.join(targetsDir, baseApp, ZERO_PASSRATE_PATCH_FILE);
+      const hasNonEmptyZeroPatch =
+        fs.existsSync(zeroPassratePatch) && fs.readFileSync(zeroPassratePatch, 'utf8').trim().length > 0;
       const preResults = await gradeOutput(
         baseApp,
         targetsDir,
         targetGraderPath,
-        zeroPassratePatch,
+        hasNonEmptyZeroPatch ? zeroPassratePatch : undefined,
         undefined,
         'widely'
       );
@@ -734,6 +900,7 @@ async function gradeOutput(
       patchFile,
       zeroPassrateFile,
       baselineTarget,
+      stage: patchFile ? 'patch' : 'starting-app',
     });
     const passed = gradeResults.stats?.expected || 0;
     const failed = gradeResults.stats?.unexpected || 0;
