@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..3864e9c 100644
+index 5db718e..1074e81 100644
 --- a/index.html
 +++ b/index.html
-@@ -33,6 +33,8 @@
+@@ -35,6 +35,8 @@
        color: white;
        padding: 1rem 5%;
        display: flex;
@@ -11,7 +11,7 @@ index 66c9173..3864e9c 100644
        justify-content: space-between;
        align-items: center;
        position: sticky;
-@@ -46,30 +48,193 @@
+@@ -48,30 +50,193 @@
        letter-spacing: 1px;
      }
  
@@ -26,9 +26,15 @@ index 66c9173..3864e9c 100644
  
 -    nav ul li {
 -      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
 +    [role="menubar"] > button {
 +      font: inherit;
-+      font-size: 0.9rem;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
 +      color: white;
 +      background: transparent;
 +      border: 0;
@@ -37,39 +43,34 @@ index 66c9173..3864e9c 100644
 +      cursor: pointer;
      }
  
--    nav a {
--      color: white;
--      text-decoration: none;
--      font-size: 0.9rem;
--      transition: color 0.3s;
+-    nav a:hover {
+-      color: var(--accent-on-dark);
 +    [role="menubar"] > button:first-of-type {
 +      border-start-start-radius: 6px;
 +      border-end-start-radius: 6px;
-+    }
-+
-+    [role="menubar"] > button:last-of-type {
-+      border-start-end-radius: 6px;
-+      border-end-end-radius: 6px;
-     }
- 
--    nav a:hover {
--      color: var(--accent);
-+    /* Plain button feedback with nothing open; with a menu open, hover switches menus. */
-+    [role="menubar"] > button:hover {
-+      background: rgba(255, 255, 255, 0.14);
      }
  
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
++    [role="menubar"] > button:last-of-type {
++      border-start-end-radius: 6px;
++      border-end-end-radius: 6px;
++    }
++
++    /* Plain button feedback with nothing open; with a menu open, hover switches menus. */
++    [role="menubar"] > button:hover {
++      background: rgba(255, 255, 255, 0.14);
++    }
++
 +    [role="menubar"] > button:focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: -2px;
 +    }
 +
 +    /* Active style for the open or previewed menu. */
 +    [role="menubar"] > button[aria-expanded="true"] {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary);
 +    }
 +
@@ -219,7 +220,7 @@ index 66c9173..3864e9c 100644
      }
  
      /* Hero Section */
-@@ -159,13 +324,57 @@
+@@ -161,13 +326,57 @@
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -284,7 +285,7 @@ index 66c9173..3864e9c 100644
    </nav>
  
    <header class="hero">
-@@ -207,6 +416,423 @@
+@@ -209,6 +418,423 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

@@ -32,10 +32,13 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('The `aria-invalid` attribute is not present (or is set to `false`) on page load, even for required empty fields.', async ({ page }) => {
-    const input = page.locator('input[type="email"], input[name="email"], #email').first();
-    const ariaInvalid = await input.getAttribute('aria-invalid');
-    expect(['false', null]).toContain(ariaInvalid);
+  test('The `aria-invalid` attribute is set to `false` on page load, even for required empty fields.', async ({ page }) => {
+    const requiredFields = page.locator('form input[required], form textarea[required], form select[required]');
+    const reqCount = await requiredFields.count();
+    expect(reqCount).toBeGreaterThan(0);
+    for (let i = 0; i < reqCount; i++) {
+      await expect(requiredFields.nth(i)).toHaveAttribute('aria-invalid', 'false');
+    }
   });
 
   test('Tabbing through a field without typing does not trigger `aria-invalid="true"`.', async ({ page }) => {
@@ -166,6 +169,183 @@ test.describe(`Accessible Error Announcement Expectations: ${demoName}`, () => {
     });
 
     expect(matches).toBe(true);
+  });
+
+  test('While a field has aria-invalid="true", its accessible description includes its visible error text.', async ({ page }) => {
+    const input = page.locator('input[type="email"], input[name="email"], #email').first();
+    await expect(input).toBeVisible();
+
+    await input.fill('bad-email');
+    await input.blur();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+
+    const errorText = await input.evaluate((el: HTMLInputElement) => {
+      const errId = el.dataset.error || el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
+      let errMsg: HTMLElement | null = null;
+      if (errId) {
+        for (const id of errId.split(/\s+/)) {
+          const candidate = document.getElementById(id);
+          if (candidate && (candidate.className.includes('error') || id.includes('error') || candidate.getAttribute('role') === 'alert')) {
+            errMsg = candidate;
+            break;
+          }
+        }
+      }
+      if (!errMsg) {
+        errMsg = (el.parentElement?.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]') ?? null) as HTMLElement | null;
+      }
+      if (!errMsg) return '';
+      const style = window.getComputedStyle(errMsg);
+      const visible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      return visible ? (errMsg.textContent ?? '').replace(/\s+/g, ' ').trim() : '';
+    });
+
+    expect(errorText.length).toBeGreaterThan(0);
+    const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await expect(input).toHaveAccessibleDescription(new RegExp(escaped));
+  });
+
+  test('On page load, no field\'s accessible description includes its error text.', async ({ page }) => {
+    const fields = page.locator('form input:not([type="hidden"]):not([type="submit"]):not([type="reset"]):not([type="button"]), form select, form textarea');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    // Verify on load no field exposes its error text in its accessible description,
+    // then trigger invalidation to verify error descriptions are genuinely wired up.
+    const preLoad = await fields.evaluateAll((inputs) => {
+      return inputs.map((el, idx) => {
+        const htmlEl = el as HTMLElement;
+        const errId = htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage');
+        let errEl = errId ? document.getElementById(errId) : null;
+        if (!errEl && htmlEl.parentElement) {
+          errEl = htmlEl.parentElement.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]');
+        }
+        const describedIds = (htmlEl.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const describedText = describedIds
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        return {
+          idx,
+          staticErrorText: (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+          describedText,
+        };
+      });
+    });
+
+    expect(preLoad.length).toBeGreaterThan(0);
+    for (const { idx, staticErrorText } of preLoad) {
+      if (!staticErrorText) continue;
+      const escaped = staticErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(fields.nth(idx)).not.toHaveAccessibleDescription(new RegExp(escaped));
+    }
+
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.click();
+
+    const postInvalid = await fields.evaluateAll((inputs) => {
+      return inputs.map((el, idx) => {
+        const htmlEl = el as HTMLElement;
+        const errId = htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage');
+        let errEl = errId ? document.getElementById(errId) : null;
+        if (!errEl && htmlEl.parentElement) {
+          errEl = htmlEl.parentElement.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]');
+        }
+        const visible = Boolean(errEl && window.getComputedStyle(errEl).display !== 'none' && window.getComputedStyle(errEl).visibility !== 'hidden');
+        return {
+          idx,
+          isInvalid: htmlEl.getAttribute('aria-invalid') === 'true',
+          errorText: visible ? (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim() : '',
+        };
+      }).filter((item) => item.isInvalid && item.errorText.length > 0);
+    });
+
+    expect(postInvalid.length).toBeGreaterThan(0);
+    const preLoadByIdx = new Map(preLoad.map((p) => [p.idx, p.describedText]));
+    for (const { idx, errorText } of postInvalid) {
+      const initialDesc = preLoadByIdx.get(idx) ?? '';
+      expect(initialDesc).not.toContain(errorText);
+      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(fields.nth(idx)).toHaveAccessibleDescription(new RegExp(escaped));
+    }
+  });
+
+  test('When a field becomes invalid as the user leaves it, its error text is announced through a polite live region.', async ({ page }) => {
+    const liveRegions = page.locator('[aria-live="polite"], [role="status"]');
+    expect(await liveRegions.count()).toBeGreaterThan(0);
+
+    const input = page.locator('input[type="email"], input[name="email"], #email').first();
+    await input.fill('bad-email');
+    await input.blur();
+
+    const errorText = await input.evaluate((el: HTMLInputElement) => {
+      const errId = el.dataset.error || el.getAttribute('aria-errormessage');
+      const errEl = (errId ? document.getElementById(errId) : null) ??
+        el.parentElement?.querySelector('.error-message, .error-msg, [role="alert"], [class*="error"]');
+      return (errEl?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    });
+    expect(errorText.length).toBeGreaterThan(0);
+
+    await expect.poll(async () => {
+      return page.evaluate((expected) => {
+        const regions = Array.from(document.querySelectorAll('[aria-live="polite"], [role="status"]'));
+        return regions.some((r) => (r.textContent ?? '').replace(/\s+/g, ' ').includes(expected));
+      }, errorText);
+    }).toBe(true);
+  });
+
+  test('Submitting the form with an empty required field sets aria-invalid="true" on that field.', async ({ page }) => {
+    const requiredField = page.locator('form input[required], form textarea[required], form select[required]').first();
+    await expect(requiredField).toBeVisible();
+    await expect(requiredField).not.toHaveAttribute('aria-invalid', 'true');
+    await requiredField.fill('');
+
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.click();
+
+    await expect(requiredField).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  test('After a submit attempt with an invalid field, focus is on the first invalid field or on an error summary.', async ({ page }) => {
+    const firstRequired = page.locator('form input[required], form textarea[required], form select[required]').first();
+    await expect(firstRequired).toBeVisible();
+    await expect(firstRequired).not.toHaveAttribute('aria-invalid', 'true');
+
+    const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
+    await submitBtn.focus();
+    await submitBtn.click();
+
+    const focusTargetValid = await page.evaluate(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) return false;
+      const firstInvalid = document.querySelector('form [aria-invalid="true"]');
+      if (active === firstInvalid && active.getAttribute('aria-invalid') === 'true') return true;
+      // Or an error summary container/heading with links to invalid fields
+      const summary = active.closest('[role="alert"], [aria-labelledby], .error-summary, #error-summary, section, div');
+      if (summary && summary.querySelector('a[href^="#"]')) return true;
+      return false;
+    });
+
+    expect(focusTargetValid).toBe(true);
+  });
+
+  test('When a corrected field is edited back to an invalid value, it has aria-invalid="true" before it loses focus.', async ({ page }) => {
+    const input = page.locator('input[type="email"], input[name="email"], #email').first();
+    await input.fill('bad-email');
+    await input.blur();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+
+    await input.focus();
+    await input.fill('test@example.com');
+    const validState = await input.getAttribute('aria-invalid');
+    expect(['false', null]).toContain(validState);
+
+    // Edit back to invalid value without blurring
+    await input.fill('still-bad');
+    const stillFocused = await input.evaluate((el) => document.activeElement === el);
+    expect(stillFocused).toBe(true);
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 
 });

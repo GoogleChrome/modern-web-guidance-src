@@ -6,10 +6,10 @@ index 0000000..849ddff
 @@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..34249da 100644
+index 5db718e..81878eb 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,9 +28,36 @@
+@@ -30,9 +30,36 @@
      }
  
      /* Navigation */
@@ -47,7 +47,7 @@ index 66c9173..34249da 100644
        padding: 1rem 5%;
        display: flex;
        justify-content: space-between;
-@@ -56,18 +83,17 @@
+@@ -58,18 +85,17 @@
      }
  
      nav a {
@@ -59,17 +59,17 @@ index 66c9173..34249da 100644
      }
  
      nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 +      text-decoration: underline;
      }
  
      .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 +      border: 1px solid currentColor;
        padding: 5px 12px;
        border-radius: 4px;
      }
-@@ -123,16 +149,14 @@
+@@ -125,16 +151,14 @@
      .btn {
        display: inline-block;
        background: var(--primary);
@@ -87,7 +87,7 @@ index 66c9173..34249da 100644
      }
  
      footer {
-@@ -148,7 +172,7 @@
+@@ -150,7 +174,7 @@
  
      .footer-links a {
        margin: 0 10px;

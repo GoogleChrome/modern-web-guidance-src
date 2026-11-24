@@ -245,7 +245,71 @@ async function readHintStates(page: Page, scrollerIndex: number) {
       : (style as any).webkitMaskImage || 'none';
 
     if (maskImg !== 'none' && maskImg.includes('gradient')) {
-      // Parse resolved gradient color stops, e.g.:
+      // Split top-level comma-separated CSS value list (e.g. multi-layer mask-image)
+      const splitLayers = (val: string): string[] => {
+        const layers: string[] = [];
+        let depth = 0;
+        let cur = '';
+        for (const ch of val) {
+          if (ch === '(') depth++;
+          else if (ch === ')') depth = Math.max(0, depth - 1);
+          if (ch === ',' && depth === 0) {
+            if (cur.trim()) layers.push(cur.trim());
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        if (cur.trim()) layers.push(cur.trim());
+        return layers;
+      };
+
+      const imageLayers = splitLayers(maskImg);
+      if (imageLayers.length >= 2) {
+        const isVertical = el.scrollHeight > el.clientHeight + 2 ||
+          ((style.overflowY === 'auto' || style.overflowY === 'scroll') && !(style.overflowX === 'auto' || style.overflowX === 'scroll'));
+        const axisLen = isVertical ? el.clientHeight : el.clientWidth;
+        const sizeLayers = splitLayers(style.maskSize || (style as any).webkitMaskSize || '');
+        const posLayers = splitLayers(style.maskPosition || (style as any).webkitMaskPosition || '');
+
+        const toPx = (token: string | undefined, total: number): number => {
+          if (!token || token === 'auto') return total;
+          if (token.endsWith('%')) return (parseFloat(token) / 100) * total;
+          if (token.endsWith('px')) return parseFloat(token);
+          return parseFloat(token) || 0;
+        };
+
+        let startVisible = false;
+        let endVisible = false;
+
+        for (let i = 0; i < imageLayers.length; i++) {
+          const img = imageLayers[i];
+          // Skip solid base layer like linear-gradient(rgb(0,0,0), rgb(0,0,0))
+          const hasTransparent = img.includes('transparent') || /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*0(\.0+)?\s*\)/.test(img);
+          if (!hasTransparent) continue;
+
+          const sizeTokens = (sizeLayers[i] || sizeLayers[i % Math.max(1, sizeLayers.length)] || 'auto auto').trim().split(/\s+/);
+          const posTokens = (posLayers[i] || posLayers[i % Math.max(1, posLayers.length)] || '0% 0%').trim().split(/\s+/);
+          const bandDim = isVertical
+            ? toPx(sizeTokens[1] ?? sizeTokens[0], axisLen)
+            : toPx(sizeTokens[0], axisLen);
+          const posToken = isVertical ? (posTokens[1] ?? posTokens[0]) : posTokens[0];
+          const isEndPos = posToken === '100%' || posToken === 'right' || posToken === 'bottom';
+
+          if (bandDim > 2) {
+            if (isEndPos) endVisible = true;
+            else startVisible = true;
+          }
+        }
+
+        return {
+          hintType: 'fade' as const,
+          startVisible,
+          endVisible,
+        };
+      }
+
+      // Single-layer mask-image: parse resolved gradient color stops, e.g.:
       // linear-gradient(to right, rgba(0, 0, 0, 0), rgb(0, 0, 0) 48px, rgb(0, 0, 0) calc(100% - 48px), rgba(0, 0, 0, 0))
       const parseFadeFromMask = (mask: string, axisLength: number) => {
         // Split top-level comma arguments inside the first linear-gradient(...)
@@ -396,6 +460,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
     expect(scrollers.length).toBeGreaterThan(0);
 
     for (const scroller of scrollers) {
+      expect(scroller.hintType).not.toBe('none');
       await page.evaluate(({ idx, ax }) => {
         const el = document.querySelector<HTMLElement>(`[data-grader-scroller="${idx}"]`);
         if (!el) return;
@@ -412,12 +477,12 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
       await expect.poll(async () => {
         const st = await readHintStates(page, scroller.index);
-        return st ? !st.startVisible && !st.endVisible : false;
+        return st && st.hintType !== 'none' ? !st.startVisible && !st.endVisible : false;
       }).toBe(true);
     }
   });
 
-  test('The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask-image on the scroller, not with extra elements in the markup.', async ({ page }) => {
+  test('The hints are drawn with ::before/::after pseudo-elements of the scroller or a mask on the scroller, not with extra elements in the markup.', async ({ page }) => {
     await page.goto(demoUrl);
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
@@ -502,6 +567,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollStateScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
     // For hidden-scrollbar scrollers using scroll-state container queries, verify fallback rules or IO fallback exist
     const cssInfo = await page.evaluate(() => {
@@ -542,6 +608,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
 
     if (hiddenScrollers.length > 0) {
@@ -579,6 +646,7 @@ test.describe(`scrollability-affordance-hints Expectations: ${demoName}`, () => 
 
     const scrollers = await discoverScrollers(page);
     expect(scrollers.length).toBeGreaterThan(0);
+    expect(scrollers.some((s) => s.hintType !== 'none')).toBe(true);
     const hiddenScrollers = scrollers.filter((s) => s.hasHiddenScrollbar);
 
     const fallbackCheck = await page.evaluate(() => {

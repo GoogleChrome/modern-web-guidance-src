@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..3675ef2 100644
+index 5db718e..e9bab47 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
      }
  
      /* Navigation */
@@ -11,7 +11,7 @@ index 66c9173..3675ef2 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -46,23 +46,23 @@
+@@ -48,23 +48,23 @@
        letter-spacing: 1px;
      }
  
@@ -36,10 +36,10 @@ index 66c9173..3675ef2 100644
  
 -    nav a:hover {
 +    .site-nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -93,6 +93,78 @@
+@@ -95,6 +95,78 @@
        margin-bottom: 1rem;
      }
  
@@ -118,7 +118,7 @@ index 66c9173..3675ef2 100644
      /* Content Sections */
      .container {
        max-width: 1100px;
-@@ -157,7 +229,7 @@
+@@ -159,7 +231,7 @@
  
  <body>
  
@@ -127,7 +127,7 @@ index 66c9173..3675ef2 100644
      <div class="logo">THE DAILY GRIND</div>
      <ul>
        <li><a href="/menu">Menu</a></li>
-@@ -174,9 +246,17 @@
+@@ -176,9 +248,17 @@
      <a href="/order-online" class="btn">Order Now</a>
    </header>
  

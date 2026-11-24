@@ -6,10 +6,10 @@ index 0000000..849ddff
 @@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..88300eb 100644
+index 5db718e..bf37293 100644
 --- a/index.html
 +++ b/index.html
-@@ -35,12 +35,15 @@
+@@ -37,12 +37,15 @@
        display: flex;
        justify-content: space-between;
        align-items: center;
@@ -25,7 +25,7 @@ index 66c9173..88300eb 100644
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
-@@ -48,24 +51,47 @@
+@@ -50,24 +53,47 @@
  
      nav ul {
        display: flex;
@@ -53,11 +53,11 @@ index 66c9173..88300eb 100644
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 +    nav a:focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: -2px;
 +    }
 +
@@ -73,9 +73,9 @@ index 66c9173..88300eb 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -157,7 +183,7 @@
+@@ -159,7 +185,7 @@
  
  <body>
  

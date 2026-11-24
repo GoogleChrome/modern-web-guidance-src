@@ -56,7 +56,7 @@ index 66c9173..cbbf9d8 100644
  
 +    .theme-toggle {
 +      background: none;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      color: white;
 +      border-radius: 4px;
 +      padding: 4px 10px;
@@ -66,7 +66,7 @@ index 66c9173..cbbf9d8 100644
 +    }
 +
 +    .theme-toggle:hover {
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    .visually-hidden {

@@ -172,10 +172,10 @@ diff --git a/assets/smallpt.wasm b/assets/smallpt.wasm
 new file mode 100755
 index 0000000..e69de29
 diff --git a/index.html b/index.html
-index 66c9173..e3b2462 100644
+index 5db718e..e3b2462 100644
 --- a/index.html
 +++ b/index.html
-@@ -1,212 +1,58 @@
+@@ -1,214 +1,58 @@
 -<!DOCTYPE html>
 +<!doctype html>
  <html lang="en">
@@ -188,7 +188,9 @@ index 66c9173..e3b2462 100644
 -    :root {
 -      --primary: #4e342e;
 -      --secondary: #d7ccc8;
--      --accent: #ffab40;
+-      --accent: #b45309;
+-      --accent-on-dark: #ffab40;
+-      --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
 -    }
@@ -242,11 +244,11 @@ index 66c9173..e3b2462 100644
 -    }
 -
 -    nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 -    }
 -
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 -      border-radius: 4px;
 -    }

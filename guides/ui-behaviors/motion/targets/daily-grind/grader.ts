@@ -376,7 +376,7 @@ test.describe('motion Target Grader', () => {
       TARGET_URL,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.goto(TARGET_URL);
+      await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
       // Verify the page actually implements reduced-motion media queries in its stylesheets
       const hasReducedMotionMediaRule = await page.evaluate(() => {
@@ -529,6 +529,185 @@ test.describe('motion Target Grader', () => {
 
       expect(stateAfterSyntheticEvent).toBeTruthy();
       expect(stateAfterSyntheticEvent).toContain('running');
+    });
+
+    test('With prefers-reduced-motion: reduce, entry/reveal animated elements have the same computed opacity once revealed as with no-preference', async ({
+      page,
+      TARGET_URL,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+      // Run view() scroll-reveal pass before opening a modal dialog so body:has(dialog[open]) scroll locks cannot interfere
+      const noPrefScrollReveals = await page.evaluate(async () => {
+        const getDomKey = (el: Element): string => {
+          const parts: string[] = [];
+          let curr: Element | null = el;
+          while (curr && curr !== document.documentElement) {
+            const parent: Element | null = curr.parentElement;
+            const idx = parent ? Array.from(parent.children).indexOf(curr) : 0;
+            const tag = curr.tagName.toLowerCase();
+            const idPart = curr.id ? `#${curr.id}` : '';
+            parts.push(`${tag}${idPart}[${idx}]`);
+            curr = parent;
+          }
+          return parts.reverse().join('>');
+        };
+
+        const results: Array<{ key: string; opacity: number }> = [];
+        for (const el of document.querySelectorAll<HTMLElement>('*')) {
+          const cs = window.getComputedStyle(el);
+          const timeline = cs.getPropertyValue('animation-timeline');
+          if (timeline && timeline.includes('view(')) {
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            results.push({ key: getDomKey(el), opacity: parseFloat(window.getComputedStyle(el).opacity) });
+          }
+        }
+        return results;
+      });
+
+      const viewDetailsNoPref = page
+        .locator('.card')
+        .getByRole('button', { name: /view details/i })
+        .or(page.locator('.card a', { hasText: /view details/i }))
+        .first();
+      await expect(viewDetailsNoPref).toBeVisible();
+      await viewDetailsNoPref.click();
+
+      const dialogNoPref = page.locator('dialog[open], [popover]:popover-open').first();
+      await expect(dialogNoPref).toBeVisible();
+
+      const noPrefOverlayOpacity = await dialogNoPref.evaluate(async (el) => {
+        const finiteAnims = el
+          .getAnimations()
+          .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+        await Promise.allSettled(finiteAnims.map((a) => a.finished));
+        return parseFloat(window.getComputedStyle(el).opacity);
+      });
+
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
+
+      let reducedScrollOpacities: Array<{ key: string; opacity: number }> = [];
+      if (noPrefScrollReveals.length > 0) {
+        reducedScrollOpacities = await page.evaluate(async (keys) => {
+          const getDomKey = (el: Element): string => {
+            const parts: string[] = [];
+            let curr: Element | null = el;
+            while (curr && curr !== document.documentElement) {
+              const parent: Element | null = curr.parentElement;
+              const idx = parent ? Array.from(parent.children).indexOf(curr) : 0;
+              const tag = curr.tagName.toLowerCase();
+              const idPart = curr.id ? `#${curr.id}` : '';
+              parts.push(`${tag}${idPart}[${idx}]`);
+              curr = parent;
+            }
+            return parts.reverse().join('>');
+          };
+
+          const byKey = new Map<string, HTMLElement>();
+          for (const el of document.querySelectorAll<HTMLElement>('*')) {
+            byKey.set(getDomKey(el), el);
+          }
+
+          const results: Array<{ key: string; opacity: number }> = [];
+          for (const key of keys) {
+            const el = byKey.get(key);
+            if (!el) continue;
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            results.push({ key, opacity: parseFloat(window.getComputedStyle(el).opacity) });
+          }
+          return results;
+        }, noPrefScrollReveals.map((r) => r.key));
+      }
+
+      const viewDetailsReduce = page
+        .locator('.card')
+        .getByRole('button', { name: /view details/i })
+        .or(page.locator('.card a', { hasText: /view details/i }))
+        .first();
+      await expect(viewDetailsReduce).toBeVisible();
+      await viewDetailsReduce.click();
+
+      const dialogReduce = page.locator('dialog[open], [popover]:popover-open').first();
+      await expect(dialogReduce).toBeVisible();
+
+      const reducedOverlayOpacity = await dialogReduce.evaluate(async (el) => {
+        const finiteAnims = el
+          .getAnimations()
+          .filter((a) => a.effect?.getTiming().iterations !== Infinity);
+        await Promise.allSettled(finiteAnims.map((a) => a.finished));
+        return parseFloat(window.getComputedStyle(el).opacity);
+      });
+
+      expect(noPrefOverlayOpacity).toBeGreaterThan(0);
+      expect(reducedOverlayOpacity).toBeCloseTo(noPrefOverlayOpacity, 2);
+
+      if (noPrefScrollReveals.length > 0) {
+        expect(reducedScrollOpacities.length).toBe(noPrefScrollReveals.length);
+        for (let i = 0; i < noPrefScrollReveals.length; i++) {
+          expect(reducedScrollOpacities[i]!.key).toBe(noPrefScrollReveals[i]!.key);
+          expect(reducedScrollOpacities[i]!.opacity).toBeCloseTo(noPrefScrollReveals[i]!.opacity, 2);
+        }
+      }
+    });
+
+    test('Each control that pauses or stops persistent animations is a button reachable and operable with the keyboard', async ({
+      page,
+    }) => {
+      const pauseBtn = page
+        .locator('header, .hero')
+        .getByRole('button', { name: /pause/i })
+        .first();
+      await expect(pauseBtn).toBeVisible();
+
+      const tagName = await pauseBtn.evaluate((el) => el.tagName.toLowerCase());
+      const role = await pauseBtn.getAttribute('role');
+      expect(tagName === 'button' || role === 'button').toBe(true);
+
+      // Reach the pause button via sequential Tab navigation
+      let reachedViaTab = false;
+      for (let i = 0; i < 40; i++) {
+        await page.keyboard.press('Tab');
+        const isPauseFocused = await pauseBtn.evaluate((el) => document.activeElement === el);
+        if (isPauseFocused) {
+          reachedViaTab = true;
+          break;
+        }
+      }
+      expect(reachedViaTab).toBe(true);
+
+      // Operate with Enter to pause
+      await page.keyboard.press('Enter');
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const hero = document.querySelector('header, .hero');
+            if (!hero) return false;
+            return [hero, ...Array.from(hero.querySelectorAll('*'))].some((el) => {
+              const cs = window.getComputedStyle(el);
+              const anims = typeof el.getAnimations === 'function' ? el.getAnimations() : [];
+              return cs.animationPlayState === 'paused' || anims.some((a) => a.playState === 'paused');
+            });
+          }),
+        )
+        .toBe(true);
+
+      // Operate with Space to resume
+      await page.keyboard.press('Space');
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const hero = document.querySelector('header, .hero');
+            if (!hero) return false;
+            return [hero, ...Array.from(hero.querySelectorAll('*'))].some((el) => {
+              const cs = window.getComputedStyle(el);
+              return cs.animationName !== 'none' && cs.animationPlayState === 'running';
+            });
+          }),
+        )
+        .toBe(true);
     });
   });
 });

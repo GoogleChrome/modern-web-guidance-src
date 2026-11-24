@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { parseHTML } from 'linkedom';
 
 // Setup
 const targetFile = process.env.TARGET_FILE;
@@ -42,106 +41,6 @@ function getSpeculationRules(html: string): SpeculationRulesDocument | 'INVALID_
 }
 
 const STATE_CHANGING_TOKEN_REGEX = /\b(logout|signout|sign-out|add-to-cart|delete-confirm|wipe-data|drop-tables)\b/i;
-
-/**
- * Checks whether a `where` predicate object positively targets a state-changing URL/selector
- * (i.e. at an even negation depth, outside `{ "not": ... }` and outside `:not(...)`).
- */
-function hasPositiveStateChangingMatch(node: unknown, negated = false): boolean {
-  if (!node || typeof node !== 'object') return false;
-  if (Array.isArray(node)) {
-    return node.some((child) => hasPositiveStateChangingMatch(child, negated));
-  }
-
-  const record = node as Record<string, unknown>;
-
-  if ('not' in record) {
-    if (hasPositiveStateChangingMatch(record.not, !negated)) return true;
-  }
-  if ('and' in record && Array.isArray(record.and)) {
-    if (record.and.some((child) => hasPositiveStateChangingMatch(child, negated))) return true;
-  }
-  if ('or' in record && Array.isArray(record.or)) {
-    if (record.or.some((child) => hasPositiveStateChangingMatch(child, negated))) return true;
-  }
-
-  if (!negated) {
-    const hrefMatches = record.href_matches;
-    const hrefList = Array.isArray(hrefMatches) ? hrefMatches : hrefMatches !== undefined ? [hrefMatches] : [];
-    for (const pattern of hrefList) {
-      if (typeof pattern === 'string' && STATE_CHANGING_TOKEN_REGEX.test(pattern)) {
-        return true;
-      }
-    }
-
-    const selectorMatches = record.selector_matches;
-    const selectorList = Array.isArray(selectorMatches)
-      ? selectorMatches
-      : selectorMatches !== undefined
-        ? [selectorMatches]
-        : [];
-    for (const selector of selectorList) {
-      if (typeof selector === 'string') {
-        // Strip :not(...) clauses before checking if the selector positively targets a state-changing link
-        const withoutNot = selector.replace(/:not\([^)]*\)/gi, '');
-        if (STATE_CHANGING_TOKEN_REGEX.test(withoutNot)) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * Evaluates whether a `where` condition matches a given anchor element or URL pathname (e.g. "/logout").
- */
-function whereMatchesLink(node: unknown, pathname: string, anchorEl?: Element | null, insideNot = false): boolean {
-  if (!node || typeof node !== 'object') return false;
-  const record = node as Record<string, unknown>;
-
-  if ('and' in record && Array.isArray(record.and)) {
-    return record.and.every((child) => whereMatchesLink(child, pathname, anchorEl, insideNot));
-  }
-  if ('or' in record && Array.isArray(record.or)) {
-    return record.or.some((child) => whereMatchesLink(child, pathname, anchorEl, insideNot));
-  }
-  if ('not' in record) {
-    return !whereMatchesLink(record.not, pathname, anchorEl, !insideNot);
-  }
-  if ('href_matches' in record) {
-    const raw = record.href_matches;
-    const patterns = Array.isArray(raw) ? raw : [raw];
-    return patterns.some((p) => {
-      if (typeof p !== 'string') return false;
-      const regexSource =
-        '^' +
-        p
-          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '.*') +
-        '$';
-      return new RegExp(regexSource).test(pathname);
-    });
-  }
-  if ('selector_matches' in record) {
-    const raw = record.selector_matches;
-    const selectors = Array.isArray(raw) ? raw : [raw];
-    return selectors.some((s) => {
-      if (typeof s !== 'string' || !s.trim()) return false;
-      if (anchorEl && typeof anchorEl.matches === 'function') {
-        try {
-          return anchorEl.matches(s);
-        } catch {
-          // linkedom can't evaluate this selector; only then assume an exclusion covers the link
-          return insideNot;
-        }
-      }
-      return false;
-    });
-  }
-  return false;
-}
 
 test.describe(`Improve next page load performance Expectations: ${demoName}`, () => {
   // 1. Check for <script type="speculationrules">
@@ -261,7 +160,7 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
   });
 
   // 8. Check for state-changing URLs
-  test('Do not speculate URLs that likely trigger state changes (e.g., /logout)', async () => {
+  test('URLs that likely trigger state changes (such as "/logout") are not speculated', async ({ page }) => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
@@ -271,11 +170,6 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
         ...(rules.prerender_until_script || []),
       ];
       expect(ruleSets.length).toBeGreaterThan(0);
-      const { document } = parseHTML(html);
-      const logoutLinks = Array.from(document.querySelectorAll('a')).filter((a: any) =>
-        /\/logout\b/i.test(a.getAttribute('href') || '')
-      ) as unknown as Element[];
-
       for (const set of ruleSets) {
         if (Array.isArray(set.urls)) {
           expect(
@@ -283,13 +177,20 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
           ).toBe(false);
         }
         if (set.where) {
-          // A `where` rule must not positively target state-changing URLs (exclusions inside `not` are valid)
-          expect(hasPositiveStateChangingMatch(set.where)).toBe(false);
-          // If the page contains a /logout link, a document `where` rule must exclude it
-          for (const logoutEl of logoutLinks) {
-            const href = logoutEl.getAttribute('href') || '/logout';
-            expect(whereMatchesLink(set.where, href, logoutEl)).toBe(false);
-          }
+          // Check the rule against the page's logout links, as the browser would.
+          const speculatesLogout = await page.$$eval('a[href*="logout" i]', (links, where) => {
+            const URLPattern = (window as any).URLPattern;
+            const matches = (c: any, a: Element): boolean =>
+              c.and ? c.and.every((s: any) => matches(s, a))
+              : c.or ? c.or.some((s: any) => matches(s, a))
+              : c.not ? !matches(c.not, a)
+              : c.href_matches ? [c.href_matches].flat().some((p: any) => (typeof p === 'string'
+                ? new URLPattern(p, document.baseURI) : new URLPattern({ baseURL: document.baseURI, ...p })).test((a as HTMLAnchorElement).href))
+              : c.selector_matches ? [c.selector_matches].flat().some((s: string) => a.matches(s))
+              : true;
+            return links.some((a) => matches(where, a));
+          }, set.where);
+          expect(speculatesLogout).toBe(false);
         }
       }
     } else {

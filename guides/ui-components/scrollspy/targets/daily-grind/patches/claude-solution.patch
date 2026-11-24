@@ -53,8 +53,8 @@ index 66c9173..22fc4a8 100644
 +       otherwise invalidate the whole rule). Not relying on colour alone:
 +       bold text plus an underline indicator. */
 +    .nav-sections a[href^="#"]:is(:target-current, .target-current) {
-+      color: var(--accent);
-+      border-bottom-color: var(--accent);
++      color: var(--accent-on-dark);
++      border-bottom-color: var(--accent-on-dark);
 +      font-weight: bold;
 +    }
 +

@@ -296,10 +296,14 @@ describe('capturePatchFromGit', () => {
     try {
       initTestRepo(repoDir);
 
-      // Create untracked change plus lockfiles that should be excluded
+      // Create untracked change plus lockfiles and build/dependency artifacts that should be excluded
       fs.writeFileSync(path.join(repoDir, 'newfile.txt'), 'world\n');
       fs.writeFileSync(path.join(repoDir, 'package-lock.json'), '{"lockfileVersion": 3}\n');
       fs.writeFileSync(path.join(repoDir, 'pnpm-lock.yaml'), 'lockfileVersion: 9.0\n');
+      fs.mkdirSync(path.join(repoDir, 'node_modules', 'pkg'), { recursive: true });
+      fs.writeFileSync(path.join(repoDir, 'node_modules', 'pkg', 'index.js'), 'module.exports = 1;\n');
+      fs.mkdirSync(path.join(repoDir, 'dist'), { recursive: true });
+      fs.writeFileSync(path.join(repoDir, 'dist', 'bundle.js'), 'console.log(1);\n');
 
       const result = capturePatchFromGit(repoDir, patchDest);
       assert.strictEqual(result.success, true);
@@ -309,6 +313,8 @@ describe('capturePatchFromGit', () => {
       assert.match(patchContent, /\+world/);
       assert.doesNotMatch(patchContent, /package-lock\.json/);
       assert.doesNotMatch(patchContent, /pnpm-lock\.yaml/);
+      assert.doesNotMatch(patchContent, /node_modules/);
+      assert.doesNotMatch(patchContent, /dist\//);
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

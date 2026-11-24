@@ -39,7 +39,7 @@ index 66c9173..bd0d093 100644
 +      .spa-view.inactive { display: none; }
 +    }
 +    .spa-view:focus { outline: none; }
-+    nav a[aria-current="page"] { color: var(--accent); text-decoration: underline; }
++    nav a[aria-current="page"] { color: var(--accent-on-dark); text-decoration: underline; }
 +    .logo a { font: inherit; letter-spacing: inherit; }
 +    label { display: block; margin-top: 1rem; }
 +    input { padding: 0.6rem; max-width: 100%; font: inherit; }
