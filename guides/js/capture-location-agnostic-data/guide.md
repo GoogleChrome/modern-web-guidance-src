@@ -106,10 +106,10 @@ A legacy `Date` is a timestamp (an instant), not a calendar date. Storing `"1990
 const instant = birthdate.toZonedDateTime('UTC').toInstant();
 const legacyDate = new Date(instant.epochMilliseconds);
 
-// Date -> PlainDate: go back through Instant (legacyDate.toTemporalInstant()
-// is equivalent), then project into an explicit time zone. The result depends
-// on the zone, which is exactly the drift risk.
-const viewedDate = Temporal.Instant.fromEpochMilliseconds(legacyDate.getTime())
+// Date -> PlainDate: convert to an Instant via toTemporalInstant(), then
+// project into an explicit time zone. The result depends on the zone, which is
+// exactly the drift risk.
+const viewedDate = legacyDate.toTemporalInstant()
   .toZonedDateTimeISO('America/New_York')
   .toPlainDate();
 
@@ -124,7 +124,7 @@ console.log(viewedDate.equals(birthdate)); // false: the calendar date drifted t
 - **DO** use `.add()` on `Temporal.PlainDate` for recurring calendar intervals, relying on `overflow: 'constrain'` (the default) to clamp month-end dates or `overflow: 'reject'` to throw a `RangeError` on nonexistent dates.
 - **DO** specify `calendar` (e.g., `calendar: 'iso8601'`) when constructing `PlainMonthDay` or non-ISO Plain types from objects.
 - **DO NOT** use Plain types if you need to represent a specific moment in physical time (an instant). Use `Temporal.Instant` or `Temporal.ZonedDateTime` for logs, event timestamps, or cross-timezone scheduling.
-- **DO NOT** construct `Date` objects from hand-built ISO strings (such as `` `${date}T00:00:00Z` ``). Produce a `Date` from the `epochMilliseconds` of a `Temporal.Instant` or `Temporal.ZonedDateTime`, and read one back with `Temporal.Instant.fromEpochMilliseconds(date.getTime())` or `date.toTemporalInstant()`, so the time zone assumption is explicit.
+- **DO NOT** construct `Date` objects from hand-built ISO strings (such as `` `${date}T00:00:00Z` ``). Produce a `Date` from the `epochMilliseconds` of a `Temporal.Instant` or `Temporal.ZonedDateTime`, and read one back with `date.toTemporalInstant()`, so the time zone assumption is explicit.
 - **DO NOT** use `Intl.DateTimeFormat.prototype.formatToParts()` to extract or compare year, month, or day values. Read `.year`, `.month`, and `.day` directly from a Plain type, and compare with `.equals()`.
 - **DO** identify time zones by IANA name (e.g., `America/New_York`) and never by a fixed UTC offset. Offsets change with daylight saving time and legislation, so labels like `"UTC-5"` become wrong for part of the year.
 - **DO** remember that `Temporal` objects are **immutable**. Methods like `.add()`, `.subtract()`, or `.with()` always return a new instance with a new reference rather than mutating the original object in place, making them safe to store directly in reactive UI state.

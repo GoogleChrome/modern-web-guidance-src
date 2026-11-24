@@ -481,9 +481,8 @@
         const legacyDate = new Date(storedInstant.epochMilliseconds);
 
         // 3. The viewer's browser later reads that instant back in *their* time zone.
-        // Convert Date -> Instant (cookbook: Date#toTemporalInstant, or
-        // Temporal.Instant.fromEpochMilliseconds(date.getTime())) and project it into the
-        // simulated zone to get the calendar date the viewer actually sees.
+        // Convert Date -> Instant via Date.prototype.toTemporalInstant() and project it into
+        // the simulated zone to get the calendar date the viewer actually sees.
         // No formatToParts() string surgery needed.
         const viewedDate = legacyDate.toTemporalInstant()
           .toZonedDateTimeISO(selectedTz)
