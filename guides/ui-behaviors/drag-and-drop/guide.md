@@ -89,12 +89,7 @@ After moving an item, keep focus on its handle. If the implementation uses separ
 
 ## Accessibility requirements
 
-Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case. A few examples:
-
-* Kanban boards: a "move to column" menu or buttons
-* Ordering/ranking items: directional buttons for changing an item's position
-* Re-ordering a UI in a builder tool: directional buttons for adjusting the position of the content in a page, within a UI builder tool
-* File-management systems: a "move" menu
+Ensure the draggable element can also be moved or operated using a single pointer without dragging (for example, clicks or taps). What the UI for this looks like depends on the use case, but a common pattern is directional commands for changing an item's position, either as buttons or in a menu. 
 
 Provide feedback for screen reader users when the draggable element is successfully moved. Use a visibly hidden live region, so that any updates to the region are announced to screen reader users. Ensure the region is included on page load, so that it is registered.
 
