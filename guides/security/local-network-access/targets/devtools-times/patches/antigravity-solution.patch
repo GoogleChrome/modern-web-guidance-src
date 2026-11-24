@@ -1,0 +1,1229 @@
+diff --git a/global.d.ts b/global.d.ts
+index 22f7b64..4424505 100644
+--- a/global.d.ts
++++ b/global.d.ts
+@@ -1,7 +1,30 @@
++export type TargetAddressSpace = 'local' | 'loopback' | 'public';
++export type LnaPermissionName = 'local-network' | 'loopback-network';
++
+ declare global {
+   interface Window {
+-    adNetwork: any; // Replace 'any' with a more specific type if you know it
++    adNetwork: any;
++  }
++
++  interface RequestInit {
++    targetAddressSpace?: TargetAddressSpace;
++  }
++
++  interface Request {
++    readonly targetAddressSpace?: TargetAddressSpace;
++  }
++
++  interface WebTransportHash {
++    algorithm: string;
++    value: BufferSource;
++  }
++
++  interface WebTransportOptions {
++    allowPooling?: boolean;
++     congestionControl?: 'default' | 'low-latency' | 'throughput';
++    requireUnreliable?: boolean;
++    serverCertificateHashes?: WebTransportHash[];
+   }
+ }
+ 
+-export {};
+\ No newline at end of file
++export {};
+diff --git a/src/components/Header.astro b/src/components/Header.astro
+index 980b279..8b15e2f 100644
+--- a/src/components/Header.astro
++++ b/src/components/Header.astro
+@@ -3,6 +3,7 @@ import ReadingListButton from "./ReadingListButton.tsx";
+ import SearchButton from "./SearchButton.tsx";
+ import { getCollection } from "astro:content";
+ import BottomNav from "./BottomNav.tsx";
++import LocalNetworkPanel from "./LocalNetworkPanel.tsx";
+ 
+ const articles = await getCollection("articles");
+ const reports = await getCollection("reports");
+@@ -58,10 +59,12 @@ const todaysDate = new Date().toLocaleDateString('en-US', { weekday: 'long', yea
+         </a>
+       </div>
+ 
+-      <!-- Right Section: Stock -->
++      <!-- Right Section: Stock / Local Network Status -->
+       <div class="text-xs font-semibold text-right">
++        <span class="text-gray-500">LAN &amp; Companion Ready</span>
+       </div>
+     </div>
++    <LocalNetworkPanel client:load compact={true} />
+   </div>
+ 
+   <!-- Bottom Navigation Bar -->
+diff --git a/src/components/LocalNetworkPanel.tsx b/src/components/LocalNetworkPanel.tsx
+new file mode 100644
+index 0000000..5959450
+--- /dev/null
++++ b/src/components/LocalNetworkPanel.tsx
+@@ -0,0 +1,612 @@
++import React, { useState, useEffect, useRef } from 'react';
++import {
++  checkNetworkPermission,
++  fetchLocalDeviceStatus,
++  fetchLoopbackDaemon,
++  openLocalWebSocket,
++  openLocalWebTransport,
++  sendArticleToLocalPrinter,
++  syncWithLoopbackDaemon,
++  formatLnaErrorRemediation,
++  type LocalDeviceStatus,
++  type LoopbackDaemonStatus,
++} from '../utils/local-network';
++
++export interface LocalNetworkPanelProps {
++  articleSlug?: string;
++  articleTitle?: string;
++  articleSummary?: string;
++  compact?: boolean;
++}
++
++export const LocalNetworkPanel: React.FC<LocalNetworkPanelProps> = ({
++  articleSlug,
++  articleTitle,
++  articleSummary,
++  compact = false,
++}) => {
++  const [isExpanded, setIsExpanded] = useState<boolean>(!compact);
++  const [isSecure, setIsSecure] = useState<boolean>(true);
++
++  // Permission states for the two granular Local Network Access permissions
++  const [localNetworkPerm, setLocalNetworkPerm] = useState<PermissionState>('prompt');
++  const [loopbackNetworkPerm, setLoopbackNetworkPerm] = useState<PermissionState>('prompt');
++
++  // Configurable local & loopback endpoints (with guide defaults)
++  const [localDeviceUrl, setLocalDeviceUrl] = useState<string>(
++    'http://192.168.1.100:8080/api/status'
++  );
++  const [loopbackDaemonUrl, setLoopbackDaemonUrl] = useState<string>(
++    'http://127.0.0.1:45678/health'
++  );
++  const [wsUrl, setWsUrl] = useState<string>('ws://192.168.1.100:8080/stream');
++  const [wtUrl, setWtUrl] = useState<string>('https://192.168.1.100:4433/wt');
++
++  // Connection & status state for local-network (LAN printer / newsroom device)
++  const [localDeviceStatus, setLocalDeviceStatus] = useState<LocalDeviceStatus | null>(null);
++  const [localLoading, setLocalLoading] = useState<boolean>(false);
++  const [localError, setLocalError] = useState<string | null>(null);
++  const [printStatusMessage, setPrintStatusMessage] = useState<string | null>(null);
++
++  // Connection & status state for loopback-network (companion daemon)
++  const [loopbackStatus, setLoopbackStatus] = useState<LoopbackDaemonStatus | null>(null);
++  const [loopbackLoading, setLoopbackLoading] = useState<boolean>(false);
++  const [loopbackError, setLoopbackError] = useState<string | null>(null);
++  const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
++
++  // Real-time WebSocket & WebTransport state
++  const [wsConnectionState, setWsConnectionState] = useState<
++    'idle' | 'connecting' | 'connected' | 'error' | 'closed'
++  >('idle');
++  const [wsTelemetryMessage, setWsTelemetryMessage] = useState<string | null>(null);
++  const [wsError, setWsError] = useState<string | null>(null);
++  const wsRef = useRef<WebSocket | null>(null);
++
++  const [wtConnectionState, setWtConnectionState] = useState<
++    'idle' | 'connecting' | 'connected' | 'error' | 'closed'
++  >('idle');
++  const [wtError, setWtError] = useState<string | null>(null);
++  const wtRef = useRef<WebTransport | null>(null);
++
++  // Connect to local network device over HTTP with targetAddressSpace: 'local'
++  const handleConnectLocalDevice = async (urlToFetch = localDeviceUrl) => {
++    setLocalLoading(true);
++    setLocalError(null);
++    try {
++      const data = await fetchLocalDeviceStatus(urlToFetch);
++      setLocalDeviceStatus(data);
++    } catch (err) {
++      setLocalError(formatLnaErrorRemediation('local-network', err));
++    } finally {
++      setLocalLoading(false);
++      await checkNetworkPermission('local-network', setLocalNetworkPerm);
++    }
++  };
++
++  // Connect to loopback companion daemon over HTTP with targetAddressSpace: 'loopback'
++  const handleConnectLoopbackDaemon = async (urlToFetch = loopbackDaemonUrl) => {
++    setLoopbackLoading(true);
++    setLoopbackError(null);
++    try {
++      const data = await fetchLoopbackDaemon(urlToFetch);
++      setLoopbackStatus(data);
++    } catch (err) {
++      setLoopbackError(formatLnaErrorRemediation('loopback-network', err));
++    } finally {
++      setLoopbackLoading(false);
++      await checkNetworkPermission('loopback-network', setLoopbackNetworkPerm);
++    }
++  };
++
++  // Print current article on LAN printer (user gesture, targetAddressSpace: 'local')
++  const handlePrintOnLan = async () => {
++    if (!articleSlug || !articleTitle) return;
++    setLocalLoading(true);
++    setLocalError(null);
++    setPrintStatusMessage(null);
++    try {
++      const printerEndpoint = localDeviceUrl.replace(/\/status$/, '/print');
++      const res = await sendArticleToLocalPrinter(
++        {
++          slug: articleSlug,
++          title: articleTitle,
++          summary: articleSummary,
++        },
++        printerEndpoint
++      );
++      setPrintStatusMessage(
++        res.jobId
++          ? `Sent "${articleTitle}" to LAN printer (Job #${res.jobId}).`
++          : `Sent "${articleTitle}" to LAN printer.`
++      );
++    } catch (err) {
++      setLocalError(formatLnaErrorRemediation('local-network', err));
++    } finally {
++      setLocalLoading(false);
++      await checkNetworkPermission('local-network', setLocalNetworkPerm);
++    }
++  };
++
++  // Sync article / reading list with loopback companion app (user gesture, targetAddressSpace: 'loopback')
++  const handleSyncLoopback = async () => {
++    setLoopbackLoading(true);
++    setLoopbackError(null);
++    setSyncStatusMessage(null);
++    try {
++      const syncEndpoint = loopbackDaemonUrl.replace(/\/health$/, '/sync');
++      const articlesToSync = articleSlug ? [articleSlug] : [];
++      const res = await syncWithLoopbackDaemon({ articles: articlesToSync }, syncEndpoint);
++      setSyncStatusMessage(
++        res.synced
++          ? `Synced ${res.count ?? articlesToSync.length} item(s) with local companion daemon.`
++          : 'Sync completed with local companion daemon.'
++      );
++    } catch (err) {
++      setLoopbackError(formatLnaErrorRemediation('loopback-network', err));
++    } finally {
++      setLoopbackLoading(false);
++      await checkNetworkPermission('loopback-network', setLoopbackNetworkPerm);
++    }
++  };
++
++  // Open WebSocket telemetry stream to local network device (user gesture)
++  const handleOpenWebSocket = () => {
++    setWsError(null);
++    setWsTelemetryMessage(null);
++
++    if (wsRef.current) {
++      wsRef.current.close();
++      wsRef.current = null;
++    }
++
++    try {
++      setWsConnectionState('connecting');
++      const socket = openLocalWebSocket(wsUrl);
++      wsRef.current = socket;
++
++      socket.addEventListener('open', () => {
++        setWsConnectionState('connected');
++        checkNetworkPermission('local-network', setLocalNetworkPerm);
++      });
++
++      socket.addEventListener('message', (event) => {
++        setWsTelemetryMessage(String(event.data));
++      });
++
++      socket.addEventListener('error', () => {
++        setWsConnectionState('error');
++        setWsError(
++          formatLnaErrorRemediation(
++            'local-network',
++            new TypeError('WebSocket connection to local device failed')
++          )
++        );
++        checkNetworkPermission('local-network', setLocalNetworkPerm);
++      });
++
++      socket.addEventListener('close', () => {
++        setWsConnectionState((prev) => (prev === 'error' ? 'error' : 'closed'));
++      });
++    } catch (err) {
++      setWsConnectionState('error');
++      setWsError(formatLnaErrorRemediation('local-network', err));
++    }
++  };
++
++  // Open WebTransport session to local network device (user gesture)
++  const handleOpenWebTransport = async () => {
++    setWtError(null);
++
++    if (wtRef.current) {
++      try {
++        wtRef.current.close();
++      } catch {
++        // Ignore close errors
++      }
++      wtRef.current = null;
++    }
++
++    if (typeof WebTransport === 'undefined') {
++      setWtConnectionState('error');
++      setWtError('WebTransport is not supported in this browser environment.');
++      return;
++    }
++
++    try {
++      setWtConnectionState('connecting');
++      const placeholderCertHash = new Uint8Array(32);
++      const transport = await openLocalWebTransport(wtUrl, placeholderCertHash);
++      wtRef.current = transport;
++      setWtConnectionState('connected');
++      await checkNetworkPermission('local-network', setLocalNetworkPerm);
++    } catch (err) {
++      setWtConnectionState('error');
++      setWtError(formatLnaErrorRemediation('local-network', err));
++      await checkNetworkPermission('local-network', setLocalNetworkPerm);
++    }
++  };
++
++  // Step 1: Pre-check granular permissions on mount; only auto-connect when state === 'granted'
++  useEffect(() => {
++    if (typeof window !== 'undefined') {
++      setIsSecure(window.isSecureContext);
++    }
++
++    let isMounted = true;
++
++    async function initPermissions() {
++      const localState = await checkNetworkPermission('local-network', (newState) => {
++        if (isMounted) setLocalNetworkPerm(newState);
++      });
++      if (isMounted) setLocalNetworkPerm(localState);
++
++      // Only connect automatically when permission is already 'granted'
++      if (localState === 'granted' && window.isSecureContext) {
++        handleConnectLocalDevice();
++      }
++
++      const loopbackState = await checkNetworkPermission('loopback-network', (newState) => {
++        if (isMounted) setLoopbackNetworkPerm(newState);
++      });
++      if (isMounted) setLoopbackNetworkPerm(loopbackState);
++
++      // Only connect automatically when permission is already 'granted'
++      if (loopbackState === 'granted' && window.isSecureContext) {
++        handleConnectLoopbackDaemon();
++      }
++    }
++
++    initPermissions();
++
++    return () => {
++      isMounted = false;
++      if (wsRef.current) {
++        wsRef.current.close();
++      }
++      if (wtRef.current) {
++        try {
++          wtRef.current.close();
++        } catch {
++          // ignore
++        }
++      }
++    };
++  }, []);
++
++  const badgeColor = (state: PermissionState) => {
++    if (state === 'granted') return 'bg-green-100 text-green-800 border-green-300';
++    if (state === 'denied') return 'bg-red-100 text-red-800 border-red-300';
++    return 'bg-amber-100 text-amber-800 border-amber-300';
++  };
++
++  return (
++    <section
++      aria-label="Local Network and Companion Access"
++      className="bg-gray-50 border border-gray-200 rounded-md p-4 my-4 text-xs text-gray-800"
++    >
++      {/* Summary Header Bar */}
++      <div className="flex flex-wrap items-center justify-between gap-3">
++        <div className="flex items-center space-x-2">
++          <span className="font-bold text-sm text-gray-900">
++            Local Network &amp; Companion Access
++          </span>
++          <span className="text-gray-500 hidden sm:inline">
++            (LAN Printer &amp; Offline Reader Daemon)
++          </span>
++        </div>
++
++        <div className="flex flex-wrap items-center gap-3">
++          <div className="flex items-center space-x-1">
++            <span className="text-gray-600 font-medium">Local Network:</span>
++            <span
++              data-permission-status="local-network"
++              className={`px-2 py-0.5 rounded border font-semibold ${badgeColor(
++                localNetworkPerm
++              )}`}
++            >
++              {localNetworkPerm}
++            </span>
++          </div>
++
++          <div className="flex items-center space-x-1">
++            <span className="text-gray-600 font-medium">Loopback:</span>
++            <span
++              data-permission-status="loopback-network"
++              className={`px-2 py-0.5 rounded border font-semibold ${badgeColor(
++                loopbackNetworkPerm
++              )}`}
++            >
++              {loopbackNetworkPerm}
++            </span>
++          </div>
++
++          <button
++            type="button"
++            onClick={() => setIsExpanded((prev) => !prev)}
++            className="text-gray-700 hover:text-gray-900 font-semibold underline cursor-pointer"
++          >
++            {isExpanded ? 'Hide Controls' : 'Configure Devices'}
++          </button>
++        </div>
++      </div>
++
++      {/* Secure context warning if served over non-HTTPS non-loopback */}
++      {!isSecure && (
++        <div
++          role="alert"
++          className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-red-800"
++        >
++          <strong>Insecure Context Detected:</strong> Local Network Access permissions require a
++          Secure Context (<code>https://</code>). Requests to local or loopback endpoints are
++          automatically denied on insecure <code>http://</code> origins.
++        </div>
++      )}
++
++      {/* Actionable Remediation UI for local-network (always in DOM, hidden when state !== 'denied') */}
++      <div
++        data-remediation="local-network"
++        hidden={localNetworkPerm !== 'denied'}
++        className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-red-900"
++      >
++        <p className="font-semibold">Local Network Access is Blocked (`local-network`)</p>
++        <p className="mt-1">
++          To connect to your LAN printer or local newsroom display, click the tune/lock icon next to
++          the URL in your browser&apos;s address bar, open <strong>Site settings</strong>, and change{' '}
++          <strong>Local network</strong> from <em>Block</em> to <em>Allow</em>.
++        </p>
++      </div>
++
++      {/* Actionable Remediation UI for loopback-network (always in DOM, hidden when state !== 'denied') */}
++      <div
++        data-remediation="loopback-network"
++        hidden={loopbackNetworkPerm !== 'denied'}
++        className="mt-3 p-3 bg-red-50 border border-red-300 rounded text-red-900"
++      >
++        <p className="font-semibold">Loopback Network Access is Blocked (`loopback-network`)</p>
++        <p className="mt-1">
++          To sync articles with the DevTools Times Desktop Companion on your machine (
++          <code>127.0.0.1</code> / <code>localhost</code>), open your browser&apos;s{' '}
++          <strong>Site settings</strong> and change <strong>Loopback network</strong> from{' '}
++          <em>Block</em> to <em>Allow</em>.
++        </p>
++      </div>
++
++      {/* Main Controls Panel */}
++      <div className={isExpanded ? 'mt-4 grid grid-cols-1 md:grid-cols-2 gap-4' : 'hidden'}>
++        {/* 1. Local Network Device (LAN Printer / Telemetry Hub) */}
++        <div className="bg-white border border-gray-200 rounded p-3 flex flex-col justify-between">
++          <div>
++            <h3 className="font-bold text-gray-900 text-sm mb-1">
++              1. Local Network Device (<code>targetAddressSpace: &apos;local&apos;</code>)
++            </h3>
++            <p className="text-gray-600 mb-2">
++              Connect to a LAN printer or newsroom telemetry display on your local network (e.g.,{' '}
++              <code>192.168.1.x</code> or <code>.local</code>) to check device status or print
++              articles directly.
++            </p>
++
++            {localNetworkPerm === 'prompt' && (
++              <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
++                <strong>Permission needed:</strong> Clicking a button below will ask your browser
++                for <code>local-network</code> permission to communicate with your LAN device.
++              </p>
++            )}
++
++            <label className="block text-gray-700 font-medium mb-1">
++              LAN Device Endpoint URL:
++              <input
++                type="url"
++                value={localDeviceUrl}
++                onChange={(e) => setLocalDeviceUrl(e.target.value)}
++                className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-xs"
++              />
++            </label>
++          </div>
++
++          <div className="mt-3 space-y-2">
++            <div className="flex flex-wrap gap-2">
++              <button
++                type="button"
++                onClick={() => handleConnectLocalDevice(localDeviceUrl)}
++                disabled={localLoading}
++                className="bg-gray-800 text-white font-semibold py-1.5 px-3 rounded hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
++              >
++                {localLoading ? 'Connecting...' : 'Check LAN Device Status'}
++              </button>
++
++              {articleSlug && articleTitle && (
++                <button
++                  type="button"
++                  onClick={handlePrintOnLan}
++                  disabled={localLoading}
++                  className="bg-amber-600 text-white font-semibold py-1.5 px-3 rounded hover:bg-amber-500 disabled:opacity-50 cursor-pointer"
++                >
++                  Print Article on LAN Printer
++                </button>
++              )}
++            </div>
++
++            {localDeviceStatus && (
++              <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900">
++                Connected to LAN device: <strong>{localDeviceStatus.status || 'Online'}</strong>
++              </div>
++            )}
++
++            {printStatusMessage && (
++              <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900">
++                {printStatusMessage}
++              </div>
++            )}
++
++            {localError && (
++              <div role="alert" className="p-2 bg-red-50 border border-red-200 rounded text-red-800">
++                {localError}
++              </div>
++            )}
++          </div>
++        </div>
++
++        {/* 2. Loopback Companion Service (Desktop Reader Daemon) */}
++        <div className="bg-white border border-gray-200 rounded p-3 flex flex-col justify-between">
++          <div>
++            <h3 className="font-bold text-gray-900 text-sm mb-1">
++              2. Loopback Companion Daemon (<code>targetAddressSpace: &apos;loopback&apos;</code>)
++            </h3>
++            <p className="text-gray-600 mb-2">
++              Connect to the DevTools Times Companion service running locally on your computer (
++              <code>127.0.0.1</code>, <code>[::1]</code>, or <code>localhost</code>) for offline
++              reading list synchronization.
++            </p>
++
++            {loopbackNetworkPerm === 'prompt' && (
++              <p className="text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mb-2">
++                <strong>Permission needed:</strong> Clicking below will trigger the{' '}
++                <code>loopback-network</code> permission prompt to connect to your local companion
++                daemon.
++              </p>
++            )}
++
++            <label className="block text-gray-700 font-medium mb-1">
++              Loopback Daemon Health URL:
++              <input
++                type="url"
++                value={loopbackDaemonUrl}
++                onChange={(e) => setLoopbackDaemonUrl(e.target.value)}
++                className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-xs"
++              />
++            </label>
++          </div>
++
++          <div className="mt-3 space-y-2">
++            <div className="flex flex-wrap gap-2">
++              <button
++                type="button"
++                onClick={() => handleConnectLoopbackDaemon(loopbackDaemonUrl)}
++                disabled={loopbackLoading}
++                className="bg-gray-800 text-white font-semibold py-1.5 px-3 rounded hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
++              >
++                {loopbackLoading ? 'Connecting...' : 'Connect Companion Daemon'}
++              </button>
++
++              <button
++                type="button"
++                onClick={handleSyncLoopback}
++                disabled={loopbackLoading}
++                className="bg-gray-600 text-white font-semibold py-1.5 px-3 rounded hover:bg-gray-500 disabled:opacity-50 cursor-pointer"
++              >
++                Sync Offline Reading List
++              </button>
++            </div>
++
++            {loopbackStatus && (
++              <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900">
++                Companion daemon status: <strong>{loopbackStatus.status || 'Healthy'}</strong>
++              </div>
++            )}
++
++            {syncStatusMessage && (
++              <div className="p-2 bg-green-50 border border-green-200 rounded text-green-900">
++                {syncStatusMessage}
++              </div>
++            )}
++
++            {loopbackError && (
++              <div role="alert" className="p-2 bg-red-50 border border-red-200 rounded text-red-800">
++                {loopbackError}
++              </div>
++            )}
++          </div>
++        </div>
++
++        {/* 3. Real-Time Local Telemetry (WebSocket & WebTransport) */}
++        <div className="bg-white border border-gray-200 rounded p-3">
++          <h3 className="font-bold text-gray-900 text-sm mb-1">
++            3. Real-Time Local Streams (<code>WebSocket</code> &amp; <code>WebTransport</code>)
++          </h3>
++          <p className="text-gray-600 mb-2">
++            Stream live newsroom ticker telemetry from a local hardware bridge using{' '}
++            <code>WebSocket</code> (subprotocol <code>v1.telemetry</code>) or{' '}
++            <code>WebTransport</code> over QUIC.
++          </p>
++
++          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
++            <label className="block text-gray-700 font-medium">
++              WebSocket URL:
++              <input
++                type="text"
++                value={wsUrl}
++                onChange={(e) => setWsUrl(e.target.value)}
++                className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-xs"
++              />
++            </label>
++            <label className="block text-gray-700 font-medium">
++              WebTransport URL:
++              <input
++                type="url"
++                value={wtUrl}
++                onChange={(e) => setWtUrl(e.target.value)}
++                className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-xs"
++              />
++            </label>
++          </div>
++
++          <div className="flex flex-wrap gap-2 mt-2">
++            <button
++              type="button"
++              onClick={handleOpenWebSocket}
++              className="bg-gray-800 text-white font-semibold py-1.5 px-3 rounded hover:bg-gray-700 cursor-pointer"
++            >
++              Open Local WebSocket ({wsConnectionState})
++            </button>
++            <button
++              type="button"
++              onClick={handleOpenWebTransport}
++              className="bg-gray-700 text-white font-semibold py-1.5 px-3 rounded hover:bg-gray-600 cursor-pointer"
++            >
++              Open Local WebTransport ({wtConnectionState})
++            </button>
++          </div>
++
++          {wsTelemetryMessage && (
++            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-900">
++              Telemetry: {wsTelemetryMessage}
++            </div>
++          )}
++
++          {wsError && (
++            <div role="alert" className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
++              {wsError}
++            </div>
++          )}
++
++          {wtError && (
++            <div role="alert" className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-800">
++              {wtError}
++            </div>
++          )}
++        </div>
++
++        {/* 4. Delegated Cross-Origin Partner Device Bridge Iframe */}
++        <div className="bg-white border border-gray-200 rounded p-3">
++          <h3 className="font-bold text-gray-900 text-sm mb-1">
++            4. Partner Device Bridge (<code>Permissions-Policy</code> Delegation)
++          </h3>
++          <p className="text-gray-600 mb-2">
++            Cross-origin hardware setup frame delegated <code>local-network</code> and{' '}
++            <code>loopback-network</code> permissions via the <code>allow</code> attribute and HTTP{' '}
++            <code>Permissions-Policy</code> header.
++          </p>
++          <iframe
++            src="https://setup.partner.example.com/device-bridge"
++            allow="local-network; loopback-network"
++            title="Local Device Bridge"
++            loading="lazy"
++            className="w-full h-16 border border-gray-200 rounded bg-gray-50"
++          />
++        </div>
++      </div>
++    </section>
++  );
++};
++
++export default LocalNetworkPanel;
+diff --git a/src/components/ReadingListFlyout.tsx b/src/components/ReadingListFlyout.tsx
+index 10bfbad..71941c2 100644
+--- a/src/components/ReadingListFlyout.tsx
++++ b/src/components/ReadingListFlyout.tsx
+@@ -1,5 +1,10 @@
+ 
+ import React, { useState, useEffect } from 'react';
++import {
++  checkNetworkPermission,
++  syncWithLoopbackDaemon,
++  formatLnaErrorRemediation,
++} from '../utils/local-network';
+ 
+ interface Article {
+   slug: string;
+@@ -15,6 +20,10 @@ interface Props {
+ 
+ export default function ReadingListFlyout({ articles, onClose }: Props) {
+   const [readingList, setReadingList] = useState<string[]>([]);
++  const [loopbackPerm, setLoopbackPerm] = useState<PermissionState>('prompt');
++  const [syncMessage, setSyncMessage] = useState<string | null>(null);
++  const [syncError, setSyncError] = useState<string | null>(null);
++  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+ 
+   const fetchReadingList = async () => {
+     const response = await fetch(`${import.meta.env.BASE_URL}api/reading-list.json`);
+@@ -22,8 +31,28 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+     setReadingList(data.readingList);
+   };
+ 
++  const handleSyncToCompanion = async () => {
++    setIsSyncing(true);
++    setSyncMessage(null);
++    setSyncError(null);
++    try {
++      const result = await syncWithLoopbackDaemon({ articles: readingList });
++      setSyncMessage(
++        result.synced
++          ? `Synced ${result.count ?? readingList.length} article(s) to local companion daemon.`
++          : 'Reading list synced with local companion daemon.'
++      );
++    } catch (err) {
++      setSyncError(formatLnaErrorRemediation('loopback-network', err));
++    } finally {
++      setIsSyncing(false);
++      await checkNetworkPermission('loopback-network', setLoopbackPerm);
++    }
++  };
++
+   useEffect(() => {
+     fetchReadingList();
++    checkNetworkPermission('loopback-network', setLoopbackPerm);
+ 
+     const handleKeyDown = (event: KeyboardEvent) => {
+       if (event.key === 'Escape') {
+@@ -58,9 +87,32 @@ export default function ReadingListFlyout({ articles, onClose }: Props) {
+             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+           </svg>
+         </button>
+-        <div className="p-4">
+-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Your Reading List</h3>
++        <div className="p-4 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100">
++          <h3 className="text-lg font-semibold text-gray-800">Your Reading List</h3>
++          <div className="flex items-center gap-2">
++            <span className="text-xs text-gray-500">
++              Loopback: <strong data-permission-status="loopback-network">{loopbackPerm}</strong>
++            </span>
++            <button
++              type="button"
++              onClick={handleSyncToCompanion}
++              disabled={isSyncing}
++              className="bg-gray-800 text-white text-xs font-semibold py-1.5 px-3 rounded hover:bg-gray-700 disabled:opacity-50 cursor-pointer"
++            >
++              {isSyncing ? 'Syncing...' : 'Sync to Local Companion'}
++            </button>
++          </div>
+         </div>
++        {syncMessage && (
++          <div className="mx-4 mt-3 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-900">
++            {syncMessage}
++          </div>
++        )}
++        {syncError && (
++          <div role="alert" className="mx-4 mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-800">
++            {syncError}
++          </div>
++        )}
+         <div className="p-4 max-h-[60vh] overflow-y-auto">
+           {readingListArticles.length === 0 && (
+             <p className="text-gray-500 text-center py-8">Your reading list is empty.</p>
+diff --git a/src/middleware.ts b/src/middleware.ts
+index 1684cf6..3c05b8a 100644
+--- a/src/middleware.ts
++++ b/src/middleware.ts
+@@ -1,6 +1,8 @@
+-
+ import { defineMiddleware } from 'astro:middleware';
+ 
++export const LOCAL_NETWORK_PERMISSIONS_POLICY =
++  'local-network=(self "https://setup.partner.example.com"), loopback-network=(self "https://setup.partner.example.com")';
++
+ export const onRequest = defineMiddleware(async (context, next) => {
+   if (context.session) {
+     // Initialize the reading list if it doesn't exist
+@@ -9,5 +11,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
+       await context.session.set('readingList', []);
+     }
+   }
+-  return next();
++
++  const response = await next();
++
++  try {
++    response.headers.set('Permissions-Policy', LOCAL_NETWORK_PERMISSIONS_POLICY);
++    return response;
++  } catch {
++    const headers = new Headers(response.headers);
++    headers.set('Permissions-Policy', LOCAL_NETWORK_PERMISSIONS_POLICY);
++    return new Response(response.body, {
++      status: response.status,
++      statusText: response.statusText,
++      headers,
++    });
++  }
+ });
+diff --git a/src/pages/api/local-device-status.ts b/src/pages/api/local-device-status.ts
+new file mode 100644
+index 0000000..b647e18
+--- /dev/null
++++ b/src/pages/api/local-device-status.ts
+@@ -0,0 +1,53 @@
++import type { APIRoute } from 'astro';
++
++const corsHeaders = {
++  'Content-Type': 'application/json',
++  'Access-Control-Allow-Origin': '*',
++  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
++  'Access-Control-Allow-Headers': 'Content-Type',
++};
++
++export const OPTIONS: APIRoute = async () => {
++  return new Response(null, {
++    status: 204,
++    headers: corsHeaders,
++  });
++};
++
++export const GET: APIRoute = async () => {
++  return new Response(
++    JSON.stringify({
++      status: 'Online',
++      deviceName: 'DevTools Times LAN Press Printer',
++      addressSpace: 'local',
++      printerReady: true,
++      paperLevel: 95,
++      timestamp: new Date().toISOString(),
++    }),
++    {
++      status: 200,
++      headers: corsHeaders,
++    }
++  );
++};
++
++export const POST: APIRoute = async ({ request }) => {
++  let payload: Record<string, unknown> = {};
++  try {
++    payload = await request.json();
++  } catch {
++    // ignore malformed body
++  }
++
++  return new Response(
++    JSON.stringify({
++      printed: true,
++      jobId: `lan-${Date.now()}`,
++      article: payload.title || payload.slug || 'Untitled',
++    }),
++    {
++      status: 200,
++      headers: corsHeaders,
++    }
++  );
++};
+diff --git a/src/pages/api/loopback-health.ts b/src/pages/api/loopback-health.ts
+new file mode 100644
+index 0000000..15887ad
+--- /dev/null
++++ b/src/pages/api/loopback-health.ts
+@@ -0,0 +1,55 @@
++import type { APIRoute } from 'astro';
++
++const corsHeaders = {
++  'Content-Type': 'application/json',
++  'Access-Control-Allow-Origin': '*',
++  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
++  'Access-Control-Allow-Headers': 'Content-Type',
++};
++
++export const OPTIONS: APIRoute = async () => {
++  return new Response(null, {
++    status: 204,
++    headers: corsHeaders,
++  });
++};
++
++export const GET: APIRoute = async () => {
++  return new Response(
++    JSON.stringify({
++      status: 'Healthy',
++      service: 'DevTools Times Loopback Companion',
++      version: '1.0.0',
++      addressSpace: 'loopback',
++      offlineArticlesCount: 4,
++      timestamp: new Date().toISOString(),
++    }),
++    {
++      status: 200,
++      headers: corsHeaders,
++    }
++  );
++};
++
++export const POST: APIRoute = async ({ request }) => {
++  let articles: string[] = [];
++  try {
++    const body = await request.json();
++    if (Array.isArray(body?.articles)) {
++      articles = body.articles;
++    }
++  } catch {
++    // ignore malformed body
++  }
++
++  return new Response(
++    JSON.stringify({
++      synced: true,
++      count: articles.length,
++    }),
++    {
++      status: 200,
++      headers: corsHeaders,
++    }
++  );
++};
+diff --git a/src/pages/articles/[slug].astro b/src/pages/articles/[slug].astro
+index 24fea39..47a8ac7 100644
+--- a/src/pages/articles/[slug].astro
++++ b/src/pages/articles/[slug].astro
+@@ -8,6 +8,7 @@ import { Image } from 'astro:assets';
+ import { getArticleImage } from '../../utils/images';
+ import BookmarkButton from '../../components/BookmarkButton.tsx';
+ import ArticleTeaser from '../../components/ArticleTeaser.astro';
++import LocalNetworkPanel from '../../components/LocalNetworkPanel.tsx';
+ 
+ export const getStaticPaths = (async () => {
+   const articles = await getCollection('articles');
+@@ -109,6 +110,15 @@ const isBookmarked = readingList.includes(article.slug);
+             <Content />
+         </div>
+ 
++        <!-- Local Network & Companion Actions (LAN Print & Loopback Sync) -->
++        <LocalNetworkPanel
++            client:load
++            articleSlug={article.id}
++            articleTitle={article.data.title}
++            articleSummary={article.data.summary}
++            compact={false}
++        />
++
+         <!-- ADVERTISEMENT -->
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:load />
+diff --git a/src/utils/local-network.ts b/src/utils/local-network.ts
+new file mode 100644
+index 0000000..25d0cb4
+--- /dev/null
++++ b/src/utils/local-network.ts
+@@ -0,0 +1,268 @@
++export type LnaPermissionName = 'local-network' | 'loopback-network';
++export type TargetAddressSpace = 'local' | 'loopback';
++
++export interface LocalDeviceStatus {
++  status: string;
++  deviceName?: string;
++  addressSpace?: TargetAddressSpace;
++  printerReady?: boolean;
++  paperLevel?: number;
++  timestamp?: string;
++  [key: string]: unknown;
++}
++
++export interface LoopbackDaemonStatus {
++  status: string;
++  service?: string;
++  version?: string;
++  addressSpace?: TargetAddressSpace;
++  offlineArticlesCount?: number;
++  timestamp?: string;
++  [key: string]: unknown;
++}
++
++/**
++ * Updates permission status badges and remediation boxes in the DOM.
++ * @param {'local-network' | 'loopback-network'} permissionName
++ * @param {PermissionState} state
++ */
++export function updatePermissionUI(
++  permissionName: LnaPermissionName,
++  state: PermissionState
++): void {
++  if (typeof document === 'undefined') {
++    return;
++  }
++
++  const statusBadge = document.querySelector<HTMLElement>(
++    `[data-permission-status="${permissionName}"]`
++  );
++  const remediationBox = document.querySelector<HTMLElement>(
++    `[data-remediation="${permissionName}"]`
++  );
++  if (statusBadge) {
++    statusBadge.textContent = state;
++  }
++  if (remediationBox) {
++    // Show remediation instructions whenever permission is explicitly denied
++    remediationBox.hidden = state !== 'denied';
++  }
++
++  // Also synchronize any additional matching elements on the page
++  document
++    .querySelectorAll<HTMLElement>(`[data-permission-status="${permissionName}"]`)
++    .forEach((el) => {
++      el.textContent = state;
++    });
++  document
++    .querySelectorAll<HTMLElement>(`[data-remediation="${permissionName}"]`)
++    .forEach((el) => {
++      el.hidden = state !== 'denied';
++    });
++}
++
++/**
++ * Cross-browser permission check for the granular LNA permissions.
++ * Never falls back to querying 'local-network-access', which crashes older Chrome versions.
++ * @param {'local-network' | 'loopback-network'} permissionName
++ */
++export async function queryLnaPermissionSafe(
++  permissionName: LnaPermissionName
++): Promise<PermissionState> {
++  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
++    return 'prompt';
++  }
++  try {
++    const status = await navigator.permissions.query({
++      name: permissionName as PermissionName,
++    });
++    return status.state;
++  } catch {
++    // Unrecognized permission name; proceed on user gesture
++    return 'prompt';
++  }
++}
++
++/**
++ * Queries the granular Local Network Access permission for the target space
++ * and subscribes to permission state changes.
++ * @param {'local-network' | 'loopback-network'} permissionName
++ * @param {(state: PermissionState) => void} [onChange]
++ */
++export async function checkNetworkPermission(
++  permissionName: LnaPermissionName,
++  onChange?: (state: PermissionState) => void
++): Promise<PermissionState> {
++  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
++    updatePermissionUI(permissionName, 'prompt');
++    onChange?.('prompt');
++    return 'prompt';
++  }
++
++  try {
++    const status = await navigator.permissions.query({
++      name: permissionName as PermissionName,
++    });
++
++    // Keep UI synchronized if the user changes permission in browser site settings
++    status.addEventListener('change', () => {
++      updatePermissionUI(permissionName, status.state);
++      onChange?.(status.state);
++    });
++
++    updatePermissionUI(permissionName, status.state);
++    onChange?.(status.state);
++    return status.state;
++  } catch {
++    // Progressive fallback when 'local-network' or 'loopback-network' is unrecognized
++    updatePermissionUI(permissionName, 'prompt');
++    onChange?.('prompt');
++    return 'prompt';
++  }
++}
++
++/**
++ * Connects to a local network device (e.g., LAN printer or IoT hub) over HTTP.
++ * Example endpoint URL is illustrative; replace with your device's address.
++ */
++export async function fetchLocalDeviceStatus(
++  deviceUrl = 'http://192.168.1.100:8080/api/status'
++): Promise<LocalDeviceStatus> {
++  const request = new Request(deviceUrl, {
++    method: 'GET',
++    mode: 'cors',
++    // MANDATORY: Declare 'local' when targeting RFC 1918 / .local LAN addresses
++    targetAddressSpace: 'local',
++  });
++
++  const response = await fetch(request);
++  if (!response.ok) {
++    throw new Error(`Device responded with HTTP ${response.status}`);
++  }
++  return response.json() as Promise<LocalDeviceStatus>;
++}
++
++/**
++ * Connects to a local companion daemon running on the user's loopback interface.
++ * Example loopback port is illustrative; replace with your service's port.
++ */
++export async function fetchLoopbackDaemon(
++  daemonUrl = 'http://127.0.0.1:45678/health'
++): Promise<LoopbackDaemonStatus> {
++  const request = new Request(daemonUrl, {
++    method: 'GET',
++    mode: 'cors',
++    // MANDATORY: Declare 'loopback' when targeting 127.0.0.1, [::1], or localhost
++    targetAddressSpace: 'loopback',
++  });
++
++  const response = await fetch(request);
++  if (!response.ok) {
++    throw new Error(`Companion app responded with HTTP ${response.status}`);
++  }
++  return response.json() as Promise<LoopbackDaemonStatus>;
++}
++
++/**
++ * Sends a print or display request to a local network device (e.g., LAN printer).
++ */
++export async function sendArticleToLocalPrinter(
++  articlePayload: { slug: string; title: string; summary?: string },
++  printerUrl = 'http://192.168.1.100:8080/api/print'
++): Promise<{ printed: boolean; jobId?: string }> {
++  const request = new Request(printerUrl, {
++    method: 'POST',
++    mode: 'cors',
++    headers: {
++      'Content-Type': 'application/json',
++    },
++    body: JSON.stringify(articlePayload),
++    // MANDATORY: Declare 'local' when targeting RFC 1918 / .local LAN addresses
++    targetAddressSpace: 'local',
++  });
++
++  const response = await fetch(request);
++  if (!response.ok) {
++    throw new Error(`Local printer responded with HTTP ${response.status}`);
++  }
++  return response.json() as Promise<{ printed: boolean; jobId?: string }>;
++}
++
++/**
++ * Syncs reading list or article data with the loopback companion daemon.
++ */
++export async function syncWithLoopbackDaemon(
++  syncPayload: { articles: string[] },
++  daemonSyncUrl = 'http://127.0.0.1:45678/sync'
++): Promise<{ synced: boolean; count?: number }> {
++  const request = new Request(daemonSyncUrl, {
++    method: 'POST',
++    mode: 'cors',
++    headers: {
++      'Content-Type': 'application/json',
++    },
++    body: JSON.stringify(syncPayload),
++    // MANDATORY: Declare 'loopback' when targeting 127.0.0.1, [::1], or localhost
++    targetAddressSpace: 'loopback',
++  });
++
++  const response = await fetch(request);
++  if (!response.ok) {
++    throw new Error(`Companion daemon responded with HTTP ${response.status}`);
++  }
++  return response.json() as Promise<{ synced: boolean; count?: number }>;
++}
++
++/**
++ * Opens a WebSocket connection to a local network device (IP literal, .local, or localhost).
++ */
++export function openLocalWebSocket(
++  wsUrl = 'ws://192.168.1.100:8080/stream'
++): WebSocket {
++  // Pass only subprotocol string(s) as the second argument (never an options object).
++  // Browsers exempt ws:// from Mixed Content when the host is a local/loopback IP literal,
++  // .local, or localhost, and gate the connection on 'local-network' or 'loopback-network'.
++  const socket = new WebSocket(wsUrl, ['v1.telemetry']);
++  return socket;
++}
++
++/**
++ * Opens a WebTransport session to a local network endpoint using a pinned self-signed certificate hash.
++ */
++export async function openLocalWebTransport(
++  wtUrl = 'https://192.168.1.100:4433/wt',
++  certSha256Bytes: BufferSource = new Uint8Array(32)
++): Promise<WebTransport> {
++  const transport = new WebTransport(wtUrl, {
++    serverCertificateHashes: [
++      {
++        algorithm: 'sha-256',
++        value: certSha256Bytes,
++      },
++    ],
++  });
++
++  // transport.ready resolves only after the user grants the 'local-network' permission
++  // and rejects with WebTransportError if the permission is denied.
++  await transport.ready;
++  return transport;
++}
++
++/**
++ * Formats an actionable error message for connection or permission failures.
++ */
++export function formatLnaErrorRemediation(
++  permissionName: LnaPermissionName,
++  error: unknown
++): string {
++  const rawMessage =
++    error instanceof Error ? error.message : 'Connection failed.';
++  const targetLabel =
++    permissionName === 'local-network'
++      ? 'local network device (LAN)'
++      : 'local companion service (loopback)';
++  const settingLabel =
++    permissionName === 'local-network' ? 'Local network' : 'Loopback network';
++
++  return `Unable to reach ${targetLabel} (${rawMessage}). Please verify that the device or service is powered on, connected to the same network, and that "${settingLabel}" access is set to "Allow" in your browser's Site Settings.`;
++}

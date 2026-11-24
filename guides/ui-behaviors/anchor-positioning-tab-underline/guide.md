@@ -3,12 +3,13 @@ name: anchor-positioning-tab-underline
 description: Transition an element seamlessly between two target element positions. For example, moving a selected tab underline between the previously selected tab and the currently selected tab.
 web-feature-ids:
   - anchor-positioning
+  - anchor-positioning-animations
   - prefers-reduced-motion
 ---
 
 # Anchor Positioning Tab Underline
 
-In a tab menu, you should provide visual hints to users about what page they are on. One option is by underlining the tab. With anchor positioning, you can create a smooth animation between the positions of the underline. This does not work when changing the active tab loads a new web page.
+In a tab menu, provide a visual indicator showing users which tab is active by underlining the active tab item. With anchor positioning, you can create a smooth animation between the positions of the underline as the active tab changes. This does not work when changing the active tab loads a new web page.
 
 You can also use this effect to add an animated dot to indicate the active tab in a vertical tab bar.
 
@@ -40,15 +41,15 @@ ul::before {
 }
 ```
 
-Position the underline relative to the anchor using the inset properties and `anchor()` functions.
+Position the underline with logical insets and `anchor(self-start)` or `anchor(self-end)`. Unlike `start` and `end`, these keywords use the underline's own writing mode rather than its containing block's. This keeps the anchor sides consistent with the logical insets when an RTL tab list is inside an LTR page and no ancestor of the underline establishes a containing block within the RTL section.
 
 ```css
 ul::before {
   /* DO NOT use position-area, which can not be transitioned. */
-  /* Use calc() to offset the top slightly */
-  inset-block-start: calc(anchor(bottom) + .1lh);
-  inset-inline-start: anchor(left);
-  inset-inline-end: anchor(right);
+  /* Add a small gap between the indicator and the tab's block-end edge. */
+  inset-block-start: calc(anchor(self-end) + .1lh);
+  inset-inline-start: anchor(self-start);
+  inset-inline-end: anchor(self-end);
 }
 ```
 
@@ -96,15 +97,27 @@ This is only a visual indicator, and must not be a replacement for setting the a
 
 ## Fallback strategies
 
-{{ BASELINE_STATUS("anchor-positioning") }}
+### Anchor positioning
 
-If anchor positioning is not supported in the browser, use a `border-bottom` to add an underline. It will not be animated.
+{{ BASELINE_STATUS("anchor-positioning", "css.types.anchor") }}
+
+If the browser lacks the anchor positioning used here, hide the pseudo-element and draw a static `border-block-end` on the active tab. The border follows the tab's writing mode.
 
 ```css
-ul li.active {
-  @supports not (position-anchor: auto) {
+@supports not (position-anchor: --active) {
+  ul::before {
+    content: none;
+  }
+
+  ul li.active {
     /* Choose a color appropriate to the app theme. */
-    border-bottom: .25lh var(--primary) solid;
+    border-block-end: .25lh solid currentColor;
   }
 }
 ```
+
+### Anchor positioning animations
+
+{{ BASELINE_STATUS("anchor-positioning-animations") }}
+
+If the browser can position the underline but cannot transition `anchor()` values, keep the anchored underline. It moves directly to the new active tab when selection changes.

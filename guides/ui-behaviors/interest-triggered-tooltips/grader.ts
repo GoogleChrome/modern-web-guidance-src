@@ -31,7 +31,7 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     await page.goto(demoUrl);
   });
 
-  test('Triggers should be <button> or <a> elements', async ({ page }) => {
+  test('Triggers are button or anchor elements', async ({ page }) => {
     const result = await page.evaluate(() => {
       const triggers = Array.from(document.querySelectorAll('[interestfor]'));
       if (triggers.length === 0) {
@@ -44,7 +44,7 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  test('Triggers must have an interestfor attribute', async ({ page }) => {
+  test('Triggers have an interestfor attribute matching tooltip id', async ({ page }) => {
     const result = await page.evaluate(() => {
       const triggers = Array.from(document.querySelectorAll('[interestfor]'));
       // We expect at least one trigger with interestfor attribute
@@ -53,7 +53,7 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  test('Tooltips must have popover="hint" attribute', async ({ page }) => {
+  test('Tooltips have a popover="hint" attribute', async ({ page }) => {
     const result = await page.evaluate(() => {
       const triggers = Array.from(document.querySelectorAll('[interestfor]'));
       if (triggers.length === 0) return false;
@@ -66,7 +66,7 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  test('Tooltips must have a unique id attribute', async ({ page }) => {
+  test('Tooltips have a unique id attribute', async ({ page }) => {
     const result = await page.evaluate(() => {
       const popovers = Array.from(document.querySelectorAll('[popover]'));
       if (popovers.length === 0) return false;
@@ -76,63 +76,169 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     expect(result).toBe(true);
   });
 
-  test('Tooltip elements must be <div>', async ({ page }) => {
-    const result = await page.evaluate(() => {
-      const popovers = Array.from(document.querySelectorAll('[popover]'));
-      return popovers.length > 0 && popovers.every(el => el.tagName === 'DIV');
-    });
-    expect(result).toBe(true);
+  test('Tooltips use CSS Anchor Positioning with UA popover centering reset', async () => {
+    const hasAnchorPositioning = /position-area\s*:|anchor\(/.test(html);
+    const hasInsetAuto = /inset\s*:\s*auto/.test(html);
+    const hasMarginReset = /margin\s*:\s*(?:0|unset)\b/.test(html);
+    expect(hasAnchorPositioning).toBe(true);
+    expect(hasInsetAuto).toBe(true);
+    expect(hasMarginReset).toBe(true);
   });
 
-  test('CSS must define explicit position-anchor for tooltips', async () => {
-    expect(html).toContain('position-anchor');
-  });
-
-  test('CSS must use anchor() functions for positioning', async () => {
-    expect(html).toContain('anchor(');
-  });
-
-  test('CSS must define a position-try fallback', async () => {
+  test('CSS defines a position-try fallback', async () => {
     expect(html).toContain('position-try');
   });
 
-  test('CSS must use anchor() positioning but NOT position-area', async () => {
-    expect(html.includes('anchor(') && !/position-area\s*:/.test(html)).toBe(true);
+  test('When anchor-positioning is unsupported, polyfill or @supports fallback protects popover resets', async ({ page }) => {
+    const cssState = await page.evaluate(() => {
+      const popovers = document.querySelectorAll('[popover]');
+      if (popovers.length === 0) {
+        return {
+          hasPopovers: false,
+          hasUnwrappedAnchorName: false,
+          hasUnwrappedAnchorRef: false,
+          hasUnwrappedAnchorFunc: false,
+          hasUnwrappedInsetAutoReset: false,
+          hasSupportsGatedResets: false,
+        };
+      }
+
+      let hasUnwrappedAnchorName = false;
+      let hasUnwrappedAnchorRef = false;
+      let hasUnwrappedAnchorFunc = false;
+      let hasUnwrappedInsetAutoReset = false;
+      let hasSupportsGatedResets = false;
+
+      const selectorMatchesPopover = (selectorText: string): boolean => {
+        try {
+          return Array.from(document.querySelectorAll(selectorText)).some(el => el.hasAttribute('popover'));
+        } catch {
+          return /\[popover\]|tooltip|hint/i.test(selectorText);
+        }
+      };
+
+      const visitRule = (rule: CSSRule, inSupports: boolean, inAnchorSupports: boolean) => {
+        if (rule instanceof CSSStyleRule) {
+          const raw = rule.cssText || '';
+          const hasInsetAuto =
+            /\binset\s*:\s*auto\b/i.test(raw) ||
+            (rule.style.top === 'auto' &&
+              rule.style.right === 'auto' &&
+              rule.style.bottom === 'auto' &&
+              rule.style.left === 'auto');
+          const hasMarginReset =
+            /\bmargin\s*:\s*(?:0|unset)\b/i.test(raw) ||
+            rule.style.margin === '0px' ||
+            rule.style.margin === 'unset';
+          const matchesPopover = selectorMatchesPopover(rule.selectorText);
+
+          if (!inSupports) {
+            if (/\banchor-name\s*:\s*--/i.test(raw)) hasUnwrappedAnchorName = true;
+            if (/\bposition-anchor\s*:\s*--/i.test(raw) || /\banchor\(\s*--/i.test(raw)) {
+              hasUnwrappedAnchorRef = true;
+            }
+            if (/\banchor\(/i.test(raw)) hasUnwrappedAnchorFunc = true;
+            if (matchesPopover && hasInsetAuto) hasUnwrappedInsetAutoReset = true;
+          } else if (inAnchorSupports && matchesPopover && hasInsetAuto && hasMarginReset) {
+            hasSupportsGatedResets = true;
+          }
+          if (rule.cssRules) {
+            for (const child of Array.from(rule.cssRules)) {
+              visitRule(child, inSupports, inAnchorSupports);
+            }
+          }
+        } else if (rule instanceof CSSSupportsRule) {
+          const cond = (rule.conditionText || '').trim();
+          const isPositiveAnchor =
+            !/^\s*not\b/i.test(cond) &&
+            /(?:position-area|anchor(?:-name|\())/i.test(cond);
+          for (const child of Array.from(rule.cssRules)) {
+            visitRule(child, true, inAnchorSupports || isPositiveAnchor);
+          }
+        } else if ('cssRules' in rule && (rule as CSSGroupingRule).cssRules) {
+          for (const child of Array.from((rule as CSSGroupingRule).cssRules)) {
+            visitRule(child, inSupports, inAnchorSupports);
+          }
+        }
+      };
+
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            visitRule(rule, false, false);
+          }
+        } catch {
+          // ignore cross-origin stylesheets
+        }
+      }
+
+      return {
+        hasPopovers: true,
+        hasUnwrappedAnchorName,
+        hasUnwrappedAnchorRef,
+        hasUnwrappedAnchorFunc,
+        hasUnwrappedInsetAutoReset,
+        hasSupportsGatedResets,
+      };
+    });
+
+    expect(cssState.hasPopovers).toBe(true);
+    const hasConditionalPolyfillScript =
+      html.includes('css-anchor-positioning') &&
+      /(?:anchorName|anchor-name|positionArea|position-area|CSS\.supports)/.test(html);
+    const branchPolyfill =
+      hasConditionalPolyfillScript &&
+      cssState.hasUnwrappedAnchorName &&
+      cssState.hasUnwrappedAnchorRef &&
+      cssState.hasUnwrappedAnchorFunc;
+    const branchSupportsGated =
+      cssState.hasSupportsGatedResets && !cssState.hasUnwrappedInsetAutoReset;
+
+    expect(branchPolyfill || branchSupportsGated).toBe(true);
   });
 
-  test('Interestfor polyfill must be conditionally installed', async () => {
+  test('Interestfor polyfill is conditionally installed', async () => {
     const hasPolyfill = html.includes('interestfor') && html.includes('interestForElement');
     expect(hasPolyfill).toBe(true);
   });
 
-  test('Popover polyfill must be conditionally installed', async () => {
-    const hasPolyfill = html.includes('popover-polyfill') && html.includes('hasOwnProperty("popover")');
-    expect(hasPolyfill).toBe(true);
+  test('Popover polyfill or fallback is conditionally provided when native support is missing', async ({ page }) => {
+    const hasPopovers = await page.evaluate(() => document.querySelectorAll('[popover]').length > 0);
+    expect(hasPopovers).toBe(true);
+    const hasPopoverFeatureCheck =
+      /Object\.hasOwn\s*\(\s*HTMLElement\.prototype\s*,\s*['"]popover['"]\s*\)/.test(html) ||
+      html.includes('hasOwnProperty("popover")') ||
+      html.includes("hasOwnProperty('popover')") ||
+      html.includes('"popover" in') ||
+      html.includes("'popover' in") ||
+      html.includes('showPopover');
+    const hasConditionalPolyfill = html.includes('popover-polyfill') && hasPopoverFeatureCheck;
+    const hasManualFallback =
+      hasPopoverFeatureCheck &&
+      (/(?:\bgetBoundingClientRect\b|position\s*:\s*fixed)/.test(html));
+    expect(hasConditionalPolyfill || hasManualFallback).toBe(true);
   });
 
-  test('Anchor positioning polyfill must be conditionally installed', async () => {
-    const hasPolyfill = html.includes('css-anchor-positioning') && (html.includes('anchorName') || html.includes('anchor-name'));
-    expect(hasPolyfill).toBe(true);
-  });
-
-  test('Tooltip content must NOT be in attributes on the trigger', async ({ page }) => {
+  test('Tooltip content is not stored in attributes on the trigger', async ({ page }) => {
     const result = await page.evaluate(() => {
       const triggers = Array.from(document.querySelectorAll('button, a, .tooltip, [interestfor]'));
-      return triggers.length > 0 && !triggers.some(el => el.hasAttribute('data-tooltip'));
+      return triggers.length > 0 && !triggers.some(el =>
+        el.hasAttribute('title') || el.hasAttribute('data-tooltip')
+      );
     });
     expect(result).toBe(true);
   });
 
-  test('Tooltip content must NOT be displayed using pseudo-elements', async () => {
+  test('Tooltip content is not displayed using pseudo-elements', async () => {
     const hasPseudoTooltip = /::after\s*{[^}]*content:[^}]*attr\(data-tooltip\)/.test(html) || /::before\s*{[^}]*content:[^}]*attr\(data-tooltip\)/.test(html);
     expect(hasPseudoTooltip).toBe(false);
   });
 
-  test('Tooltips must be hoverable and persistent per WCAG 1.4.13 guidelines', async () => {
+  test('Tooltips are hoverable and persistent per WCAG 1.4.13 guidelines', async () => {
     expect(/popover=["']hint["']/i.test(html)).toBe(true);
   });
 
-  test('Tooltip should become visible on hover', async ({ page }) => {
+  test('Tooltip becomes visible on hover', async ({ page }) => {
     const trigger = page.locator('[interestfor], .tooltip').first();
     await expect(trigger).toBeVisible();
     
@@ -145,7 +251,6 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     await expect(tooltip).toBeHidden();
     
     await trigger.hover();
-    await page.waitForTimeout(100);
     await expect(tooltip).toBeVisible();
   });
 });

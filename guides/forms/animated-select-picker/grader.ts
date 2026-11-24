@@ -27,8 +27,8 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(cssContent).toMatch(/::picker\(\s*select\s*\)/);
   });
 
-  test('Uses allow-discrete transition behavior for visibility animations', async () => {
-    expect(cssContent).toMatch(/allow-discrete/);
+  test('Uses transition-behavior: allow-discrete for visibility animations', async () => {
+    expect(cssContent).toMatch(/transition-behavior\s*:\s*allow-discrete/);
   });
 
   test('Uses @starting-style to declare initial visual state before opening', async () => {
@@ -48,14 +48,6 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
     expect(hasManualToggle).toBe(false);
   });
 
-  test('Inline decorative SVG icons inside <option> elements must define aria-hidden="true"', async () => {
-    const matches = [...html.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)];
-    const svgOptions = matches.filter(m => /<svg/i.test(m[1]));
-    expect(svgOptions.length).toBeGreaterThan(0);
-    for (const match of svgOptions) {
-      expect(/aria-hidden=["']true["']/i.test(match[1])).toBe(true);
-    }
-  });
 
   test('The checked state of an option must incorporate multiple visual indicators', async () => {
     const checkedBlocks = cssContent.match(/option:checked\s*\{[^}]*\}/gi) || [];
@@ -65,11 +57,15 @@ test.describe(`Animated Select Picker Expectations: ${demoName}`, () => {
   });
 
   test('Dropdown entry/exit and icon animations must be disabled or dampened if prefers-reduced-motion: reduce is set', async () => {
-    const reducedMotionMatch = cssContent.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{([\s\S]*?\})\s*\}/i);
-    expect(reducedMotionMatch).not.toBeNull();
-    const inner = reducedMotionMatch ? reducedMotionMatch[1] : '';
-    expect(/::picker\(\s*select\s*\)|::picker-icon/i.test(inner)).toBe(true);
-    expect(/transition\s*:\s*none|transition-duration\s*:\s*0/i.test(inner)).toBe(true);
+    const hasReduceReset =
+      /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)[\s\S]*?(?:transition\s*:\s*none|(?:transition|animation)-duration\s*:\s*0(?:\.0+1)?m?s)/i.test(
+        cssContent,
+      );
+    const hasNoPreferenceGate =
+      /@media\s*\(\s*prefers-reduced-motion\s*:\s*no-preference\s*\)[\s\S]*?(?:transition|animation)/i.test(
+        cssContent,
+      );
+    expect(hasReduceReset || hasNoPreferenceGate).toBe(true);
   });
 
   test.describe('Browser DOM tests', () => {

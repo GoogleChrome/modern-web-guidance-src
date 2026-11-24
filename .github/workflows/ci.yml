@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -49,7 +53,7 @@ jobs:
 
       - name: RAG Benchmark (Public Datasets)
         run: |
-          pnpm run benchmark:rag --ci --markdown /tmp/rag-bench-ci.md
+          pnpm run benchmark:rag --public-only --markdown /tmp/rag-bench-ci.md
           if [ -f /tmp/rag-bench-ci.md ]; then
             cat /tmp/rag-bench-ci.md >> $GITHUB_STEP_SUMMARY
           fi
@@ -110,6 +114,10 @@ jobs:
 
       - name: Playwright E2E Tests
         run: pnpm run test:e2e
+
+      - name: Browser-backed unit tests
+        timeout-minutes: 10
+        run: node --test src/grading/test-fixture.test.ts
 
       - name: Test Grader Calibration
         # Ensuring playwright is happy

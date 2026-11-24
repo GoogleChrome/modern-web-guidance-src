@@ -340,7 +340,7 @@ test('all reference files and type definitions referenced in grader generation e
     path.resolve(rootDir, 'src/grading/playwright-pattern-library.grader.ts'),
     path.resolve(rootDir, 'node_modules', 'ts-morph', 'lib', 'ts-morph.d.ts'),
     path.resolve(rootDir, 'node_modules', 'linkedom', 'types', 'index.d.ts'),
-    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'CSSOM.d.ts'),
+    path.resolve(rootDir, 'node_modules', 'cssomnom', 'dist', 'index.d.ts'),
   ];
 
   for (const filePath of requiredSandboxFiles) {

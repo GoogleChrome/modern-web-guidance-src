@@ -142,14 +142,15 @@
       padding: 0.5rem;
       margin-top: 0.25rem;
       width: anchor-size(width);
-      overflow: hidden;
 
       /* The crucial transition setting for popover animations */
       transition:
-        display 0.8s allow-discrete,
-        overlay 0.8s allow-discrete,
-        opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-        height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        display,
+        overlay,
+        opacity cubic-bezier(0.16, 1, 0.3, 1),
+        height cubic-bezier(0.16, 1, 0.3, 1);
+      transition-duration: 0.8s;
+      transition-behavior: allow-discrete;
         
       opacity: 0;
       height: 0;

@@ -1,239 +1,272 @@
 diff --git a/index.html b/index.html
-index 66c9173..fd7208e 100644
+index 66c9173..08be98c 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,143 @@
-       text-decoration: none;
-       font-size: 0.85rem;
+@@ -107,17 +107,182 @@
+       margin-top: 20px;
      }
-+
-+    /* Seasonal favorite cards */
-+    .grid {
-+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-+    }
-+
-+    article.card {
+ 
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
++    /* Seasonal Favorites cards */
++    .grid:has(> .card) {
++      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
++      align-items: start;
+     }
+ 
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
++    .card {
++      /* Size container: descendants adapt to the card's own width */
 +      container-type: inline-size;
-+      display: grid;
++      /* Share media / header / content / footer tracks with sibling cards */
 +      grid-row: span 4;
++      display: grid;
 +      grid-template-rows: subgrid;
-+      row-gap: 10px;
-+      padding: 0;
-+      overflow: hidden;
-+      align-content: start;
-+    }
-+
-+    article.card > :not(img) {
-+      margin-inline: 20px;
-+    }
-+
-+    article.card > img {
-+      width: 100%;
-+      aspect-ratio: 4 / 3;
-+      object-fit: cover;
-+      display: block;
-+    }
-+
-+    article.card > h3 {
-+      margin: 10px 20px 0;
-+    }
-+
-+    article.card > footer {
-+      background: none;
-+      padding: 0;
-+      margin-top: 0;
-+      margin-bottom: 20px;
-+      display: flex;
-+      flex-direction: column;
-+      align-items: stretch;
-+      gap: 10px;
-+      text-align: center;
-+    }
-+
-+    article.card .order-form {
-+      display: flex;
-+      flex-direction: column;
-+      gap: 10px;
-+    }
-+
-+    article.card label {
-+      display: flex;
-+      align-items: center;
-+      justify-content: center;
-+      gap: 8px;
-+    }
-+
-+    article.card select {
-+      font: inherit;
-+      padding: 6px 10px;
-+      border: 1px solid var(--primary);
-+      border-radius: 5px;
++      grid-template-columns: minmax(0, 1fr);
++      row-gap: 12px;
 +      background: white;
-+      color: var(--text);
++      padding: 20px;
++      border: 2px solid transparent;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++      transition: box-shadow 0.2s, border-color 0.2s;
++
++      /* Regions placed by element selector */
++      > :is(img, picture, video, svg, .media) {
++        grid-row: 1;
++      }
++
++      > :is(h2, h3, h4, hgroup, header) {
++        grid-row: 2;
++      }
++
++      > :not(img, picture, video, svg, .media, h2, h3, h4, hgroup, header, footer) {
++        grid-row: 3;
++      }
++
++      > footer {
++        grid-row: 4;
++      }
++
++      > img {
++        display: block;
++        width: 100%;
++        aspect-ratio: 4 / 3;
++        object-fit: cover;
++        border-radius: 6px;
++      }
++
++      h3 {
++        color: var(--primary);
++        line-height: 1.3;
++      }
++
++      h3 a {
++        color: inherit;
++        text-decoration: none;
++      }
++
++      > footer {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: end;
++        justify-content: space-between;
++        gap: 10px;
++      }
++
++      .btn {
++        margin-top: 0;
++        border: 0;
++        font: inherit;
++        cursor: pointer;
++      }
++
++      .order-form {
++        display: flex;
++        flex-wrap: wrap;
++        align-items: end;
++        gap: 10px;
++      }
++
++      .order-form label {
++        display: flex;
++        flex-direction: column;
++        font-size: 0.85rem;
++        font-weight: 600;
++      }
++
++      .order-form select {
++        font: inherit;
++        padding: 8px 10px;
++        border: 1px solid var(--secondary);
++        border-radius: 5px;
++        background: white;
++        color: var(--text);
++      }
 +    }
 +
-+    article.card .btn {
-+      margin-top: 0;
-+      border: 2px solid var(--primary);
-+      font: inherit;
-+      cursor: pointer;
-+      text-align: center;
++    /* Cards with media: reserve a side column that is only used when wide */
++    .card:has(> img) {
++      grid-template-columns: auto minmax(0, 1fr);
++
++      > * {
++        grid-column: 1 / -1;
++      }
 +    }
 +
-+    article.card .btn-secondary {
-+      background: transparent;
-+      color: var(--primary);
++    /* Stretched primary link with independent actions kept operable */
++    .card:has(a.card-link) {
++      position: relative;
++
++      a:not(.card-link), button, input, select, label {
++        position: relative;
++        z-index: 1;
++      }
 +    }
 +
-+    article.card .btn-secondary:hover {
-+      background: var(--secondary);
++    .card a.card-link::after {
++      content: "";
++      position: absolute;
++      inset: 0;
 +    }
 +
-+    article.card .btn:focus-visible,
-+    article.card select:focus-visible {
++    .card a.card-link:focus-visible {
++      outline: none;
++    }
++
++    .card:has(a.card-link:focus-visible) {
 +      outline: 3px solid var(--accent);
 +      outline-offset: 2px;
++    }
++
++    .card:has(a.card-link:hover) {
++      border-color: var(--accent);
++      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
++    }
++
++    /* Narrow card: centered, stacked in source order */
++    @container (max-width: 359px) {
++      .card > :is(h3, p) {
++        text-align: center;
++      }
++
++      .card > footer,
++      .card .order-form {
++        justify-content: center;
++      }
++    }
++
++    /* Wide card with media: media in a side column beside the other regions */
++    @container (min-width: 480px) {
++      .card:has(> img) > img {
++        grid-column: 1;
++        grid-row: 1 / -1;
++        width: 40cqi;
++        aspect-ratio: 1;
++        margin-inline-end: 20px;
++      }
++
++      .card:has(> img) > :not(img) {
++        grid-column: 2;
++      }
++
++      .card h3 {
++        font-size: 1.4rem;
++      }
 +    }
 +
 +    .visually-hidden {
 +      position: absolute;
 +      width: 1px;
 +      height: 1px;
++      padding: 0;
++      margin: -1px;
 +      overflow: hidden;
-+      clip-path: inset(50%);
++      clip: rect(0, 0, 0, 0);
 +      white-space: nowrap;
-+    }
-+
-+    .order-status {
-+      text-align: center;
-+      margin-top: 20px;
-+      min-height: 1.6em;
-+    }
-+
-+    .card:has(> img) {
-+      grid-template-columns: 40% 1fr;
-+    }
-+
-+    @container (max-width: 419.98px) {
-+      .card:has(> img) > * {
-+        grid-column: 1 / -1;
-+      }
-+    }
-+
-+    @container (min-width: 420px) {
-+      .card > img {
-+        grid-column: 1;
-+        grid-row: 1 / span 4;
-+        height: 100%;
-+        aspect-ratio: auto;
-+      }
-+
-+      .card > :not(img) {
-+        grid-column: 2;
-+      }
-+
-+      article.card > :not(img),
-+      article.card > footer {
-+        text-align: left;
-+      }
-+    }
-+
-+    @container (max-width: 260px) {
-+      .card > p {
-+        font-size: 0.9rem;
-+      }
-+    }
-   </style>
- </head>
++      border: 0;
+     }
  
-@@ -178,22 +315,62 @@
+     .btn {
+@@ -178,21 +343,63 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
 -        <div class="card">
+-          <h3>Maple Oat Latte</h3>
 +        <article class="card">
-+          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="A maple oat latte with latte art in a ceramic cup" loading="lazy">
-           <h3>Maple Oat Latte</h3>
++          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="A latte in a glass cup with latte art on top" width="600" height="450" loading="lazy">
++          <h3><a href="/menu/seasonal" class="card-link">Maple Oat Latte</a></h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
 +          <footer>
-+            <form class="order-form">
-+              <label>Size
-+                <select name="size">
++            <form class="order-form" action="/order" method="post">
++              <input type="hidden" name="item" value="seasonal">
++              <label>
++                Size
++                <select name="size" required>
 +                  <option value="small">Small</option>
 +                  <option value="medium" selected>Medium</option>
 +                  <option value="large">Large</option>
 +                </select>
 +              </label>
-+              <button type="submit" class="btn" data-drink="Maple Oat Latte">Add to Order</button>
++              <button type="submit" class="btn">Add<span class="visually-hidden"> Maple Oat Latte</span> to order</button>
 +            </form>
-+            <a href="/menu/seasonal" class="btn btn-secondary">View Details<span class="visually-hidden"> for Maple Oat Latte</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
-+          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="A shot of dark roast espresso in a small cup" loading="lazy">
-           <h3>Dark Roast Espresso</h3>
++          <img src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&fit=crop&w=600&q=80" alt="A shot of dark espresso with golden crema in a small cup" width="600" height="450" loading="lazy">
++          <h3><a href="/menu/espresso" class="card-link">Dark Roast Espresso</a></h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
 -        </div>
 -        <div class="card">
+-          <h3>Cold Brew</h3>
 +          <footer>
-+            <form class="order-form">
-+              <label>Size
-+                <select name="size">
++            <form class="order-form" action="/order" method="post">
++              <input type="hidden" name="item" value="espresso">
++              <label>
++                Size
++                <select name="size" required>
 +                  <option value="small">Small</option>
 +                  <option value="medium" selected>Medium</option>
 +                  <option value="large">Large</option>
 +                </select>
 +              </label>
-+              <button type="submit" class="btn" data-drink="Dark Roast Espresso">Add to Order</button>
++              <button type="submit" class="btn">Add<span class="visually-hidden"> Dark Roast Espresso</span> to order</button>
 +            </form>
-+            <a href="/menu/espresso" class="btn btn-secondary">View Details<span class="visually-hidden"> for Dark Roast Espresso</span></a>
 +          </footer>
 +        </article>
 +        <article class="card">
-+          <img src="https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=600&q=80" alt="A tall glass of iced cold brew coffee" loading="lazy">
-           <h3>Cold Brew</h3>
++          <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=600&q=80" alt="Iced cold brew coffee in a tall glass" width="600" height="450" loading="lazy">
++          <h3><a href="/menu/cold-brew" class="card-link">Cold Brew</a></h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
 -        </div>
 +          <footer>
-+            <form class="order-form">
-+              <label>Size
-+                <select name="size">
++            <form class="order-form" action="/order" method="post">
++              <input type="hidden" name="item" value="cold-brew">
++              <label>
++                Size
++                <select name="size" required>
 +                  <option value="small">Small</option>
 +                  <option value="medium" selected>Medium</option>
 +                  <option value="large">Large</option>
 +                </select>
 +              </label>
-+              <button type="submit" class="btn" data-drink="Cold Brew">Add to Order</button>
++              <button type="submit" class="btn">Add<span class="visually-hidden"> Cold Brew</span> to order</button>
 +            </form>
-+            <a href="/menu/cold-brew" class="btn btn-secondary">View Details<span class="visually-hidden"> for Cold Brew</span></a>
 +          </footer>
 +        </article>
        </div>
-+      <p class="order-status" role="status" aria-live="polite"></p>
      </section>
    </main>
- 
-@@ -207,6 +384,18 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
- 
-+
-+  <script>
-+    const status = document.querySelector('.order-status');
-+    document.querySelectorAll('.order-form').forEach((form) => {
-+      form.addEventListener('submit', (event) => {
-+        event.preventDefault();
-+        const drink = form.querySelector('button').dataset.drink;
-+        const size = form.elements.size.value;
-+        status.textContent = `Added one ${size} ${drink} to your order.`;
-+      });
-+    });
-+  </script>
- </body>
- 
- </html>

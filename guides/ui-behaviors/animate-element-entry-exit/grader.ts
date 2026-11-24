@@ -54,10 +54,9 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
-    await page.waitForTimeout(500);
   });
 
-  test(`uses @starting-style to define starting property values for entry animation`, async ({ page }) => {
+  test(`Uses @starting-style to define starting property values for entry animation`, async ({ page }) => {
     const hasStartingStyle = await page.evaluate(() => {
       for (const sheet of Array.from(document.styleSheets)) {
         try {
@@ -74,25 +73,25 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     expect(hasStartingStyle).toBe(true);
   });
 
-  test(`includes transition-behavior: allow-discrete or allow-discrete keyword for display`, async ({ page }) => {
-    const el = page.locator('#toggleCard, #domContainer .card, .card:not(.stage)').first();
+  test(`Includes transition-behavior: allow-discrete or allow-discrete keyword for display`, async ({ page }) => {
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionBehavior = await el.evaluate(e => window.getComputedStyle(e).transitionBehavior);
     expect(transitionBehavior).toMatch(/allow-discrete/);
   });
 
-  test(`includes display property in transition list`, async ({ page }) => {
-    const el = page.locator('#toggleCard, #domContainer .card, .card:not(.stage)').first();
+  test(`Includes display property in transition list`, async ({ page }) => {
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionProperty = await el.evaluate(e => window.getComputedStyle(e).transitionProperty);
     expect(transitionProperty).toContain('display');
   });
 
-  test(`smoothly transitions properties when added to DOM`, async ({ page }) => {
+  test(`Smoothly transitions properties when added to DOM`, async ({ page }) => {
     await waitForAnimationSpy(page, async () => {
       await page.click('#addBtn', { timeout: 2000 });
     });
   });
 
-  test(`smoothly transitions to hidden values before being hidden from layout`, async ({ page }) => {
+  test(`Smoothly transitions to hidden values before being hidden from layout`, async ({ page }) => {
     const toggleCard = page.locator('#toggleCard');
     await expect(toggleCard).toBeVisible({ timeout: 2000 });
 
@@ -101,7 +100,7 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     });
   });
 
-  test(`smoothly transitions properties from @starting-style values when display changes from none to visible`, async ({ page }) => {
+  test(`Smoothly transitions properties from @starting-style values when display changes from none to visible`, async ({ page }) => {
     const toggleCard = page.locator('#toggleCard');
     await expect(toggleCard).toBeVisible({ timeout: 2000 });
     await page.click('#toggleBtn', { timeout: 2000 });
@@ -112,7 +111,7 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     });
   });
 
-  test(`waits for exit transition to complete before removing element from DOM`, async ({ page }) => {
+  test(`Waits for exit transition to complete before removing element from DOM`, async ({ page }) => {
     await page.evaluate(() => {
       (window as any)._removeSpyCalled = false;
       (window as any)._removeWasDelayed = false;
@@ -141,8 +140,8 @@ test.describe(`animate-element-entry-exit Expectations: ${demoName}`, () => {
     }, { timeout: 2000 }).toBe(true);
   });
 
-  test(`transition durations for entry and exit are reasonable (0.3s to 1s)`, async ({ page }) => {
-    const el = page.locator('#toggleCard, #domContainer .card, .card:not(.stage)').first();
+  test(`Transition durations for entry and exit are reasonable (0.3s to 1s)`, async ({ page }) => {
+    const el = page.locator('#toggleCard, #domContainer .card').first();
     const transitionDuration = await el.evaluate(e => window.getComputedStyle(e).transitionDuration);
     const durations = transitionDuration.split(',').map(s => parseFloat(s));
 

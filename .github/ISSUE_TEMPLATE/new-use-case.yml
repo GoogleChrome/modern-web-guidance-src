@@ -32,7 +32,7 @@ body:
     id: slug
     attributes:
       label: Use case slug
-      description: Kebab-case directory name under `guides/<category>/<slug>` (e.g. `custom-list-markers`).
+      description: Kebab-case noun phrase under `guides/<category>/<slug>` naming the component or pattern, without imperative verbs or API names (e.g. `custom-list-markers`, `modal-scroll-lock`).
       placeholder: e.g. custom-list-markers
     validations:
       required: true

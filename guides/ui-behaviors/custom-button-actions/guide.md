@@ -78,7 +78,7 @@ const commandRegistry = {
 ## Key constraints
 
 *   **Prefix custom commands**: MANDATORY: All custom command names must start with `--` (e.g., `command="--my-action"`).
-*   **Targeting**: The `commandfor` attribute must match the `id` of an element in the same document tree.
+*   **Targeting**: The `commandfor` attribute must match the `id` of an element in the same tree as the button (the same document or shadow root).
 *   **No bubbling**: The `command` event does not bubble. If there multiple possible targets, add `{ capture: true }` to the event handler and listen on an ancestor.
 *   **Shadow roots**: If the target may be in a shadow root, use `event.composedPath()[0]` instead of `event.target`.
 *   **Accessibility**: Custom commands have no inherent semantics, and you must explicitly apply any states.
@@ -104,6 +104,8 @@ For the best performance, you should only load the polyfill if the browser doesn
 
 **NOTE:** This polyfill does not manage ARIA states (like `aria-pressed` or `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
 
+#### Conditionally load the Invoker Commands polyfill
+
 ```javascript
 // 1. Conditionally load the polyfill
 const hasNativeSupport = 'commandForElement' in HTMLButtonElement.prototype;
@@ -118,7 +120,11 @@ if (!hasNativeSupport) {
     }
   })();
 }
+```
 
+#### Manually manage ARIA states in your listener
+
+```javascript
 // 2. Manually manage ARIA states in your listener
 document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command;
@@ -158,10 +164,13 @@ if (!globalThis.CommandEvent) {
 
 // 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
+    // Respect handlers that already canceled the button's activation.
+    if (event.defaultPrevented) return;
     const button = event.composedPath().find((el) => el.matches?.("button[commandfor]"));
     if (!button) return;
 
-    const target = document.getElementById(button.getAttribute('commandfor'));
+    // Resolve within the button's tree, since IDs can repeat across shadow roots.
+    const target = button.getRootNode().getElementById(button.getAttribute('commandfor'));
     const command = button.getAttribute('command');
 
     if (target && command) {

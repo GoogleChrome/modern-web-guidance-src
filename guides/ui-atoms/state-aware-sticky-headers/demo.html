@@ -38,7 +38,11 @@
     .sticky-header {
       /* Visual styling */
       background: #f0f0f0;
-      padding: 20px;
+      min-height: var(--header-height);
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
       font-size: 1.5rem;
       font-weight: bold;
       transition: background-color 0.3s, box-shadow 0.3s, color 0.3s;

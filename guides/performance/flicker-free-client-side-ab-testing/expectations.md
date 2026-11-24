@@ -1,5 +1,5 @@
 - The experiment script is placed in the document `<head>`.
-- The experiment script has the `blocking="render"`
+- The experiment script has the `blocking="render"` attribute.
 - The experiment script has either `async` or `type="module"` set (to avoid blocking parsing).
 - The page does not visually flicker or flash between the control and variant states on initial load.
 - The variant styling is applied before the browser paints any content to the screen.

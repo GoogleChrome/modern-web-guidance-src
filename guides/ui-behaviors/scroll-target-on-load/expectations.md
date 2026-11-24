@@ -1,5 +1,6 @@
 - The `.target` element MUST have an ancestor scroll container configured with scrolling (e.g., `overflow: auto`).
 - The `.target` element MUST have the `scroll-initial-target: nearest` CSS property applied directly to it.
+- Only a single element MUST have the `.target` class (`scroll-initial-target`) within the same scroll container.
 - Media elements (e.g., embedded images) within the scroll container MUST have explicit dimensions applied (e.g., via `height`, `width`, or `aspect-ratio`) to prevent unpredictable layout shifts that would invalidate initial scroll coordinates.
 - The implementation MUST NOT rely on JavaScript to calculate the initial scroll offset as its primary mechanism. The CSS property alone must manage the positioning to avoid a visible flash.
 - A progressive enhancement JavaScript fallback MUST be included. It MUST evaluate native CSS capability using `!CSS.supports("scroll-initial-target", "nearest")` before executing any scroll logic.

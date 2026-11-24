@@ -1,188 +1,191 @@
 diff --git a/.gitignore b/.gitignore
 new file mode 100644
-index 0000000..c43f9f8
+index 0000000..b947077
 --- /dev/null
 +++ b/.gitignore
-@@ -0,0 +1,3 @@
+@@ -0,0 +1,2 @@
 +node_modules/
 +dist/
-+.build/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..4fa507c
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,10 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const output = new URL('./dist/', import.meta.url);
++await mkdir(output, { recursive: true });
++await Promise.all(
++  ['index.html', 'preferences.js'].map((file) =>
++    copyFile(new URL(file, import.meta.url), new URL(file, output)),
++  ),
++);
++console.log('Built static site in dist/');
 diff --git a/index.html b/index.html
-index 66c9173..8512e59 100644
+index 66c9173..ffba98c 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,7 +152,52 @@
+@@ -12,6 +12,17 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --surface: #fff;
++      --footer-background: var(--secondary);
++      color-scheme: light;
++    }
++
++    :root[data-theme="dark"] {
++      --text: #f2e7e2;
++      --light: #211a18;
++      --surface: #302622;
++      --footer-background: #382b26;
++      color-scheme: dark;
+     }
+ 
+     * {
+@@ -108,7 +119,7 @@
+     }
+ 
+     .card {
+-      background: white;
++      background: var(--surface);
+       padding: 20px;
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+@@ -117,7 +128,7 @@
+ 
+     .card h3 {
+       margin-bottom: 10px;
+-      color: var(--primary);
++      color: var(--text);
+     }
+ 
+     .btn {
+@@ -136,7 +147,7 @@
+     }
+ 
+     footer {
+-      background: var(--secondary);
++      background: var(--footer-background);
+       text-align: center;
+       padding: 40px 20px;
+       margin-top: 40px;
+@@ -152,6 +163,37 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
 +    .preferences {
 +      margin-top: 40px;
-+      text-align: left;
++      padding: 20px;
++      background: var(--surface);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
 +    }
 +
-+    .preferences h2 {
-+      color: var(--primary);
-+    }
-+
-+    .switch-label {
++    .preference-control {
 +      display: flex;
++      flex-wrap: wrap;
 +      align-items: center;
-+      justify-content: space-between;
-+      gap: 20px;
-+      min-height: 48px;
-+      margin-top: 16px;
++      gap: 12px;
++      margin-top: 12px;
++    }
++
++    .preference-control label {
 +      cursor: pointer;
 +    }
 +
 +    input[type="checkbox"][switch] {
-+      accent-color: var(--accent);
++      accent-color: #97602b;
 +      margin: 0;
 +      cursor: pointer;
-+      flex-shrink: 0;
-+      font-size: 24px;
 +    }
 +
 +    input[type="checkbox"][switch]:focus-visible {
-+      outline: 3px solid var(--primary);
++      outline: 3px solid var(--accent);
 +      outline-offset: 4px;
 +    }
-+
-+    .switch-status {
-+      font-size: 0.9rem;
-+      margin-top: 8px;
-+    }
    </style>
-+  <script type="importmap">
-+    {
-+      "imports": {
-+        "input-switch-polyfill": "./vendor/input-switch-polyfill/input-switch-polyfill.js"
-+      }
-+    }
-+  </script>
-+  <script type="module" src="./main.js"></script>
  </head>
  
- <body>
-@@ -195,6 +240,16 @@
+@@ -195,6 +237,16 @@
          </div>
        </div>
      </section>
-+    <section class="card preferences" aria-labelledby="preferences-heading">
-+      <h2 id="preferences-heading">Coffee updates</h2>
-+      <p id="coffee-updates-description">Choose whether to enable notifications about seasonal drinks and fresh roasts.</p>
-+      <label class="switch-label" for="coffee-updates">
-+        <span>Enable coffee updates</span>
-+        <input id="coffee-updates" name="coffee-updates" type="checkbox" switch
-+          aria-describedby="coffee-updates-description">
-+      </label>
-+      <p class="switch-status" id="coffee-updates-status" role="status">Coffee updates are off.</p>
++    <section class="preferences" aria-labelledby="preferences-heading">
++      <h2 id="preferences-heading">Your preferences</h2>
++      <p id="dark-theme-description">Choose a darker appearance for this device.</p>
++      <div class="preference-control">
++        <label for="dark-theme">Use dark theme</label>
++        <input id="dark-theme" name="dark-theme" type="checkbox" switch
++          aria-describedby="dark-theme-description">
++        <span id="dark-theme-status" aria-hidden="true">Off</span>
++      </div>
 +    </section>
    </main>
  
    <footer>
-diff --git a/main.js b/main.js
-new file mode 100644
-index 0000000..fc4e0b9
---- /dev/null
-+++ b/main.js
-@@ -0,0 +1,22 @@
-+// Keep the native control in browsers that support it. The local polyfill
-+// supplies switch styling, semantics, accent-color syncing, and pointer drag.
-+if (!('switch' in HTMLInputElement.prototype)) {
-+  import('input-switch-polyfill').catch((error) => {
-+    // The labeled checkbox remains usable if the enhancement cannot load.
-+    console.error('Unable to load switch enhancement.', error);
-+  });
-+}
-+
-+const coffeeUpdates = document.getElementById('coffee-updates');
-+const coffeeUpdatesStatus = document.getElementById('coffee-updates-status');
-+
-+if (coffeeUpdates instanceof HTMLInputElement && coffeeUpdatesStatus) {
-+  const updateStatus = () => {
-+    coffeeUpdatesStatus.textContent = coffeeUpdates.checked
-+      ? 'Coffee updates are on.'
-+      : 'Coffee updates are off.';
-+  };
-+
-+  coffeeUpdates.addEventListener('change', updateStatus);
-+  updateStatus();
-+}
+@@ -207,6 +259,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/preferences.js"></script>
+ </body>
+ 
+ </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..d5a3543 100644
+index 2bd4d77..1b86c4b 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,7 +2,15 @@
+@@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
--    "start": "pnpm dlx statikk --port ${PORT:-11222}"
-+    "build": "tsc && node scripts/build.mjs",
-+    "start": "npm run build && statikk dist --port ${PORT:-11222} --expose"
-+  },
-+  "dependencies": {
-+    "input-switch-polyfill": "1.12.0"
-+  },
-+  "devDependencies": {
-+    "statikk": "3.1.0",
-+    "typescript": "^5.9.3"
++    "build": "node --check preferences.js && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
-     "onlyBuiltDependencies": []
-diff --git a/scripts/build.mjs b/scripts/build.mjs
+diff --git a/preferences.js b/preferences.js
 new file mode 100644
-index 0000000..52dcec2
+index 0000000..7cf08ef
 --- /dev/null
-+++ b/scripts/build.mjs
-@@ -0,0 +1,23 @@
-+import { copyFile, mkdir, rename, rm } from 'node:fs/promises';
-+import { fileURLToPath } from 'node:url';
++++ b/preferences.js
+@@ -0,0 +1,37 @@
++// @ts-check
 +
-+const root = new URL('../', import.meta.url);
-+const destination = new URL('dist/', root);
-+const staging = new URL('.build/', root);
++const themeToggle = document.getElementById('dark-theme');
++const themeStatus = document.getElementById('dark-theme-status');
++const storageKey = 'daily-grind-dark-theme';
 +
-+// Publish only after every required file is available, including the CSS
-+// fetched by the polyfill relative to its own module URL.
-+await rm(staging, { recursive: true, force: true });
-+await mkdir(new URL('vendor/input-switch-polyfill/', staging), { recursive: true });
-+for (const file of ['index.html', 'main.js']) {
-+  await copyFile(new URL(file, root), new URL(file, staging));
++if (themeToggle instanceof HTMLInputElement && themeStatus instanceof HTMLElement) {
++  const applyTheme = () => {
++    document.documentElement.dataset.theme = themeToggle.checked ? 'dark' : 'light';
++    themeStatus.textContent = themeToggle.checked ? 'On' : 'Off';
++  };
++
++  try {
++    themeToggle.checked = localStorage.getItem(storageKey) === 'true';
++  } catch {
++    // The preference still works when browser storage is unavailable.
++  }
++  applyTheme();
++
++  themeToggle.addEventListener('change', () => {
++    applyTheme();
++    try {
++      localStorage.setItem(storageKey, String(themeToggle.checked));
++    } catch {
++      // Keep the selected theme for this visit if storage is blocked or full.
++    }
++  });
++
++  // Restore the matching appearance when navigating back to a cached page.
++  window.addEventListener('pageshow', applyTheme);
 +}
-+for (const file of ['input-switch-polyfill.js', 'input-switch-polyfill.css']) {
-+  await copyFile(
-+    new URL(`node_modules/input-switch-polyfill/${file}`, root),
-+    new URL(`vendor/input-switch-polyfill/${file}`, staging),
-+  );
++
++if (!('switch' in HTMLInputElement.prototype)) {
++  import('https://cdn.jsdelivr.net/npm/input-switch-polyfill@1.12.0/input-switch-polyfill.js').catch(() => {
++    // Preserve a usable, labeled native checkbox if the enhancement cannot load.
++  });
 +}
-+await rm(destination, { recursive: true, force: true });
-+await rename(staging, destination);
-+console.log(`Built static application at ${fileURLToPath(destination)}`);
-diff --git a/tsconfig.json b/tsconfig.json
-new file mode 100644
-index 0000000..c61baf6
---- /dev/null
-+++ b/tsconfig.json
-@@ -0,0 +1,13 @@
-+{
-+  "compilerOptions": {
-+    "allowJs": true,
-+    "checkJs": true,
-+    "strict": true,
-+    "noEmit": true,
-+    "target": "ES2022",
-+    "module": "ESNext",
-+    "moduleResolution": "Bundler",
-+    "lib": ["ES2022", "DOM"]
-+  },
-+  "include": ["main.js", "types/**/*.d.ts"]
-+}
-diff --git a/types/input-switch-polyfill.d.ts b/types/input-switch-polyfill.d.ts
-new file mode 100644
-index 0000000..479c42a
---- /dev/null
-+++ b/types/input-switch-polyfill.d.ts
-@@ -0,0 +1,2 @@
-+// The polyfill is a side-effect-only module with no public exports.
-+declare module 'input-switch-polyfill';

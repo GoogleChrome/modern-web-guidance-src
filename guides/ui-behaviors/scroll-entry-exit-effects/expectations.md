@@ -1,6 +1,6 @@
-* The agent has defined separate `@keyframes` for entry (e.g., grow) and exit (e.g., shrink) effects.
-* The agent has applied both animations to the target elements (e.g., `animation: grow ..., shrink ...`).
-* The agent has used `animation-timeline: view()` or `view(inline)` to link animations to the view timeline.
-* The agent has used `animation-range: entry, exit` (or explicit ranges for each) to restrict animations to the entry and exit phases.
-* The implementation includes feature detection using `@supports ((animation-timeline: view()) and (animation-range: entry))`.
-* The implementation respects user preferences for reduced motion using @media (prefers-reduced-motion).
+* Stylesheets define `@keyframes` for both the entry and exit states, using either two separate `@keyframes` rules or a single `@keyframes` rule with `entry` and `exit` timeline-range selectors.
+* Target elements attach the entry and exit animation(s)—either two separate animations or a single `@keyframes` animation with `entry` and `exit` range selectors.
+* Target elements link their animation(s) to a view progress timeline using either an anonymous `view()` timeline (such as `view(inline)`) or a named `view-timeline` (using a `<dashed-ident>` name such as `--tl`).
+* Animations are restricted to the `entry` and `exit` phases, either via `animation-range` or via `entry` and `exit` keyframe selectors inside `@keyframes`.
+* Feature detection uses `@supports` checking both scroll-driven timeline support (such as `animation-timeline: view()` or `view-timeline: --tl`) and `animation-range: entry`.
+* Animations respect user preferences for reduced motion using `@media (prefers-reduced-motion)`.

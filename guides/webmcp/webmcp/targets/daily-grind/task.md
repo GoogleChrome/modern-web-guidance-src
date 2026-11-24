@@ -1,1 +1,1 @@
-- Expose client-side browser tools on the Daily Grind homepage so AI agents in the browser can discover and invoke actions to query the "Seasonal Favorites" coffee menu and trigger interactive drink orders or UI updates on the page.
+- Update the Seasonal Favorites section in `index.html` to include interactive coffee ordering functionality for the Maple Oat Latte, Dark Roast Espresso, and Cold Brew cards, and expose these client-side ordering actions as tools that browser AI agents can discover and invoke.

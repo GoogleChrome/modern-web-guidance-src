@@ -1,0 +1,169 @@
+diff --git a/index.html b/index.html
+index 66c9173..95b32cd 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,101 @@
+       background: #3e2723;
+     }
+ 
++    /* Coffee FAQ */
++    #coffee-faq {
++      margin-top: 40px;
++    }
++
++    #coffee-faq h2 {
++      margin-bottom: 20px;
++      color: var(--primary);
++      text-align: center;
++    }
++
++    #coffee-faq details {
++      margin-top: 12px;
++      background: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    #coffee-faq summary {
++      display: flex;
++      align-items: center;
++      gap: 0.75ch;
++      padding: 20px;
++      border-radius: 7px;
++      color: var(--primary);
++      font-weight: 600;
++      list-style: none;
++      cursor: pointer;
++    }
++
++    #coffee-faq summary::-webkit-details-marker {
++      display: none;
++    }
++
++    #coffee-faq summary::before {
++      content: "";
++      inline-size: 1em;
++      block-size: 1em;
++      flex-shrink: 0;
++      background-color: currentColor;
++      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat center / contain;
++      rotate: -90deg;
++    }
++
++    #coffee-faq summary:dir(rtl)::before {
++      rotate: 90deg;
++    }
++
++    #coffee-faq details[open] > summary::before {
++      rotate: 0deg;
++    }
++
++    #coffee-faq summary:hover {
++      background: var(--secondary);
++    }
++
++    #coffee-faq summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    #coffee-faq .faq-answer {
++      padding: 0 20px 20px;
++    }
++
++    #coffee-faq a {
++      color: var(--primary);
++      text-underline-offset: 0.2em;
++    }
++
++    #coffee-faq details::details-content {
++      interpolate-size: allow-keywords;
++      block-size: auto;
++      overflow: clip;
++      contain: layout;
++    }
++
++    #coffee-faq details:not([open])::details-content {
++      block-size: 0;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      #coffee-faq summary::before {
++        transition: rotate 0.3s ease-in-out;
++      }
++
++      #coffee-faq details::details-content {
++        transition: block-size 0.3s ease-in-out,
++          content-visibility 0.3s ease-in-out,
++          display 0.3s ease-in-out;
++        transition-behavior: allow-discrete;
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -195,6 +290,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="coffee-faq" aria-labelledby="coffee-faq-heading">
++      <h2 id="coffee-faq-heading">Frequently Asked Questions</h2>
++      <details name="daily-grind-coffee-faq">
++        <summary>Where does your coffee come from?</summary>
++        <div class="faq-answer">
++          <p>We use ethically sourced coffee beans, chosen for their quality and distinctive flavors. Our selection changes, so ask our team about the origins of the coffee we're serving today.</p>
++        </div>
++      </details>
++      <details name="daily-grind-coffee-faq">
++        <summary>How is your coffee roasted?</summary>
++        <div class="faq-answer">
++          <p>Our coffee is roasted locally to bring out each bean's character, from smooth, balanced flavors to the bold notes of our dark roast espresso. Ask our team to help you find a roast that suits your taste.</p>
++        </div>
++      </details>
++      <details name="daily-grind-coffee-faq">
++        <summary>How can I join your rewards program?</summary>
++        <div class="faq-answer">
++          <p>Visit our <a href="/rewards">Rewards page</a> to learn how to join and see the current benefits. Already a member? Visit <a href="/account">My Account</a> to view your rewards.</p>
++        </div>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +324,21 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Preserve exclusivity in browsers without native details grouping.
++    if (!("name" in HTMLDetailsElement.prototype)) {
++      const faq = document.getElementById("coffee-faq");
++      faq.addEventListener("toggle", (event) => {
++        const item = event.target;
++        if (!(item instanceof HTMLDetailsElement) || !item.open) return;
++
++        for (const other of faq.querySelectorAll("details")) {
++          if (other !== item) other.open = false;
++        }
++      }, { capture: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

@@ -131,11 +131,23 @@ test.describe('Suite page MWG compliance', () => {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.goto('/dashboard.html?testId=example-result&task=task#guide-preload-prerender');
-    await page.locator('#task-sort-select').selectOption('uplift-asc');
+    await page.locator('#guide-grid .eval-col-sort-btn[data-sort="uplift"]').click();
     const target = page.locator('.task-accordion[data-guide="preload-prerender"]');
     await expect(target).toHaveClass(/open/);
     await expect(page.locator('#guide-grid')).not.toHaveAttribute('aria-busy', /./);
     expect(errors).toEqual([]);
+  });
+  test('sorting between grouped and flat views preserves open accordions and toggles row category tags', async ({ page }) => {
+    await page.goto('/dashboard.html?testId=example-result&task=task#guide-preload-prerender');
+    const target = page.locator('.task-accordion[data-guide="preload-prerender"]');
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeHidden();
+    await page.locator('#guide-grid .eval-col-sort-btn[data-sort="uplift"]').click();
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeVisible();
+    await page.locator('#eval-sort-reset').click();
+    await expect(target).toHaveClass(/open/);
+    await expect(target.locator('.row-category-tag')).toBeHidden();
   });
   test('collapsed task panels are findable, render assertions eagerly, and paint no empty band', async ({ page }) => {
     await page.goto('/dashboard.html?testId=example-result');
@@ -170,7 +182,7 @@ test.describe('Suite page MWG compliance', () => {
     });
     await page.goto('/dashboard.html?testId=example-result');
     await expect(page.locator('.task-accordion').first()).toBeVisible();
-    expect(await page.locator('.task-accordion [title], #test-header [title]').count()).toBe(0);
+    expect(await page.locator('.task-accordion [title]:not(.trend-link), #test-header [title]').count()).toBe(0);
     expect(await page.locator('#dumbbell-chart title').count()).toBe(0);
     const triggers = page.locator('.hint-trigger');
     const count = await triggers.count();
@@ -245,12 +257,15 @@ test.describe('Suite page MWG compliance', () => {
     await page.locator('.task-accordion-header').first().click();
     const appBtn = page.locator('.tfoot-action-btn[data-action="app"]').first();
     await expect(appBtn).toBeVisible();
-    const popupPromise = page.waitForEvent('popup', { timeout: 1500 }).catch(() => null);
+    let openedPopup = false;
+    page.on('popup', () => {
+      openedPopup = true;
+    });
     await appBtn.click();
     const frame = page.locator('#modal iframe.artifact-frame');
     await expect(frame).toBeVisible();
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-forms');
-    expect(await popupPromise).toBeNull();
+    expect(openedPopup).toBe(false);
     const childFrame = page.frames().find(f => f !== page.mainFrame());
     expect(childFrame).toBeTruthy();
     if (childFrame) {
@@ -294,7 +309,7 @@ test.describe('Suite page MWG compliance', () => {
     const frame = page.frameLocator('#modal iframe.artifact-frame');
     await expect(frame.locator('#mode')).toHaveText('CSS1Compat');
     await page.evaluate(() => window.postMessage({ type: 'mwg-dashboard:close-modal' }, '*'));
-    await page.waitForTimeout(200);
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
     await expect(page.locator('#modal')).toBeVisible();
     await frame.locator('#inner').focus();
     await page.keyboard.press('Escape');
@@ -444,7 +459,7 @@ test.describe('Suite page MWG compliance', () => {
     await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
     await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
     await expect(page.locator('script[src="features-mapping.gen.js"]')).toHaveAttribute('defer', '');
-    const borders = await page.locator('#task-sort-select').evaluate(el => {
+    const borders = await page.locator('#eval-filter').evaluate(el => {
       const probe = document.createElement('div');
       probe.style.borderTop = '1px solid var(--color-outline)';
       document.body.append(probe);

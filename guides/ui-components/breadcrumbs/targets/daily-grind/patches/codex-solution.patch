@@ -1,0 +1,229 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..1bb4c00
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,13 @@
++import { mkdir, readFile, writeFile } from 'node:fs/promises';
++import { Script } from 'node:vm';
++
++const html = await readFile(new URL('./index.html', import.meta.url), 'utf8');
++
++// Validate inline JavaScript before emitting the static page.
++for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
++  new Script(match[1], { filename: 'index.html' });
++}
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await writeFile(new URL('index.html', outputDirectory), html);
+diff --git a/index.html b/index.html
+index 66c9173..fc27ca4 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -93,6 +93,72 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumbs */
++    .breadcrumb {
++      max-width: 1100px;
++      margin: 24px auto 0;
++      padding-inline: 20px;
++    }
++
++    .breadcrumb > ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.25rem 0.75rem;
++      list-style: none;
++    }
++
++    .breadcrumb > ol > li {
++      display: flex;
++      align-items: center;
++      gap: 0.75rem;
++      min-inline-size: 0;
++    }
++
++    .breadcrumb > ol > li + li::before {
++      content: "/" / "";
++      color: var(--primary);
++    }
++
++    .breadcrumb > ol > li > a {
++      color: var(--primary);
++      padding-block: 0.5rem;
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++      overflow-wrap: anywhere;
++    }
++
++    .breadcrumb > ol > li > a:hover {
++      color: var(--text);
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumb > ol > li > a[aria-current="page"] {
++      color: var(--text);
++      font-weight: 700;
++    }
++
++    .breadcrumb > ol > li > a:focus-visible {
++      position: relative;
++      z-index: 1;
++      outline: 2px solid var(--primary);
++      outline-offset: 3px;
++    }
++
++    @media (forced-colors: active) {
++      .breadcrumb > ol > li > a {
++        border: 1px solid LinkText;
++      }
++
++      .breadcrumb > ol > li > a[aria-current="page"] {
++        text-decoration: underline;
++      }
++
++      .breadcrumb > ol > li > a:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -157,7 +223,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,6 +240,12 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumb" aria-label="Breadcrumbs">
++    <ol>
++      <li><a href="/" aria-current="page">Home</a></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+@@ -207,6 +279,54 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Explicit route labels keep product names readable and ancestor links valid.
++    const breadcrumbPages = new Map([
++      ['/menu', ['Menu']],
++      ['/menu/seasonal', ['Menu', 'Maple Oat Latte']],
++      ['/menu/espresso', ['Menu', 'Dark Roast Espresso']],
++      ['/menu/cold-brew', ['Menu', 'Cold Brew']],
++      ['/locations', ['Locations']],
++      ['/rewards', ['Rewards']],
++      ['/account', ['My Account']],
++      ['/logout', ['Logout']],
++      ['/order-online', ['Order Online']],
++      ['/about', ['Our Story']],
++      ['/careers', ['Join the Team']],
++      ['/contact', ['Contact Us']],
++      ['/privacy-policy', ['Privacy']],
++    ]);
++    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
++    const labels = breadcrumbPages.get(currentPath);
++    const breadcrumb = document.querySelector('.breadcrumb');
++
++    if (labels && breadcrumb) {
++      const list = document.createElement('ol');
++      const steps = [
++        { label: 'Home', href: '/' },
++        ...labels.map((label, index) => ({
++          label,
++          href: index === labels.length - 1 ? currentPath : '/menu',
++        })),
++      ];
++
++      steps.forEach((step, index) => {
++        const item = document.createElement('li');
++        const link = document.createElement('a');
++        link.href = step.href;
++        link.textContent = step.label;
++        if (index === steps.length - 1) link.setAttribute('aria-current', 'page');
++        item.append(link);
++        list.append(item);
++      });
++
++      breadcrumb.replaceChildren(list);
++    } else if (currentPath !== '/' && currentPath !== '/index.html' && breadcrumb) {
++      // Do not misidentify an unknown route as the home page.
++      breadcrumb.hidden = true;
++    }
++  </script>
++
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

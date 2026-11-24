@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Project, SyntaxKind, Node, type SourceFile, type Node as TsMorphNode } from 'ts-morph';
+import { resolveFeatureOrBcdBaseline } from './baseline.ts';
 import { GRADER_FILE, TARGETS_DIR } from './guide-validation.ts';
 import { rootDir } from './paths.ts';
 
@@ -11,7 +12,8 @@ export type GraderRuleId =
   | 'no-tautological-expect'
   | 'no-test-skip'
   | 'no-gen2-file-goto'
-  | 'no-unguarded-conditional-assertions';
+  | 'no-unguarded-conditional-assertions'
+  | 'invalid-skip-unless';
 
 export interface GraderLintViolation {
   filePath: string;
@@ -191,6 +193,38 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
       }
     }
 
+    // Rule 6: invalid-skip-unless
+    if (exprText === 'skipUnless') {
+      const firstArg = call.getArguments()[0];
+      const prop = Node.isObjectLiteralExpression(firstArg) ? firstArg.getProperty('unsupported') : undefined;
+      const init = Node.isPropertyAssignment(prop) ? prop.getInitializer() : undefined;
+      if (
+        !Node.isObjectLiteralExpression(firstArg) ||
+        firstArg.getProperties().length !== 1 ||
+        !Node.isStringLiteral(init)
+      ) {
+        addViolation(
+          call,
+          'invalid-skip-unless',
+          'skipUnless() must be called with `{ unsupported: "<feature-or-bcd-key>" }`.'
+        );
+      } else {
+        const tokens = init
+          .getLiteralValue()
+          .split(',')
+          .map(t => t.trim())
+          .filter(Boolean);
+        const invalidTokens = tokens.filter(t => resolveFeatureOrBcdBaseline(t) === undefined);
+        if (tokens.length === 0 || invalidTokens.length > 0) {
+          addViolation(
+            call,
+            'invalid-skip-unless',
+            `Invalid feature or BCD key(s) in skipUnless: ${invalidTokens.length > 0 ? invalidTokens.map(t => `"${t}"`).join(', ') : '(empty)'}. Use a valid web-features ID or BCD key.`
+          );
+        }
+      }
+    }
+
     // Rule 5: no-unguarded-conditional-assertions
     if (exprText === 'test' || exprText === 'it') {
       const fn = call.getArguments().find(a => Node.isFunctionExpression(a) || Node.isArrowFunction(a));
@@ -219,7 +253,10 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
   return violations;
 }
 
+const NO_LIB_COMPILER_OPTIONS = { noLib: true, noResolve: true };
+
 const defaultInMemoryProject = new Project({
+  compilerOptions: NO_LIB_COMPILER_OPTIONS,
   skipAddingFilesFromTsConfig: true,
   useInMemoryFileSystem: true,
 });
@@ -239,8 +276,11 @@ export function checkGraderSource(
 
 export function checkGraderFile(
   filePath: string,
-  project: Project = new Project({ skipAddingFilesFromTsConfig: true })
+  project?: Project
 ): GraderLintViolation[] {
+  if (!project) {
+    return checkGraderSource(filePath, fs.readFileSync(filePath, 'utf8'));
+  }
   const sf = project.getSourceFile(filePath) ?? project.addSourceFileAtPath(filePath);
   return checkGraderAst(filePath, sf);
 }
@@ -264,11 +304,10 @@ export function findGraderFiles(repoRootDir: string = rootDir): string[] {
 export function checkAllGraders(options?: { repoRoot?: string; project?: Project }): Map<string, GraderLintViolation[]> {
   const baseDir = options?.repoRoot ?? rootDir;
   const graderFiles = findGraderFiles(baseDir);
-  const p = options?.project ?? new Project({ skipAddingFilesFromTsConfig: true });
   const resultMap = new Map<string, GraderLintViolation[]>();
 
   for (const file of graderFiles) {
-    const violations = checkGraderFile(file, p);
+    const violations = checkGraderFile(file, options?.project);
     if (violations.length > 0) {
       const relPath = path.relative(baseDir, file);
       resultMap.set(relPath, violations);

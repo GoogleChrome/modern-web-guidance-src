@@ -1,0 +1,1 @@
+- Add an exclusive "roaster's secrets" preview section below seasonal favorites wrapped in a container with the class .paywall-container, making the bottom portion of the teaser content fade out gradually to transparency so it blends into the page background.

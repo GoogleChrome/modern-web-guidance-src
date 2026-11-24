@@ -1,0 +1,171 @@
+diff --git a/index.html b/index.html
+index 66c9173..0d489c7 100644
+--- a/index.html
++++ b/index.html
+@@ -142,6 +142,21 @@
+       margin-top: 40px;
+     }
+ 
++    .skeleton {
++      background: linear-gradient(90deg, #eee, #f6f6f6, #eee);
++      min-height: 150px;
++    }
++
++    .promo {
++      margin-top: 40px;
++      min-height: 120px;
++    }
++
++    .promo-skeleton {
++      height: 120px;
++      border-radius: 8px;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -177,26 +192,128 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++      <div class="grid" id="seasonal-grid" aria-live="polite">
++        <?start name="seasonal-cards">
++        <div class="card skeleton" aria-hidden="true"><h3>&nbsp;</h3><p>&nbsp;</p><p>&nbsp;</p></div>
++        <div class="card skeleton" aria-hidden="true"><h3>&nbsp;</h3><p>&nbsp;</p><p>&nbsp;</p></div>
++        <div class="card skeleton" aria-hidden="true"><h3>&nbsp;</h3><p>&nbsp;</p><p>&nbsp;</p></div>
++        <?end>
++      </div>
++    </section>
++
++    <section id="promo" class="promo">
++      <?start name="promo">
++      <div class="skeleton promo-skeleton" aria-hidden="true"></div>
++      <?end>
++    </section>
++
++    <section>
++      <h2 style="text-align: center;">Customer Reviews</h2>
++      <div class="grid" id="reviews" aria-live="polite">
++        <?start name="reviews">
++        <div class="card skeleton" aria-hidden="true"><p>&nbsp;</p><p>&nbsp;</p></div>
++        <div class="card skeleton" aria-hidden="true"><p>&nbsp;</p><p>&nbsp;</p></div>
++        <?end>
+       </div>
+     </section>
+   </main>
+ 
++  <!-- Content streamed later in the same document (out-of-order) -->
++  <template for="seasonal-cards">
++    <?start name="seasonal-cards">
++    <div class="card">
++      <h3>Maple Oat Latte</h3>
++      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++      <a href="/menu/seasonal" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Dark Roast Espresso</h3>
++      <p>Bold, smokey, and perfect for a morning boost.</p>
++      <a href="/menu/espresso" class="btn">View Details</a>
++    </div>
++    <div class="card">
++      <h3>Cold Brew</h3>
++      <p>Steeped for 18 hours for maximum smoothness.</p>
++      <a href="/menu/cold-brew" class="btn">View Details</a>
++    </div>
++    <?end>
++  </template>
++
++  <script>
++    // Load polyfills only where the native features are missing.
++    (function () {
++      const needsSetters = !('setHTMLUnsafe' in Element.prototype) || !('streamHTMLUnsafe' in Element.prototype);
++      const needsTemplateFor = !('htmlFor' in HTMLTemplateElement.prototype) && !('for' in HTMLTemplateElement.prototype);
++      const load = (pkg) => {
++        const s = document.createElement('script');
++        s.src = 'https://unpkg.com/' + pkg;
++        document.head.appendChild(s);
++      };
++      if (needsTemplateFor) load('template-for-polyfill');
++      if (needsSetters) load('html-setters-polyfill');
++    })();
++  </script>
++
++  <script type="module">
++    const grid = document.getElementById('seasonal-grid');
++    const reviews = document.getElementById('reviews');
++    const promo = document.getElementById('promo');
++
++    async function fetchStream(url) {
++      const response = await fetch(url, { headers: { Accept: 'text/html' } });
++      if (!response.ok || !response.body) throw new Error(url + ' failed: ' + response.status);
++      return response;
++    }
++
++    function pipe(response, writable) {
++      return typeof response.textStream === 'function'
++        ? response.textStream().pipeTo(writable)
++        : response.body.pipeThrough(new TextDecoderStream()).pipeTo(writable);
++    }
++
++    // First-party menu markup: trusted, no scripts needed.
++    async function refreshMenu() {
++      try {
++        const response = await fetchStream('/api/menu/seasonal');
++        await pipe(response, grid.streamHTMLUnsafe());
++      } catch (err) {
++        console.error(err);
++      }
++    }
++
++    // Customer-submitted content: untrusted, use the sanitizing (safe) API.
++    async function refreshReviews() {
++      try {
++        const response = await fetchStream('/api/reviews');
++        await pipe(response, reviews.streamHTML());
++      } catch (err) {
++        console.error(err);
++      }
++    }
++
++    // Our own CMS promo block ships an embedded widget script, so scripts must run.
++    async function loadPromo() {
++      try {
++        const response = await fetchStream('/api/cms/promo');
++        promo.setHTMLUnsafe(await response.text(), { runScripts: true });
++      } catch (err) {
++        console.error(err);
++      }
++    }
++
++    loadPromo();
++    refreshReviews();
++
++    // Refresh cards when the menu changes on the server.
++    if ('EventSource' in window) {
++      const events = new EventSource('/api/menu/events');
++      events.addEventListener('menu-changed', refreshMenu);
++    }
++    document.addEventListener('visibilitychange', () => {
++      if (document.visibilityState === 'visible') refreshMenu();
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

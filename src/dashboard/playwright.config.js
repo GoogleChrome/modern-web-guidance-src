@@ -4,11 +4,12 @@ import { rootDir } from '../core/paths.ts';
 export default defineConfig({
   testDir: import.meta.dirname,
   testMatch: '*.spec.js',
-  fullyParallel: false, // Run tests sequentially to avoid port conflicts if we were doing it manually
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1, // Ensure single worker for stable port usage
+  workers: process.env.CI ? 4 : '50%',
   reporter: 'list',
+  captureGitInfo: { commit: false, diff: false },
   use: {
     baseURL: 'http://localhost:11432',
     trace: 'on-first-retry',

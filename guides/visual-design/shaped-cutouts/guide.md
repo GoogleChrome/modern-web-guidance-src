@@ -97,6 +97,8 @@ By assigning both parts the same background color, they visually merge into a si
 .unified-card {
   display: flex;
   width: 400px;
+  /* Shadow on the parent silhouettes the combined card + masked accent shape */
+  filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
 }
 
 .card-body {
@@ -115,8 +117,8 @@ By assigning both parts the same background color, they visually merge into a si
   border-bottom-right-radius: 16px;
 
   /* Reference the SVG mask */
-  -webkit-mask-image: url(#card-accent-mask);
-  mask-image: url(#card-accent-mask);
+  -webkit-mask-image: url(#accent-stencil);
+  mask-image: url(#accent-stencil);
 }
 </style>
 ```
@@ -132,7 +134,7 @@ When you only need simple geometric cutouts (such as a semi-circular top notch, 
 
 <style>
 .gradient-masked-card {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(135deg, #2563eb, #1e40af);
   color: white;
   padding: 40px 24px 24px 24px; /* Extra top padding ensures content clears the notch */
   border-radius: 16px;

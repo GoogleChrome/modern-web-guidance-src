@@ -249,7 +249,8 @@ If your Baseline target does not support `text-decoration-skip-spaces`, the brow
 If your Baseline target does not support `text-decoration-inset`, the
 declaration is ignored, so the link keeps its normal, fully visible underline
 and the transition has nothing to animate. This is graceful degradation: the
-hover reveal is lost and the link stays underlined.
+hover reveal is lost and the link stays underlined, so no `@supports` check is
+needed.
 
 ### Border area
 

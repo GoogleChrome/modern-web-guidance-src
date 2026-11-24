@@ -1,13 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { spawn, spawnSync } from 'child_process';
 import { Agents, defaultSuiteConfig, mergeSuiteConfig, type SuiteConfig } from './config.ts';
 import { evaluateSuite } from './evaluate.ts';
-import { baseAppsDir, suitesDir } from '../core/paths.ts';
-import { getTaskMap, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
+import { baseAppsDir, rootDir, suitesDir } from '../core/paths.ts';
+import { getTaskMap, resolveTaskGraderPath, ZERO_PASSRATE_PATCH_FILE, type TaskInfo } from '../core/guide-validation.ts';
 import { applyPatchSync, initGitRepo } from '../core/patch-utils.ts';
 import { getGraderScriptContent, ISOLATED_HOME_ENV } from './lib/agent-shared.ts';
+import { ensureGuidedEvalDist } from './lib/eval-dist.ts';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+  loadAllowedEnvFile,
+} from './lib/secret-guard.ts';
 import { ensureFreshHostCodexAuth } from './agents/codex-cli-agent.ts';
 import { copyBaseAppToWorkspace } from './lib/utils.ts';
 import { determineAgent } from '../cli/telemetry/detect-agent.ts';
@@ -18,7 +26,7 @@ const RUN_TYPES = ['guided', 'unguided'];
 let logStream: fs.WriteStream | null = null;
 
 
-const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
+const COMMON_APPEND_PROMPT = `\n\nDon't bother doing any manual verification in a browser, do NOT ask clarifying questions (make reasonable assumptions and proceed non-interactively), and do NOT start dev/preview servers or import server entrypoints (e.g., npm run dev, astro preview, or dist/server/entry.mjs)—only run build scripts if needed. If images are needed, prefer using some stock photos from the web rather than generating them with Nano Banana.`;
 
 export async function runSingleTask(templateDirRaw: string, promptContentRaw: string, providedSuiteConfig?: SuiteConfig) {
   const suiteConfig = providedSuiteConfig || defaultSuiteConfig;
@@ -33,13 +41,15 @@ export async function runSingleTask(templateDirRaw: string, promptContentRaw: st
   const promptContent = promptContentRaw + COMMON_APPEND_PROMPT;
 
   if (!fs.existsSync(templateDir)) {
-    console.error(`❌ Template directory not found: ${templateDir}`);
+    console.error(`❌ Base app directory not found: ${templateDir}`);
     return;
   }
 
+  await ensureGuidedEvalDist();
+
   console.log(`\n=== Running ${taskNameLabel} ===`);
   console.log(`Agent: ${agent}`);
-  console.log(`Template: ${templateDir}`);
+  console.log(`Base app: ${templateDir}`);
   console.log(`Target: ${targetDir}\n`);
 
   if (!fs.existsSync(targetDir)) {
@@ -72,12 +82,18 @@ export interface RunSuiteOptions {
   tasks?: string[];
   numRuns?: number;
   skipEval?: boolean;
+  skipSkillBuild?: boolean;
   guidedOnly?: boolean;
   suiteConfig?: Partial<SuiteConfig>;
 }
 
 export async function runSuite(options: RunSuiteOptions = {}) {
+  loadAllowedEnvFile(path.join(rootDir, '.env'), process.env, { warn: true });
   const suiteConfig = options.suiteConfig ? mergeSuiteConfig(options.suiteConfig) : defaultSuiteConfig;
+
+  if (!options.skipSkillBuild) {
+    await ensureGuidedEvalDist();
+  }
 
   // Create results directory if it doesn't exist
   if (!fs.existsSync(suitesDir)) {
@@ -103,7 +119,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
   const originalConsoleMethods = setupLogging(logFilePath);
   const suiteStart = Date.now();
 
-  console.log(`\n=== Test Suite Starting with ID: ${testID} ===`);
+  console.log(`\n=== Evaluation Job Starting with ID: ${testID} ===`);
   console.log(`Results will be saved to: ${testDir}\n`);
   console.log(`Log file: ${logFilePath}\n`);
 
@@ -112,7 +128,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     const numRuns = options.numRuns ?? suiteConfig.numRuns;
     const endRun = 1 + numRuns;
 
-    console.log(`\nStarting execution for ${numRuns} runs`);
+    console.log(`\nStarting execution for ${numRuns} ${numRuns === 1 ? 'trial per condition' : 'trials per condition'}`);
 
     for (let runNumber = 1; runNumber < endRun; runNumber++) {
       if (agent === Agents.CODEX_CLI) await ensureFreshHostCodexAuth();
@@ -136,11 +152,20 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           ? suiteConfig.tasks
           : Array.from(taskMap.keys()));
 
-      for (const task of tasksToRun) {
-        const resolvedTask = resolveTaskName(task);
+      const resolvedTasks = tasksToRun.map(resolveTaskName);
+      const resolvedTaskSet = new Set(resolvedTasks);
+      const variantUnguidedReuses: Array<{
+        baseUnguidedDir: string;
+        variantUnguidedDir: string;
+        graderPath: string;
+        guideName: string;
+        baselineTarget: string;
+      }> = [];
+
+      for (const resolvedTask of resolvedTasks) {
         const taskInfo = taskMap.get(resolvedTask);
         if (!taskInfo) {
-          console.warn(`Skipping task ${task}: Not found in task map`);
+          console.warn(`Skipping task ${resolvedTask}: Not found in task map`);
           continue;
         }
 
@@ -150,22 +175,32 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           continue;
         }
 
-        let promptContent = taskInfo.prompt;
-        promptContent += COMMON_APPEND_PROMPT;
+        const promptContent = taskInfo.prompt + COMMON_APPEND_PROMPT;
         const agentScript = getAgentScript(agent);
 
         const runTypesToRun = options.guidedOnly ? ['guided'] : RUN_TYPES;
         const guideFolder = path.join(runDir, guideName);
         const taskFolder = path.join(guideFolder, taskName);
-        let graderPath = path.join(taskInfo.guideDir, 'grader.ts');
-        const targetGraderPath = path.join(taskInfo.guideDir, 'targets', taskName, 'grader.ts');
-        if (fs.existsSync(targetGraderPath)) {
-          graderPath = targetGraderPath;
-        }
+        const graderPath = resolveTaskGraderPath(taskInfo, taskName);
+        const baseTaskKey = `${guideName}/${taskInfo.baseApp}`;
+        const canReuseBaseUnguided =
+          Boolean(taskInfo.baselineTarget) &&
+          taskName !== taskInfo.baseApp &&
+          resolvedTaskSet.has(baseTaskKey);
 
         for (const runType of runTypesToRun) {
           const targetDir = path.join(taskFolder, runType);
-          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp);
+          if (runType === 'unguided' && canReuseBaseUnguided) {
+            variantUnguidedReuses.push({
+              baseUnguidedDir: path.join(guideFolder, taskInfo.baseApp, 'unguided'),
+              variantUnguidedDir: targetDir,
+              graderPath,
+              guideName,
+              baselineTarget: taskInfo.baselineTarget!,
+            });
+            continue;
+          }
+          generateTransientPackage(targetDir, agentScript, promptContent, runType, workspaceBaseAppDir, taskName, guideName, graderPath, taskInfo.baseApp, taskInfo.baselineTarget);
           pnpmWorkspacePackages.push(`${guideName}/${taskName}/${runType}`);
         }
       }
@@ -202,6 +237,13 @@ export async function runSuite(options: RunSuiteOptions = {}) {
           if (fs.existsSync(pnpmWorkspacePath)) {
             fs.unlinkSync(pnpmWorkspacePath);
           }
+          for (const reuse of variantUnguidedReuses) {
+            try {
+              reuseUnguidedRunForBaselineVariant(reuse);
+            } catch (reuseErr) {
+              console.warn(`Failed to reuse unguided run for ${reuse.variantUnguidedDir}: ${reuseErr}`);
+            }
+          }
           // Clean up task workspace base_apps after all workers in run finish
           for (const task of tasksToRun) {
             const resolvedTask = resolveTaskName(task);
@@ -220,9 +262,9 @@ export async function runSuite(options: RunSuiteOptions = {}) {
     }
 
     if (hasErrors) {
-      console.log(`\n❌ Test suite completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
+      console.log(`\n❌ Evaluation job completed with errors! Results saved to: ${testDir} .\n    For details, see agent_stderr.log and/or generation_failed.json`);
     } else {
-      console.log(`\n✅ Test suite complete! Results saved to: ${testDir}`);
+      console.log(`\n✅ Evaluation job complete! Results saved to: ${testDir}`);
     }
 
     if (!options.skipEval) {
@@ -236,7 +278,7 @@ export async function runSuite(options: RunSuiteOptions = {}) {
       process.exitCode = 1;
     }
   } catch (e) {
-    console.error('❌ Error during suite execution:', e);
+    console.error('❌ Error during job execution:', e);
   } finally {
     restoreLogging(originalConsoleMethods);
   }
@@ -296,12 +338,18 @@ function restoreLogging(originals: any) {
 }
 
 async function runCommand(command: string, args: string[] = [], envOverrides?: Record<string, string>, cwd?: string) {
+  const sanitizedEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_WRAPPER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    envOverrides,
+  );
   return new Promise((resolve, reject) => {
     const childProcess = spawn(command, args, {
       stdio: 'inherit',
       shell: process.platform === 'win32',
       cwd,
-      env: envOverrides ? { ...process.env, ...envOverrides } : process.env
+      env: sanitizedEnv,
     });
 
     childProcess.on('close', (code) => {
@@ -393,14 +441,15 @@ export function generateTransientPackage(
   taskName: string,
   guideName: string,
   graderPath: string,
-  _baseApp: string = 'daily-grind'
+  _baseApp: string = 'daily-grind',
+  baselineTarget?: string
 ) {
   if (!fs.existsSync(targetDir)) {
     fs.mkdirSync(targetDir, { recursive: true });
   }
 
   // Generate grade.mjs using shared function
-  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName);
+  const gradeScript = getGraderScriptContent(targetDir, graderPath, guideName, baselineTarget);
   fs.writeFileSync(path.join(targetDir, 'grade.mjs'), gradeScript);
 
   // Generate runner script
@@ -408,10 +457,17 @@ export function generateTransientPackage(
   // we trick pnpm into thinking each test run is a package in a pnpm workspace.
   // This way we get `pnpm -r`'s great parallel scheduler and log interleaving for free.
   // This run.mjs wrapper executes the actual agent command via spawnSync.
+  const secretGuardModuleUrl = pathToFileURL(path.join(rootDir, 'src/harness/lib/secret-guard.ts')).href;
   const runnerContent = `import { spawnSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  ALLOWED_ENV_PREFIXES,
+  ALLOWED_GRADER_ENV_KEYS,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  filterAllowedEnv,
+} from ${JSON.stringify(secretGuardModuleUrl)};
 
 const args = [
 ...${JSON.stringify([
@@ -423,7 +479,12 @@ const args = [
 ])}
 ];
 
-const env = { ...process.env };
+const env = filterAllowedEnv(
+  process.env,
+  ALLOWED_WRAPPER_ENV_KEYS,
+  ALLOWED_ENV_PREFIXES,
+  ${baselineTarget ? `{ BASELINE_TARGET: ${JSON.stringify(baselineTarget)} }` : 'undefined'},
+);
 
 const start = Date.now();
 let result;
@@ -477,7 +538,12 @@ let graderStatus = null;
 
 if (result.status === 0) {
   const gradeStart = Date.now();
-  const gradeEnv = { ...process.env, PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') };
+  const gradeEnv = filterAllowedEnv(
+    process.env,
+    ALLOWED_GRADER_ENV_KEYS,
+    ALLOWED_ENV_PREFIXES,
+    { PATCH_FILE: path.join(${JSON.stringify(targetDir)}, 'agent.patch') },
+  );
   const gradeResult = spawnSync(process.execPath, ['grade.mjs'], { stdio: 'inherit', cwd: ${JSON.stringify(targetDir)}, env: gradeEnv });
   graderRuntime = Date.now() - gradeStart;
   graderStatus = gradeResult.status ?? 1;
@@ -515,13 +581,65 @@ process.exit(graderStatus !== null ? graderStatus : (result.status ?? 1));
   }, null, 2));
 }
 
+function reuseUnguidedRunForBaselineVariant(opts: {
+  baseUnguidedDir: string;
+  variantUnguidedDir: string;
+  graderPath: string;
+  guideName: string;
+  baselineTarget: string;
+}) {
+  const { baseUnguidedDir, variantUnguidedDir, graderPath, guideName, baselineTarget } = opts;
+  if (!fs.existsSync(baseUnguidedDir)) return;
+  fs.rmSync(variantUnguidedDir, { recursive: true, force: true });
+  fs.mkdirSync(variantUnguidedDir, { recursive: true });
+
+  const resultsFileName = `${guideName}_results.json`;
+  for (const entry of fs.readdirSync(baseUnguidedDir)) {
+    if (
+      entry === 'grade.mjs' ||
+      entry === 'run.mjs' ||
+      entry === 'package.json' ||
+      entry === 'playwright-report.json' ||
+      entry === resultsFileName
+    ) {
+      continue;
+    }
+    fs.cpSync(path.join(baseUnguidedDir, entry), path.join(variantUnguidedDir, entry), { recursive: true });
+  }
+
+  const gradeScript = getGraderScriptContent(variantUnguidedDir, graderPath, guideName, baselineTarget);
+  fs.writeFileSync(path.join(variantUnguidedDir, 'grade.mjs'), gradeScript);
+
+  if (!fs.existsSync(path.join(variantUnguidedDir, 'generation_failed.json'))) {
+    const gradeStart = Date.now();
+    const gradeEnv = filterAllowedEnv(process.env, ALLOWED_GRADER_ENV_KEYS, ALLOWED_ENV_PREFIXES, {
+      PATCH_FILE: path.join(variantUnguidedDir, 'agent.patch'),
+    });
+    const gradeResult = spawnSync(process.execPath, ['grade.mjs'], {
+      stdio: 'inherit',
+      cwd: variantUnguidedDir,
+      env: gradeEnv,
+    });
+    const runtimePath = path.join(variantUnguidedDir, 'runtime.json');
+    if (fs.existsSync(runtimePath)) {
+      try {
+        const runtimeObj = JSON.parse(fs.readFileSync(runtimePath, 'utf8'));
+        runtimeObj.graderRuntime = Date.now() - gradeStart;
+        runtimeObj.graderStatus = gradeResult.status ?? 1;
+        fs.writeFileSync(runtimePath, JSON.stringify(runtimeObj, null, 2));
+      } catch {
+        // Ignore runtime.json update error
+      }
+    }
+  }
+}
+
 const AGENT_SCRIPTS: Record<string, string> = {
   [Agents.CLAUDE_CODE]: 'claude-code-agent.ts',
   [Agents.CODEX_CLI]: 'codex-cli-agent.ts',
   [Agents.JETSKI_CLI]: 'jetski-cli-agent.ts',
   [Agents.PI]: 'pi-agent.ts',
   [Agents.ANTIGRAVITY_CLI]: 'antigravity-cli-agent.ts',
-  [Agents.GEMINI_CLI]: 'gemini-cli-agent.ts',
 };
 
 function getAgentScript(agent: string): string {
@@ -538,8 +656,14 @@ if (import.meta.url.startsWith('file:') && process.argv[1] === fileURLToPath(imp
   const args = process.argv.slice(2);
   const positionalArgs = args.filter(arg => !arg.startsWith('--'));
   if (positionalArgs.length >= 1) {
-    runSuite({ tasks: positionalArgs }).catch(console.error);
+    runSuite({ tasks: positionalArgs }).catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   } else {
-    runSuite().catch(console.error);
+    runSuite().catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
   }
 }

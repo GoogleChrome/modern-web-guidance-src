@@ -1,9 +1,29 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export interface MwgConfig {
   allowOriginTrials?: boolean;
+  allowVolatileFeatures?: boolean;
+  /** Target Baseline threshold ('widely', 'newly', 'limited', or a 4-digit year like '2024'). */
+  baseline?: string;
   [key: string]: unknown;
+}
+
+/**
+ * Normalizes a user-provided Baseline target string into its canonical `.mwgrc` value
+ * (`'widely'`, `'newly'`, `'limited'`, or `'YYYY'`), or returns `undefined` if unrecognized.
+ */
+export function normalizeBaselineTarget(raw: string | undefined): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (trimmed === 'widely' || trimmed === 'baseline widely available') return 'widely';
+  if (trimmed === 'newly' || trimmed === 'baseline' || trimmed === 'baseline newly available') return 'newly';
+  if (trimmed === 'limited' || trimmed === 'limited availability') return 'limited';
+  const yearMatch = trimmed.match(/^(?:baseline\s+)?(\d{4})$/);
+  if (yearMatch) return yearMatch[1];
+  return undefined;
 }
 
 const CONFIG_FILENAME = '.mwgrc';
@@ -11,7 +31,8 @@ const CONFIG_FILENAME = '.mwgrc';
 /**
  * Resolves the path to the `.mwgrc` configuration file.
  * Walks up from `startDir` and stops at the first directory containing `.mwgrc` or `.git`
- * (without merging ancestor configs), falling back to `startDir/.mwgrc` outside git repos.
+ * (without merging ancestor configs), falling back to `~/.mwgrc` if one exists when invoked
+ * outside any project (e.g. from `/tmp`), or `startDir/.mwgrc` otherwise.
  */
 export function resolveMwgrcPath(startDir = process.cwd()): string {
   let dir = path.resolve(startDir);
@@ -20,7 +41,11 @@ export function resolveMwgrcPath(startDir = process.cwd()): string {
       return path.join(dir, CONFIG_FILENAME);
     }
     const parent = path.dirname(dir);
-    if (parent === dir) return path.join(path.resolve(startDir), CONFIG_FILENAME);
+    if (parent === dir) {
+      const homeConfig = path.join(os.homedir(), CONFIG_FILENAME);
+      if (fs.existsSync(homeConfig)) return homeConfig;
+      return path.join(path.resolve(startDir), CONFIG_FILENAME);
+    }
     dir = parent;
   }
 }

@@ -68,49 +68,66 @@
       margin: 32px 0;
     }
 
-    .spatial-card:nth-child(1) {
-      order: 1;
-      grid-column: span 4;
+    [role="grid"] [role="row"] {
+      display: grid;
+      grid-column: 1 / span 12;
+      grid-template-columns: subgrid;
+    }
+    
+    [role="grid"] [role="row"]:nth-child(1) {
+      grid-row: 1 / span 1;
+      & .spatial-card:nth-child(1) {
+        order: 1;
+        grid-column: span 4;
+      }
+      
+      & .spatial-card:nth-child(2) {
+        order: 3;
+        grid-column: span 4;
+      }
+
+      & .spatial-card:nth-child(3) {
+        order: 2;
+        grid-column: span 4;
+      }
     }
 
-    .spatial-card:nth-child(2) {
-      order: 3;
-      grid-column: span 4;
+    [role="grid"] [role="row"]:nth-child(2) {
+      grid-row: 2 / span 1;
+      
+      & .spatial-card:nth-child(1) {
+        order: 2;
+        grid-column: span 6;
+      }
+      
+      & .spatial-card:nth-child(2) {
+        order: 1;
+        grid-column: span 6;
+      }
     }
 
-    .spatial-card:nth-child(3) {
-      order: 2;
-      grid-column: span 4;
-    }
-
-    .spatial-card:nth-child(4) {
-      order: 5;
-      grid-column: span 6;
-    }
-
-    .spatial-card:nth-child(5) {
-      order: 4;
-      grid-column: span 6;
-    }
-
-    .spatial-card:nth-child(6),
-    .spatial-card:nth-child(7),
-    .spatial-card:nth-child(8),
-    .spatial-card:nth-child(9) {
-      order: 6;
-      grid-column: span 3;
-    }
-
-    .spatial-card:nth-child(7) {
-      order: 7;
-    }
-
-    .spatial-card:nth-child(8) {
-      order: 8;
-    }
-
-    .spatial-card:nth-child(9) {
-      order: 9;
+    [role="grid"] [role="row"]:nth-child(3) {
+      grid-row: 3 / span 1;
+      
+      & .spatial-card:nth-child(1),
+      & .spatial-card:nth-child(2),
+      & .spatial-card:nth-child(3),
+      & .spatial-card:nth-child(4) {
+        order: 1;
+        grid-column: span 3;
+      }
+  
+      & .spatial-card:nth-child(1) {
+        order: 2;
+      }
+  
+      & .spatial-card:nth-child(2) {
+        order: 3;
+      }
+  
+      & .spatial-card:nth-child(3) {
+        order: 4;
+      }
     }
 
     .spatial-card {
@@ -195,43 +212,49 @@
     </div>
 
     <!-- Spatial widget group with a single tab stop via roving tabindex -->
-    <div class="dashboard" role="group" aria-label="Visual Dashboard Layout" aria-describedby="spatnav-instructions">
+    <div class="dashboard" role="grid" aria-label="Visual Dashboard Layout" aria-describedby="spatnav-instructions">
       <!-- DOM order intentionally differs from visual order. CSS Grid also gives items different spans. -->
-      <div class="spatial-card" tabindex="0" id="card-1-1">
-        <span class="card-title">Card 1-1</span>
-        <span class="card-body">Grid item, order 1, span 4</span>
+      <div role="row">
+        <div role="gridcell" class="spatial-card" tabindex="0" id="card-1-1">
+          <span class="card-title">Card 1-1</span>
+          <span class="card-body">Grid item, order 1, span 4</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-1-2">
+          <span class="card-title">Card 1-2</span>
+          <span class="card-body">Grid item, order 3, span 4</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-1-3">
+          <span class="card-title">Card 1-3</span>
+          <span class="card-body">Grid item, order 2, span 4</span>
+        </div>
       </div>
-      <div class="spatial-card" tabindex="-1" id="card-1-2">
-        <span class="card-title">Card 1-2</span>
-        <span class="card-body">Grid item, order 3, span 4</span>
+      <div role="row">
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-2-1">
+          <span class="card-title">Card 2-1 (Wide)</span>
+          <span class="card-body">Grid item, order 2, span 6</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-2-2">
+          <span class="card-title">Card 2-2 (Wide)</span>
+          <span class="card-body">Grid item, order 1, span 6</span>
+        </div>
       </div>
-      <div class="spatial-card" tabindex="-1" id="card-1-3">
-        <span class="card-title">Card 1-3</span>
-        <span class="card-body">Grid item, order 2, span 4</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-2-1">
-        <span class="card-title">Card 2-1 (Wide)</span>
-        <span class="card-body">Grid item, order 5, span 6</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-2-2">
-        <span class="card-title">Card 2-2 (Wide)</span>
-        <span class="card-body">Grid item, order 4, span 6</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-3-1">
-        <span class="card-title">Card 3-1</span>
-        <span class="card-body">Grid item, span 1</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-3-2">
-        <span class="card-title">Card 3-2</span>
-        <span class="card-body">Grid item, span 1</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-3-3">
-        <span class="card-title">Card 3-3</span>
-        <span class="card-body">Grid item, span 1</span>
-      </div>
-      <div class="spatial-card" tabindex="-1" id="card-3-4">
-        <span class="card-title">Card 3-4</span>
-        <span class="card-body">Grid item, span 1</span>
+      <div role="row">
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-3-1">
+          <span class="card-title">Card 3-1</span>
+          <span class="card-body">Grid item, order 2, span 1</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-3-2">
+          <span class="card-title">Card 3-2</span>
+          <span class="card-body">Grid item, order 3, span 1</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-3-3">
+          <span class="card-title">Card 3-3</span>
+          <span class="card-body">Grid item, order 4, span 1</span>
+        </div>
+        <div role="gridcell" class="spatial-card" tabindex="-1" id="card-3-4">
+          <span class="card-title">Card 3-4</span>
+          <span class="card-body">Grid item, order 1, span 1</span>
+        </div>
       </div>
     </div>
 

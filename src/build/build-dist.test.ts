@@ -2,7 +2,8 @@ import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { } from './build-dist.ts';
+import * as esbuild from 'esbuild';
+import { createStripTsMorphLibFilesPlugin } from './build-dist.ts';
 import { replaceMacros } from '../core/macros.ts';
 
 
@@ -46,10 +47,24 @@ describe('processSkills', () => {
     
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs')), 'modern-web.mjs should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/search.mjs')), 'search.mjs should exist');
+    assert.ok(fs.existsSync(path.join(publishRoot, 'skills/modern-web-guidance/legacy-scan.mjs')), 'legacy-scan.mjs should exist');
 
     // Verify standalone skills and their references exist
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/SKILL.md')), 'chrome-extensions SKILL.md should exist');
     assert.ok(fs.existsSync(path.join(publishRoot, 'skills/chrome-extensions/references/extensions/popup-ui.md')), 'chrome-extensions sibling popup-ui.md references should exist');
+  });
+
+  it('strip-ts-morph-lib-files plugin fails fast when ts-morph-common.js is missing from bundle', async () => {
+    const plugin = createStripTsMorphLibFilesPlugin();
+    await assert.rejects(
+      esbuild.build({
+        stdin: { contents: 'console.log("hello");' },
+        bundle: true,
+        write: false,
+        plugins: [plugin],
+      }),
+      /strip-ts-morph-lib-files: filter \/ts-morph-common\\\.js\$\/ did not match any file during bundle/
+    );
   });
 
   it('verifies modern-web.mjs has correct shebang without --experimental-strip-types', () => {
@@ -63,5 +78,16 @@ describe('processSkills', () => {
     
     assert.strictEqual(firstLine, '#!/usr/bin/env node', 'Shebang should be #!/usr/bin/env node');
     assert.ok(!firstLine.includes('--experimental-strip-types'), 'Shebang should not contain --experimental-strip-types');
+  });
+
+  it('verifies modern-web.mjs includes runtime node version guard banner', () => {
+    const publishRoot = path.join(rootDir, 'dist/skills-cli');
+    const modernWebMjsPath = path.join(publishRoot, 'skills/modern-web-guidance/modern-web.mjs');
+
+    assert.ok(fs.existsSync(modernWebMjsPath), 'modern-web.mjs should exist');
+
+    const content = fs.readFileSync(modernWebMjsPath, 'utf8');
+    assert.ok(content.includes('process.versions.node.split'), 'Should check process.versions.node');
+    assert.ok(content.includes('modern-web-guidance requires Node.js >= 22'), 'Should contain error message');
   });
 });

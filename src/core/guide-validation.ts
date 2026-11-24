@@ -4,13 +4,21 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
 import { isKnownCategory, CATEGORIES } from './categories.ts';
 import { buildHeadingMap } from './headings.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
+import {
+  getOriginTrialsRegistry,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  type OriginTrialEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -32,6 +40,7 @@ export const DISCIPLINE_GUIDES = new Set([
   'css',
   'forms',
   'html',
+  'js',
   'performance',
   'privacy',
   'security',
@@ -70,48 +79,7 @@ export interface PreparedGuide {
   relativeSubdir: string;
   statusName: ProjectStatus | null;
   originTrials?: OriginTrialMetadata[];
-}
-
-export interface OriginTrialMetadata {
-  id?: string;
-  name?: string;
-  chromestatus_url?: string;
-}
-
-const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
-let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
-
-export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
-  if (!cachedOriginTrials) {
-    try {
-      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
-      cachedOriginTrials = JSON.parse(raw);
-    } catch (e: unknown) {
-      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
-        cachedOriginTrials = {};
-      } else {
-        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
-      }
-    }
-  }
-  return cachedOriginTrials!;
-}
-
-export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
-  const registry = getOriginTrialsRegistry();
-  const entry = registry[featureId];
-  return entry ? { ...entry, id: featureId } : undefined;
-}
-
-export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
-  const registry = getOriginTrialsRegistry();
-  const found: OriginTrialMetadata[] = [];
-  for (const id of featureIds) {
-    if (registry[id]) {
-      found.push({ ...registry[id], id });
-    }
-  }
-  return found;
+  volatileFeatures?: VolatileFeatureMetadata[];
 }
 
 export interface GraduatedOriginTrial {
@@ -119,12 +87,8 @@ export interface GraduatedOriginTrial {
   supportedBrowsers: string[];
 }
 
-/**
- * Checks all features in the Origin Trials registry against the web-features package.
- * Returns any Origin Trial feature that now has browser support in web-features.
- */
 export function checkOriginTrialGraduations(
-  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+  registry: Record<string, OriginTrialEntry> = getOriginTrialsRegistry(),
 ): GraduatedOriginTrial[] {
   const graduated: GraduatedOriginTrial[] = [];
   for (const featureId of Object.keys(registry)) {
@@ -149,6 +113,21 @@ export function checkOriginTrialGraduations(
   }
   return graduated;
 }
+
+export {
+  FEATURE_GATES,
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+  getOriginTrialMetadata,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  isVolatileActive,
+  type FeatureGateSpec,
+  type OriginTrialEntry,
+  type VolatileFeatureEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 
 export interface GuideInventoryResult {
@@ -365,7 +344,11 @@ export function validateGuide(filePath: string): ValidationResult {
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
   errors.push(...validateCategory(filePath, relativePath));
-  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
+  errors.push(...validateMacros(maskedBody, relativePath, {
+    target: isPublished ? 'devsite' : undefined,
+    // Discipline guides may omit web-feature-ids, but features their macros reference must still be listed
+    webFeatureIds: Array.isArray(featureIds) ? featureIds : [],
+  }));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
   errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
   errors.push(...validateSecureSrc(maskedBody, relativePath));
@@ -509,6 +492,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       relativeSubdir,
       statusName,
       originTrials: getGuideOriginTrials(featureIds),
+      volatileFeatures: getGuideVolatileFeatures(featureIds),
     });
   }
 
@@ -612,6 +596,15 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
+  baselineTarget?: BaselineTarget;
+}
+
+export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'baseApp'>, taskName: string): string {
+  const targetGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskName, GRADER_FILE);
+  if (fs.existsSync(targetGraderPath)) return targetGraderPath;
+  const baseAppGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskInfo.baseApp, GRADER_FILE);
+  if (fs.existsSync(baseAppGraderPath)) return baseAppGraderPath;
+  return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
 /**
@@ -641,6 +634,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${taskName}`, info);
@@ -666,9 +660,20 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: baseAppName,
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
+
+      const graderPath = path.join(targetsDir, baseAppName, GRADER_FILE);
+      for (const target of getBaselineTargetsForGrader(graderPath)) {
+        taskMap.set(`${guideName}/${baseAppName}-${target}`, {
+          baseApp: baseAppName,
+          prompt: prompt,
+          guideDir: guideDir,
+          baselineTarget: target,
+        });
+      }
     }
   }
 
@@ -826,7 +831,7 @@ export function classifyGuide(
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
   const guides: GuideInventory[] = [];
 
-  if (!fs.existsSync(guidesDir)) return guides;
+  if (!fs.existsSync(scanDir)) return guides;
 
   const categories = fs.readdirSync(scanDir, { withFileTypes: true })
      .filter(d => d.isDirectory() && !d.name.startsWith('.') && d.name !== 'node_modules')

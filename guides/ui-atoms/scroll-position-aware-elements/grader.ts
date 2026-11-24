@@ -5,7 +5,7 @@ const targetFile = process.env.TARGET_FILE || path.join(import.meta.dirname, 'de
 const targetUrl = `file://${targetFile}`;
 
 // Test 1: CSS container-scroll-state-queries detection
-test('should use CSS container-scroll-state-queries as the primary scroll state detection method', async ({ page }) => {
+test('Uses CSS container-scroll-state-queries as the primary scroll state detection method', async ({ page }) => {
   await page.goto(targetUrl);
 
   const hasScrollStateQuery = await page.evaluate(() => {
@@ -41,7 +41,7 @@ test('should use CSS container-scroll-state-queries as the primary scroll state 
 });
 
 // Test 2: Fallback show/hide behavior on scroll when CSS scroll-state is unsupported
-test('should fall back and show/hide the button on scroll when container-scroll-state-queries is not supported', async ({ page }) => {
+test('Falls back and shows or hides the button on scroll when container-scroll-state-queries is not supported', async ({ page }) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
     CSS.supports = function (property: string, value?: string) {
@@ -134,7 +134,7 @@ test('should fall back and show/hide the button on scroll when container-scroll-
 });
 
 // Test 3a: Fallback uses IntersectionObserver when unsupported
-test('should use IntersectionObserver for fallback scroll state detection when unsupported', async ({ page }) => {
+test('Uses IntersectionObserver for fallback scroll state detection when unsupported', async ({ page }) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
     CSS.supports = function (property: string, value?: string) {
@@ -164,7 +164,7 @@ test('should use IntersectionObserver for fallback scroll state detection when u
 });
 
 // Test 3b: Fallback does NOT use continuous scroll event listeners for scroll detection
-test('should not use continuous scroll event listeners for scroll state detection', async ({ page }) => {
+test('Does not use continuous scroll event listeners for scroll state detection', async ({ page }) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
     CSS.supports = function (property: string, value?: string) {
@@ -194,7 +194,7 @@ test('should not use continuous scroll event listeners for scroll state detectio
 });
 
 // Test 4: Sentinel elements used for fallback must have zero dimensions or use absolute positioning
-test('should style fallback sentinel elements to have zero dimensions or use absolute positioning', async ({ page }) => {
+test('Styles fallback sentinel elements to have zero dimensions or use absolute positioning', async ({ page }) => {
   await page.addInitScript(() => {
     const originalSupports = CSS.supports;
     CSS.supports = function (property: string, value?: string) {
@@ -255,7 +255,7 @@ test('should style fallback sentinel elements to have zero dimensions or use abs
 });
 
 // Test 5: Floating element should be hidden by default at the top of the container
-test('should hide the floating element by default at the top of the container', async ({ page }) => {
+test('Hides the floating element by default at the top of the container', async ({ page }) => {
   await page.goto(targetUrl);
 
   const defaultState = await page.evaluate(() => {
@@ -289,7 +289,7 @@ test('should hide the floating element by default at the top of the container', 
 });
 
 // Test 6: Implementation uses transitionable visibility to handle entry/exit animations
-test('should use transitionable visibility to handle entry/exit animations and avoid tab order when hidden', async ({ page }) => {
+test('Uses transitionable visibility to handle entry/exit animations and avoid tab order when hidden', async ({ page }) => {
   await page.goto(targetUrl);
 
   const transitionProperties = await page.evaluate(() => {

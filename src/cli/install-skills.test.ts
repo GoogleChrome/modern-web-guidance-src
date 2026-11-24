@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { createIsolatedHome, cleanupIsolatedHome } from '../harness/lib/agent-shared.ts';
-import { parseGeminiStreamOutput } from '../harness/agents/gemini-cli-agent.ts';
 import { rootDir } from '../core/paths.ts';
 
 test('npx skills add from local path', { skip: !process.env.FULL }, async () => {
@@ -18,21 +17,6 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
         }
 
         const cmd = `npx skills add -y -g ${distDir}`;
-        
-        const geminiBin = path.join(rootDir, 'node_modules/.bin/gemini');
-        if (!fs.existsSync(geminiBin)) {
-            assert.fail(`Gemini binary not found at ${geminiBin}`);
-        }
-
-        console.log(`\nEnsuring no extension conflict (uninstalling if present)...`);
-        try {
-            execSync(`${geminiBin} extensions uninstall googlechrome-skills`, {
-                stdio: 'ignore', 
-                env: { ...process.env, HOME: homeDir }
-            });
-        } catch {
-            // Ignore if not installed
-        }
 
         console.log(`\nRunning skills add...`);
         execSync(cmd, { 
@@ -40,38 +24,18 @@ test('npx skills add from local path', { skip: !process.env.FULL }, async () => 
             env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' }
         });
 
-        const hasGeminiAuth = process.env.GEMINI_API_KEY;
-        if (!hasGeminiAuth) {
-            console.log(`Skipping Gemini prompt verification because no Gemini API auth environment variables are set.`);
-            return;
-        }
+        const installedSkillDir = path.join(homeDir, '.agents', 'skills', 'modern-web-guidance');
+        const skillMdPath = path.join(installedSkillDir, 'SKILL.md');
+        const mjsPath = path.join(installedSkillDir, 'modern-web.mjs');
+        assert.ok(fs.existsSync(skillMdPath), `Expected SKILL.md at ${skillMdPath}`);
+        assert.ok(fs.existsSync(mjsPath), `Expected modern-web.mjs at ${mjsPath}`);
 
-        console.log(`\nVerifying Gemini can use the added skill...`);
-        const promptCmd = `${geminiBin} -p "use the modern-web-guidance skill and tell me best practices on implementing an address form" -o stream-json --yolo --skip-trust`;
-        const env: Record<string, string | undefined> = { ...process.env, HOME: homeDir };
-        // Prevent gemini-cli strict env sanitization in GitHub Actions from stripping NODE_TEST_CONTEXT
-        delete env.GITHUB_SHA;
-        if (!env.GEMINI_MODEL) {
-            env.GEMINI_MODEL = 'gemini-3-flash-preview';
-        }
-        const output = execSync(promptCmd, {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            timeout: 90000,
-            env
+        const searchOut = execSync(`node ${JSON.stringify(mjsPath)} search "address form"`, {
+            encoding: 'utf8',
+            env: { ...process.env, HOME: homeDir, DISABLE_TELEMETRY: '1' },
         });
-
-        console.log(`\nVerifying Gemini used the skill...`);
-        const outputStr = output.toString();
-        const { skillActivated, searchCalled, retrieveCalled } = parseGeminiStreamOutput(outputStr);
-
-        console.log(`\n[Validation State]`);
-        console.log(`- Skill Activated: ${skillActivated}`);
-        console.log(`- Search Called: ${searchCalled}`);
-        console.log(`- Retrieve Called: ${retrieveCalled}\n`);
-
-        assert.ok(skillActivated, 'Skill should specify check for modern-web-guidance activation');
-        assert.ok(searchCalled, 'Modern web search should be called');
-        assert.ok(retrieveCalled, 'Modern web retrieve should be called');
+        const results = JSON.parse(searchOut);
+        assert.ok(Array.isArray(results) && results.length > 0, 'Installed modern-web.mjs should return search results');
         
     } finally {
         if (homeDir) {

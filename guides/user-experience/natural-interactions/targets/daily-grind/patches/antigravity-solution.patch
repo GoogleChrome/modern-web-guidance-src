@@ -1,0 +1,312 @@
+diff --git a/index.html b/index.html
+index 66c9173..3aa1ade 100644
+--- a/index.html
++++ b/index.html
+@@ -27,6 +27,34 @@
+       background-color: var(--light);
+     }
+ 
++    /* Interactive Feedback */
++    :where(a, button) {
++      transition: box-shadow 150ms ease-out, scale 150ms ease-out, background 150ms ease-out, color 150ms ease-out;
++    }
++
++    :where(button, .btn):hover {
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
++    }
++
++    a:hover {
++      text-decoration: underline;
++      text-decoration-thickness: 2px;
++    }
++
++    :where(a, button):active {
++      scale: 0.97;
++    }
++
++    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
++      outline: 2px solid CanvasText;
++      outline-offset: 3px;
++    }
++
++    nav :where(a, button):focus-visible,
++    .hero :where(a, button):focus-visible {
++      outline-color: var(--accent);
++    }
++
+     /* Navigation */
+     nav {
+       background: var(--primary);
+@@ -48,6 +76,7 @@
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+     }
+ 
+@@ -56,20 +85,34 @@
+     }
+ 
+     nav a {
++      display: inline-block;
+       color: white;
+-      text-decoration: none;
++      text-decoration: underline;
++      text-decoration-color: transparent;
++      text-underline-offset: 4px;
+       font-size: 0.9rem;
+-      transition: color 0.3s;
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
++      text-decoration-color: currentColor;
++      text-decoration-thickness: 2px;
+     }
+ 
+     .logout-link {
++      background: transparent;
++      color: white;
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      font-family: inherit;
++      font-size: 0.9rem;
++      cursor: pointer;
++    }
++
++    .logout-link:hover {
++      color: var(--accent);
++      border-color: var(--accent);
+     }
+ 
+     /* Hero Section */
+@@ -100,11 +143,20 @@
+       padding: 0 20px;
+     }
+ 
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
++    .grid,
++    .scroller {
++      display: flex;
++      gap: 1rem;
++      overflow-x: auto;
++      scroll-snap-type: x mandatory;
+       margin-top: 20px;
++      padding: 8px 4px 16px;
++    }
++
++    .grid > *,
++    .scroller > * {
++      flex: 0 0 85%;
++      scroll-snap-align: start;
+     }
+ 
+     .card {
+@@ -113,6 +165,7 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      position: relative;
+     }
+ 
+     .card h3 {
+@@ -120,19 +173,92 @@
+       color: var(--primary);
+     }
+ 
++    .card .actions {
++      opacity: 0;
++      transition: opacity 150ms ease-out;
++
++      .card:hover &,
++      .card:focus-within & {
++        opacity: 1;
++      }
++
++      @media (hover: none) {
++        opacity: 1;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+       text-decoration: none;
++      border: none;
+       border-radius: 5px;
+       margin-top: 15px;
+-      transition: background 0.3s;
++      font-family: inherit;
++      font-size: 1rem;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+       background: #3e2723;
++      box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
++    }
++
++    /* Popover Detail View */
++    .detail-popover {
++      position-area: bottom span-right;
++      inset: auto;
++      margin: 0;
++      transform-origin: top left;
++      background: white;
++      color: var(--text);
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 16px 20px;
++      max-width: 300px;
++      box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
++      text-align: left;
++    }
++
++    .detail-popover h4 {
++      color: var(--primary);
++      margin-bottom: 6px;
++    }
++
++    .detail-popover p {
++      font-size: 0.9rem;
++      margin-bottom: 8px;
++    }
++
++    .detail-popover .detail-meta {
++      font-size: 0.85rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 0;
++    }
++
++    .detail-popover:is(:popover-open, .\:popover-open) {
++      animation: fade-in 150ms ease-out both;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      .detail-popover:is(:popover-open, .\:popover-open) {
++        animation: grow 300ms linear(0, 0.45 15%, 1.08 35%, 0.97 55%, 1.01 75%, 1) both, fade-in 150ms ease-out both;
++      }
++    }
++
++    @keyframes grow {
++      from {
++        scale: 0.9;
++      }
++    }
++
++    @keyframes fade-in {
++      from {
++        opacity: 0;
++      }
+     }
+ 
+     footer {
+@@ -147,11 +273,19 @@
+     }
+ 
+     .footer-links a {
++      display: inline-block;
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
++      text-decoration: underline;
++      text-decoration-color: transparent;
++      text-underline-offset: 3px;
+       font-size: 0.85rem;
+     }
++
++    .footer-links a:hover {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: 2px;
++    }
+   </style>
+ </head>
+ 
+@@ -164,7 +298,7 @@
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><button type="button" class="logout-link">Logout</button></li>
+     </ul>
+   </nav>
+ 
+@@ -177,21 +311,42 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="grid scroller" role="region" aria-label="Seasonal Favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" popovertarget="details-maple-oat">View Details</button>
++          </div>
++          <div id="details-maple-oat" class="detail-popover" popover>
++            <h4>Maple Oat Latte</h4>
++            <p>Crafted with double-shot artisanal espresso, steamed barista-blend oat milk, and pure Grade A Vermont dark maple syrup, finished with a dash of cinnamon.</p>
++            <p class="detail-meta">12 oz &bull; 190 kcal &bull; $5.50</p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" popovertarget="details-dark-roast">View Details</button>
++          </div>
++          <div id="details-dark-roast" class="detail-popover" popover>
++            <h4>Dark Roast Espresso</h4>
++            <p>Slow-roasted single-origin Colombian and Sumatran beans yielding deep notes of dark chocolate, toasted walnut, and a velvety crema finish.</p>
++            <p class="detail-meta">2 oz Double Shot &bull; 10 kcal &bull; $3.75</p>
++          </div>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <div class="actions">
++            <button type="button" class="btn" popovertarget="details-cold-brew">View Details</button>
++          </div>
++          <div id="details-cold-brew" class="detail-popover" popover>
++            <h4>Cold Brew</h4>
++            <p>Coarse-ground Ethiopian beans steeped in filtered cold water for 18 hours, producing a naturally sweet, low-acidity brew served over artisanal ice.</p>
++            <p class="detail-meta">16 oz &bull; 15 kcal &bull; $4.75</p>
++          </div>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +362,23 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    if (!CSS.supports('position-area: bottom')) {
++      document.querySelectorAll('.detail-popover').forEach((popover) => {
++        popover.addEventListener('beforetoggle', (event) => {
++          if (event.newState === 'open') {
++            const trigger = document.querySelector(`[popovertarget="${popover.id}"]`);
++            if (trigger) {
++              const rect = trigger.getBoundingClientRect();
++              popover.style.top = `${rect.bottom + window.scrollY}px`;
++              popover.style.left = `${rect.left + window.scrollX}px`;
++            }
++          }
++        });
++      });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

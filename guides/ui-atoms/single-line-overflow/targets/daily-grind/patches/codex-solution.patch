@@ -1,0 +1,98 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..88300eb 100644
+--- a/index.html
++++ b/index.html
+@@ -35,12 +35,15 @@
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      gap: 1rem;
+       position: sticky;
+       top: 0;
+       z-index: 1000;
+     }
+ 
+     .logo {
++      flex: 0 0 auto;
++      white-space: nowrap;
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
+@@ -48,24 +51,47 @@
+ 
+     nav ul {
+       display: flex;
++      flex-wrap: nowrap;
++      min-inline-size: 0;
++      gap: 20px;
++      overflow-x: auto;
+       list-style: none;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      flex: 0 0 auto;
+     }
+ 
+     nav a {
++      display: block;
++      white-space: nowrap;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    nav a:hover,
++    nav a:focus-visible {
+       color: var(--accent);
+     }
+ 
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -2px;
++    }
++
++    @media (max-width: 40rem) {
++      nav {
++        flex-direction: column;
++        align-items: stretch;
++      }
++
++      .logo {
++        font-size: clamp(1rem, 5vw, 1.5rem);
++      }
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+@@ -157,7 +183,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+diff --git a/package.json b/package.json
+index 2bd4d77..43e7284 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"const fs = require('node:fs'); fs.mkdirSync('dist', { recursive: true }); fs.copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

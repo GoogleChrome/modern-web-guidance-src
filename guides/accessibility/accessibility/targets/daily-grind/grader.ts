@@ -8,35 +8,16 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import {
-  CSSStyleRule,
-  CSSGroupingRule,
-  type CSSRule,
-  type CSSStyleSheet,
-} from 'cssomnom';
+import { CSSStyleRule } from 'cssomnom';
 
 // @ts-ignore
 const targetFiles: string[] = getTargetFiles(import.meta.url);
 
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  const result: CSSStyleRule[] = [];
-  for (const rule of rules) {
-    if (rule instanceof CSSStyleRule) {
-      result.push(rule);
-    }
-    if (rule instanceof CSSGroupingRule && rule.cssRules) {
-      result.push(...collectStyleRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
 test.describe('accessibility Target Grader', () => {
   test('Expectation 1: Defines custom keyboard focus styles using :focus-visible paired with outline and outline-offset', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasFocusVisibleWithOutlineAndOffset = styleRules.some((rule) => {
       if (!rule.selectorText.includes(':focus-visible')) {
@@ -58,8 +39,7 @@ test.describe('accessibility Target Grader', () => {
   });
 
   test('Expectation 3: Interactive targets meet a minimum size of 24px using min-block-size or min-inline-size', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
 
     const hasMinTargetSize = styleRules.some((rule) => {
       const minBlockSize = rule.style.getPropertyValue('min-block-size').trim();

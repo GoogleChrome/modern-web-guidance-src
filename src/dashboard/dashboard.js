@@ -1,13 +1,14 @@
-import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, getA11yRunStats, getColor, escapeHtml, formatTestName, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatSuiteDate, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback } from './utils.js';
+import { getTrialStats, isInfraErrorTrial, isUnguidedLeakTrial, getEligibleTaskIds, getA11yTrialStats, getColor, escapeHtml, capitalize, initGoogleAuth, calculateChartData, parseResultKey, $, formatTokens, formatDuration, getTokenBreakdown, getAgentRuntimeMs, getScrollBehavior, formatJobDate, formatRatePct, isPopoverOpen, SUPPORTS_ANCHOR_POSITIONING, placePopoverFallback, renderEffortChip, setupEffortTooltip } from './utils.js';
 import { A11Y_SUBCATEGORIES, A11Y_SUBCATEGORY_MAP, classifyAccessibilityCheck } from './a11y-classifier.js';
-import { extractSuiteSummary } from './summary-extractor.js';
-import { ApiClient } from './api.js';
+import { extractJobSummary } from './summary-extractor.js';
+import { ApiClient, isAuthRejection } from './api.js';
+import { isLocalServer, reloadAsRemote } from './data-source.js';
 import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
 
 /**
  * @typedef {Object} CurrentDetails
  * @property {string} testName
- * @property {DashboardRunResult[]} runs
+ * @property {DashboardTrialResult[]} trials
  * @property {import('../harness/lib/metrics.ts').Metrics['testStats'][string]} stats
  * @property {string} testId
  */
@@ -20,13 +21,13 @@ import { DumbbellChart, hideDumbbellTooltip } from './dumbbell-chart.js';
  *   guideUsed?: { guidesUsed?: string[] } | null;
  *   retrievedGuides?: string[];
  *   fileReadGuides?: string[];
- * }} DashboardRunResult
+ * }} DashboardTrialResult
  */
 
 /**
  * @typedef {import('../harness/lib/metrics.ts').EvalsReport & {
  *   enableSkills?: boolean;
- *   results: Record<string, DashboardRunResult[]>;
+ *   results: Record<string, DashboardTrialResult[]>;
  * }} DashboardEvalsReport
  */
 
@@ -35,22 +36,96 @@ let currentDetails = null;
 /** @type {DashboardEvalsReport | null} */
 let allTestData = null;
 /** @type {string[]} */
-let sortedScenarios = [];
+let sortedTaskKeys = [];
 /** @type {string[]} */
-let currentRunTypes = ['unguided', 'guided'];
+let currentConditions = ['unguided', 'guided'];
 /** @type {string | null} */
 let currentTestID = null;
 /** @type {ApiClient} */
 let api;
 /** @type {'all' | 'a11y'} */
 let currentMetricMode = 'all';
-/** @type {string} */
+/** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */
 let currentTaskSort = 'default';
+/** @type {'asc' | 'desc'} */
+let currentTaskSortDir = 'desc';
+/** @type {string} */
+let currentCategoryFilter = 'all';
+/** @type {string} */
+let currentTextFilter = '';
+/** @type {Set<string>} */
+const collapsedCategories = new Set();
+
+/** @type {Record<string, string>} */
+const CATEGORY_LABELS = {
+    discipline: 'Discipline',
+    css: 'CSS',
+    html: 'HTML',
+    js: 'JavaScript',
+    javascript: 'JavaScript',
+    accessibility: 'Accessibility',
+    performance: 'Performance',
+    security: 'Security',
+    'built-in-ai': 'Built-in AI',
+    'web-apis': 'Web APIs',
+    'ui-atoms': 'UI Atoms',
+    'ui-components': 'UI Components',
+    'ui-behaviors': 'UI Behaviors',
+    pwa: 'PWA',
+    wasm: 'WebAssembly',
+    webmcp: 'WebMCP',
+    media: 'Media',
+    privacy: 'Privacy',
+    other: 'Other',
+};
+
+/** @param {string} cat */
+function formatCategoryLabel(cat) {
+    if (CATEGORY_LABELS[cat]) return CATEGORY_LABELS[cat];
+    return cat.split('-').map(capitalize).join(' ');
+}
+
+/** @type {Promise<Map<string, { category: string, dir: string }>> | null} */
+let guideCategoryMapPromise = null;
+
+/** @returns {Promise<Map<string, { category: string, dir: string }>>} */
+function loadGuideCategoryMap() {
+    if (!guideCategoryMapPromise) {
+        guideCategoryMapPromise = (async () => {
+            const map = new Map();
+            try {
+                const res = await fetch('./grouped-tasks.gen.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    const disciplineSet = new Set(Array.isArray(data?.disciplineGuides) ? data.disciplineGuides : []);
+                    const guides = data?.guides || {};
+                    for (const [cat, guideObj] of Object.entries(guides)) {
+                        if (!guideObj || typeof guideObj !== 'object') continue;
+                        for (const guideName of Object.keys(guideObj)) {
+                            const isDiscipline = disciplineSet.has(guideName) || guideName === cat;
+                            map.set(guideName, {
+                                category: isDiscipline ? 'discipline' : cat,
+                                dir: cat,
+                            });
+                        }
+                    }
+                    for (const g of disciplineSet) {
+                        if (!map.has(g)) map.set(g, { category: 'discipline', dir: g });
+                    }
+                }
+            } catch {
+                // Ignore if grouped-tasks.gen.json is unavailable
+            }
+            return map;
+        })();
+    }
+    return guideCategoryMapPromise;
+}
 
 // Module-scoped state
 let dashboardLoaded = false;
-/** @type {import('./summary-extractor.js').SuiteSummary | null} */
-let currentSuiteSummary = null;
+/** @type {import('./summary-extractor.js').JobSummary | null} */
+let currentJobSummary = null;
 
 /** @param {HTMLElement} pop */
 function positionHintFallback(pop) {
@@ -107,9 +182,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const setMode = (/** @type {'all' | 'a11y'} */ mode) => {
             if (currentMetricMode !== mode) {
                 currentMetricMode = mode;
+                const normalizedA11ySort = mode === 'a11y' && currentTaskSort === 'a11y';
+                if (normalizedA11ySort) {
+                    currentTaskSort = 'uplift';
+                }
                 syncDashModeButtons(mode);
                 const url = new URL(window.location.href);
                 if (mode === 'a11y') { url.searchParams.set('mode', 'a11y'); } else { url.searchParams.delete('mode'); }
+                if (normalizedA11ySort && url.searchParams.has('sort')) {
+                    url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+                }
                 window.history.replaceState({}, '', url);
                 if (allTestData && currentTestID) { renderDashboardDumbbellChart(allTestData); rerenderGrid(allTestData, currentTestID); }
             }
@@ -120,21 +202,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (target instanceof HTMLInputElement && (target.value === 'all' || target.value === 'a11y')) { setMode(target.value); }
         });
     }
-    const sortSelect = document.getElementById('task-sort-select');
-    if (sortSelect instanceof HTMLSelectElement) {
-        if (initialSort && Array.from(sortSelect.options).some(o => o.value === initialSort)) { currentTaskSort = initialSort; sortSelect.value = initialSort; }
-        sortSelect.addEventListener('change', () => {
-            currentTaskSort = sortSelect.value;
-            const url = new URL(window.location.href);
-            if (currentTaskSort === 'default') { url.searchParams.delete('sort'); } else { url.searchParams.set('sort', currentTaskSort); }
-            window.history.replaceState({}, '', url);
+    const sortMatch = initialSort?.match(/^(uplift|a11y|time|tokens)(?:-(asc|desc))?$/);
+    if (sortMatch) {
+        const rawSort = /** @type {'uplift' | 'a11y' | 'time' | 'tokens'} */ (sortMatch[1]);
+        currentTaskSort = (rawSort === 'a11y' && currentMetricMode === 'a11y') ? 'uplift' : rawSort;
+        currentTaskSortDir = /** @type {'asc' | 'desc'} */ (sortMatch[2] || ((currentTaskSort === 'time' || currentTaskSort === 'tokens') ? 'asc' : 'desc'));
+    }
+
+    const evalFilterInput = document.getElementById('eval-filter');
+    if (evalFilterInput instanceof HTMLInputElement) {
+        evalFilterInput.addEventListener('input', () => {
+            currentTextFilter = evalFilterInput.value.trim().toLowerCase();
             if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         });
     }
-    // Auth Button Handling (only for remote)
-    if (api.source === 'remote') {
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    sortResetBtn?.addEventListener('click', () => {
+        currentTaskSort = 'default';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.delete('sort');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+    });
+    // Auth Button Handling (remote reloads data in place; public reloads the page as remote)
+    if (api.source === 'remote' || api.source === 'public') {
         initGoogleAuth(async () => {
-            // Reload on auth success
+            if (api.source === 'public') {
+                reloadAsRemote();
+                return;
+            }
             const params = new URLSearchParams(window.location.search);
             const testId = params.get('testId');
             if (testId) {
@@ -224,31 +321,35 @@ async function loadDashboardData(testId) {
         if (testName) {
             const results = data.results;
             const stats = data.stats;
-            const runData = results[testName];
+            const trialList = results[testName];
             const testStats = stats[testName];
 
-            if (runData && testStats) {
+            if (trialList && testStats) {
                 const view = params.get('view');
                 const runParam = params.get('run');
-                const runNumber = runParam ? parseInt(runParam) : NaN;
+                const trialNumber = runParam ? parseInt(runParam) : NaN;
 
-                if (view === 'diff' && !isNaN(runNumber)) {
-                    const run = runData.find(r => r.runNumber === runNumber);
-                    if (run) {
-                        currentDetails = { testName, runs: runData, stats: testStats, testId };
-                        await showDetails(testName, runData, testStats, testId);
+                if (view === 'diff' && !isNaN(trialNumber)) {
+                    const trial = trialList.find(r => r.runNumber === trialNumber);
+                    if (trial) {
+                        currentDetails = { testName, trials: trialList, stats: testStats, testId };
+                        await showDetails(testName, trialList, testStats, testId);
 
-                        const paths = await getResultPaths(testId, run, testName);
-                        if (paths) {
+                        const paths = await getResultPaths(testId, trial, testName);
+                        if (paths && api.source === 'public') {
+                            if ((/** @type {DashboardTrialResult} */ (trial).files || []).includes('agent.patch')) {
+                                await viewContent(paths.resultPath, paths.resultPath);
+                            }
+                        } else if (paths) {
                             const { setupPath, resultPath } = paths;
-                            await viewDiff(setupPath, resultPath, testName, run.runNumber);
+                            await viewDiff(setupPath, resultPath, testName, trial.runNumber);
                         }
                     } else {
-                        await showDetails(testName, runData, testStats, testId);
+                        await showDetails(testName, trialList, testStats, testId);
                     }
                 } else {
                     // Auto-open modal
-                    await showDetails(testName, runData, testStats, testId);
+                    await showDetails(testName, trialList, testStats, testId);
                 }
 
                 // If checkId is provided, try to scroll to it
@@ -277,10 +378,13 @@ async function loadDashboardData(testId) {
             try { targetGuide = decodeURIComponent(targetGuide); } catch {
             }
             const targetTask = params.get('task');
-            setTimeout(() => {
+            setTimeout(async () => {
+                try { await renderGridIdle(); } catch { return; }
                 const accordionEl = (targetTask && document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"][data-task="${CSS.escape(targetTask)}"]`))
                     || document.querySelector(`.task-accordion[data-guide="${CSS.escape(targetGuide)}"]`);
                 if (accordionEl) {
+                    const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                    if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                     accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                     if (!accordionEl.classList.contains('open')) {
                         const header = $('.task-accordion-header', accordionEl);
@@ -293,6 +397,14 @@ async function loadDashboardData(testId) {
         console.error('Error:', error);
         dashboardLoaded = false;
         endLoadingReservations();
+
+        // The bucket rejected the request: leave for the landing page, which falls back to the
+        // public copy. A 401 has already cleared the dead token; a 403 keeps it (valid account,
+        // no access) so the landing page still offers Sign out.
+        if (api.source === 'remote' && isAuthRejection(error)) {
+            window.location.href = './';
+            return;
+        }
 
         const message = (error instanceof Error) ? error.message : String(error);
 
@@ -331,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = target.closest('.tfoot-action-btn[data-action]');
         if (!(btn instanceof HTMLButtonElement)) return;
         const action = btn.dataset.action;
-        if (action === 'trajectory' && btn.dataset.basePath && btn.dataset.sessionFile) { openTrajectory(btn.dataset.basePath, btn.dataset.sessionFile); } else if (action === 'content' && btn.dataset.fileName && btn.dataset.filePath) { viewContent(btn.dataset.fileName, btn.dataset.filePath); } else if (action === 'diff' && btn.dataset.setupPath !== undefined && btn.dataset.resultPath && btn.dataset.scenarioName && btn.dataset.runNumber) { viewDiff(btn.dataset.setupPath, btn.dataset.resultPath, btn.dataset.scenarioName, Number(btn.dataset.runNumber)); } else if (action === 'app' && btn.dataset.appUrl) { openApp(btn.dataset.appUrl); }
+        if (action === 'trajectory' && btn.dataset.basePath && btn.dataset.sessionFile) { openTrajectory(btn.dataset.basePath, btn.dataset.sessionFile); } else if (action === 'content' && btn.dataset.fileName && btn.dataset.filePath) { viewContent(btn.dataset.fileName, btn.dataset.filePath); } else if (action === 'diff' && btn.dataset.setupPath !== undefined && btn.dataset.resultPath && btn.dataset.taskKey && btn.dataset.trialNumber) { viewDiff(btn.dataset.setupPath, btn.dataset.resultPath, btn.dataset.taskKey, Number(btn.dataset.trialNumber)); } else if (action === 'app' && btn.dataset.appUrl) { openApp(btn.dataset.appUrl); }
     });
 
     window.addEventListener('message', (e) => {
@@ -366,10 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // View GCS Artifacts
     const gcsBtn = document.getElementById('view-gcs-artifacts-btn');
     if (gcsBtn) {
-        const params = new URLSearchParams(window.location.search);
-        const source = params.get('source');
-        const testId = params.get('testId');
-        if (source === 'remote' && testId) {
+        const testId = new URLSearchParams(window.location.search).get('testId');
+        if (api.source === 'remote' && testId) {
             gcsBtn.hidden = false;
             gcsBtn.onclick = () => window.open(`https://console.cloud.google.com/storage/browser/guidance-evals/${encodeURIComponent(testId)}?project=chrome-kiwi-air-force-dev`, '_blank');
         }
@@ -393,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const title = $('#modal-title');
                             const body = $('#modal-body');
 
-                            title.textContent = 'Test Suite Run Log';
+                            title.textContent = 'Job Log';
                             body.innerHTML = '<div class="modal-status-msg">Loading log...</div>';
                             modal.dataset.view = 'log';
                             modal.showModal();
@@ -423,35 +533,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!modal.open || modal.dataset.view !== 'details') return;
 
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-            if (!allTestData || !currentTestID || !currentDetails || !sortedScenarios.length || !currentRunTypes.length) return;
+            if (!allTestData || !currentTestID || !currentDetails || !sortedTaskKeys.length || !currentConditions.length) return;
 
             const parsed = parseResultKey(currentDetails.testName);
             if (!parsed) return;
-            const { task: taskName, guide, runType } = parsed;
-            const currentScenario = `${taskName} - ${guide}`;
+            const { baseApp: baseAppName, guide, condition } = parsed;
+            const currentTaskKey = `${baseAppName} - ${guide}`;
 
-            let sIdx = sortedScenarios.indexOf(currentScenario);
-            let rIdx = currentRunTypes.indexOf(runType);
+            let tIdx = sortedTaskKeys.indexOf(currentTaskKey);
+            let cIdx = currentConditions.indexOf(condition);
 
-            if (sIdx === -1 || rIdx === -1) return;
+            if (tIdx === -1 || cIdx === -1) return;
 
-            const oldSIdx = sIdx;
-            const oldRIdx = rIdx;
+            const oldTIdx = tIdx;
+            const oldCIdx = cIdx;
 
-            if (e.key === 'ArrowLeft') rIdx--;
-            if (e.key === 'ArrowRight') rIdx++;
-            if (e.key === 'ArrowUp') sIdx--;
-            if (e.key === 'ArrowDown') sIdx++;
+            if (e.key === 'ArrowLeft') cIdx--;
+            if (e.key === 'ArrowRight') cIdx++;
+            if (e.key === 'ArrowUp') tIdx--;
+            if (e.key === 'ArrowDown') tIdx++;
 
             // Circular navigation (wrap around)
-            sIdx = (sIdx + sortedScenarios.length) % sortedScenarios.length;
-            rIdx = (rIdx + currentRunTypes.length) % currentRunTypes.length;
+            tIdx = (tIdx + sortedTaskKeys.length) % sortedTaskKeys.length;
+            cIdx = (cIdx + currentConditions.length) % currentConditions.length;
 
-            if (sIdx === oldSIdx && rIdx === oldRIdx) return;
+            if (tIdx === oldTIdx && cIdx === oldCIdx) return;
 
-            const nextScenario = sortedScenarios[sIdx];
-            const nextRunType = currentRunTypes[rIdx];
-            const nextTestName = `${nextScenario} - ${nextRunType}`;
+            const nextTaskKey = sortedTaskKeys[tIdx];
+            const nextCondition = currentConditions[cIdx];
+            const nextTestName = `${nextTaskKey} - ${nextCondition}`;
 
             const results = allTestData.results;
             if (nextTestName !== currentDetails.testName && results[nextTestName]) {
@@ -472,20 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * @param {number} ms
- */
-function formatRuntime(ms) {
-    if (!ms) return '-';
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-        return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${seconds}s`;
-}
-
-/**
  * @param {string} testId
  * @param {string | null} jetskiVersion
  * @param {string | null} timestamp
@@ -494,67 +590,40 @@ function formatRuntime(ms) {
 function renderTestHeader(testId, jetskiVersion, timestamp, data) {
     const container = $('#test-header');
     if (container) {
-        const timeStr = formatSuiteDate(timestamp || data?.timestamp || '', testId);
+        const timeStr = formatJobDate(timestamp || data?.timestamp || '', testId);
 
         let agent = 'unknown';
         let model = 'unknown';
-        let serving = 'unknown';
 
         if (data) {
             agent = data.agent || 'unknown';
-            if (data.serving !== undefined) {
-                serving = data.serving;
-            } else if (data.enableSkills !== undefined) {
-                serving = data.enableSkills ? 'skills' : 'mcp';
-            }
-            /** @type {Record<string, string>} */
-            const servingDisplayNames = {
-                'skills': 'Skills',
-                'skills_cli': 'Skills (CLI)',
-                'mcp': 'MCP'
-            };
-            serving = servingDisplayNames[serving] || serving;
             model = data.model || 'unknown';
         }
 
         container.removeAttribute('aria-busy');
+        setupEffortTooltip();
         container.innerHTML = `
+            <h1 class="suite-page-title">${escapeHtml(testId)}</h1>
             <div class="header-meta-grid">
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(testId)}</span>
-                    <span class="meta-label">Test ID</span>
-                </div>
                 <div class="header-meta-item">
                     <span class="meta-value">${escapeHtml(timeStr)}</span>
                     <span class="meta-label">Action Date</span>
                 </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(agent)}</span>
-                    <span class="meta-label">Agent</span>
-                </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(model)}</span>
-                    <span class="meta-label">Model</span>
-                </div>
-                <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(serving)}</span>
-                    <span class="meta-label">Serving Mode</span>
-                </div>
                 ${data.totalRuntime ?
                 `<div class="header-meta-item">
-                    <span class="meta-value">${formatRuntime(data.totalRuntime)}</span>
+                    <span class="meta-value">${formatDuration(data.totalRuntime)}</span>
                     <span class="meta-label">Total Runtime</span>
                 </div>` : ''}
-                ${data.cliVersion ? `
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.cliVersion)}</span>
-                    <span class="meta-label">CLI Version</span>
+                    <span class="meta-value meta-value-model">${escapeHtml(model)}${renderEffortChip(data?.reasoningEffort)}</span>
+                    <span class="meta-value">${escapeHtml(agent)}</span>
+                    <span class="meta-label">Model &times; Agent</span>
                 </div>
-                ` : ''}
-                ${data.skillVersion ? `
+                ${(data.cliVersion || data.skillVersion) ? `
                 <div class="header-meta-item">
-                    <span class="meta-value">${escapeHtml(data.skillVersion)}</span>
-                    <span class="meta-label">Skill Version</span>
+                    ${data.cliVersion ? `<span class="meta-value">${escapeHtml(data.cliVersion)}</span>` : ''}
+                    ${data.skillVersion ? `<span class="meta-value">${escapeHtml(data.skillVersion)}</span>` : ''}
+                    <span class="meta-label">CLI / Skill Version</span>
                 </div>
                 ` : ''}
                 ${jetskiVersion ? `
@@ -591,7 +660,7 @@ function renderSparkline(uRate, gRate, isSmall = false) {
 
 /**
  * @param {DashboardEvalsReport} data
- * @returns {import('./summary-extractor.js').SuiteSummary | null}
+ * @returns {import('./summary-extractor.js').JobSummary | null}
  */
 function renderSummary(data) {
     const container = document.getElementById('summary-side-panel');
@@ -604,75 +673,60 @@ function renderSummary(data) {
         return null;
     }
 
-    const extracted = extractSuiteSummary(currentTestID || 'suite', data);
-    currentSuiteSummary = extracted;
+    const extracted = extractJobSummary(currentTestID || 'job', data);
+    currentJobSummary = extracted;
     if (!extracted) return null;
     const { guidedStats, unguidedStats, a11yStats, efficiencyStats } = extracted;
     const rt = efficiencyStats.runtime;
     const tok = efficiencyStats.tokens;
     const results = data.results;
-    const eligibleScenarios = getEligibleScenarioIds(results);
+    const eligibleTasks = getEligibleTaskIds(results);
     const baseKeys = new Set();
     const tasksWithTools = new Set();
     const tasksWithGuides = new Set();
 
-    let totalAllRunsCount = 0;
-    let totalUnguidedRunsCount = 0;
-    let computedEarlyFailures = 0;
-    let unguidedLeaksCount = 0;
     Object.keys(results).forEach(key => {
         const base = key.replace(' - guided', '').replace(' - unguided', '');
         baseKeys.add(base);
         const parsed = parseResultKey(key);
+        const isGuided = parsed ? parsed.condition === 'guided' : key.endsWith(' - guided');
+        if (!isGuided) return;
 
-        const runs = results[key] || [];
-        totalAllRunsCount += runs.length;
-        const isGuided = key.endsWith(' - guided');
-        if (!isGuided) totalUnguidedRunsCount += runs.length;
+        (results[key] || []).forEach((/** @type {DashboardTrialResult} */ trial) => {
+            const hasTools = trial.guidanceToolsUsed && trial.guidanceToolsUsed.length > 0;
+            const hasGuides = (trial.guidesUsed && trial.guidesUsed.length > 0) || (trial.guideUsed && typeof trial.guideUsed === 'object' && trial.guideUsed.guidesUsed && trial.guideUsed.guidesUsed.length > 0);
 
-        runs.forEach((/** @type {DashboardRunResult} */ run) => {
-            if (isEarlyFailureRun(run.results)) {
-                computedEarlyFailures++;
-            }
-            if (!isGuided && isUnguidedLeakRun(run, parsed?.guide)) {
-                unguidedLeaksCount++;
-            }
-            const hasTools = run.guidanceToolsUsed && run.guidanceToolsUsed.length > 0;
-            const hasGuides = (run.guidesUsed && run.guidesUsed.length > 0) || (run.guideUsed && typeof run.guideUsed === 'object' && run.guideUsed.guidesUsed && run.guideUsed.guidesUsed.length > 0);
-
-            if (isGuided && hasTools) tasksWithTools.add(base);
-            if (isGuided && hasGuides) tasksWithGuides.add(base);
+            if (hasTools) tasksWithTools.add(base);
+            if (hasGuides) tasksWithGuides.add(base);
         });
     });
 
     const tasksCount = baseKeys.size;
-    const validPairsCount = eligibleScenarios.size;
+    const validPairsCount = eligibleTasks.size;
     const exactRate = (/** @type {{ passed: number, total: number }} */ st) => st.total > 0 ? (st.passed / st.total) * 100 : 0;
     const unguidedPassRate = Math.round(exactRate(unguidedStats));
     const guidedPassRate = Math.round(exactRate(guidedStats));
-    const upliftDelta = Math.round(exactRate(guidedStats) - exactRate(unguidedStats));
-    const a11yUpliftPp = Math.round(
-        exactRate({ passed: a11yStats.guidedPassed, total: a11yStats.guidedTotal }) -
-        exactRate({ passed: a11yStats.unguidedPassed, total: a11yStats.unguidedTotal })
-    );
+    const upliftDelta = (unguidedStats.total > 0 && guidedStats.total > 0) ? (guidedPassRate - unguidedPassRate) : null;
+    const a11yUpliftPp = (a11yStats.unguidedTotal > 0 && a11yStats.guidedTotal > 0) ? (a11yStats.guidedRate - a11yStats.unguidedRate) : null;
     const fraction = (/** @type {number} */ passed, /** @type {number} */ total) => `${passed.toLocaleString()}/${total.toLocaleString()}`;
     const toolActivationRate = tasksCount > 0 ? Math.round((tasksWithTools.size / tasksCount) * 100) : 0;
     const guideUsageRate = tasksCount > 0 ? Math.round((tasksWithGuides.size / tasksCount) * 100) : 0;
 
-    const totalEarlyFailures = (summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined)
-        ? (summary.unguidedEarlyFailures || 0) + (summary.guidedEarlyFailures || 0)
-        : computedEarlyFailures;
-    const rawRate = totalAllRunsCount > 0 ? (totalEarlyFailures / totalAllRunsCount) * 100 : 0;
-    const totalEarlyFailureRate = rawRate > 0 && rawRate < 1 ? Number(rawRate.toFixed(1)) : Math.round(rawRate);
-    const rawLeakRate = totalUnguidedRunsCount > 0 ? (unguidedLeaksCount / totalUnguidedRunsCount) * 100 : 0;
-    const unguidedLeakRate = rawLeakRate > 0 && rawLeakRate < 1 ? Number(rawLeakRate.toFixed(1)) : Math.round(rawLeakRate);
+    const totalInfraErrors = extracted.earlyFailureCount ?? 0;
+    const totalInfraErrorRate = formatRatePct(totalInfraErrors, extracted.totalTrials ?? 0);
+    const unguidedLeaksCount = extracted.unguidedLeakCount ?? 0;
+    const unguidedLeakRate = formatRatePct(unguidedLeaksCount, extracted.unguidedTrialCount ?? 0);
 
     const a11yDimensionsHtml = A11Y_SUBCATEGORIES.map(sub => {
         const sc = a11yStats.bySubCategory?.[sub.id];
         if (!sc || (sc.unguidedTotal === 0 && sc.guidedTotal === 0)) return '';
-        const dimPp = Math.round(exactRate({ passed: sc.guidedPassed, total: sc.guidedTotal }) - exactRate({ passed: sc.unguidedPassed, total: sc.unguidedTotal }));
-        const deltaSign = dimPp >= 0 ? '+' : '';
-        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${sc.unguidedRate}% <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${sc.guidedRate}%</strong> <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : ''}">(${deltaSign}${dimPp} pp)</span></span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
+        const uStr = sc.unguidedTotal > 0 ? `${sc.unguidedRate}%` : '—';
+        const gStr = sc.guidedTotal > 0 ? `${sc.guidedRate}%` : '—';
+        const dimPp = (sc.unguidedTotal > 0 && sc.guidedTotal > 0) ? (sc.guidedRate - sc.unguidedRate) : null;
+        const deltaHtml = dimPp !== null
+            ? ` <span class="a11y-dim-delta ${dimPp < 0 ? 'negative' : (dimPp === 0 ? 'neutral' : '')}">(${dimPp > 0 ? '+' : ''}${dimPp} pp)</span>`
+            : '';
+        return `<div class="a11y-dim-row"> <div class="a11y-dim-header"> <span class="a11y-dim-label">${escapeHtml(sub.shortLabel)}</span> <span class="a11y-dim-values"><span class="visually-hidden">unguided </span>${uStr} <span aria-hidden="true">→</span><span class="visually-hidden">guided</span> <strong>${gStr}</strong>${deltaHtml}</span> </div> ${renderSparkline(sc.unguidedRate, sc.guidedRate, true)} </div>`;
     }).join('');
     /** @param {number} deltaPct
  * @param {{ less: string, more: string, noun: string }} words */
@@ -681,14 +735,15 @@ function renderSummary(data) {
         if (deltaPct === 0) return `<span class="efficiency-delta-pill neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
         return `<span class="efficiency-delta-pill neutral"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
     };
-    /** @param {number} deltaPp
+    /** @param {number | null} deltaPp
  * @param {string} noun */
     const ratePill = (deltaPp, noun) => {
+        if (deltaPp === null) return '';
         const cls = deltaPp > 0 ? 'positive' : (deltaPp < 0 ? 'negative' : 'neutral');
         const glyph = deltaPp > 0 ? '▲ ' : (deltaPp < 0 ? '▼ ' : '');
         return `<span class="efficiency-delta-pill ${cls}"><span aria-hidden="true">${glyph}</span>${deltaPp > 0 ? '+' : ''}${deltaPp} pp<span class="visually-hidden"> ${escapeHtml(noun)}</span></span>`;
     };
-    const suiteTokSign = tok.suiteUncachedDeltaPct > 0 ? '+' : '';
+    const jobTokSign = tok.suiteUncachedDeltaPct > 0 ? '+' : '';
     const hasRuntime = rt.unguidedMedianMs > 0 || rt.guidedMedianMs > 0;
     const hasTokens = tok.unguidedTotalMedian > 0 || tok.guidedTotalMedian > 0;
     container.innerHTML = `
@@ -713,19 +768,19 @@ function renderSummary(data) {
                 </div>
                 ${validPairsCount < tasksCount ? `<div class="narrative-metric-row"> <span>Valid task pairs</span> <strong class="text-warning">${validPairsCount} / ${tasksCount}</strong> </div>` : ''}
                 <div class="narrative-metric-row narrative-note">
-                    <span>Graded checks per mode differ when a run fails before grading (excluded from check totals).</span>
+                    <span>Graded checks per condition differ when a trial encounters an infra error before grading (excluded from check totals).</span>
                 </div>
-                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected runs</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
-                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalEarlyFailures > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalEarlyFailures > 0 ? 'text-warning' : 'text-success'}">${totalEarlyFailureRate}% (${totalEarlyFailures} invalid run${totalEarlyFailures === 1 ? '' : 's'})</strong> </div>` : ''}
-                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} run${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${summary.expectedTotalRuns !== undefined ? ` <div class="narrative-metric-row"> <span>Expected trials</span> <strong>${summary.expectedTotalRuns}${summary.taskCount ? ` (${summary.taskCount} × ${summary.runCountPerTask})` : ''}</strong> </div> ` : ''}
+                ${(summary.unguidedEarlyFailures !== undefined || summary.guidedEarlyFailures !== undefined || totalInfraErrors > 0) ? `<div class="narrative-metric-row"> <span>Infra errors (excluded)</span> <strong class="${totalInfraErrors > 0 ? 'text-warning' : 'text-success'}">${totalInfraErrorRate}% (${totalInfraErrors} invalid trial${totalInfraErrors === 1 ? '' : 's'})</strong> </div>` : ''}
+                ${unguidedLeaksCount > 0 ? `<div class="narrative-metric-row"> <span>Unguided leaks</span> <strong class="text-leak">${unguidedLeakRate}% (${unguidedLeaksCount} trial${unguidedLeaksCount === 1 ? '' : 's'})</strong> </div>` : ''}
             </div>
         </article>
 
-        <!-- Card 2: Cross-Cutting Accessibility Subscore -->
+        <!-- Card 2: Automated Accessibility Checks -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label">Accessibility subscore</span>
-                ${ratePill(a11yUpliftPp, 'accessibility subscore change')}
+                <span class="meta-label">Automated accessibility checks</span>
+                ${ratePill(a11yUpliftPp, 'accessibility check pass rate change')}
             </div>
             <div class="sparkline-container">
                 ${renderSparkline(a11yStats.unguidedRate, a11yStats.guidedRate)}
@@ -736,11 +791,11 @@ function renderSummary(data) {
             </div>
         </article>
 
-        <!-- Card 3: Completion Time (U → G) -->
+        <!-- Card 3: Task Duration (U → G) -->
         <article class="header-meta-item dog-ear-card narrative-card">
             <div class="meta-item-header">
-                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent time</span>
-                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent time' }) : ''}
+                <span class="meta-label"><span aria-hidden="true">⏱</span> Median agent duration</span>
+                ${hasRuntime ? deltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median agent duration' }) : ''}
             </div>
             <div class="narrative-hero-pair">
                 <span><span class="visually-hidden">Unguided </span>${formatDuration(rt.unguidedMedianMs)}</span>
@@ -757,7 +812,7 @@ function renderSummary(data) {
                     <strong>${rt.fasterTaskPct}% (${rt.fasterTasksCount}/${rt.pairedTaskCount} tasks)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Timed-out runs (≥10 min)</span>
+                    <span>Timed-out trials (≥10 min)</span>
                     <strong>${rt.unguidedTimeouts} unguided → ${rt.guidedTimeouts} guided</strong>
                 </div>
             </div>
@@ -776,11 +831,11 @@ function renderSummary(data) {
             </div>
             <div class="narrative-metrics-list">
                 <div class="narrative-metric-row">
-                    <span>Suite uncached</span>
-                    <strong>${formatTokens(tok.unguidedUncachedTotal)} → ${formatTokens(tok.guidedUncachedTotal)} (${suiteTokSign}${tok.suiteUncachedDeltaPct}%)</strong>
+                    <span>Job uncached</span>
+                    <strong>${formatTokens(tok.unguidedUncachedTotal)} → ${formatTokens(tok.guidedUncachedTotal)} (${jobTokSign}${tok.suiteUncachedDeltaPct}%)</strong>
                 </div>
                 <div class="narrative-metric-row">
-                    <span>Suite total, incl. cache</span>
+                    <span>Job total, incl. cache</span>
                     <strong>${formatTokens(tok.unguidedTotal)} → ${formatTokens(tok.guidedTotal)} (${tok.guidedCachedSharePct}% cached)</strong>
                 </div>
                 <div class="narrative-metric-row">
@@ -795,14 +850,18 @@ function renderSummary(data) {
         e.preventDefault();
         const modeA11yBtn = document.getElementById('dash-mode-a11y-btn');
         if (modeA11yBtn instanceof HTMLElement) { modeA11yBtn.click(); }
-        const sortSelect = document.getElementById('task-sort-select');
-        if (sortSelect instanceof HTMLSelectElement && sortSelect.value !== 'a11y-desc') { sortSelect.value = 'a11y-desc'; sortSelect.dispatchEvent(new Event('change')); }
+        currentTaskSort = 'uplift';
+        currentTaskSortDir = 'desc';
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', 'uplift-desc');
+        window.history.replaceState({}, '', url);
+        if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
         const guideSection = document.getElementById('guide-section');
         guideSection?.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
     });
     return extracted;
 }
-/** @typedef {{ appName: string, guide: string, scenarioName: string, unguidedRuns: DashboardRunResult[] | undefined, guidedRuns: DashboardRunResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} ScenarioItem */
+/** @typedef {{ baseApp: string, guide: string, taskKey: string, category: string, categoryLabel: string, featureIds: string[], unguidedTrials: DashboardTrialResult[] | undefined, guidedTrials: DashboardTrialResult[] | undefined, unguidedAvg: number | null, guidedAvg: number | null, uplift: number | null, a11yUnguidedAvg: number | null, a11yGuidedAvg: number | null, a11yUplift: number | null, a11yCheckCount: number, uRuntimeMs: number, gRuntimeMs: number, runtimeDeltaMs: number | null, uUncachedTokens: number, gUncachedTokens: number, uncachedDeltaTokens: number | null, infraErrorCount: number, hasInfraError: boolean, hasBuildFailure: boolean, leakCount: number, hasLeak: boolean, hasFailure: boolean }} TaskItem */
 const YIELD_BUDGET_MS = 50;
 /** @returns {Promise<void>} */
 function yieldToMain() {
@@ -812,15 +871,15 @@ function yieldToMain() {
 }
 
 const HINT_TEXT = {
-    infra: 'Infrastructure or CLI errors stop a run before grading. Those runs are excluded from pass rates.',
-    build: "The agent produced a broken app or build, so grading failed. Open the task to see each run's failure reason.",
-    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the run isn't a clean baseline.",
-    invalid: 'Excluded from the rollup because one or both sides have 0 valid runs.',
+    infra: 'Infrastructure or CLI errors stop a trial before grading. Those trials are excluded from pass rates.',
+    build: "The agent produced a broken app or build, so grading failed. Open the task to see each trial's failure reason.",
+    leak: "The unguided agent accessed Modern Web Guidance and this task's guide, so the trial isn't a clean baseline.",
+    invalid: 'Excluded from the rollup because one or both sides have 0 valid trials.',
 };
-/** @type {WeakMap<DashboardEvalsReport, Promise<ScenarioItem[]>>} */
-const scenarioCache = new WeakMap();
+/** @type {WeakMap<DashboardEvalsReport, Promise<TaskItem[]>>} */
+const taskCache = new WeakMap();
 /**
- * Built accordions for the current data, metric mode, and suite. A sort change only reorders these
+ * Built accordions for the current data, metric mode, and job. A sort change only reorders these
  * nodes, which is cheap and keeps any panels the user already opened (and their loaded details).
  * @type {{ data: DashboardEvalsReport | null, mode: string | null, testId: string | null, nodes: Map<string, HTMLElement> }}
  */
@@ -857,8 +916,8 @@ function rerenderGrid(data, testId) {
 }
 
 /** @param {DashboardEvalsReport} data
- * @returns {Promise<ScenarioItem[]>} */
-async function computeScenarios(data) {
+ * @returns {Promise<TaskItem[]>} */
+async function computeTaskItems(data) {
     const results = data.results;
 
     // Extract dimensions dynamically from data keys
@@ -866,7 +925,7 @@ async function computeScenarios(data) {
     const partsMap = keys.map(k => k.split(' - '));
     const validParts = partsMap.filter(p => p.length === 3);
 
-    const sortedAppNames = [...new Set(validParts.map(p => p[0]))].sort();
+    const sortedBaseApps = [...new Set(validParts.map(p => p[0]))].sort();
     const sortedGuides = [...new Set(validParts.map(p => p[1]))].sort((a, b) => {
         const featA = window.__featuresMapping?.[a]?.[0] || '';
         const featB = window.__featuresMapping?.[b]?.[0] || '';
@@ -876,121 +935,126 @@ async function computeScenarios(data) {
         return a.localeCompare(b);
     });
 
-    /** @type {ScenarioItem[]} */
-    const scenarios = [];
+    const categoryMap = await loadGuideCategoryMap();
+    const featuresMap = (typeof window !== 'undefined' && window.__featuresMapping) || {};
+
+    /** @type {TaskItem[]} */
+    const taskItems = [];
 
     let deadline = performance.now() + YIELD_BUDGET_MS;
-    for (const appName of sortedAppNames) {
+    for (const baseApp of sortedBaseApps) {
         for (const guide of sortedGuides) {
-            const scenarioName = `${appName} - ${guide}`;
-            const unguidedKey = `${scenarioName} - unguided`;
-            const guidedKey = `${scenarioName} - guided`;
+            const taskKey = `${baseApp} - ${guide}`;
+            const unguidedKey = `${taskKey} - unguided`;
+            const guidedKey = `${taskKey} - guided`;
 
-            const unguidedRuns = results[unguidedKey];
-            const guidedRuns = results[guidedKey];
+            const unguidedTrials = results[unguidedKey];
+            const guidedTrials = results[guidedKey];
 
-            if (!unguidedRuns && !guidedRuns) continue;
+            if (!unguidedTrials && !guidedTrials) continue;
 
             /**
-             * @param {DashboardRunResult[] | undefined} runs
-             * @returns {{ rate: number | null, exact: number | null }}
+             * @param {DashboardTrialResult[] | undefined} trials
+             * @returns {number | null}
              */
-            const getAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null };
-                const totalPassed = runs.reduce((acc, run) => acc + getRunStats(run.results).passed, 0);
-                const totalChecks = runs.reduce((acc, run) => acc + getRunStats(run.results).total, 0);
-                if (totalChecks <= 0) return { rate: null, exact: null };
-                const exact = (totalPassed / totalChecks) * 100;
-                return { rate: Math.round(exact), exact };
+            const getAvg = (trials) => {
+                if (!trials || trials.length === 0) return null;
+                const totalPassed = trials.reduce((acc, trial) => acc + getTrialStats(trial.results).passed, 0);
+                const totalChecks = trials.reduce((acc, trial) => acc + getTrialStats(trial.results).total, 0);
+                if (totalChecks <= 0) return null;
+                return Math.round((totalPassed / totalChecks) * 100);
             };
-            /** @param {DashboardRunResult[] | undefined} runs
- * @returns {{ rate: number | null, exact: number | null, count: number }} */
-            const getA11yAvg = (runs) => {
-                if (!runs || runs.length === 0) return { rate: null, exact: null, count: 0 };
+            /** @param {DashboardTrialResult[] | undefined} trials
+ * @returns {{ rate: number | null, count: number }} */
+            const getA11yAvg = (trials) => {
+                if (!trials || trials.length === 0) return { rate: null, count: 0 };
                 let passed = 0;
                 let total = 0;
-                let validRuns = 0;
-                let maxChecksInRun = 0;
-                runs.forEach(run => {
-                    if (isEarlyFailureRun(run.results)) return;
-                    validRuns++;
-                    const s = getA11yRunStats(run.results, guide, run.discipline);
+                let validTrials = 0;
+                let maxChecksInTrial = 0;
+                trials.forEach(trial => {
+                    if (isInfraErrorTrial(trial.results)) return;
+                    validTrials++;
+                    const s = getA11yTrialStats(trial.results, guide, trial.discipline);
                     passed += s.passed;
                     total += s.total;
-                    if (s.total > maxChecksInRun) maxChecksInRun = s.total;
+                    if (s.total > maxChecksInTrial) maxChecksInTrial = s.total;
                 });
-                if (validRuns === 0 || total === 0) {
-                    return { rate: null, exact: null, count: maxChecksInRun };
+                if (validTrials === 0 || total === 0) {
+                    return { rate: null, count: maxChecksInTrial };
                 }
-                const exact = (passed / total) * 100;
-                return { rate: Math.round(exact), exact, count: maxChecksInRun };
+                return { rate: Math.round((passed / total) * 100), count: maxChecksInTrial };
             };
 
-            /** @param {DashboardRunResult[] | undefined} runs
+            /** @param {DashboardTrialResult[] | undefined} trials
  * @returns {number} */
-            const getAvgRuntime = (runs) => {
-                if (!runs || runs.length === 0) return 0;
+            const getAvgRuntime = (trials) => {
+                if (!trials || trials.length === 0) return 0;
                 let sum = 0;
                 let count = 0;
-                runs.forEach(r => {
-                    if (isEarlyFailureRun(r.results)) return;
+                trials.forEach(r => {
+                    if (isInfraErrorTrial(r.results)) return;
                     const ms = getAgentRuntimeMs(r);
                     if (ms > 0) { sum += ms; count++; }
                 });
                 return count > 0 ? Math.round(sum / count) : 0;
             };
-            /** @param {DashboardRunResult[] | undefined} runs
+            /** @param {DashboardTrialResult[] | undefined} trials
  * @returns {number} */
-            const getAvgUncached = (runs) => {
-                if (!runs || runs.length === 0) return 0;
+            const getAvgUncached = (trials) => {
+                if (!trials || trials.length === 0) return 0;
                 let sum = 0;
                 let count = 0;
-                runs.forEach(r => {
-                    if (isEarlyFailureRun(r.results)) return;
+                trials.forEach(r => {
+                    if (isInfraErrorTrial(r.results)) return;
                     const tb = getTokenBreakdown(r.tokenUsage);
                     if (tb.total > 0) { sum += tb.uncached; count++; }
                 });
                 return count > 0 ? Math.round(sum / count) : 0;
             };
-            const uAvgObj = getAvg(unguidedRuns);
-            const gAvgObj = getAvg(guidedRuns);
-            const unguidedAvg = uAvgObj.rate;
-            const guidedAvg = gAvgObj.rate;
-            const uplift = (uAvgObj.exact !== null && gAvgObj.exact !== null)
-                ? Math.round(gAvgObj.exact - uAvgObj.exact)
+            const unguidedAvg = getAvg(unguidedTrials);
+            const guidedAvg = getAvg(guidedTrials);
+            const uplift = (unguidedAvg !== null && guidedAvg !== null)
+                ? guidedAvg - unguidedAvg
                 : null;
-            const uA11y = getA11yAvg(unguidedRuns);
-            const gA11y = getA11yAvg(guidedRuns);
+            const uA11y = getA11yAvg(unguidedTrials);
+            const gA11y = getA11yAvg(guidedTrials);
             const a11yCheckCount = Math.max(uA11y.count, gA11y.count);
             const a11yUnguidedAvg = uA11y.rate;
             const a11yGuidedAvg = gA11y.rate;
-            const a11yUplift = (uA11y.exact !== null && gA11y.exact !== null)
-                ? Math.round(gA11y.exact - uA11y.exact)
+            const a11yUplift = (a11yUnguidedAvg !== null && a11yGuidedAvg !== null)
+                ? a11yGuidedAvg - a11yUnguidedAvg
                 : null;
-            const uRuntimeMs = getAvgRuntime(unguidedRuns);
-            const gRuntimeMs = getAvgRuntime(guidedRuns);
+            const uRuntimeMs = getAvgRuntime(unguidedTrials);
+            const gRuntimeMs = getAvgRuntime(guidedTrials);
             const runtimeDeltaMs = (uRuntimeMs > 0 && gRuntimeMs > 0) ? gRuntimeMs - uRuntimeMs : null;
-            const uUncachedTokens = getAvgUncached(unguidedRuns);
-            const gUncachedTokens = getAvgUncached(guidedRuns);
+            const uUncachedTokens = getAvgUncached(unguidedTrials);
+            const gUncachedTokens = getAvgUncached(guidedTrials);
             const uncachedDeltaTokens = (uUncachedTokens > 0 && gUncachedTokens > 0) ? gUncachedTokens - uUncachedTokens : null;
 
             /**
-             * @param {DashboardRunResult[] | undefined} runs
+             * @param {DashboardTrialResult[] | undefined} trials
              * @returns {number}
              */
-            const countInfraErrors = (runs) => (runs || []).filter(r => isEarlyFailureRun(r.results)).length;
-            const infraErrorCount = countInfraErrors(unguidedRuns) + countInfraErrors(guidedRuns);
+            const countInfraErrors = (trials) => (trials || []).filter(r => isInfraErrorTrial(r.results)).length;
+            const infraErrorCount = countInfraErrors(unguidedTrials) + countInfraErrors(guidedTrials);
             const hasInfraError = infraErrorCount > 0;
-            const hasBuildFailure = [...(unguidedRuns || []), ...(guidedRuns || [])].some(r => r.results?.some(c => c.failureReason));
-            const leakCount = (unguidedRuns || []).filter(r => isUnguidedLeakRun(r, guide)).length;
+            const hasBuildFailure = [...(unguidedTrials || []), ...(guidedTrials || [])].some(r => r.results?.some(c => c.failureReason));
+            const leakCount = (unguidedTrials || []).filter(r => isUnguidedLeakTrial(r, guide)).length;
             const hasLeak = leakCount > 0;
             const hasFailure = hasInfraError || hasBuildFailure;
-            scenarios.push({
-                appName,
+            const category = categoryMap.get(guide)?.category || 'other';
+            const categoryLabel = formatCategoryLabel(category);
+            const featureIds = Array.isArray(featuresMap[guide]) ? featuresMap[guide] : [];
+            taskItems.push({
+                baseApp,
                 guide,
-                scenarioName,
-                unguidedRuns,
-                guidedRuns,
+                taskKey,
+                category,
+                categoryLabel,
+                featureIds,
+                unguidedTrials,
+                guidedTrials,
                 unguidedAvg,
                 guidedAvg,
                 uplift,
@@ -1014,28 +1078,175 @@ async function computeScenarios(data) {
             if (performance.now() >= deadline) { await yieldToMain(); deadline = performance.now() + YIELD_BUDGET_MS; }
         }
     }
-    return scenarios;
+    return taskItems;
 }
+
+/** @param {string} a
+ * @param {string} b */
+function compareCategories(a, b) {
+    if (a === b) return 0;
+    if (a === 'discipline') return -1;
+    if (b === 'discipline') return 1;
+    if (a === 'other') return 1;
+    if (b === 'other') return -1;
+    return formatCategoryLabel(a).localeCompare(formatCategoryLabel(b));
+}
+
+/** @param {TaskItem[]} baseTasks */
+function renderEvalFilterControls(baseTasks) {
+    const datalist = document.getElementById('eval-features-datalist');
+    if (datalist) {
+        /** @type {Map<string, number>} */
+        const featureCounts = new Map();
+        for (const s of baseTasks) {
+            for (const f of s.featureIds) {
+                featureCounts.set(f, (featureCounts.get(f) || 0) + 1);
+            }
+        }
+        const allFeatures = Array.from(featureCounts.keys()).sort();
+        datalist.innerHTML = allFeatures.map(f => {
+            const count = featureCounts.get(f) || 0;
+            return `<option value="${escapeHtml(f)}">${count} ${count === 1 ? 'eval' : 'evals'}</option>`;
+        }).join('');
+    }
+    const pillsContainer = document.getElementById('eval-category-pills');
+    if (pillsContainer) {
+        /** @type {Map<string, number>} */
+        const counts = new Map();
+        for (const s of baseTasks) {
+            counts.set(s.category, (counts.get(s.category) || 0) + 1);
+        }
+        const categories = Array.from(counts.keys()).sort(compareCategories);
+        if (currentCategoryFilter !== 'all' && !counts.has(currentCategoryFilter)) {
+            currentCategoryFilter = 'all';
+        }
+        const pills = [
+            `<button type="button" class="category-pill${currentCategoryFilter === 'all' ? ' active' : ''}" data-category="all" aria-pressed="${currentCategoryFilter === 'all'}">All <span class="pill-count">${baseTasks.length}</span></button>`,
+            ...categories.map(cat => {
+                const active = currentCategoryFilter === cat;
+                return `<button type="button" class="category-pill${active ? ' active' : ''}" data-category="${escapeHtml(cat)}" aria-pressed="${active}">${escapeHtml(formatCategoryLabel(cat))} <span class="pill-count">${counts.get(cat)}</span></button>`;
+            })
+        ];
+        pillsContainer.innerHTML = pills.join('');
+        pillsContainer.querySelectorAll('.category-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const cat = btn.getAttribute('data-category') || 'all';
+                currentCategoryFilter = (currentCategoryFilter === cat && cat !== 'all') ? 'all' : cat;
+                if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+            });
+        });
+    }
+}
+
+/** @returns {HTMLElement} */
+function buildEvalsTableHeader() {
+    const header = document.createElement('div');
+    header.className = 'evals-table-header';
+    const isA11yMode = currentMetricMode === 'a11y';
+    /** @param {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} col
+     * @param {string} label
+     * @param {string} [sub] */
+    const sortBtn = (col, label, sub = '') => {
+        const isSorted = currentTaskSort === col && col !== 'default';
+        const arrow = isSorted ? (currentTaskSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        const ariaSort = isSorted ? (currentTaskSortDir === 'asc' ? 'ascending' : 'descending') : 'none';
+        return `<button type="button" class="eval-col-sort-btn${isSorted ? ' active' : ''}" data-sort="${col}" aria-sort="${ariaSort}"><span>${label}${arrow}</span>${sub ? `<span class="eval-col-sub">${sub}</span>` : ''}</button>`;
+    };
+    header.innerHTML = `
+        <div class="eval-col-task">${sortBtn('default', 'Guide / Task')}</div>
+        ${isA11yMode ? '' : `<div class="eval-col-a11y">${sortBtn('a11y', 'A11y')}</div>`}
+        <div class="eval-col-time">${sortBtn('time', 'Duration', 'Unguided / Guided')}</div>
+        <div class="eval-col-tokens">${sortBtn('tokens', 'Tokens', 'Unguided / Guided')}</div>
+        <div class="eval-col-dumbbell"><span>${isA11yMode ? 'A11y pass rate' : 'Pass rate'}</span><span class="eval-col-sub">Unguided → Guided</span></div>
+        <div class="eval-col-uplift">${sortBtn('uplift', 'Uplift')}</div>
+    `;
+    header.querySelectorAll('.eval-col-sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const col = /** @type {'default' | 'uplift' | 'a11y' | 'time' | 'tokens'} */ (btn.getAttribute('data-sort') || 'default');
+            if (col === 'default') {
+                currentTaskSort = 'default';
+                currentTaskSortDir = 'desc';
+            } else if (currentTaskSort === col) {
+                currentTaskSortDir = currentTaskSortDir === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentTaskSort = col;
+                currentTaskSortDir = (col === 'time' || col === 'tokens') ? 'asc' : 'desc';
+            }
+            const url = new URL(window.location.href);
+            if (currentTaskSort === 'default') {
+                url.searchParams.delete('sort');
+            } else {
+                url.searchParams.set('sort', `${currentTaskSort}-${currentTaskSortDir}`);
+            }
+            window.history.replaceState({}, '', url);
+            if (allTestData && currentTestID) { rerenderGrid(allTestData, currentTestID); }
+        });
+    });
+    return header;
+}
+
 /** @param {DashboardEvalsReport} data
  * @param {string} testId */
 async function renderGridOnce(data, testId) {
     const seq = ++gridRenderSeq;
     const guideGrid = document.getElementById('guide-grid') || document.getElementById('dashboard-grid');
-    let scenariosPromise = scenarioCache.get(data);
-    if (!scenariosPromise) {
-        scenariosPromise = computeScenarios(data);
-        scenarioCache.set(data, scenariosPromise);
-        scenariosPromise.catch(() => scenarioCache.delete(data));
+    let taskItemsPromise = taskCache.get(data);
+    if (!taskItemsPromise) {
+        taskItemsPromise = computeTaskItems(data);
+        taskCache.set(data, taskItemsPromise);
+        taskItemsPromise.catch(() => taskCache.delete(data));
     }
-    const scenarios = await scenariosPromise;
+    const taskItems = await taskItemsPromise;
     if (seq !== gridRenderSeq) return;
-    const filteredScenarios = currentMetricMode === 'a11y'
-        ? scenarios.filter(s => s.a11yCheckCount > 0)
-        : scenarios.slice();
-    if (currentTaskSort === 'uplift-desc') { filteredScenarios.sort((a, b) => ((b.uplift ?? -999) - (a.uplift ?? -999)) || ((b.guidedAvg ?? -1) - (a.guidedAvg ?? -1))); } else if (currentTaskSort === 'uplift-asc') { filteredScenarios.sort((a, b) => ((a.uplift ?? 999) - (b.uplift ?? 999)) || ((a.guidedAvg ?? 999) - (b.guidedAvg ?? 999))); } else if (currentTaskSort === 'a11y-desc') {
-        filteredScenarios.sort((a, b) => (b.a11yCheckCount > 0 ? 1 : 0) - (a.a11yCheckCount > 0 ? 1 : 0) || ((b.a11yUplift ?? -999) - (a.a11yUplift ?? -999)) || (b.a11yCheckCount - a.a11yCheckCount));
-    } else if (currentTaskSort === 'time-saved') { filteredScenarios.sort((a, b) => ((a.runtimeDeltaMs ?? 999999999) - (b.runtimeDeltaMs ?? 999999999))); } else if (currentTaskSort === 'time-overhead') { filteredScenarios.sort((a, b) => ((b.runtimeDeltaMs ?? -999999999) - (a.runtimeDeltaMs ?? -999999999))); } else if (currentTaskSort === 'tokens-saved') { filteredScenarios.sort((a, b) => ((a.uncachedDeltaTokens ?? 999999999) - (b.uncachedDeltaTokens ?? 999999999))); }
-    sortedScenarios = filteredScenarios.map(item => item.scenarioName);
+    const baseTasks = currentMetricMode === 'a11y'
+        ? taskItems.filter(s => s.a11yCheckCount > 0)
+        : taskItems.slice();
+    renderEvalFilterControls(baseTasks);
+
+    const filteredTasks = baseTasks.filter(s => {
+        if (currentCategoryFilter !== 'all' && s.category !== currentCategoryFilter) return false;
+        if (currentTextFilter) {
+            const displayBaseApp = s.baseApp === 'task' ? 'gen1' : s.baseApp;
+            const hay = `${s.guide} ${displayBaseApp} ${s.categoryLabel} ${s.featureIds.join(' ')}`.toLowerCase();
+            if (!hay.includes(currentTextFilter)) return false;
+        }
+        return true;
+    });
+
+    const countEl = document.getElementById('evals-count');
+    if (countEl) {
+        countEl.textContent = filteredTasks.length === baseTasks.length
+            ? `${baseTasks.length} evals`
+            : `${filteredTasks.length} of ${baseTasks.length} evals`;
+    }
+    const sortResetBtn = document.getElementById('eval-sort-reset');
+    if (sortResetBtn) {
+        sortResetBtn.hidden = currentTaskSort === 'default';
+    }
+
+    const dir = currentTaskSortDir === 'asc' ? 1 : -1;
+    if (currentTaskSort === 'default') {
+        filteredTasks.sort((a, b) => compareCategories(a.category, b.category) || a.guide.localeCompare(b.guide) || a.baseApp.localeCompare(b.baseApp));
+    } else {
+        /** @param {TaskItem} item */
+        const getSortVal = (item) => {
+            if (currentTaskSort === 'uplift') return currentMetricMode === 'a11y' ? item.a11yUplift : item.uplift;
+            if (currentTaskSort === 'a11y') return item.a11yCheckCount > 0 ? item.a11yUplift : null;
+            if (currentTaskSort === 'time') return item.runtimeDeltaMs;
+            return item.uncachedDeltaTokens;
+        };
+        filteredTasks.sort((a, b) => {
+            const av = getSortVal(a);
+            const bv = getSortVal(b);
+            if (av === null && bv === null) return 0;
+            if (av === null) return 1;
+            if (bv === null) return -1;
+            const diff = (av - bv) * dir;
+            return currentTaskSort === 'a11y' && diff === 0 ? b.a11yCheckCount - a.a11yCheckCount : diff;
+        });
+    }
+
+    sortedTaskKeys = filteredTasks.map(item => item.taskKey);
     if (accordionCache.data !== data || accordionCache.mode !== currentMetricMode || accordionCache.testId !== testId) {
         accordionCache.data = data;
         accordionCache.mode = currentMetricMode;
@@ -1043,43 +1254,84 @@ async function renderGridOnce(data, testId) {
         accordionCache.nodes = new Map();
     }
     if (!guideGrid) return;
-    const canMoveInPlace = 'moveBefore' in Element.prototype
-        && guideGrid.children.length === filteredScenarios.length
-        && filteredScenarios.every(item => accordionCache.nodes.get(item.scenarioName)?.parentElement === guideGrid);
-    if (canMoveInPlace) {
-        for (const item of filteredScenarios) {
-            const accordion = accordionCache.nodes.get(item.scenarioName);
-            if (accordion) {
-                /** @type {HTMLElement & { moveBefore(node: Node, child: Node | null): void }} */
-(guideGrid).moveBefore(accordion, null);
-            }
-        }
+    guideGrid.classList.toggle('is-a11y-mode', currentMetricMode === 'a11y');
+    guideGrid.classList.toggle('is-sorted-flat', currentTaskSort !== 'default');
+    guideGrid.replaceChildren();
+    guideGrid.append(buildEvalsTableHeader());
+
+    if (filteredTasks.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'evals-empty-state';
+        empty.textContent = 'No matching evals.';
+        guideGrid.append(empty);
         return;
     }
-    guideGrid.replaceChildren();
+
     let fragment = document.createDocumentFragment();
     let deadline = performance.now() + YIELD_BUDGET_MS;
-    for (const item of filteredScenarios) {
-        let accordion = accordionCache.nodes.get(item.scenarioName);
-        if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.scenarioName, accordion); }
-        fragment.append(accordion);
-        if (performance.now() >= deadline) {
-            guideGrid.append(fragment);
-            await yieldToMain();
-            if (seq !== gridRenderSeq) return;
-            fragment = document.createDocumentFragment();
-            deadline = performance.now() + YIELD_BUDGET_MS;
+    const flushIfNeeded = async () => {
+        if (performance.now() < deadline) return true;
+        guideGrid.append(fragment);
+        await yieldToMain();
+        if (seq !== gridRenderSeq) return false;
+        fragment = document.createDocumentFragment();
+        deadline = performance.now() + YIELD_BUDGET_MS;
+        return true;
+    };
+
+    if (currentTaskSort === 'default' && currentCategoryFilter === 'all') {
+        const byCat = Map.groupBy(filteredTasks, item => item.category);
+        for (const [cat, items] of byCat.entries()) {
+            const section = document.createElement('div');
+            section.className = 'eval-category-section';
+            if (collapsedCategories.has(cat)) section.classList.add('collapsed');
+            const validUplifts = items
+                .map(i => currentMetricMode === 'a11y' ? i.a11yUplift : i.uplift)
+                .filter((/** @type {number | null} */ v) => v !== null);
+            const avgUplift = validUplifts.length > 0
+                ? Math.round(validUplifts.reduce((sum, v) => sum + v, 0) / validUplifts.length)
+                : null;
+            const catHeader = document.createElement('button');
+            catHeader.type = 'button';
+            catHeader.className = 'eval-category-header';
+            catHeader.setAttribute('aria-expanded', collapsedCategories.has(cat) ? 'false' : 'true');
+            catHeader.innerHTML = `
+                <span class="eval-category-title"><span class="chevron" aria-hidden="true">▼</span> ${escapeHtml(formatCategoryLabel(cat))}</span>
+                <span class="eval-category-meta">${items.length} ${items.length === 1 ? 'eval' : 'evals'}${avgUplift !== null ? ` · <strong class="${avgUplift > 0 ? 'positive' : avgUplift < 0 ? 'negative' : ''}">${avgUplift >= 0 ? '+' : ''}${avgUplift} pp avg</strong>` : ''}</span>
+            `;
+            const body = document.createElement('div');
+            body.className = 'eval-category-body';
+            catHeader.addEventListener('click', () => {
+                const isCollapsed = section.classList.toggle('collapsed');
+                if (isCollapsed) collapsedCategories.add(cat); else collapsedCategories.delete(cat);
+                catHeader.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+            });
+            for (const item of items) {
+                let accordion = accordionCache.nodes.get(item.taskKey);
+                if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.taskKey, accordion); }
+                body.append(accordion);
+            }
+            section.append(catHeader, body);
+            fragment.append(section);
+            if (!(await flushIfNeeded())) return;
+        }
+    } else {
+        for (const item of filteredTasks) {
+            let accordion = accordionCache.nodes.get(item.taskKey);
+            if (!accordion) { accordion = buildAccordion(item, testId); accordionCache.nodes.set(item.taskKey, accordion); }
+            fragment.append(accordion);
+            if (!(await flushIfNeeded())) return;
         }
     }
     guideGrid.append(fragment);
 }
 
-/** @param {ScenarioItem} item
+/** @param {TaskItem} item
  * @param {string} testId
  * @returns {HTMLElement} */
 function buildAccordion(item, testId) {
     const {
-        appName, guide, scenarioName, unguidedRuns, guidedRuns,
+        baseApp, guide, taskKey, categoryLabel, featureIds, unguidedTrials, guidedTrials,
         unguidedAvg, guidedAvg, uplift,
         a11yUnguidedAvg, a11yGuidedAvg, a11yUplift, a11yCheckCount,
         uRuntimeMs, gRuntimeMs, uUncachedTokens, gUncachedTokens,
@@ -1091,18 +1343,38 @@ function buildAccordion(item, testId) {
     const displayValidPair = displayU !== null && displayG !== null;
     const accordion = document.createElement('div');
     accordion.className = 'task-accordion';
-    accordion.id = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
+    accordion.id = `item-${taskKey.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
     accordion.setAttribute('data-guide', guide);
-    accordion.setAttribute('data-task', appName);
+    accordion.setAttribute('data-task', baseApp);
     const minVal = Math.min(displayU ?? 0, displayG ?? 0);
     const maxVal = Math.max(displayU ?? 0, displayG ?? 0);
     const scale = (/** @type {number} */ val) => `${val}%`;
     const modeParam = currentMetricMode === 'a11y' ? '&mode=a11y' : '';
-    const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(appName)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
-    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="View trend over time for ${escapeHtml(formatTestName(scenarioName))}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
-    const a11yPillHtml = a11yCheckCount > 0 ? (a11yUplift !== null ? `<span class="a11y-task-pill"> ${a11yCheckCount} a11y (${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp) <span class="visually-hidden">accessibility checks: unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%</span> </span>` : `<span class="a11y-task-pill"> ${a11yCheckCount} a11y </span>`) : '';
-    const metaChipsHtml = ` <div class="task-efficiency-meta"> ${(uRuntimeMs > 0 || gRuntimeMs > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average completion time, unguided to guided: </span><span aria-hidden="true">⏱</span> ${formatDuration(uRuntimeMs)} → ${formatDuration(gRuntimeMs)}</span>` : ''}
-            ${(uUncachedTokens > 0 || gUncachedTokens > 0) ? `<span class="task-eff-chip"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span aria-hidden="true">🪙</span> ${formatTokens(uUncachedTokens)} → ${formatTokens(gUncachedTokens)}</span>` : ''} </div> `;
+    const trendUrl = `guide.html?guide=${encodeURIComponent(guide)}&task=${encodeURIComponent(baseApp)}&testId=${encodeURIComponent(testId)}&source=${encodeURIComponent(api.source)}${modeParam}`;
+    const displayBaseApp = baseApp === 'task' ? 'gen1' : baseApp;
+    const appSuffixHtml = displayBaseApp && displayBaseApp !== 'daily-grind'
+        ? ` <span class="task-app-tag">(${escapeHtml(displayBaseApp)})</span>`
+        : '';
+    const trendLabel = `View trend over time for ${escapeHtml(guide)} (${escapeHtml(baseApp)})`;
+    const trendLinkHtml = `<a href="${trendUrl}" class="trend-link" aria-label="${trendLabel}" title="${trendLabel}"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"> <line x1="7" y1="17" x2="17" y2="7"></line> <polyline points="7 7 17 7 17 17"></polyline> </svg> </a>`;
+    const primaryFeatureId = featureIds[0] || '';
+    const featureChipHtml = primaryFeatureId && primaryFeatureId !== guide
+        ? `<span class="feature-chip">${escapeHtml(primaryFeatureId)}</span>`
+        : '';
+    const rowCategoryHtml = `<span class="row-category-tag">${escapeHtml(categoryLabel)}</span>`;
+    const a11yColHtml = currentMetricMode === 'a11y' ? '' : (
+        a11yCheckCount > 0
+            ? `<div class="task-a11y-col"><span class="visually-hidden">Accessibility checks: ${a11yCheckCount} checks, unguided ${a11yUnguidedAvg}%, guided ${a11yGuidedAvg}%, change </span><span class="metric-before">${a11yCheckCount} ${a11yCheckCount === 1 ? 'check' : 'checks'}</span><span class="metric-after ${a11yUplift !== null && a11yUplift > 0 ? 'positive' : a11yUplift !== null && a11yUplift < 0 ? 'negative' : ''}">${a11yUplift !== null ? `${a11yUplift >= 0 ? '+' : ''}${a11yUplift} pp` : '—'}</span></div>`
+            : `<div class="task-a11y-col"><span class="metric-empty">—</span></div>`
+    );
+    const hasRuntime = uRuntimeMs > 0 || gRuntimeMs > 0;
+    const hasTokens = uUncachedTokens > 0 || gUncachedTokens > 0;
+    const timeColHtml = hasRuntime
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average duration, unguided to guided: </span><span class="metric-before">${formatDuration(uRuntimeMs)}</span><span class="metric-after">${formatDuration(gRuntimeMs)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
+    const tokensColHtml = hasTokens
+        ? `<div class="task-metric-stack"><span class="visually-hidden">Average uncached tokens, unguided to guided: </span><span class="metric-before">${formatTokens(uUncachedTokens)}</span><span class="metric-after">${formatTokens(gUncachedTokens)}</span></div>`
+        : '<div class="task-metric-stack"><span class="metric-empty">—</span></div>';
     const contentId = `${accordion.id}-content`;
     /** @type {string[]} */
     const hintPopovers = [];
@@ -1127,27 +1399,26 @@ function buildAccordion(item, testId) {
     const invalidBadgeHtml = displayUplift === null
         ? hintButton('invalid', '', 'INVALID', HINT_TEXT.invalid)
         : '';
-    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="chevron" aria-hidden="true">▶</span>
-                        <span class="feature-chip">${escapeHtml(formatTestName(scenarioName).split(': ')[0])}</span>
-                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(formatTestName(scenarioName).split(': ')[1] || '')}</span>
+    const badgesHtml = [featureChipHtml, rowCategoryHtml, infraBadgeHtml, buildBadgeHtml, leakBadgeHtml].filter(Boolean).join('');
+    accordion.innerHTML = ` <div class="task-accordion-header"> <div class="left-section"> <div class="task-title-row"> <h3 class="task-accordion-heading"> <button type="button" class="task-toggle" aria-expanded="false" aria-controls="${contentId}"> <span class="expand-icon" aria-hidden="true"></span>
+                        <span class="task-title${hasFailure ? ' has-failure' : ''}">${escapeHtml(guide)}${appSuffixHtml}</span>
                     </button>
                 </h3>
                 ${trendLinkHtml}
-                ${a11yPillHtml}
-                ${infraBadgeHtml}
-                ${buildBadgeHtml}
-                ${leakBadgeHtml}
             </div>
-            <div class="right-section">
-                ${metaChipsHtml}
-                <div class="mini-dumbbell-track" aria-hidden="true">
-                    ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
-                    ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
-                    ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
-                </div>
-                ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
-                </div>
-                `} </div> </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns)}
+            ${badgesHtml ? `<div class="task-badges-row">${badgesHtml}</div>` : ''}
+            </div>
+            ${a11yColHtml}
+            ${timeColHtml}
+            ${tokensColHtml}
+            <div class="mini-dumbbell-track" aria-hidden="true">
+                ${displayValidPair ? `<div class="connector${displayUplift !== null && displayUplift < 0 ? ' regressed' : ''}" style="left: ${scale(minVal)}; width: ${scale(maxVal - minVal)};"></div>` : ''}
+                ${displayU !== null ? `<div class="dot unguided" style="left: ${scale(displayU)};"></div>` : ''}
+                ${displayG !== null ? `<div class="dot guided" style="left: ${scale(displayG)};"></div>` : ''}
+            </div>
+            ${displayUplift !== null ? `<div class="uplift-score ${displayUplift < 0 ? 'negative' : (displayUplift === 0 ? 'flat' : '')}"> <span class="visually-hidden">Unguided ${displayU}%, guided ${displayG}%, change </span>${displayUplift >= 0 ? '+' : ''}${displayUplift} pp </div>` : ` <div class="uplift-score invalid"> ${invalidBadgeHtml}
+            </div>
+            `} </div> <div class="task-accordion-content" id="${contentId}" hidden="until-found"> <div class="task-accordion-body"> <div class="task-details-grid"> <div class="task-prompt-slot"><div class="expansion-loading">Loading details...</div></div> ${buildTruthMatrixHtml(taskKey, unguidedTrials, guidedTrials)}
                 </div>
             </div>
         </div>
@@ -1165,7 +1436,7 @@ function buildAccordion(item, testId) {
 
         if (isOpen && content.querySelector('.expansion-loading') && content.dataset.loading !== 'true') {
             content.dataset.loading = 'true';
-            try { await fillAccordionDetails(content, scenarioName, unguidedRuns, guidedRuns, testId); } finally { delete content.dataset.loading; }
+            try { await fillAccordionDetails(content, taskKey, unguidedTrials, guidedTrials, testId); } finally { delete content.dataset.loading; }
         }
     };
     content.addEventListener('beforematch', () => {
@@ -1175,25 +1446,25 @@ function buildAccordion(item, testId) {
     header.addEventListener('click', (e) => { const target = e.target; if (target instanceof Element && target.closest('a, .hint-trigger')) return; toggleAccordion(); });
     return accordion;
 }
-/** @param {string} scenarioName
- * @param {DashboardRunResult[] | undefined} unguidedRuns
- * @param {DashboardRunResult[] | undefined} guidedRuns
+/** @param {string} taskKey
+ * @param {DashboardTrialResult[] | undefined} unguidedTrials
+ * @param {DashboardTrialResult[] | undefined} guidedTrials
  * @returns {string} */
-function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
-    const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-    const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
-    const maxGuided = guidedRuns ? guidedRuns.length : 0;
-    const maxRuns = Math.max(maxUnguided, maxGuided);
-    const assertionMap = new Map();
-    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs
- * @param {'unguided' | 'guided'} type */
-    const processResultsToMap = (runs, type) => {
-        if (!runs) return;
-        runs.forEach((run, runIndex) => {
-            if (run && run.results) {
-                run.results.forEach(check => {
+function buildTruthMatrixHtml(taskKey, unguidedTrials, guidedTrials) {
+    const sampleTrial = (unguidedTrials && unguidedTrials[0]) || (guidedTrials && guidedTrials[0]);
+    const maxUnguided = unguidedTrials ? unguidedTrials.length : 0;
+    const maxGuided = guidedTrials ? guidedTrials.length : 0;
+    const maxTrials = Math.max(maxUnguided, maxGuided);
+    const checkMap = new Map();
+    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} trials
+ * @param {'unguided' | 'guided'} condition */
+    const processResultsToMap = (trials, condition) => {
+        if (!trials) return;
+        trials.forEach((trial, trialIndex) => {
+            if (trial && trial.results) {
+                trial.results.forEach(check => {
                     if (check.isEarlyFailure) return;
-                    const existing = assertionMap.get(check.message) || {
+                    const existing = checkMap.get(check.message) || {
                         unguided: [],
                         guided: [],
                         error: null,
@@ -1201,54 +1472,54 @@ function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
                         pageSnapshot: null,
                         browserErrors: null,
                     };
-                    existing[type][runIndex] = check.passed;
+                    existing[condition][trialIndex] = check.passed;
                     if (!check.passed) {
                         if (check.error) existing.error = check.error;
                         if (check.errorLocation) existing.errorLocation = check.errorLocation;
                         if (check.pageSnapshot) existing.pageSnapshot = check.pageSnapshot;
                         if (check.browserErrors) existing.browserErrors = check.browserErrors;
                     }
-                    assertionMap.set(check.message, existing);
+                    checkMap.set(check.message, existing);
                 });
             }
         });
     };
-    processResultsToMap(unguidedRuns, 'unguided');
-    processResultsToMap(guidedRuns, 'guided');
-    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} runs */
-    const isRunEarlyFailure = (runs) => runs && runs.some(r => isEarlyFailureRun(r.results));
-    const uFailed = isRunEarlyFailure(unguidedRuns);
-    const gFailed = isRunEarlyFailure(guidedRuns);
-    const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
-    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Assertion results for ${escapeHtml(scenarioName)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader assertion results for ${escapeHtml(scenarioName)}, unguided vs. guided</caption><thead>`;
-    if (maxRuns > 1) {
-        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxRuns}">Guided</th> <th scope="col" rowspan="2">Assertion Requirement</th> </tr> <tr>`;
-        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
-        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
+    processResultsToMap(unguidedTrials, 'unguided');
+    processResultsToMap(guidedTrials, 'guided');
+    /** @param {import('../harness/lib/metrics.ts').RunResult[] | undefined} trials */
+    const hasInfraErrorInTrials = (trials) => trials && trials.some(r => isInfraErrorTrial(r.results));
+    const uFailed = hasInfraErrorInTrials(unguidedTrials);
+    const gFailed = hasInfraErrorInTrials(guidedTrials);
+    const taskGuide = parseResultKey(`${taskKey} - unguided`)?.guide || '';
+    let truthMatrixHtml = `<div class="truth-matrix-wrap" role="region" aria-label="Check results for ${escapeHtml(taskKey)}" tabindex="0"><table class="truth-matrix"><caption class="visually-hidden">Grader check results for ${escapeHtml(taskKey)}, unguided vs. guided</caption><thead>`;
+    if (maxTrials > 1) {
+        truthMatrixHtml += `<tr> <th scope="colgroup" class="center${uFailed ? ' text-warning' : ''}" colspan="${maxTrials}">Unguided</th> <th scope="colgroup" class="center${gFailed ? ' text-warning' : ''}" colspan="${maxTrials}">Guided</th> <th scope="col" rowspan="2">Check Requirement</th> </tr> <tr>`;
+        for (let i = 0; i < maxTrials; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
+        for (let i = 0; i < maxTrials; i++) truthMatrixHtml += `<th scope="col" class="center">#${i+1}</th>`;
         truthMatrixHtml += `</tr>`;
     } else {
-        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Assertion Requirement</th> </tr>`;
+        truthMatrixHtml += `<tr> <th scope="col" class="center${uFailed ? ' text-warning' : ''}">Unguided</th> <th scope="col" class="center${gFailed ? ' text-warning' : ''}">Guided</th> <th scope="col">Check Requirement</th> </tr>`;
     }
     truthMatrixHtml += `</thead><tbody>`;
 
-    const guideName = scenarioGuide || scenarioName.split(' - ')[1] || '';
-    if (assertionMap.size === 0) {
-        const totalCols = maxRuns > 1 ? (maxRuns * 2 + 1) : 3;
-        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader assertions recorded (all runs encountered infrastructure errors before grading).</td></tr>`;
+    const guideName = taskGuide || taskKey.split(' - ')[1] || '';
+    if (checkMap.size === 0) {
+        const totalCols = maxTrials > 1 ? (maxTrials * 2 + 1) : 3;
+        truthMatrixHtml += `<tr><td colspan="${totalCols}" class="center text-warning">No grader checks recorded (all trials encountered infrastructure errors before grading).</td></tr>`;
     }
 
     const passSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="visually-hidden">Pass</span>';
     const failSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg><span class="visually-hidden">Fail</span>';
     const passCell = (/** @type {boolean | undefined} */ pass) => `<td class="center ${pass !== undefined ? (pass ? 'pass' : 'fail') : ''}">${pass !== undefined ? (pass ? passSvg : failSvg) : '-'}</td>`;
-    assertionMap.forEach((status, message) => {
-        const a11yInfo = classifyAccessibilityCheck(sampleRun?.discipline || '', guideName, message);
+    checkMap.forEach((status, message) => {
+        const a11yInfo = classifyAccessibilityCheck(sampleTrial?.discipline || '', guideName, message);
         const subCatMeta = a11yInfo.subCategory ? A11Y_SUBCATEGORY_MAP[a11yInfo.subCategory] : null;
         const a11yBadge = a11yInfo.isAccessibility && subCatMeta
             ? ` <span class="a11y-check-badge">A11y · ${escapeHtml(subCatMeta.shortLabel)}</span>`
             : '';
         truthMatrixHtml += `<tr class="${a11yInfo.isAccessibility ? 'a11y-assertion-row' : ''}">`;
-        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.unguided[i]);
-        for (let i = 0; i < maxRuns; i++) truthMatrixHtml += passCell(status.guided[i]);
+        for (let i = 0; i < maxTrials; i++) truthMatrixHtml += passCell(status.unguided[i]);
+        for (let i = 0; i < maxTrials; i++) truthMatrixHtml += passCell(status.guided[i]);
         let diagnosticsHtml = '';
         if (status.error) {
             const loc = status.errorLocation ? ` <span class="assertion-error-loc">(${escapeHtml(status.errorLocation)})</span>` : '';
@@ -1268,44 +1539,53 @@ function buildTruthMatrixHtml(scenarioName, unguidedRuns, guidedRuns) {
 
 /**
  * @param {HTMLElement} container
- * @param {string} scenarioName
- * @param {DashboardRunResult[] | undefined} unguidedRuns
- * @param {DashboardRunResult[] | undefined} guidedRuns
+ * @param {string} taskKey
+ * @param {DashboardTrialResult[] | undefined} unguidedTrials
+ * @param {DashboardTrialResult[] | undefined} guidedTrials
  * @param {string} testId
  */
-async function fillAccordionDetails(container, scenarioName, unguidedRuns, guidedRuns, testId) {
+async function fillAccordionDetails(container, taskKey, unguidedTrials, guidedTrials, testId) {
     try {
         let promptHtml = '<div style="color: var(--text-secondary); margin-bottom: 20px;">Prompt fetch deferred or failed.</div>';
         let baseApp = 'n/a';
 
-        // Fetch prompt from the first run (unguided or guided)
-        const sampleRun = (unguidedRuns && unguidedRuns[0]) || (guidedRuns && guidedRuns[0]);
-        if (sampleRun && sampleRun.taskName) {
+        // The prompt recorded on the first trial (unguided or guided) is authoritative; older
+        // results without one are reconstructed from run.mjs, then from the task file at HEAD.
+        const sampleTrial = (unguidedTrials && unguidedTrials[0]) || (guidedTrials && guidedTrials[0]);
+        if (sampleTrial && sampleTrial.taskName) {
             try {
-                const typeLabel = (unguidedRuns && unguidedRuns[0]) ? 'unguided' : 'guided';
-                const paths = await getResultPaths(testId, sampleRun, `${scenarioName} - ${typeLabel}`);
-                if (!paths) return;
-                const { usedBasePath } = paths;
+                const conditionLabel = (unguidedTrials && unguidedTrials[0]) ? 'unguided' : 'guided';
+                let promptText = typeof sampleTrial.prompt === 'string' ? sampleTrial.prompt.trim() : '';
+                if (promptText) {
+                    baseApp = sampleTrial.baseApp || baseApp;
+                } else {
+                    const paths = await getResultPaths(testId, sampleTrial, `${taskKey} - ${conditionLabel}`);
+                    if (!paths) return;
+                    const { usedBasePath } = paths;
 
-                let promptText = '';
-                try {
-                    const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
-                    const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
-                    if (match) {
-                        const arrayStr = `[${match[1]}]`;
-                        const arr = JSON.parse(arrayStr);
-                        promptText = arr[1];
-                        const baseAppPath = arr[4];
-                        if (baseAppPath) baseApp = sampleRun.baseApp || baseAppPath.split('/').pop();
+                    try {
+                        const runScriptText = await api.getFileText(`${usedBasePath}/run.mjs`);
+                        const match = runScriptText.match(/\.\.\.\[([\s\S]+?)\]/);
+                        if (match) {
+                            const arrayStr = `[${match[1]}]`;
+                            const arr = JSON.parse(arrayStr);
+                            promptText = arr[1];
+                            const baseAppPath = arr[4];
+                            if (baseAppPath) baseApp = sampleTrial.baseApp || baseAppPath.split('/').pop();
+                        }
+                    } catch (e) {
+                        console.log('Falling back to living guide file:', e);
                     }
-                } catch (e) {
-                    console.log('Falling back to living guide file:', e);
                 }
 
-                // Fallback to HEAD guide if run.mjs parsing fails
+                // Fallback to living guide target task.md if run.mjs parsing fails
                 if (!promptText) {
-                    const isNegative = sampleRun.taskName.endsWith('-negative');
-                    const taskPath = `tasks/${isNegative ? 'negative/' : ''}${sampleRun.taskName}.md`;
+                    const parsed = parseResultKey(`${taskKey} - ${conditionLabel}`);
+                    const guideName = parsed?.guide || '';
+                    const fallbackBaseApp = parsed?.baseApp || sampleTrial.baseApp || 'daily-grind';
+                    const catMap = await loadGuideCategoryMap();
+                    const catDir = catMap.get(guideName)?.dir || guideName;
+                    const taskPath = `guides/${catDir}/${guideName}/targets/${fallbackBaseApp}/task.md`;
                     const text = await api.getFileText(taskPath);
 
                     const frontmatterMatch = text.match(/^---([\s\S]+?)---/);
@@ -1334,21 +1614,21 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
             }
         }
 
-        const maxUnguided = unguidedRuns ? unguidedRuns.length : 0;
-        const maxGuided = guidedRuns ? guidedRuns.length : 0;
-        const maxRuns = Math.max(maxUnguided, maxGuided);
-        const scenarioGuide = parseResultKey(`${scenarioName} - unguided`)?.guide || '';
+        const maxUnguided = unguidedTrials ? unguidedTrials.length : 0;
+        const maxGuided = guidedTrials ? guidedTrials.length : 0;
+        const maxTrials = Math.max(maxUnguided, maxGuided);
+        const taskGuide = parseResultKey(`${taskKey} - unguided`)?.guide || '';
 
 
-        // Compute run cards for separate horizontal grid
+        // Compute trial cards for separate horizontal grid
         // Compute column chips for the footer transposed layout (Percent + Traj + Diff Table + Log)
         /**
          * @param {string} g
-         * @param {DashboardRunResult} run
+         * @param {DashboardTrialResult} trial
          */
-        const renderGuideChip = (g, run) => {
-            const isExpectedGuide = g === run.guideName;
-            const hasExpectedPrefix = run.expectedToolPrefixes && run.expectedToolPrefixes.some((/** @type {string} */ p) => g.startsWith(p));
+        const renderGuideChip = (g, trial) => {
+            const isExpectedGuide = g === trial.guideName;
+            const hasExpectedPrefix = trial.expectedToolPrefixes && trial.expectedToolPrefixes.some((/** @type {string} */ p) => g.startsWith(p));
             const isGreen = isExpectedGuide || hasExpectedPrefix;
             const className = isGreen ? 'matching-guide' : 'default-guide';
             const style = 'padding: 2px 4px; border-radius: 4px; font-family: monospace; text-decoration: none;';
@@ -1358,19 +1638,19 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
         };
 
         /**
-         * @param {DashboardRunResult[] | undefined} runs
-         * @param {string} typeLabel
+         * @param {DashboardTrialResult[] | undefined} trials
+         * @param {string} conditionTitle
          */
-        const getTfootChips = async (runs, typeLabel) => {
+        const getTfootChips = async (trials, conditionTitle) => {
              const chips = [];
-             for (let i = 0; i < maxRuns; i++) {
-                 if (!runs || i >= runs.length) {
+             for (let i = 0; i < maxTrials; i++) {
+                 if (!trials || i >= trials.length) {
                      chips.push('-');
                      continue;
                  }
-                 const run = runs[i];
-                 const s = getRunStats(run.results);
-                 const paths = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+                 const trial = trials[i];
+                 const s = getTrialStats(trial.results);
+                 const paths = await getResultPaths(testId, trial, `${taskKey} - ${conditionTitle.toLowerCase()}`);
                  if (!paths) {
                      chips.push('-');
                      continue;
@@ -1378,41 +1658,43 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
                  const { setupPath, resultPath, usedBasePath } = paths;
                  /** @type {string[]} */
                  let files = [];
-                 try { files = (await api.getRunFiles(usedBasePath)) || []; } catch (e) {}
-                 if (files.length === 0) files = run.files || [];
+                 try { files = (await api.getTrialFiles(usedBasePath)) || []; } catch (e) {}
+                 if (files.length === 0) files = trial.files || [];
 
                  const patchFile = files.includes('agent.patch') ? 'agent.patch' : null;
                  const sessionFile = files.find(f => f.startsWith('session-') && f.endsWith('.html'));
                  const logFile = files.includes('mcp-server.log') ? 'mcp-server.log' : (files.includes('modern-web.log') ? 'modern-web.log' : null);
                  const jsonFile = files.find(f => f.endsWith('_results.json'));
                  const runtimeFile = files.includes('runtime.json') ? 'runtime.json' : null;
-                 const isEarlyFailure = isEarlyFailureRun(run.results);
-                 const isLeak = typeLabel === 'Unguided' && isUnguidedLeakRun(run, scenarioGuide);
-                 const earlyFailureMsg = isEarlyFailure ? (run.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
-                 const buildFailureReason = !isEarlyFailure ? (run.results?.find(c => c.failureReason)?.failureReason || '') : '';
-                 const failureFile = isEarlyFailure ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
-                 const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                 const appUrl = (api.source === 'remote' && !isLocalServer)
+                 const hasInfraErr = isInfraErrorTrial(trial.results);
+                 const isLeak = conditionTitle === 'Unguided' && isUnguidedLeakTrial(trial, taskGuide);
+                 const infraErrorMsg = hasInfraErr ? (trial.results?.find(c => c.isEarlyFailure)?.message || 'Infrastructure Error') : '';
+                 const buildFailureReason = !hasInfraErr ? (trial.results?.find(c => c.failureReason)?.failureReason || '') : '';
+                 const failureFile = hasInfraErr ? (files.includes('generation_failed.json') ? 'generation_failed.json' : (files.includes('agent_stderr.log') ? 'agent_stderr.log' : null)) : null;
+                 // A trial with a built app can be opened and diffed against its base app; see getResultInfo.
+                 const hasApp = setupPath !== '';
+                 const appUrl = !hasApp ? ''
+                     : (api.source === 'remote' && !isLocalServer())
                      ? `https://storage.mtls.cloud.google.com/guidance-evals/${resultPath.split('?')[0]}`
                       : api.getAbsoluteUrl ? api.getAbsoluteUrl(resultPath) : `${usedBasePath}/index.html`;
 
-                 const taskRuntime = getAgentRuntimeMs(run) || null;
-                 const tb = getTokenBreakdown(run.tokenUsage);
+                 const taskRuntime = getAgentRuntimeMs(trial) || null;
+                 const tb = getTokenBreakdown(trial.tokenUsage);
 
                  chips.push(`
                      <div class="tfoot-chip">
-                         ${isEarlyFailure
-                             ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-error">ERROR</summary><p class="tfoot-chip-msg">${escapeHtml(earlyFailureMsg)}</p></details>`
+                         ${hasInfraErr
+                             ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-error">ERROR</summary><p class="tfoot-chip-msg">${escapeHtml(infraErrorMsg)}</p></details>`
                              : `<span class="tfoot-chip-rate" style="--rate-color: ${getColor(s.rate)};">${s.rate}%</span>`
                          }
-                         ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(scenarioGuide)}</span></span>` : ''}
+                         ${isLeak ? `<span class="run-chip-leak">Unguided Leak<span class="visually-hidden">: accessed modern-web-guidance and ${escapeHtml(taskGuide)}</span></span>` : ''}
                          ${buildFailureReason ? `<details class="tfoot-chip-details"><summary class="tfoot-chip-build-failed">Build Failed</summary><p class="tfoot-chip-msg">${escapeHtml(buildFailureReason)}</p></details>` : ''}
-                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent time: </span>${formatDuration(taskRuntime)}</span>` : ''}
-                         ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)} uncached<span class="visually-hidden">, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
+                         ${taskRuntime ? `<span class="run-chip-meta"><span class="visually-hidden">Agent duration: </span>${formatDuration(taskRuntime)}</span>` : ''}
+                         ${tb.total > 0 ? `<span class="run-chip-meta small">${formatTokens(tb.uncached)}<span class="visually-hidden"> uncached tokens, ${tb.total.toLocaleString()} total, ${tb.cachedPct}% cached</span></span>` : ''}
                          <div class="tfoot-chip-actions">
                              ${sessionFile ? `<button type="button" class="tfoot-action-btn" data-action="trajectory" data-base-path="${escapeHtml(usedBasePath)}" data-session-file="${escapeHtml(sessionFile)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg> Traj</button>` : ''}
-                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-scenario-name="${escapeHtml(scenarioName)}" data-run-number="${run.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
-                             <button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>
+                             ${patchFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${patchFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${patchFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>` : !hasApp ? '' : `<button type="button" class="tfoot-action-btn" data-action="diff" data-setup-path="${escapeHtml(setupPath)}" data-result-path="${escapeHtml(resultPath)}" data-task-key="${escapeHtml(taskKey)}" data-trial-number="${trial.runNumber}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 13.5v-11zM2.5 2a.5.5 0 0 0-.5.5V13c0 .1.03.18.08.25L7.33 8 2.08 2.75A.5.5 0 0 0 2.5 2zm11 11a.5.5 0 0 0 .5-.5V2.5a.5.5 0 0 0-.85-.35L7.83 8l5.32 5.32c.07.07.13.1.18.12l.17.06zM7.5 9.41l-.91-.91L7.5 7.59l.91.91-.91.91z"/></svg> Diff</button>`}
+                             ${!appUrl ? '' : `<button type="button" class="tfoot-action-btn" data-action="app" data-app-url="${escapeHtml(appUrl)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M14 11v3h-12v-12h3v-1h-4v14h14v-4h-1zm-4-10v1h3.3l-5.6 5.6.7.7 5.6-5.6v3.3h1v-5h-5z"/></svg> App</button>`}
                              ${jsonFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${jsonFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${jsonFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v9A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 11.5 2h-7zm0 1h7a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5z"/><path d="M4.5 5.5a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h6a.5.5 0 0 1 0 1h-6a.5.5 0 0 1-.5-.5z"/></svg> JSON</button>` : ''}
                              ${runtimeFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${runtimeFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/><path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/></svg> Runtime</button>` : ''}
                              ${logFile ? `<button type="button" class="tfoot-action-btn" data-action="content" data-file-name="${escapeHtml(`${usedBasePath}/${logFile}`)}" data-file-path="${escapeHtml(`${usedBasePath}/${logFile}`)}"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M2.5 1.5A1.5 1.5 0 0 1 4 0h8a1.5 1.5 0 0 1 1.5 1.5v13a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5V1.5zM4 1a.5.5 0 0 0-.5.5V14a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V1.5a.5.5 0 0 0-.5-.5H4z"/><path fill-rule="evenodd" d="M4 4.5h5v1H4v-1zm0 2h8v1H4v-1zm0 2h8v1H4v-1z"/></svg> Log</button>` : ''}
@@ -1424,40 +1706,40 @@ async function fillAccordionDetails(container, scenarioName, unguidedRuns, guide
              return chips;
         };
 
-        // Compute separate horizontal run boxes for Tools Used & Guides Used Only
+        // Compute separate horizontal trial boxes for Tools Used & Guides Used Only
         /**
-         * @param {DashboardRunResult[] | undefined} runs
-         * @param {string} typeLabel
+         * @param {DashboardTrialResult[] | undefined} trials
+         * @param {string} conditionTitle
          */
-        const getRunCards = async (runs, typeLabel) => {
+        const getTrialCards = async (trials, conditionTitle) => {
              let html = '';
-             for (let i = 0; i < maxRuns; i++) {
-                 if (!runs || i >= runs.length) continue;
-                 const run = runs[i];
-                 const paths = await getResultPaths(testId, run, `${scenarioName} - ${typeLabel.toLowerCase()}`);
+             for (let i = 0; i < maxTrials; i++) {
+                 if (!trials || i >= trials.length) continue;
+                 const trial = trials[i];
+                 const paths = await getResultPaths(testId, trial, `${taskKey} - ${conditionTitle.toLowerCase()}`);
                   if (!paths) continue;
                   const { usedBasePath } = paths;
-                 let files = run.files || [];
+                 let files = trial.files || [];
                  if (files.length === 0) {
-                     try { files = (await api.getRunFiles(usedBasePath)) || []; } catch (e) {}
+                     try { files = (await api.getTrialFiles(usedBasePath)) || []; } catch (e) {}
                  }
-                 const toolsUsed = run.guidanceToolsUsed || [];
-                 const guidesUsed = run.guidesUsed || (run.guideUsed && run.guideUsed.guidesUsed) || [];
-                 const retrievedGuides = run.retrievedGuides || [];
-                 const fileReadGuides = run.fileReadGuides || [];
+                 const toolsUsed = trial.guidanceToolsUsed || [];
+                 const guidesUsed = trial.guidesUsed || (trial.guideUsed && trial.guideUsed.guidesUsed) || [];
+                 const retrievedGuides = trial.retrievedGuides || [];
+                 const fileReadGuides = trial.fileReadGuides || [];
 
                  if (toolsUsed.length === 0 && guidesUsed.length === 0 && retrievedGuides.length === 0 && fileReadGuides.length === 0) continue;
 
                  html += `
                      <div class="run-card">
-                         <span class="run-card-title">${typeLabel} Run ${i + 1}</span>
+                         <span class="run-card-title">${conditionTitle} Trial ${i + 1}</span>
 
                          ${toolsUsed.length > 0 ? `
                          <div class="run-card-row">
                              <span class="run-card-label">Tools Used:</span>
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
 ${toolsUsed.map((/** @type {string} */ t) => {
-                                      const isCorrectTool = run.expectedToolPrefixes && run.expectedToolPrefixes.some((/** @type {string} */ p) => t.startsWith(p));
+                                      const isCorrectTool = trial.expectedToolPrefixes && trial.expectedToolPrefixes.some((/** @type {string} */ p) => t.startsWith(p));
                                       const className = isCorrectTool ? "matching-guide" : "default-guide";
                                       const style = "padding: 2px 4px; border-radius: 4px; font-family: monospace;";
 
@@ -1470,7 +1752,7 @@ ${toolsUsed.map((/** @type {string} */ t) => {
                          <div class="run-card-row">
                              <span class="run-card-label">Retrieved Guides:</span>
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
-                                 ${retrievedGuides.map(g => renderGuideChip(g, run)).join('')}
+                                 ${retrievedGuides.map(g => renderGuideChip(g, trial)).join('')}
                              </div>
                          </div>` : ''}
 
@@ -1478,7 +1760,7 @@ ${toolsUsed.map((/** @type {string} */ t) => {
                          <div class="run-card-row">
                              <span class="run-card-label">File Read Guides:</span>
                              <div class="run-card-row-inner" style="flex-wrap: wrap;">
-                                 ${fileReadGuides.map(g => renderGuideChip(g, run)).join('')}
+                                 ${fileReadGuides.map(g => renderGuideChip(g, trial)).join('')}
                              </div>
                          </div>` : ''}
                      </div>
@@ -1487,18 +1769,18 @@ ${toolsUsed.map((/** @type {string} */ t) => {
              return html;
         };
 
-        const unguidedChips = await getTfootChips(unguidedRuns, 'Unguided');
-        const guidedChips = await getTfootChips(guidedRuns, 'Guided');
+        const unguidedChips = await getTfootChips(unguidedTrials, 'Unguided');
+        const guidedChips = await getTfootChips(guidedTrials, 'Guided');
 
         let tfootHtml = '<tfoot><tr>';
-        if (maxRuns > 1) {
+        if (maxTrials > 1) {
             unguidedChips.forEach(c => tfootHtml += `<td class="center" style="vertical-align: top;">${c}</td>`);
             guidedChips.forEach(c => tfootHtml += `<td class="center" style="vertical-align: top;">${c}</td>`);
         } else {
             tfootHtml += `<td class="center" style="vertical-align: top;">${unguidedChips[0]}</td><td class="center" style="vertical-align: top;">${guidedChips[0]}</td>`;
         }
-        const unguidedCards = await getRunCards(unguidedRuns, 'Unguided');
-        const guidedCards = await getRunCards(guidedRuns, 'Guided');
+        const unguidedCards = await getTrialCards(unguidedTrials, 'Unguided');
+        const guidedCards = await getTrialCards(guidedTrials, 'Guided');
         tfootHtml += `<td>
 <div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px;">${unguidedCards}${guidedCards}</div>
 </td></tr></tfoot>`;
@@ -1593,7 +1875,10 @@ async function openTrajectory(usedBasePath, sessionFile) {
     const placeholder = body.lastElementChild;
     const modal = $('dialog#modal');
     try {
-        const html = await api.getFileText(`${usedBasePath}/${sessionFile}`);
+        const [html, trajSummary] = await Promise.all([
+            api.getFileText(`${usedBasePath}/${sessionFile}`),
+            api.getTrajectorySummary(usedBasePath),
+        ]);
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         const frame = createSandboxedFrame({
             srcdoc: withEscBridge(html),
@@ -1601,7 +1886,21 @@ async function openTrajectory(usedBasePath, sessionFile) {
             sandbox: 'allow-scripts',
         });
         frame.dataset.escBridge = '';
-        body.replaceChildren(renderBackButton(), frame);
+        if (trajSummary && (trajSummary.model || trajSummary.reasoningEffort)) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'trajectory-modal-toolbar';
+            toolbar.appendChild(renderBackButton());
+            const meta = document.createElement('div');
+            meta.className = 'trajectory-meta-pill';
+            const modelLabel = trajSummary.model || allTestData?.model || 'unknown';
+            const effortSource = trajSummary.reasoningEffort ?? allTestData?.reasoningEffort;
+            setupEffortTooltip();
+            meta.innerHTML = `<span class="trajectory-meta-model">${escapeHtml(modelLabel)}</span>${renderEffortChip(effortSource)}`;
+            toolbar.appendChild(meta);
+            body.replaceChildren(toolbar, frame);
+        } else {
+            body.replaceChildren(renderBackButton(), frame);
+        }
     } catch (e) {
         if (!modal.open || !placeholder || !body.contains(placeholder)) return;
         console.error('Error loading trajectory:', e);
@@ -1620,20 +1919,18 @@ function openApp(appUrl) {
     body.replaceChildren(renderBackButton(), hint, createSandboxedFrame({ src: url.href, title: 'Agent-built app preview (sandboxed)', sandbox: 'allow-scripts allow-forms', }));
 }
 // Global helper to open details from task list
-window.openDetailsFromTask = (/** @type {string} */ scenarioName, /** @type {string} */ testId) => {
+window.openDetailsFromTask = (/** @type {string} */ taskKey, /** @type {string} */ testId) => {
     if (!allTestData) return;
-    // Attempt to find runData. We might need to fetch it or pass it.
-    // If we assume `allTestData` is available globally (it is), we can find it.
-    // Wait, and we need to call showDetails. Let's see if we can find any runType for this scenario to pass to showDetails.
-    // showDetails expects testName like "AppName - GuideName - RunType".
-    // Let's pass "AppName - GuideName - guided" as a default to showDetails if it exists, or unguided.
-    const guidedKey = `${scenarioName} - guided`;
-    const unguidedKey = `${scenarioName} - unguided`;
+    // Attempt to find trial data for either condition so showDetails can focus the task accordion.
+    // showDetails expects testName like "BaseApp - GuideName - Condition".
+    // Pass "BaseApp - GuideName - guided" if it exists, or unguided.
+    const guidedKey = `${taskKey} - guided`;
+    const unguidedKey = `${taskKey} - unguided`;
     const finalKey = allTestData.results[guidedKey] ? guidedKey : unguidedKey;
     if (allTestData.results[finalKey]) {
         showDetails(finalKey, allTestData.results[finalKey], allTestData.stats[finalKey], testId);
     } else {
-        alert('Could not find run data for this task.');
+        alert('Could not find trial data for this task.');
     }
 };
 
@@ -1643,11 +1940,11 @@ window.openTrajectory = openTrajectory;
 
 /**
  * @param {string} testName
- * @param {DashboardRunResult[]} runs
+ * @param {DashboardTrialResult[]} trials
  * @param {import('../harness/lib/metrics.ts').Metrics['testStats'][string]} stats
  * @param {string} testId
  */
-async function showDetails(testName, runs, stats, testId) {
+async function showDetails(testName, trials, stats, testId) {
     const modal = $('dialog#modal');
     if (modal.open) modal.close();
 
@@ -1657,12 +1954,12 @@ async function showDetails(testName, runs, stats, testId) {
     window.history.replaceState({ testName }, '', url);
 
     // Store for back navigation
-    currentDetails = { testName, runs, stats, testId };
+    currentDetails = { testName, trials, stats, testId };
 
     const parsed = parseResultKey(testName);
-    const scenarioName = parsed ? `${parsed.task} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
-    const accordionId = `item-${scenarioName.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
-    const accordionEl = (parsed && document.querySelector(`.task-accordion[data-guide="${CSS.escape(parsed.guide)}"][data-task="${CSS.escape(parsed.task)}"]`))
+    const taskKey = parsed ? `${parsed.baseApp} - ${parsed.guide}` : testName.replace(/ - (guided|unguided)$/, '');
+    const accordionId = `item-${taskKey.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}`;
+    const accordionEl = (parsed && document.querySelector(`.task-accordion[data-guide="${CSS.escape(parsed.guide)}"][data-task="${CSS.escape(parsed.baseApp)}"]`))
         || document.getElementById(accordionId);
 
     if (accordionEl) {
@@ -1685,17 +1982,21 @@ function renderBackButton() {
             modal.close();
         }
         if (currentDetails) {
-            showDetails(currentDetails.testName, currentDetails.runs, currentDetails.stats, currentDetails.testId);
+            showDetails(currentDetails.testName, currentDetails.trials, currentDetails.stats, currentDetails.testId);
         }
     };
     return btn;
 }
+
+/** Counts `viewContent` calls, so one that finishes loading after a newer one has started leaves the modal to the newer one. */
+let contentViews = 0;
 
 /**
  * @param {string} fileName
  * @param {string} filePath
  */
 async function viewContent(fileName, filePath) {
+    const view = ++contentViews;
     const title = $('#modal-title');
     const body = $('#modal-body');
     const modal = $('dialog#modal');
@@ -1703,7 +2004,6 @@ async function viewContent(fileName, filePath) {
     title.textContent = fileName;
     modal.dataset.view = 'content';
     if (!modal.open) modal.showModal();
-    body.innerHTML = '<div style="text-align:center; padding: 20px;">Loading content...</div>';
 
     body.innerHTML = '';
     body.appendChild(renderBackButton());
@@ -1711,12 +2011,16 @@ async function viewContent(fileName, filePath) {
     const pre = document.createElement('pre');
     pre.className = 'log-content';
     pre.tabIndex = 0;
+    pre.textContent = 'Loading content...';
     body.appendChild(pre);
 
     try {
         const text = await api.getFileText(filePath);
+        if (view !== contentViews) return;
 
-        if (fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) {
+        // A capped patch is a one-line `# diff omitted: ...` placeholder with no `diff --git`
+        // header, so it is shown as plain text rather than as an empty per-file diff.
+        if ((fileName.endsWith('diff.txt') || fileName.endsWith('.patch')) && /^diff --git /m.test(text)) {
             body.innerHTML = '';
             body.appendChild(renderBackButton());
 
@@ -1771,6 +2075,7 @@ async function viewContent(fileName, filePath) {
         pre.className = '';
 
     } catch (e) {
+        if (view !== contentViews) return;
         body.innerHTML = '';
         body.appendChild(renderBackButton());
         const error = document.createElement('div');
@@ -1786,12 +2091,12 @@ async function viewContent(fileName, filePath) {
  * @param {string} setupPath
  * @param {string} resultPath
  * @param {string} testName
- * @param {number} runNumber
+ * @param {number} trialNumber
  */
-async function viewDiff(setupPath, resultPath, testName, runNumber) {
+async function viewDiff(setupPath, resultPath, testName, trialNumber) {
     const url = new URL(window.location.href);
     url.searchParams.set('view', 'diff');
-    url.searchParams.set('run', String(runNumber));
+    url.searchParams.set('run', String(trialNumber));
     window.history.replaceState({}, '', url);
 
     const modal = $('dialog#modal');
@@ -1799,7 +2104,7 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
     const body = $('#modal-body');
     const contentDiv = $('.modal-content');
 
-    modal.dataset.runNumber = String(runNumber);
+    modal.dataset.runNumber = String(trialNumber);
 
     let fileName = '';
     if (resultPath && resultPath.includes('/guided/')) {
@@ -1924,23 +2229,23 @@ async function viewDiff(setupPath, resultPath, testName, runNumber) {
 }
 
 /**
- * Slices precomputed suite-wide `chartData` to the scenarios in `disciplineResults`
- * so `renderDashboardDumbbellChart` reuses the `extractSuiteSummary` walk.
+ * Slices precomputed job-wide `chartData` to the tasks in `disciplineResults`
+ * so `renderDashboardDumbbellChart` reuses the `extractJobSummary` walk.
  * @param {ReturnType<typeof calculateChartData>} chartData
- * @param {Record<string, DashboardRunResult[]>} disciplineResults
+ * @param {Record<string, DashboardTrialResult[]>} disciplineResults
  * @returns {ReturnType<typeof calculateChartData>}
  */
 function sliceChartDataForDiscipline(chartData, disciplineResults) {
     /** @type {Set<string>} */
-    const scenarios = new Set();
+    const taskLabels = new Set();
     for (const key of Object.keys(disciplineResults)) {
         const parsed = parseResultKey(key);
-        if (parsed) scenarios.add(`${parsed.task} (${parsed.guide})`);
+        if (parsed) taskLabels.add(`${parsed.baseApp} (${parsed.guide})`);
     }
     /** @type {number[]} */
     const indices = [];
     chartData.labels.forEach((label, idx) => {
-        if (scenarios.has(label)) indices.push(idx);
+        if (taskLabels.has(label)) indices.push(idx);
     });
     const pick = /** @template T @param {T[]} arr */ (arr) => indices.map(i => arr[i]);
     return {
@@ -1964,9 +2269,9 @@ function sliceChartDataForDiscipline(chartData, disciplineResults) {
 
 /**
  * @param {DashboardEvalsReport} data
- * @param {import('./summary-extractor.js').SuiteSummary | null} [summary]
+ * @param {import('./summary-extractor.js').JobSummary | null} [summary]
  */
-function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
+function renderDashboardDumbbellChart(data, summary = currentJobSummary) {
     const results = data.results;
 
 
@@ -1988,17 +2293,17 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
     container.style.gap = '16px';
     container.style.width = '100%';
 
-    /** @type {Record<string, Record<string, DashboardRunResult[]>>} */
+    /** @type {Record<string, Record<string, DashboardTrialResult[]>>} */
     const groupedByDiscipline = {};
     Object.keys(results).forEach(key => {
-        const runs = results[key];
-        const sampleRun = runs[0];
-        const discipline = (sampleRun && sampleRun.discipline) || 'Uncategorized';
+        const trials = results[key];
+        const sampleTrial = trials[0];
+        const discipline = (sampleTrial && sampleTrial.discipline) || 'Uncategorized';
 
         if (!groupedByDiscipline[discipline]) {
             groupedByDiscipline[discipline] = {};
         }
-        groupedByDiscipline[discipline][key] = runs;
+        groupedByDiscipline[discipline][key] = trials;
     });
 
     // Sort disciplines by number of features (descending) to help balance columns
@@ -2048,21 +2353,23 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
         container.appendChild(chartDiv);
 
         const handlePointClick = (/** @type {number} */ index, /** @type {string} */ type) => {
-            const scenarioName = labels[index];
-            const runType = type.toLowerCase();
+            const taskLabel = labels[index];
+            const condition = type.toLowerCase();
             const originalKey = Object.keys(disciplineResults).find(key => {
                 const parsed = parseResultKey(key);
                 if (!parsed) return false;
-                return `${parsed.task} (${parsed.guide})` === scenarioName && parsed.runType === runType;
+                return `${parsed.baseApp} (${parsed.guide})` === taskLabel && parsed.condition === condition;
             });
 
             if (originalKey) {
                 const parsed = parseResultKey(originalKey);
                 if (parsed) {
-                    const { guide, task } = parsed;
-                    const accordionEl = (task && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(task)}"]`))
+                    const { guide, baseApp } = parsed;
+                    const accordionEl = (baseApp && document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"][data-task="${CSS.escape(baseApp)}"]`))
                         || document.querySelector(`.task-accordion[data-guide="${CSS.escape(guide)}"]`);
                     if (accordionEl) {
+                        const catSection = accordionEl.closest('.eval-category-section.collapsed');
+                        if (catSection) /** @type {HTMLElement | null} */ ($('.eval-category-header', catSection))?.click();
                         accordionEl.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
                         if (!accordionEl.classList.contains('open')) {
                             const header = $('.task-accordion-header', accordionEl);
@@ -2106,7 +2413,7 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
             itemHref: (item) => {
                 const url = new URL(window.location.href);
                 if (item.taskName) url.searchParams.set('task', item.taskName);
-                url.hash = `guide-${encodeURIComponent(item.useCaseId)}`;
+                url.hash = `guide-${encodeURIComponent(item.guideId)}`;
                 return `${url.search}${url.hash}`;
             }
         });
@@ -2117,18 +2424,18 @@ function renderDashboardDumbbellChart(data, summary = currentSuiteSummary) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'empty-chart-msg';
         emptyMsg.textContent = currentMetricMode === 'a11y'
-            ? 'No accessibility checks recorded in this suite.'
-            : 'No chart data available for this suite.';
+            ? 'No accessibility checks recorded in this job.'
+            : 'No chart data available for this job.';
         container.appendChild(emptyMsg);
     }
 }
 
 /**
  * @param {string} testId
- * @param {DashboardRunResult} run
+ * @param {DashboardTrialResult} trial
  * @param {string} testName
  * @returns {Promise<{ setupPath: string, resultPath: string, usedBasePath: string } | null>}
  */
-async function getResultPaths(testId, run, testName) {
-    return await api.getResultInfo(testId, run, testName);
+async function getResultPaths(testId, trial, testName) {
+    return await api.getResultInfo(testId, trial, testName);
 }

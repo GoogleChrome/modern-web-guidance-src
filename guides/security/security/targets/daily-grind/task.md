@@ -1,1 +1,1 @@
-- Audit the Daily Grind website's HTML markup, client-side scripts, and security headers, and implement preventative client-side security measures to safely deploy security policies.
+- Replace the static file server behind the Daily Grind website with a small Node server (still started by `npm start`) that also handles a `/logout` route that signs the visitor out, then audit the site's HTML markup, client-side scripts, and security headers, and implement preventative client-side security measures to safely deploy security policies.

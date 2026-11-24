@@ -28,13 +28,12 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     });
 
     await page.goto(demoUrl);
-    // Wait for the app's async rendering
-    await page.waitForSelector('.card', { state: 'attached', timeout: 5000 }).catch(() => { });
   });
 
-  // 1. Cards with class name `.off-screen-card` must be outside the initial viewport.
-  test('Cards with class name `.off-screen-card` must be outside the initial viewport', async ({ page }) => {
+  // 1. Cards with class name .off-screen-card must be outside the initial viewport
+  test('Cards with class name .off-screen-card must be outside the initial viewport', async ({ page }) => {
     const cards = page.locator('.off-screen-card');
+    await expect(cards.first()).toBeAttached();
     const count = await cards.count();
     expect(count, 'Expected at least one element with class off-screen-card').toBeGreaterThan(0);
 
@@ -49,9 +48,10 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(isOutside, 'All .off-screen-card elements must be outside the initial viewport').toBe(true);
   });
 
-  // 2. Cards with class name `.off-screen-card` must set `content-visibility: auto`.
-  test('Cards with class name `.off-screen-card` must set `content-visibility: auto`', async ({ page }) => {
+  // 2. Cards with class name .off-screen-card must set content-visibility: auto
+  test('Cards with class name .off-screen-card must set content-visibility: auto', async ({ page }) => {
     const cards = page.locator('.off-screen-card');
+    await expect(cards.first()).toBeAttached();
     const count = await cards.count();
     expect(count, 'Expected at least one element with class off-screen-card').toBeGreaterThan(0);
 
@@ -66,9 +66,10 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(hasContentVisibilityAuto, 'All .off-screen-card elements must have content-visibility: auto').toBe(true);
   });
 
-  // 3. Cards with class name `.off-screen-card` must set `contain-intrinsic-size`.
-  test('Cards with class name `.off-screen-card` must set `contain-intrinsic-size`', async ({ page }) => {
+  // 3. Cards with class name .off-screen-card must set contain-intrinsic-size
+  test('Cards with class name .off-screen-card must set contain-intrinsic-size', async ({ page }) => {
     const cards = page.locator('.off-screen-card');
+    await expect(cards.first()).toBeAttached();
     const count = await cards.count();
     expect(count, 'Expected at least one element with class off-screen-card').toBeGreaterThan(0);
 
@@ -83,8 +84,8 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(hasContainIntrinsicSize, 'All .off-screen-card elements must have contain-intrinsic-size set').toBe(true);
   });
 
-  // 4. The `.debug-panel` must be hidden using `content-visibility: hidden`.
-  test('The `.debug-panel` must be hidden using `content-visibility: hidden`', async ({ page }) => {
+  // 4. The .debug-panel must be hidden using content-visibility: hidden
+  test('The .debug-panel must be hidden using content-visibility: hidden', async ({ page }) => {
     const panel = page.locator('.debug-panel');
     await expect(panel, 'Missing .debug-panel element').toBeAttached();
 
@@ -92,8 +93,8 @@ test.describe(`defer-rendering-heavy-content Expectations: ${demoName}`, () => {
     expect(isHidden, '.debug-panel must be hidden using content-visibility: hidden').toBe(true);
   });
 
-  // 5. The `debug-panel` must use a fallback strategy for unsupported browsers.
-  test('The `debug-panel` must use a fallback strategy for unsupported browsers', async () => {
+  // 5. The .debug-panel must use a fallback strategy for unsupported browsers
+  test('The .debug-panel must use a fallback strategy for unsupported browsers', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const hasCSSFeatureDetection = /@supports\s*(?:not\s*)?\(\s*content-visibility\s*:\s*hidden\s*\)/.test(html);
     expect(hasCSSFeatureDetection, 'Missing CSS feature detection for content-visibility: hidden').toBe(true);

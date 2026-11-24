@@ -72,12 +72,14 @@ By default, browsers cannot interpolate between a length (e.g., `0px`) and an in
 
   .item {
     height: 0;
-    transition: height 0.3s ease;
+    visibility: hidden;
+    transition: height 0.3s ease, visibility 0.3s;
   }
 
   .item.open {
     /* Simple interpolation from 0 to auto now works without calc-size() */
     height: auto;
+    visibility: visible;
   }
   ```
 
@@ -89,7 +91,10 @@ By default, browsers cannot interpolate between a length (e.g., `0px`) and an in
   overflow: hidden;
   /* MANDATORY: Fallback value for closed state */
   block-size: 0;
-  transition: block-size 0.3s ease-out;
+  /* Removes the closed content from the accessibility tree and the tab order;
+     transitioning visibility keeps it visible until the panel finishes closing */
+  visibility: hidden;
+  transition: block-size 0.3s ease-out, visibility 0.3s;
 }
 
 .accordion-content.open {
@@ -101,8 +106,11 @@ By default, browsers cannot interpolate between a length (e.g., `0px`) and an in
     intrinsic size while doing a calculation (in this case, adding a space of 2rem).
   */
   block-size: calc-size(auto, size + 2rem);
+  visibility: visible;
 }
 ```
+
+**MANDATORY**: Collapsing to zero size (`block-size: 0` or `height: 0`) hides content only visually: screen readers still read it, and its links and controls stay in the tab order. Set `visibility: hidden` on the closed state and `visibility: visible` on the open state, and include `visibility` in the transition so the content stays visible until it has finished closing.
 
 **MANDATORY**: Interpolation between two intrinsic sizing keywords is not possible directly. One end of the transition must be a length or a percentage.
 
@@ -112,11 +120,13 @@ Animations that change the size of large layout areas can be particularly disrup
 ```css
 .accordion-content {
   opacity: 0;
-  transition: block-size 0.3s ease, opacity 0.3s ease;
+  visibility: hidden;
+  transition: block-size 0.3s ease, opacity 0.3s ease, visibility 0.3s;
 }
 
 .accordion-content.open {
   opacity: 1;
+  visibility: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {

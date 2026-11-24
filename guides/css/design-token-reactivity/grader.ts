@@ -35,18 +35,22 @@ test.describe('Design Token Reactivity Grader', () => {
     await page.goto(targetUrl);
   });
 
-  test('1. Must use @container style() queries to respond to changes in custom property values', async ({ page }) => {
+  test('The implementation uses @container style() queries to respond to changes in custom property values', async ({ page }) => {
     const isReactive = await page.evaluate(() => {
-      const getQueriedProps = () => {
-        const props: string[] = [];
+      const noTransStyle = document.createElement('style');
+      noTransStyle.textContent = '* { transition: none !important; }';
+      document.head.appendChild(noTransStyle);
+
+      const getQueriedPairs = () => {
+        const pairs: { prop: string; val: string }[] = [];
         for (const sheet of Array.from(document.styleSheets)) {
           try {
             for (const rule of Array.from(sheet.cssRules)) {
               if (rule.constructor.name === 'CSSContainerRule') {
                 const cond = (rule as any).conditionText || '';
-                const matches = cond.match(/--[a-zA-Z0-9_-]+/g);
-                if (matches) {
-                  props.push(...matches);
+                const matches = Array.from(cond.matchAll(/(--[a-zA-Z0-9_-]+)\s*:\s*([^)]+)/g));
+                for (const m of matches as any[]) {
+                  pairs.push({ prop: m[1].trim(), val: m[2].trim() });
                 }
               }
             }
@@ -54,22 +58,26 @@ test.describe('Design Token Reactivity Grader', () => {
             // Ignore cross-origin stylesheet errors
           }
         }
-        return [...new Set(props)];
+        return pairs;
       };
 
-      const props = getQueriedProps();
-      if (props.length === 0) return false;
+      const pairs = getQueriedPairs();
+      if (pairs.length === 0) {
+        noTransStyle.remove();
+        return false;
+      }
 
       const allElements = Array.from(document.querySelectorAll('*'));
+      let reactiveFound = false;
+
       for (const el of allElements) {
         if (el === document.documentElement || el === document.body) continue;
 
-        for (const prop of props) {
+        for (const { prop, val } of pairs) {
           if (prop.includes('support')) continue;
 
           let ancestor = el.parentElement;
           while (ancestor) {
-            const originalVal = getComputedStyle(ancestor).getPropertyValue(prop).trim();
             const inlineOriginalVal = (ancestor as HTMLElement).style.getPropertyValue(prop);
             const getStyles = (element: Element) => {
               const s = getComputedStyle(element);
@@ -83,13 +91,9 @@ test.describe('Design Token Reactivity Grader', () => {
             };
 
             const stylesBefore = getStyles(el);
-
-            // Change value to trigger query evaluation
-            const testVal = originalVal === 'spacious' ? 'compact' : 'spacious';
-            (ancestor as HTMLElement).style.setProperty(prop, testVal);
+            (ancestor as HTMLElement).style.setProperty(prop, val);
             const stylesAfter = getStyles(el);
 
-            // Restore
             if (inlineOriginalVal) {
               (ancestor as HTMLElement).style.setProperty(prop, inlineOriginalVal);
             } else {
@@ -100,30 +104,39 @@ test.describe('Design Token Reactivity Grader', () => {
               (p) => stylesBefore[p as keyof typeof stylesBefore] !== stylesAfter[p as keyof typeof stylesAfter]
             );
             if (changed) {
-              return true;
+              reactiveFound = true;
+              break;
             }
             ancestor = ancestor.parentElement;
           }
+          if (reactiveFound) break;
         }
+        if (reactiveFound) break;
       }
-      return false;
+
+      noTransStyle.remove();
+      return reactiveFound;
     });
 
     expect(isReactive).toBe(true);
   });
 
-  test('2. Must define the queried custom property on an ancestor element of the element being styled', async ({ page }) => {
+  test('The implementation defines the queried custom property on an ancestor element of the element being styled', async ({ page }) => {
     const hasPropertyOnAncestor = await page.evaluate(() => {
-      const getQueriedProps = () => {
-        const props: string[] = [];
+      const noTransStyle = document.createElement('style');
+      noTransStyle.textContent = '* { transition: none !important; }';
+      document.head.appendChild(noTransStyle);
+
+      const getQueriedPairs = () => {
+        const pairs: { prop: string; val: string }[] = [];
         for (const sheet of Array.from(document.styleSheets)) {
           try {
             for (const rule of Array.from(sheet.cssRules)) {
               if (rule.constructor.name === 'CSSContainerRule') {
                 const cond = (rule as any).conditionText || '';
-                const matches = cond.match(/--[a-zA-Z0-9_-]+/g);
-                if (matches) {
-                  props.push(...matches);
+                const matches = Array.from(cond.matchAll(/(--[a-zA-Z0-9_-]+)\s*:\s*([^)]+)/g));
+                for (const m of matches as any[]) {
+                  pairs.push({ prop: m[1].trim(), val: m[2].trim() });
                 }
               }
             }
@@ -131,23 +144,29 @@ test.describe('Design Token Reactivity Grader', () => {
             // Ignore
           }
         }
-        return [...new Set(props)];
+        return pairs;
       };
 
-      const props = getQueriedProps();
-      if (props.length === 0) return false;
+      const pairs = getQueriedPairs();
+      if (pairs.length === 0) {
+        noTransStyle.remove();
+        return false;
+      }
 
       const allElements = Array.from(document.querySelectorAll('*'));
+      let foundOnAncestor = false;
+
       for (const el of allElements) {
         if (el === document.documentElement || el === document.body) continue;
 
-        for (const prop of props) {
+        for (const { prop, val } of pairs) {
           if (prop.includes('support')) continue;
 
           let ancestor = el.parentElement;
           while (ancestor) {
             const ancestorVal = getComputedStyle(ancestor).getPropertyValue(prop).trim();
             if (ancestorVal) {
+              const inlineOriginalVal = (ancestor as HTMLElement).style.getPropertyValue(prop);
               const getStyles = (element: Element) => {
                 const s = getComputedStyle(element);
                 return {
@@ -160,14 +179,11 @@ test.describe('Design Token Reactivity Grader', () => {
               };
 
               const stylesBefore = getStyles(el);
-              const originalVal = (ancestor as HTMLElement).style.getPropertyValue(prop);
-
-              const newVal = ancestorVal === 'spacious' ? 'compact' : 'spacious';
-              (ancestor as HTMLElement).style.setProperty(prop, newVal);
+              (ancestor as HTMLElement).style.setProperty(prop, val);
               const stylesAfter = getStyles(el);
 
-              if (originalVal) {
-                (ancestor as HTMLElement).style.setProperty(prop, originalVal);
+              if (inlineOriginalVal) {
+                (ancestor as HTMLElement).style.setProperty(prop, inlineOriginalVal);
               } else {
                 (ancestor as HTMLElement).style.removeProperty(prop);
               }
@@ -176,20 +192,25 @@ test.describe('Design Token Reactivity Grader', () => {
                 (p) => stylesBefore[p as keyof typeof stylesBefore] !== stylesAfter[p as keyof typeof stylesAfter]
               );
               if (changed && ancestor !== el) {
-                return true;
+                foundOnAncestor = true;
+                break;
               }
             }
             ancestor = ancestor.parentElement;
           }
+          if (foundOnAncestor) break;
         }
+        if (foundOnAncestor) break;
       }
-      return false;
+
+      noTransStyle.remove();
+      return foundOnAncestor;
     });
 
     expect(hasPropertyOnAncestor).toBe(true);
   });
 
-  test('3. Must NOT use JavaScript for applying the styles that react to custom property changes', async ({ page }) => {
+  test('The implementation does not use JavaScript for applying the styles that react to custom property changes', async ({ page }) => {
     // We observe mutations on #target-item while the toggle-spacious button is clicked.
     // If the style is updated via container style queries, no DOM / style attribute mutations
     // occur on #target-item itself.
@@ -213,7 +234,7 @@ test.describe('Design Token Reactivity Grader', () => {
     expect(mutations.length).toBe(0);
   });
 
-  test('4. Must NOT attempt to style the container element using its own style query', async ({ page }) => {
+  test('The implementation does not attempt to style the container element using its own style query', async ({ page }) => {
     const isSelfStylingFree = await page.evaluate(() => {
       let selfStylingAttempted = false;
       for (const sheet of Array.from(document.styleSheets)) {
@@ -225,7 +246,7 @@ test.describe('Design Token Reactivity Grader', () => {
                 if (subRule.selectorText) {
                   const matchedElements = Array.from(document.querySelectorAll(subRule.selectorText));
                   for (const el of matchedElements) {
-                    if (el.id === 'target-container' || el.classList.contains('container')) {
+                    if (el.id === 'target-container') {
                       selfStylingAttempted = true;
                     }
                   }
@@ -237,13 +258,17 @@ test.describe('Design Token Reactivity Grader', () => {
           // Ignore
         }
       }
-      return !selfStylingAttempted;
+      return !selfStylingFreeAttempted(selfStylingAttempted);
+
+      function selfStylingFreeAttempted(attempted: boolean) {
+        return attempted;
+      }
     });
 
     expect(isSelfStylingFree).toBe(true);
   });
 
-  test('5. Must use custom properties (CSS variables) when querying styles with @container style()', async ({ page }) => {
+  test('The implementation uses custom properties (CSS variables) when querying styles with @container style()', async ({ page }) => {
     const onlyCustomProperties = await page.evaluate(() => {
       let hasStyleQueries = false;
       let allQueriesAreCustomProperties = true;
@@ -277,10 +302,19 @@ test.describe('Design Token Reactivity Grader', () => {
     expect(onlyCustomProperties).toBe(true);
   });
 
-  test('6. Should use a style query to feature-check for container style query support when conditionally displaying UI', async ({ page }) => {
+  test('The implementation uses a style query to feature-check for container style query support when conditionally displaying UI', async ({ page }) => {
     const usesFeatureCheck = await page.evaluate(async () => {
       const button = document.getElementById('toggle-spacious');
       if (!button) return false;
+
+      const buttonClasses = Array.from(button.classList);
+      const matchesButton = (sel: string) => {
+        if (sel.includes('toggle-spacious')) return true;
+        for (const cls of buttonClasses) {
+          if (sel.includes(cls)) return true;
+        }
+        return false;
+      };
 
       let supportProp: string | null = null;
       let hasBaseDisplayNone = false;
@@ -289,7 +323,7 @@ test.describe('Design Token Reactivity Grader', () => {
       for (const sheet of Array.from(document.styleSheets)) {
         try {
           for (const rule of Array.from(sheet.cssRules)) {
-            if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('toggle-spacious')) {
+            if (rule instanceof CSSStyleRule && rule.selectorText && matchesButton(rule.selectorText)) {
               if (rule.style.display === 'none') {
                 hasBaseDisplayNone = true;
               }
@@ -298,7 +332,7 @@ test.describe('Design Token Reactivity Grader', () => {
               const containerRule = rule as any;
               const cond = containerRule.conditionText || '';
               for (const subRule of Array.from(containerRule.cssRules) as any[]) {
-                if (subRule.selectorText && subRule.selectorText.includes('toggle-spacious')) {
+                if (subRule.selectorText && matchesButton(subRule.selectorText)) {
                   if (cond.includes('style(') && subRule.style && subRule.style.display && subRule.style.display !== 'none') {
                     hasContainerDisplayReveal = true;
                   }

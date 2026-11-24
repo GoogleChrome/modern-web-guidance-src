@@ -3,6 +3,7 @@ name: passkey-reauthentication
 description: Verify a signed-in user's identity using their existing passkeys before a sensitive action.
 web-feature-ids:
   - webauthn
+  - webauthn-signals
 ---
 
 # Passkey Reauthentication
@@ -52,7 +53,7 @@ Applications choose from two reauthentication interfaces depending on the transa
 
 ### A. Button Flow (No Input Fields)
 
-Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button.
+Trigger reauthentication when a user presses a "Verify Identity" or "Proceed with Transaction" button. When signaling an unknown credential on HTTP `404`, always pass `rpId: publicKey.rpId` from the server's request options—**DO NOT** derive `rpId` from `window.location.hostname` on the client.
 
 ```html
 <button id="reauth-btn" data-testid="reauth-button">Confirm Transaction</button>
@@ -91,7 +92,7 @@ async function triggerButtonReauth() {
         showTransactionSuccessUI();
       } else if (verifyResponse.status === 404 && PublicKeyCredential.signalUnknownCredential) {
         await PublicKeyCredential.signalUnknownCredential({
-          rpId, // RP ID must match the one defined on the server
+          rpId: publicKey.rpId, // Always use the server-provided rpId; DO NOT use window.location.hostname
           credentialId: encodedCredential.id
         });
       }
@@ -114,20 +115,32 @@ document
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.getClientCapabilities_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.getClientCapabilities` is also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.getClientCapabilities()` is available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.
+
+### Signal API Synchronization Fallback
+
+{{ BASELINE_STATUS("webauthn-signals") }}
+
+The WebAuthn Signal API (`webauthn-signals`) is a progressive optimization used to keep password managers in sync with the server credential state.
+
+- **Fallback Experience**: Gate calls behind `if (PublicKeyCredential.signalUnknownCredential)`. If unsupported, the background verification sync is bypassed gracefully without throwing browser exceptions.
 
 ### Easy JSON Serialization Fallback
 
 {{ BASELINE_STATUS("webauthn", "api.PublicKeyCredential.parseRequestOptionsFromJSON_static") }}
 
-Always install 'webauthn-polyfills' and import it in the context.
-Consider as long as  `PublicKeyCredential` is supported, `PublicKeyCredential.parseRequestOptionsFromJSON` and `PublicKeyCredential.prototype.toJSON` are also supported. 
+Load `webauthn-polyfills` so `PublicKeyCredential.parseRequestOptionsFromJSON()` and `PublicKeyCredential.prototype.toJSON()` are available whenever `PublicKeyCredential` is supported:
 
-```js 
+```js
+// With a bundler (`npm install webauthn-polyfills`):
 import 'webauthn-polyfills';
-``` 
+```
+
+Without a bundler, serve the package from your own origin, or import it from a CDN such as `https://esm.sh/webauthn-polyfills@0.1.7` (pin the exact version). For third-party URLs, add Subresource Integrity: the `integrity` attribute on the `<script>` tag, or an import map's `integrity` field for `import` statements.

@@ -1,255 +1,228 @@
-diff --git a/src/pages/index.astro b/src/pages/index.astro
-index 92f6399..0abd4f8 100644
---- a/src/pages/index.astro
-+++ b/src/pages/index.astro
-@@ -64,21 +64,175 @@ politicsArticles[2] = {
-             <Ad client:visible />
-         </section>
+diff --git a/src/components/BottomNav.tsx b/src/components/BottomNav.tsx
+index 6d031f5..37c28e2 100644
+--- a/src/components/BottomNav.tsx
++++ b/src/components/BottomNav.tsx
+@@ -27,9 +27,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ categories, articles, reports, mu
+     const filteredMultimedia = activeCategory ? multimedia.filter(m => m.data.category === activeCategory) : [];
  
--        <!-- "Top News" section with the new grid variant -->
--        <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
-+        <!--
-+          This is deliberately a small, bounded cache. All three views stay mounted so
-+          the browser can reuse their layout and paint state without growing memory as
-+          visitors navigate to arbitrary article routes.
-+        -->
-+        <section class="cached-view-switcher" data-view-switcher aria-labelledby="coverage-heading">
-+            <div class="px-4 pt-6 md:px-6 md:pt-8">
-+                <h2 id="coverage-heading" class="text-2xl font-bold text-gray-900">Latest coverage</h2>
-+                <div class="view-tabs mt-4" role="tablist" aria-label="Latest coverage sections">
-+                    <button
-+                        id="tab-top-news"
-+                        class="view-tab"
-+                        type="button"
-+                        role="tab"
-+                        aria-selected="true"
-+                        aria-controls="view-top-news"
-+                        data-view-target="top-news"
-+                    >Top News</button>
-+                    <button
-+                        id="tab-world"
-+                        class="view-tab"
-+                        type="button"
-+                        role="tab"
-+                        aria-selected="false"
-+                        aria-controls="view-world"
-+                        tabindex="-1"
-+                        data-view-target="world"
-+                    >World</button>
-+                    <button
-+                        id="tab-politics"
-+                        class="view-tab"
-+                        type="button"
-+                        role="tab"
-+                        aria-selected="false"
-+                        aria-controls="view-politics"
-+                        tabindex="-1"
-+                        data-view-target="politics"
-+                    >Politics</button>
-+                </div>
-+            </div>
+     return (
+-        <div onMouseLeave={handleMouseLeave}>
++        <div onMouseLeave={handleMouseLeave} onClick={event => {
++            if (event.target instanceof Element && event.target.closest('a[href]:not([href="#"])')) setActiveCategory(null);
++        }}>
+             <div className="border-t border-b border-gray-900">
+                 <nav className="container mx-auto px-4 flex justify-center items-center text-sm font-semibold space-x-6 h-10 overflow-x-auto">
++                    <a href={import.meta.env.BASE_URL} className="whitespace-nowrap hover:text-gray-600">Top News</a>
++                    <a href={`${import.meta.env.BASE_URL}world`} className="whitespace-nowrap hover:text-gray-600">World</a>
++                    <a href={`${import.meta.env.BASE_URL}category/politics`} className="whitespace-nowrap hover:text-gray-600">Politics</a>
++                    <a href={`${import.meta.env.BASE_URL}multimedia`} className="whitespace-nowrap hover:text-gray-600">Multimedia</a>
++                    <a href={`${import.meta.env.BASE_URL}reports`} className="whitespace-nowrap hover:text-gray-600">Reports</a>
+                     {Object.entries(groupedCategories).map(([groupName, subCategories]) => {
+                         return (
+                             <div 
+diff --git a/src/layouts/Layout.astro b/src/layouts/Layout.astro
+index dcf9696..9fd74ac 100644
+--- a/src/layouts/Layout.astro
++++ b/src/layouts/Layout.astro
+@@ -4,7 +4,6 @@ import Footer from "../components/Footer.astro";
+ import AdSlotFireplace from "../components/AdSlotFireplace.tsx";
+ import "../styles/global.css";
  
--        <section class="p-4 md:p-6 text-center">
--            <Ad client:visible />
--        </section>
-+            <div class="spa-view-stack">
-+                <div
-+                    id="view-top-news"
-+                    class="spa-view"
-+                    role="tabpanel"
-+                    aria-labelledby="tab-top-news"
-+                    aria-hidden="false"
-+                    tabindex="-1"
-+                    data-view="top-news"
-+                >
-+                    <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
-+                </div>
+-import { ClientRouter } from "astro:transitions";
  
--        <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
-+                <div
-+                    id="view-world"
-+                    class="spa-view inactive"
-+                    role="tabpanel"
-+                    aria-labelledby="tab-world"
-+                    aria-hidden="true"
-+                    tabindex="-1"
-+                    inert
-+                    data-view="world"
-+                >
-+                    <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
-+                </div>
-+
-+                <div
-+                    id="view-politics"
-+                    class="spa-view inactive"
-+                    role="tabpanel"
-+                    aria-labelledby="tab-politics"
-+                    aria-hidden="true"
-+                    tabindex="-1"
-+                    inert
-+                    data-view="politics"
-+                >
-+                    <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
-+                </div>
-+            </div>
-+        </section>
+ export interface Props {
+   title: string;
+@@ -34,7 +33,7 @@ const baseUrl = import.meta.env.BASE_URL;
  
-         <section class="p-4 md:p-6 text-center">
-             <Ad client:visible />
-         </section>
--
--        <!-- "Politics" section with the new grid variant -->
--        <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
--        
+     <link rel="icon" href=`${baseUrl}/favicon.svg` />
+ 
+-    <ClientRouter />
++    <script src="../scripts/section-router.ts"></script>
+   </head>
+   <body class="bg-gray-100">
+     <div class="mx-auto">
+@@ -45,8 +44,10 @@ const baseUrl = import.meta.env.BASE_URL;
+         <div>
+           <Header />
+         </div>
+-        <main class="bg-white relative">
+-          <slot />
++        <main class="bg-white relative" data-section-host>
++          <div class="spa-view" tabindex="-1" data-section-view>
++            <slot />
++          </div>
+         </main>
+       </div>
      </div>
--</Layout>
-\ No newline at end of file
+diff --git a/src/pages/world.astro b/src/pages/world.astro
+new file mode 100644
+index 0000000..477e1f6
+--- /dev/null
++++ b/src/pages/world.astro
+@@ -0,0 +1,15 @@
++---
++import Layout from '../layouts/Layout.astro';
++import SimpleTeaserGrid from '../components/SimpleTeaserGrid.astro';
++import { getCollection } from 'astro:content';
++
++// Match the World selection on the Top News landing page.
++const articles = (await getCollection('articles'))
++  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
++  .slice(8, 11);
++---
++
++<Layout title="World | The DevTools Times">
++  <h1 class="text-3xl font-bold px-6 pt-8">World</h1>
++  <SimpleTeaserGrid title="World news" articles={articles} />
 +</Layout>
+diff --git a/src/scripts/section-router.ts b/src/scripts/section-router.ts
+new file mode 100644
+index 0000000..2c17af8
+--- /dev/null
++++ b/src/scripts/section-router.ts
+@@ -0,0 +1,116 @@
++// Only section landing pages belong in this bounded DOM cache. Article and
++// account links retain normal document navigation.
++const base = new URL(import.meta.env.BASE_URL, location.origin).pathname.replace(/\/$/, '');
++const keyFor = (url: URL): string | null => {
++  if (url.origin !== location.origin || url.search) return null;
++  const path = url.pathname.replace(/\/$/, '');
++  if (path === base || path === `${base}/world` || path === `${base}/multimedia` || path === `${base}/reports` ||
++      new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/category/[^/]+$`).test(path)) return path;
++  return null;
++};
 +
-+<script>
-+    const viewSwitcherControllers = new WeakMap<HTMLElement, AbortController>();
++const host = document.querySelector<HTMLElement>('[data-section-host]');
++const initialView = host?.querySelector<HTMLElement>('[data-section-view]');
++const initialKey = keyFor(new URL(location.href));
 +
-+    function setupViewSwitcher(switcher: HTMLElement): void {
-+        viewSwitcherControllers.get(switcher)?.abort();
++if (host && initialView && initialKey !== null) {
++  interface CachedView { element: HTMLElement; title: string; scroll: number }
++  const views = new Map<string, CachedView>();
++  const limit = 6;
++  let activeKey = initialKey;
++  let request = 0;
++  views.set(initialKey, { element: initialView, title: document.title, scroll: scrollY });
++  history.scrollRestoration = 'manual';
 +
-+        const controller = new AbortController();
-+        viewSwitcherControllers.set(switcher, controller);
-+
-+        const views = Array.from(switcher.querySelectorAll<HTMLElement>('.spa-view'));
-+        const tabs = Array.from(switcher.querySelectorAll<HTMLButtonElement>('[role="tab"][data-view-target]'));
-+
-+        const knownView = (viewName: string | undefined): viewName is string =>
-+            Boolean(viewName && views.some((view) => view.dataset.view === viewName));
-+
-+        const switchToView = (viewName: string, moveFocus = true): void => {
-+            if (!knownView(viewName)) return;
-+
-+            for (const view of views) {
-+                const isActive = view.dataset.view === viewName;
-+                view.classList.toggle('inactive', !isActive);
-+                view.setAttribute('aria-hidden', String(!isActive));
-+                view.toggleAttribute('inert', !isActive);
-+
-+                if (isActive && moveFocus) {
-+                    view.focus({ preventScroll: true });
-+                }
-+            }
-+
-+            for (const tab of tabs) {
-+                const isActive = tab.dataset.viewTarget === viewName;
-+                tab.setAttribute('aria-selected', String(isActive));
-+                tab.tabIndex = isActive ? 0 : -1;
-+            }
-+        };
-+
-+        switcher.addEventListener('click', (event) => {
-+            const target = event.target;
-+            if (!(target instanceof Element)) return;
-+
-+            const tab = target.closest<HTMLButtonElement>('[role="tab"][data-view-target]');
-+            const viewName = tab?.dataset.viewTarget;
-+            if (!knownView(viewName)) return;
-+
-+            switchToView(viewName);
-+            const nextUrl = new URL(window.location.href);
-+            nextUrl.hash = `view-${viewName}`;
-+            window.history.pushState({ cachedView: viewName }, '', nextUrl);
-+        }, { signal: controller.signal });
-+
-+        switcher.addEventListener('keydown', (event) => {
-+            if (!(event instanceof KeyboardEvent) || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-+            const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
-+            if (currentIndex < 0) return;
-+
-+            event.preventDefault();
-+            const nextIndex = event.key === 'Home'
-+                ? 0
-+                : event.key === 'End'
-+                    ? tabs.length - 1
-+                    : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-+            tabs[nextIndex]?.focus();
-+            tabs[nextIndex]?.click();
-+        }, { signal: controller.signal });
-+
-+        const restoreHistoryView = (): void => {
-+            const hashView = window.location.hash.startsWith('#view-')
-+                ? window.location.hash.slice('#view-'.length)
-+                : undefined;
-+            switchToView(knownView(hashView) ? hashView : 'top-news');
-+        };
-+
-+        window.addEventListener('popstate', restoreHistoryView, { signal: controller.signal });
-+
-+        const initialView = window.location.hash.startsWith('#view-')
-+            ? window.location.hash.slice('#view-'.length)
-+            : undefined;
-+        switchToView(knownView(initialView) ? initialView : 'top-news', false);
-+    }
-+
-+    document.addEventListener('astro:page-load', () => {
-+        document.querySelectorAll<HTMLElement>('[data-view-switcher]').forEach(setupViewSwitcher);
++  const updateNavigation = () => {
++    document.querySelectorAll<HTMLAnchorElement>('header a[href]').forEach(link => {
++      if (keyFor(new URL(link.href)) === activeKey) link.setAttribute('aria-current', 'page');
++      else link.removeAttribute('aria-current');
 +    });
-+</script>
++  };
++
++  const navigate = async (url: URL, pop: boolean) => {
++    const key = keyFor(url);
++    if (key === null) return;
++    const version = ++request;
++    try {
++      let target = views.get(key);
++      if (!target) {
++        const response = await fetch(url, { headers: { Accept: 'text/html' } });
++        if (!response.ok || keyFor(new URL(response.url)) !== key) throw new Error('Section unavailable');
++        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
++        const element = page.querySelector<HTMLElement>('[data-section-view]');
++        if (!element) throw new Error('Missing section');
++        // Astro may split section-specific styling into separate stylesheets.
++        await Promise.all(Array.from(page.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).map(link => {
++          if (Array.from(document.styleSheets).some(sheet => sheet.href === link.href)) return;
++          return new Promise<void>((resolve, reject) => {
++            const stylesheet = link.cloneNode(true) as HTMLLinkElement;
++            stylesheet.onload = () => resolve();
++            stylesheet.onerror = () => { stylesheet.remove(); reject(new Error('Stylesheet unavailable')); };
++            document.head.append(stylesheet);
++          });
++        }));
++        if (version !== request) return;
++        target = { element, title: page.title, scroll: 0 };
++        element.classList.add('inactive');
++        element.inert = true;
++        host.append(element);
++        // Execute Astro's component registration/hydration scripts once the
++        // fetched islands are connected. Retained views never run these again.
++        element.querySelectorAll('script').forEach(oldScript => {
++          const script = document.createElement('script');
++          for (const attribute of oldScript.attributes) script.setAttribute(attribute.name, attribute.value);
++          script.textContent = oldScript.textContent;
++          oldScript.replaceWith(script);
++        });
++        views.set(key, target);
++      }
++      if (version !== request) return;
++      const previous = views.get(activeKey);
++      if (previous) previous.scroll = scrollY;
++      for (const view of views.values()) {
++        const inactive = view !== target;
++        view.element.classList.toggle('inactive', inactive);
++        view.element.inert = inactive;
++        view.element.setAttribute('aria-hidden', String(inactive));
++      }
++      activeKey = key;
++      views.delete(key);
++      views.set(key, target);
++      document.title = target.title;
++      if (!pop) history.pushState(null, '', url);
++      target.element.focus({ preventScroll: true });
++      scrollTo(0, target.scroll);
++      if (url.hash) document.getElementById(decodeURIComponent(url.hash.slice(1)))?.scrollIntoView();
++      updateNavigation();
++      while (views.size > limit) {
++        const oldest = views.entries().next().value;
++        if (!oldest) break;
++        oldest[1].element.remove();
++        views.delete(oldest[0]);
++        // Astro defers island unmounting until this event. Release React
++        // effects and listeners when a view is actually evicted.
++        document.dispatchEvent(new Event('astro:after-swap'));
++      }
++    } catch {
++      if (version === request) location.assign(url);
++    }
++  };
++
++  document.addEventListener('click', event => {
++    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++    const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null;
++    if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self') || link.hasAttribute('data-astro-reload')) return;
++    const url = new URL(link.href);
++    if (keyFor(url) === null || (url.pathname === location.pathname && url.hash)) return;
++    event.preventDefault();
++    void navigate(url, false);
++  });
++  window.addEventListener('popstate', () => {
++    const url = new URL(location.href);
++    if (keyFor(url) === null) location.reload();
++    else void navigate(url, true);
++  });
++  updateNavigation();
++}
 diff --git a/src/styles/global.css b/src/styles/global.css
-index e9a9abb..ca0978d 100644
+index e9a9abb..abca4d8 100644
 --- a/src/styles/global.css
 +++ b/src/styles/global.css
-@@ -4,4 +4,56 @@
+@@ -1,7 +1,22 @@
+ @import "tailwindcss";
+ 
++.spa-view.inactive {
++  content-visibility: hidden;
++  position: absolute;
++  inset: 0 0 auto;
++  height: 0;
++  overflow: clip;
++  pointer-events: none;
++}
++
++.spa-view:focus { outline: none; }
++
++@supports not (content-visibility: hidden) {
++  .spa-view.inactive { display: none; }
++}
++
+ .font-brand {
    font-family: "Grenze", serif;
    font-weight: 500;
    font-style: normal;
 -}
 \ No newline at end of file
-+}
-+
-+.cached-view-switcher {
-+  overflow: hidden;
-+}
-+
-+.view-tabs {
-+  display: flex;
-+  gap: 0.25rem;
-+  border-bottom: 1px solid #d1d5db;
-+}
-+
-+.view-tab {
-+  margin-bottom: -1px;
-+  border-bottom: 3px solid transparent;
-+  padding: 0.65rem 1rem;
-+  color: #4b5563;
-+  font-size: 0.875rem;
-+  font-weight: 700;
-+  cursor: pointer;
-+}
-+
-+.view-tab:hover {
-+  color: #111827;
-+}
-+
-+.view-tab[aria-selected="true"] {
-+  border-bottom-color: #f59e0b;
-+  color: #111827;
-+}
-+
-+.view-tab:focus-visible,
-+.spa-view:focus-visible {
-+  outline: 3px solid #2563eb;
-+  outline-offset: -3px;
-+}
-+
-+.spa-view-stack {
-+  position: relative;
-+}
-+
-+.spa-view.inactive {
-+  content-visibility: hidden;
-+  position: absolute;
-+  inset: 0;
-+  width: 100%;
-+}
-+
-+@supports not (content-visibility: hidden) {
-+  .spa-view.inactive {
-+    display: none;
-+  }
 +}

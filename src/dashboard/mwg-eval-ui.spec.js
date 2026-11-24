@@ -83,7 +83,7 @@ test.describe('Eval runner (MWG compliance)', () => {
       payload = route.request().postDataJSON();
       await route.fulfill({ json: { success: false, error: 'stubbed' } });
     });
-    page.on('dialog', (d) => d.dismiss());
+    page.on('dialog', (d) => { d.dismiss().catch(() => {}); });
     await expect(page.getByRole('group', { name: 'Agent' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Antigravity CLI' })).toBeChecked();
     await page.getByText('Claude Code').click();

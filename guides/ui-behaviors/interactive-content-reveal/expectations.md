@@ -4,10 +4,13 @@
 - The `--inner-size` and `--outer-size` properties must be registered with `@property`.
 - When the card is hovered, `--inner-size` and `--outer-size` are a non-zero length.
 - The revealed content is not interactive, with `pointer-events: none`.
-- The revealed content has a `mask-image` property, which is a radial gradient from black to transparent. 
+- The revealed content has a `mask-image` property, which is a radial gradient from black to transparent.
 - The position of the radial gradient is determined by the `--mouse-x` and `--mouse-y` custom properties from the mouse position.
 - The gradient stops are set by the `--inner-size` and `--outer-size` custom properties.
-- For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0`. 
+- For users who prefer reduced motion, the `--inner-size` and `--outer-size` transition must happen immediately, by setting `transition-duration: 0s` or `transition: none`.
 - The `--inner-size` and `--outer-size` custom properties must have a non-zero transition duration on the revealed content element.
 - The `--mouse-x` and `--mouse-y` must not have a transition on the revealed content element.
 - The implementation MUST guarantee that underlying content remains fully persistent and independently keyboard-reachable by default, using the spotlight purely as an enhancement.
+- Transitions MUST NOT flash more than three times in any one second period.
+- Content MUST still be visible and operable when scaled up to 200% using a browser's built-in zoom functionality
+- Content MUST still be visible and operable without requiring scrolling in two dimensions when scaled up to 400% in a starting viewport size of 1280 CSS pixels by 1024 CSS pixels.

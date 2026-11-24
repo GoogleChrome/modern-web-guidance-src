@@ -97,9 +97,8 @@
     <h2>Popover Toggle</h2>
     <!-- 
       Invoker button to toggle the popover. 
-      MANDATORY: Initial aria-expanded state for accessibility.
     -->
-    <button id="popover-toggle-btn" commandfor="my-popover" command="toggle-popover" aria-expanded="false">
+    <button id="popover-toggle-btn" commandfor="my-popover" command="toggle-popover">
       Toggle Popover
     </button>
 
@@ -112,7 +111,7 @@
   <section>
     <h2>Explicit Popover Control</h2>
     <!-- Invoker button to exclusively show the popover -->
-    <button commandfor="my-explicit-popover" command="show-popover">
+    <button id="show-explicit-popover" commandfor="my-explicit-popover" command="show-popover">
       Show Popover
     </button>
 
@@ -124,7 +123,7 @@
       <p>This popover is explicitly opened and closed by separate buttons.</p>
 
       <!-- Invoker button to exclusively hide the popover -->
-      <button commandfor="my-explicit-popover" command="hide-popover">
+      <button id="hide-explicit-popover" commandfor="my-explicit-popover" command="hide-popover">
         Hide Popover
       </button>
     </div>
@@ -143,7 +142,7 @@
       <p>Are you sure you want to proceed with this action?</p>
 
       <!-- Invoker button inside the dialog to close it -->
-      <button commandfor="my-dialog" command="close">
+      <button type="button" commandfor="my-dialog" command="close">
         Close Dialog
       </button>
     </dialog>
@@ -209,17 +208,46 @@
         const command = event.command || event.detail?.command;
         const source = event.source || event.detail?.source;
 
-        if (source?.hasAttribute('aria-expanded')) {
-          const isOpening = ['show-popover', 'show-modal'].includes(command);
-          const isToggle = command === 'toggle-popover';
-          
-          source.setAttribute('aria-expanded', isToggle 
-            ? source.getAttribute('aria-expanded') !== 'true' 
-            : isOpening
-          );
+        const commandForId = source.getAttribute('commandfor');
+        const stateBtn = document.querySelector(`button[commandfor="${commandForId}"][aria-expanded]`);
+
+        // Update the aria-expanded state for the invoker button
+        if (stateBtn) {
+          const currentState = stateBtn.getAttribute('aria-expanded') === 'true';
+          if (command === 'toggle-popover') {
+            stateBtn.setAttribute('aria-expanded', String(!currentState));
+          } else if (command === 'show-popover' || command === 'show-modal') {
+            stateBtn.setAttribute('aria-expanded', 'true');
+          } else if (command === 'hide-popover' || command === 'close') {
+            stateBtn.setAttribute('aria-expanded', 'false');
+          }
         }
       });
     });
+
+    // Scripting to account for loss of focus when using the explicit hide control
+
+    const showExplicitPopoverBtn = document.getElementById('show-explicit-popover');
+    const hideExplicitPopoverBtn = document.getElementById('hide-explicit-popover');
+
+    if (showExplicitPopoverBtn && hideExplicitPopoverBtn) {
+      hideExplicitPopoverBtn.addEventListener('focusout', () => {
+        const isHideExplicitPopoverBtnVisible = hideExplicitPopoverBtn.checkVisibility();
+        if (!isHideExplicitPopoverBtnVisible) {
+          showExplicitPopoverBtn.focus();
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+      if (!hasInvokerSupport)  {
+        const commandBtns = document.querySelectorAll('button[command*="toggle-popover"], button[command*="show-popover"], button[command*="show-modal"]');
+        commandBtns.forEach(commandBtn => {
+          commandBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
+    });
+    
   </script>
 </body>
 </html>

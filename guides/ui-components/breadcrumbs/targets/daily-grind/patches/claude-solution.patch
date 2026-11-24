@@ -1,0 +1,149 @@
+diff --git a/index.html b/index.html
+index 66c9173..3675ef2 100644
+--- a/index.html
++++ b/index.html
+@@ -28,7 +28,7 @@
+     }
+ 
+     /* Navigation */
+-    nav {
++    .site-nav {
+       background: var(--primary);
+       color: white;
+       padding: 1rem 5%;
+@@ -46,23 +46,23 @@
+       letter-spacing: 1px;
+     }
+ 
+-    nav ul {
++    .site-nav ul {
+       display: flex;
+       list-style: none;
+     }
+ 
+-    nav ul li {
++    .site-nav ul li {
+       margin-left: 20px;
+     }
+ 
+-    nav a {
++    .site-nav a {
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+ 
+-    nav a:hover {
++    .site-nav a:hover {
+       color: var(--accent);
+     }
+ 
+@@ -93,6 +93,78 @@
+       margin-bottom: 1rem;
+     }
+ 
++    /* Breadcrumbs (plain chevron variant) */
++    .breadcrumb {
++      max-width: 1100px;
++      margin-inline: auto;
++      margin-block-start: 24px;
++      padding-inline: 20px;
++      font-size: 0.95rem;
++    }
++
++    .breadcrumb > ol {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 0.25rem 0.5rem;
++      list-style: none;
++    }
++
++    .breadcrumb > ol > li {
++      display: flex;
++      align-items: center;
++      gap: 0.5rem;
++    }
++
++    /* Decorative divider: the empty alt text keeps it out of the accessibility tree; li + li skips the first item */
++    .breadcrumb > ol > li + li::before {
++      content: "›" / "";
++      color: #6d4c41;
++      font-size: 1.1em;
++      line-height: 1;
++    }
++
++    .breadcrumb > ol > li > a {
++      color: var(--primary);
++      text-decoration: underline;
++      text-underline-offset: 0.2em;
++      border-radius: 3px;
++    }
++
++    .breadcrumb > ol > li > a:hover {
++      color: #000;
++      text-decoration-thickness: 2px;
++    }
++
++    .breadcrumb > ol > li > a:focus-visible {
++      position: relative;
++      z-index: 1;
++      outline: 2px solid var(--primary);
++      outline-offset: 2px;
++    }
++
++    .breadcrumb > ol > li > a[aria-current="page"] {
++      color: var(--text);
++      font-weight: 700;
++      text-decoration: none;
++    }
++
++    .breadcrumb > ol > li > a[aria-current="page"]:hover {
++      text-decoration: underline;
++    }
++
++    @media (forced-colors: active) {
++      .breadcrumb > ol > li > a[aria-current="page"] {
++        text-decoration: underline;
++        border: 1px solid CanvasText;
++        padding-inline: 0.25rem;
++      }
++
++      .breadcrumb > ol > li > a:focus-visible {
++        outline-color: Highlight;
++      }
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -157,7 +229,7 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="site-nav" aria-label="Main">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+@@ -174,9 +246,17 @@
+     <a href="/order-online" class="btn">Order Now</a>
+   </header>
+ 
++  <nav class="breadcrumb" aria-label="Breadcrumbs">
++    <ol>
++      <li><a href="/">Home</a></li>
++      <li><a href="/menu">Menu</a></li>
++      <li><a href="#seasonal-favorites" aria-current="page">Seasonal Favorites</a></li>
++    </ol>
++  </nav>
++
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="seasonal-favorites" aria-labelledby="seasonal-favorites-heading">
++      <h2 id="seasonal-favorites-heading" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

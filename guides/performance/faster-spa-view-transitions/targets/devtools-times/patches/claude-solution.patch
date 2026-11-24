@@ -1,201 +1,395 @@
 diff --git a/src/components/FlyoutMenu.tsx b/src/components/FlyoutMenu.tsx
-index 37cf4bf..2ef98d9 100644
+index 37cf4bf..3bb1f56 100644
 --- a/src/components/FlyoutMenu.tsx
 +++ b/src/components/FlyoutMenu.tsx
-@@ -61,8 +61,8 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
-               <h3 className="text-xs font-semibold tracking-wider text-gray-500 uppercase mb-3">Reports</h3>
-               <ul className="space-y-4 text-sm">
-                   {reports.map(report => (
--                      <li key={report.slug}>
--                          <a href={`${import.meta.env.BASE_URL}reports/${report.slug}`} className="flex items-start space-x-2 group/item">
-+                      <li key={report.id}>
-+                          <a href={`${import.meta.env.BASE_URL}reports#report-${report.id}`} className="flex items-start space-x-2 group/item">
-                               <div className="w-10 h-10 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                                   <span className="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
-                               </div>
-diff --git a/src/pages/reports.astro b/src/pages/reports.astro
-index f6a1fc6..d37de51 100644
---- a/src/pages/reports.astro
-+++ b/src/pages/reports.astro
-@@ -1,21 +1,145 @@
- ---
- import Layout from '../layouts/Layout.astro';
--import { getCollection } from 'astro:content';
-+import ArticleTeaser from '../components/ArticleTeaser.astro';
-+import { getCollection, render } from 'astro:content';
+@@ -74,7 +74,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+                       </li>
+                   ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}reports`} className="text-xs font-semibold hover:underline">See all reports</a>
++                      <a href={`${import.meta.env.BASE_URL}#reports`} className="text-xs font-semibold hover:underline">See all reports</a>
+                   </li>
+               </ul>
+           </div>
+@@ -97,7 +97,7 @@ const FlyoutMenu: React.FC<FlyoutMenuProps> = ({ isOpen, categories, articles, r
+                         </li>
+                     ))}
+                   <li className="pt-2">
+-                      <a href={`${import.meta.env.BASE_URL}multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
++                      <a href={`${import.meta.env.BASE_URL}#multimedia`} className="text-xs font-semibold hover:underline">See all multimedia</a>
+                   </li>
+               </ul>
+           </div>
+diff --git a/src/pages/index.astro b/src/pages/index.astro
+index 92f6399..e3faaf2 100644
+--- a/src/pages/index.astro
++++ b/src/pages/index.astro
+@@ -10,6 +10,25 @@ import type { RenderResult } from 'astro:content';
+ const articles = await getCollection('articles');
+ articles.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
  
--const reports = await getCollection('reports');
-+const reports = (await getCollection('reports')).sort((a, b) =>
-+    a.data.publishDate < b.data.publishDate ? 1 : -1
-+);
-+const articles = await getCollection('articles');
++const multimedia = await getCollection('multimedia');
++multimedia.sort((a, b) => b.data.publishDate.localeCompare(a.data.publishDate));
++const reports = await getCollection('reports');
++reports.sort((a, b) => b.data.publishDate.localeCompare(a.data.publishDate));
 +
-+const relatedArticles = (category: string) => {
-+    const keywords = category.toLowerCase().split(/\s*&\s*/);
-+    const matches = articles.filter((article) =>
-+        keywords.some((keyword) => article.data.category.toLowerCase().includes(keyword))
-+    );
-+    return (matches.length > 0 ? matches : articles).slice(0, 3);
-+};
++// Fixed, small set of SPA views: all of them are kept alive (cached) once rendered.
++// Because the number of views is small and predictable, no eviction strategy is needed.
++const views = [
++  { id: 'top-news', label: 'Top News' },
++  { id: 'world', label: 'World' },
++  { id: 'politics', label: 'Politics' },
++  { id: 'multimedia', label: 'Multimedia' },
++  { id: 'reports', label: 'Reports' },
++] as const;
++const defaultViewId = views[0].id;
 +
-+const views = await Promise.all(
-+    reports.map(async (report) => ({
-+        id: `report-${report.id}`,
-+        report,
-+        Content: (await render(report)).Content,
-+        related: relatedArticles(report.data.category),
-+    }))
-+);
++const formatDate = (isoDate: string) =>
++  new Date(isoDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
++
+ // Slicing articles for different sections
+ const topArticle = articles[0];
+ const topStories = articles.slice(1, 4);
+@@ -38,6 +57,35 @@ politicsArticles[2] = {
  ---
- <Layout title="Reports">
--    <div class="max-w-3xl mx-auto px-4 py-8 md:py-12">
--        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 pb-2 border-b-2">Reports</h1>
--        <div class="prose max-w-none">
--            <p>Read our latest reports.</p>
--            <ul>
--                {reports.map(report => (
--                    <li>
--                        <a href={`/reports/${report.slug}`}>{report.data.title}</a>
--                    </li>
-+    <div class="max-w-6xl mx-auto px-4 py-8 md:py-12">
-+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Reports</h1>
-+        <p class="text-gray-600 mb-6">Read our latest reports.</p>
+ 
+ <Layout title="The DevTools Times">
++  <!-- Section navigation: switches between client-side SPA views -->
++  <nav aria-label="Sections" class="border-b border-gray-300 bg-white">
++    <ul class="max-w-6xl mx-auto px-4 flex justify-center gap-6 overflow-x-auto text-sm font-semibold">
++      {views.map(view => (
++        <li>
++          <a
++            href={`#${view.id}`}
++            data-spa-link={view.id}
++            aria-controls={`spa-view-${view.id}`}
++            aria-current={view.id === defaultViewId ? 'page' : undefined}
++            class="inline-block py-3 border-b-2 border-transparent whitespace-nowrap hover:text-gray-600 aria-[current=page]:border-amber-400 aria-[current=page]:text-amber-500"
++          >
++            {view.label}
++          </a>
++        </li>
++      ))}
++    </ul>
++  </nav>
 +
-+        <div data-spa-views>
-+            <div
-+                role="tablist"
-+                aria-label="Reports"
-+                class="flex flex-wrap gap-x-6 gap-y-2 border-b-2 border-gray-900 mb-8"
-+            >
-+                {views.map((view, index) => (
-+                    <button
-+                        type="button"
-+                        role="tab"
-+                        id={`tab-${view.id}`}
-+                        aria-controls={view.id}
-+                        aria-selected={index === 0 ? 'true' : 'false'}
-+                        tabindex={index === 0 ? 0 : -1}
-+                        class="-mb-0.5 border-b-4 border-transparent px-1 py-2 text-sm md:text-base font-brand tracking-wide text-gray-500 whitespace-nowrap cursor-pointer transition-colors hover:text-gray-900 aria-selected:border-amber-400 aria-selected:text-gray-900"
-+                    >
-+                        {view.report.data.title}
-+                    </button>
-+                ))}
-+            </div>
++  <div class="spa-views" data-spa-root data-default-view={defaultViewId}>
++  <!-- View: Top News -->
++  <section
++    id="spa-view-top-news"
++    data-view-id="top-news"
++    class="spa-view"
++    tabindex="-1"
++    aria-label="Top News"
++    aria-hidden="false"
++  >
+     <!-- Top Stories Bar -->
+     <div class="bg-white border-b border-gray-300">
+         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+@@ -55,9 +103,9 @@ politicsArticles[2] = {
+     </div>
+ 
+     <!-- Main Content Area -->
+-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
++    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-6 mt-6">
+         <ArticleTeaser article={topArticle} large={true} />
+-    </main>
++    </div>
+ 
+     <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <section class="p-4 md:p-6 text-center">
+@@ -66,19 +114,255 @@ politicsArticles[2] = {
+ 
+         <!-- "Top News" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Top News" articles={topNewsArticles} />
++    </div>
++  </section>
+ 
+-        <section class="p-4 md:p-6 text-center">
+-            <Ad client:visible />
+-        </section>
+-
++  <!-- View: World -->
++  <section
++    id="spa-view-world"
++    data-view-id="world"
++    class="spa-view inactive"
++    tabindex="-1"
++    aria-label="World"
++    aria-hidden="true"
++    inert
++  >
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <SimpleTeaserGrid title="World" articles={worldNewsArticles} />
+ 
+         <section class="p-4 md:p-6 text-center">
+             <Ad client:visible />
+         </section>
++    </div>
++  </section>
+ 
++  <!-- View: Politics -->
++  <section
++    id="spa-view-politics"
++    data-view-id="politics"
++    class="spa-view inactive"
++    tabindex="-1"
++    aria-label="Politics"
++    aria-hidden="true"
++    inert
++  >
++    <div class="divide-y divide-gray-200 max-w-6xl mx-auto">
+         <!-- "Politics" section with the new grid variant -->
+         <TopStoryTeaserGrid title="Politics" articles={politicsArticles} />
+-        
 +
-+            <div class="spa-view-stack">
-+                {views.map(({ id, report, Content, related }, index) => (
-+                    <section
-+                        id={id}
-+                        class:list={['spa-view', { inactive: index !== 0 }]}
-+                        role="tabpanel"
-+                        aria-labelledby={`tab-${id}`}
-+                        aria-hidden={index === 0 ? 'false' : 'true'}
-+                        tabindex="-1"
-+                    >
-+                        <div class="text-amber-800 text-sm font-brand tracking-widest">
-+                            {report.data.category}
-+                        </div>
-+                        <h2 class="mt-2 text-2xl md:text-3xl font-brand text-gray-900">
-+                            {report.data.title}
-+                        </h2>
-+                        <p class="mt-2 text-lg text-gray-700">{report.data.description}</p>
-+                        <p class="mt-1 text-sm text-gray-500">
-+                            Published {report.data.publishDate}
-+                        </p>
-+                        <div class="prose max-w-none mt-6">
-+                            <Content />
-+                        </div>
-+                        <section class="mt-10 border-t border-gray-200 pt-6">
-+                            <h3 class="text-xl font-brand text-gray-900 mb-6">Related coverage</h3>
-+                            <div class="grid md:grid-cols-3 gap-6">
-+                                {related.map((article) => <ArticleTeaser article={article} />)}
-+                            </div>
-+                        </section>
-+                    </section>
-                 ))}
--            </ul>
-+            </div>
-         </div>
++        <section class="p-4 md:p-6 text-center">
++            <Ad client:visible />
++        </section>
      </div>
 -</Layout>
 \ No newline at end of file
++  </section>
++
++  <!-- View: Multimedia -->
++  <section
++    id="spa-view-multimedia"
++    data-view-id="multimedia"
++    class="spa-view inactive"
++    tabindex="-1"
++    aria-label="Multimedia"
++    aria-hidden="true"
++    inert
++  >
++    <div class="max-w-6xl mx-auto p-4 md:p-6">
++        <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">Multimedia</h2>
++        <p class="text-gray-700 mb-6">Watch our latest multimedia content.</p>
++        <ul class="grid grid-cols-1 md:grid-cols-2 gap-6">
++            {multimedia.map(item => (
++                <li class="flex items-start gap-4 p-4 shadow-sm">
++                    <div class="w-12 h-12 rounded bg-blue-100 flex items-center justify-center flex-shrink-0" aria-hidden="true">
++                        <span class="text-blue-800 font-semibold">{item.data.title.charAt(0)}</span>
++                    </div>
++                    <div>
++                        <span class="text-amber-400 font-semibold text-sm">{item.data.category}</span>
++                        <h3 class="text-2xl font-brand mb-1">{item.data.title}</h3>
++                        <p class="text-gray-700 mb-2">{item.data.description}</p>
++                        <time datetime={item.data.publishDate} class="text-xs text-gray-500">{formatDate(item.data.publishDate)}</time>
++                    </div>
++                </li>
++            ))}
++        </ul>
++    </div>
++  </section>
++
++  <!-- View: Reports -->
++  <section
++    id="spa-view-reports"
++    data-view-id="reports"
++    class="spa-view inactive"
++    tabindex="-1"
++    aria-label="Reports"
++    aria-hidden="true"
++    inert
++  >
++    <div class="max-w-6xl mx-auto p-4 md:p-6">
++        <h2 class="text-3xl font-bold border-b-2 border-gray-900 pb-2 mb-6 lg:mb-8">Reports</h2>
++        <p class="text-gray-700 mb-6">Read our latest reports.</p>
++        <ul class="grid grid-cols-1 md:grid-cols-2 gap-6">
++            {reports.map(report => (
++                <li class="flex items-start gap-4 p-4 shadow-sm">
++                    <div class="w-12 h-12 rounded bg-yellow-100 flex items-center justify-center flex-shrink-0" aria-hidden="true">
++                        <span class="text-yellow-800 font-semibold">{report.data.title.charAt(0)}</span>
++                    </div>
++                    <div>
++                        <span class="text-amber-400 font-semibold text-sm">{report.data.category}</span>
++                        <h3 class="text-2xl font-brand mb-1">{report.data.title}</h3>
++                        <p class="text-gray-700 mb-2">{report.data.description}</p>
++                        <time datetime={report.data.publishDate} class="text-xs text-gray-500">{formatDate(report.data.publishDate)}</time>
++                    </div>
++                </li>
++            ))}
++        </ul>
++    </div>
++  </section>
++  </div>
 +</Layout>
 +
 +<script>
-+    // The report set is small and fixed, so every view can stay cached in memory.
-+    // A dynamic view set would need an LRU eviction policy here instead.
-+    function setupReportTabs() {
-+        const root = document.querySelector<HTMLElement>('[data-spa-views]');
-+        if (!root) return;
++  import { navigate } from 'astro:transitions/client';
 +
-+        const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
-+        const views = Array.from(root.querySelectorAll<HTMLElement>('.spa-view'));
-+        if (tabs.length === 0 || views.length === 0) return;
++  /*
++   * Client-side SPA view switching for the homepage sections.
++   *
++   * Inactive views are NOT destroyed: they get the `inactive` class
++   * (`content-visibility: hidden`), so the browser keeps their DOM and cached
++   * rendering state and skips layout/paint for them. Returning to a previously
++   * visited view is therefore near-instant.
++   *
++   * The set of views is small and fixed (5), so every view is kept alive and
++   * no eviction strategy is required.
++   */
 +
-+        function switchToView(viewId: string, moveFocus: boolean) {
-+            const activeView = views.find((view) => view.id === viewId);
-+            if (!activeView) return;
++  let controller: AbortController | null = null;
 +
-+            for (const view of views) {
-+                const isActive = view === activeView;
-+                view.classList.toggle('inactive', !isActive);
-+                view.setAttribute('aria-hidden', isActive ? 'false' : 'true');
-+            }
++  function initSpaViews(): void {
++    controller?.abort();
++    controller = null;
 +
-+            for (const tab of tabs) {
-+                const isSelected = tab.getAttribute('aria-controls') === viewId;
-+                tab.setAttribute('aria-selected', isSelected ? 'true' : 'false');
-+                tab.tabIndex = isSelected ? 0 : -1;
-+            }
++    const root = document.querySelector<HTMLElement>('[data-spa-root]');
++    if (!root) return;
 +
-+            if (moveFocus) {
-+                activeView.focus({ preventScroll: true });
-+            }
++    const views = Array.from(root.querySelectorAll<HTMLElement>(':scope > .spa-view'));
++    if (views.length === 0) return;
++
++    controller = new AbortController();
++    const { signal } = controller;
++
++    const viewIds = new Set(views.map((view) => view.dataset.viewId ?? ''));
++    const defaultViewId = root.dataset.defaultView ?? views[0].dataset.viewId ?? '';
++    let currentViewId = views.find((view) => !view.classList.contains('inactive'))?.dataset.viewId ?? null;
++
++    const viewIdFromHash = (hash: string): string | null => {
++      let id: string;
++      try {
++        id = decodeURIComponent(hash.replace(/^#/, ''));
++      } catch {
++        return null;
++      }
++      return viewIds.has(id) ? id : null;
++    };
++
++    const updateLinks = (viewId: string): void => {
++      document.querySelectorAll<HTMLAnchorElement>('a[data-spa-link]').forEach((link) => {
++        if (link.dataset.spaLink === viewId) {
++          link.setAttribute('aria-current', 'page');
++        } else {
++          link.removeAttribute('aria-current');
++        }
++      });
++    };
++
++    const switchToView = (viewId: string, focus: 'none' | 'scroll' | 'preserve-scroll'): void => {
++      const activeView = views.find((view) => view.dataset.viewId === viewId);
++      if (!activeView) return;
++
++      if (viewId !== currentViewId) {
++        // Hide (but keep) every other view
++        for (const view of views) {
++          if (view === activeView) continue;
++          view.classList.add('inactive');
++          view.setAttribute('aria-hidden', 'true');
++          view.setAttribute('inert', '');
 +        }
 +
-+        tabs.forEach((tab, index) => {
-+            tab.addEventListener('click', () => {
-+                const viewId = tab.getAttribute('aria-controls');
-+                if (!viewId) return;
-+                switchToView(viewId, true);
-+                history.replaceState(null, '', `#${viewId}`);
-+            });
++        // Show the target view
++        activeView.classList.remove('inactive');
++        activeView.setAttribute('aria-hidden', 'false');
++        activeView.removeAttribute('inert');
 +
-+            tab.addEventListener('keydown', (event) => {
-+                const offset =
-+                    event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-+                if (offset === 0) return;
-+                event.preventDefault();
-+                tabs[(index + offset + tabs.length) % tabs.length]?.focus();
-+            });
-+        });
++        currentViewId = viewId;
++        updateLinks(viewId);
++      }
 +
-+        const requestedId = decodeURIComponent(location.hash.slice(1));
-+        const initialView = views.find((view) => view.id === requestedId) ?? views[0];
-+        if (initialView) switchToView(initialView.id, false);
-+    }
++      // Move focus to the new view to keep a logical tab order
++      if (focus === 'scroll') {
++        activeView.focus();
++      } else if (focus === 'preserve-scroll') {
++        activeView.focus({ preventScroll: true });
++      }
++    };
 +
-+    document.addEventListener('astro:page-load', setupReportTabs);
++    // Sync the view with the current URL (initial load, back/forward, manual hash edits)
++    const syncWithLocation = (focus: 'none' | 'preserve-scroll'): void => {
++      const viewId = viewIdFromHash(location.hash) ?? defaultViewId;
++      if (viewId !== currentViewId) {
++        switchToView(viewId, focus);
++      }
++    };
++
++    // Intercept same-page links pointing to a view (section nav, flyout "See all" links, ...).
++    // Capture phase so we run before the Astro ClientRouter's document click handler.
++    document.addEventListener(
++      'click',
++      (event: MouseEvent) => {
++        if (
++          event.defaultPrevented ||
++          event.button !== 0 ||
++          event.metaKey ||
++          event.ctrlKey ||
++          event.shiftKey ||
++          event.altKey
++        ) {
++          return;
++        }
++
++        const target = event.target;
++        if (!(target instanceof Element)) return;
++        const link = target.closest<HTMLAnchorElement>('a[href]');
++        if (!link || (link.target && link.target !== '_self') || link.hasAttribute('download')) return;
++
++        const url = new URL(link.href, location.href);
++        if (url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search) {
++          return;
++        }
++
++        const viewId = viewIdFromHash(url.hash);
++        if (!viewId) return;
++
++        event.preventDefault();
++        switchToView(viewId, 'scroll');
++
++        // Record the view in history via the Astro router so back/forward stay
++        // intra-page (no full page swap that would destroy the cached views).
++        if (url.href !== location.href) {
++          void navigate(url.href);
++        }
++      },
++      { capture: true, signal },
++    );
++
++    window.addEventListener('popstate', () => syncWithLocation('preserve-scroll'), { signal });
++    window.addEventListener('hashchange', () => syncWithLocation('preserve-scroll'), { signal });
++
++    // Initial view based on the URL hash (e.g. arriving via /#reports)
++    syncWithLocation('none');
++  }
++
++  document.addEventListener('astro:page-load', initSpaViews);
++  document.addEventListener('astro:before-swap', () => {
++    controller?.abort();
++    controller = null;
++  });
 +</script>
+\ No newline at end of file
 diff --git a/src/styles/global.css b/src/styles/global.css
-index e9a9abb..36b4bb3 100644
+index e9a9abb..20b1766 100644
 --- a/src/styles/global.css
 +++ b/src/styles/global.css
 @@ -4,4 +4,38 @@
    font-family: "Grenze", serif;
    font-weight: 500;
    font-style: normal;
+-}
+\ No newline at end of file
 +}
 +
-+/* Stack every SPA view in the same grid cell so switching never reflows the page. */
-+.spa-view-stack {
-+  display: grid;
-+  grid-template-columns: minmax(0, 1fr);
++/*
++ * SPA section views (homepage: Top News, World, Politics, Multimedia, Reports).
++ * Inactive views keep their DOM and cached rendering state; the browser skips
++ * layout and paint for their contents, so switching back is near-instant.
++ */
++.spa-views {
++  position: relative;
 +}
 +
-+.spa-view {
-+  grid-area: 1 / 1;
-+  content-visibility: visible;
++.spa-view.inactive {
++  /* Cache the rendering state of inactive views instead of destroying them */
++  content-visibility: hidden;
++
++  /* Take hidden views out of the layout flow so they don't occupy space */
++  position: absolute;
++  inset: 0 0 auto 0;
 +}
 +
 +.spa-view:focus {
@@ -204,20 +398,12 @@ index e9a9abb..36b4bb3 100644
 +
 +.spa-view:focus-visible {
 +  outline: 2px solid var(--color-amber-400);
-+  outline-offset: 4px;
++  outline-offset: -2px;
 +}
 +
-+.spa-view.inactive {
-+  /* MANDATORY: cache the rendering state of inactive views instead of destroying them */
-+  content-visibility: hidden;
-+  /* Collapse the skipped subtree so it claims no space in the stack */
-+  contain-intrinsic-size: 0 0;
-+  pointer-events: none;
-+}
-+
++/* Fallback for browsers without content-visibility support */
 +@supports not (content-visibility: hidden) {
 +  .spa-view.inactive {
 +    display: none;
 +  }
- }
-\ No newline at end of file
++}
