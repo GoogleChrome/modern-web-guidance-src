@@ -1,416 +1,44 @@
-diff --git a/build.mjs b/build.mjs
-new file mode 100644
-index 0000000..8739bdf
---- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,4 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
-+
-+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-+await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
-diff --git a/dist/index.html b/dist/index.html
-new file mode 100644
-index 0000000..67ffb18
---- /dev/null
-+++ b/dist/index.html
-@@ -0,0 +1,347 @@
-+<!DOCTYPE html>
-+<html lang="en">
-+
-+<head>
-+  <meta charset="UTF-8">
-+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+  <title>The Daily Grind | Artisanal Coffee</title>
-+  <style>
-+    :root {
-+      --primary: #4e342e;
-+      --secondary: #d7ccc8;
-+      --accent: #ffab40;
-+      --text: #3e2723;
-+      --light: #fafafa;
-+    }
-+
-+    * {
-+      box-sizing: border-box;
-+      margin: 0;
-+      padding: 0;
-+    }
-+
-+    body {
-+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-+      line-height: 1.6;
-+      color: var(--text);
-+      background-color: var(--light);
-+    }
-+
-+    /* Navigation */
-+    nav {
-+      background: var(--primary);
-+      color: white;
-+      padding: 1rem 5%;
-+      display: flex;
-+      justify-content: space-between;
-+      align-items: center;
-+      position: sticky;
-+      top: 0;
-+      z-index: 1000;
-+    }
-+
-+    .logo {
-+      font-size: 1.5rem;
-+      font-weight: bold;
-+      letter-spacing: 1px;
-+    }
-+
-+    nav ul {
-+      display: flex;
-+      list-style: none;
-+    }
-+
-+    nav ul li {
-+      margin-left: 20px;
-+    }
-+
-+    nav a {
-+      color: white;
-+      text-decoration: none;
-+      font-size: 0.9rem;
-+      transition: color 0.3s;
-+    }
-+
-+    nav a:hover {
-+      color: var(--accent);
-+    }
-+
-+    .logout-link {
-+      border: 1px solid var(--accent);
-+      padding: 5px 12px;
-+      border-radius: 4px;
-+    }
-+
-+    /* Hero Section */
-+    .hero {
-+      height: 60vh;
-+      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-+        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
-+      background-size: cover;
-+      background-position: center;
-+      display: flex;
-+      flex-direction: column;
-+      justify-content: center;
-+      align-items: center;
-+      color: white;
-+      text-align: center;
-+      padding: 0 20px;
-+    }
-+
-+    .hero h1 {
-+      font-size: 3rem;
-+      margin-bottom: 1rem;
-+    }
-+
-+    /* Content Sections */
-+    .container {
-+      max-width: 1100px;
-+      margin: 40px auto;
-+      padding: 0 20px;
-+    }
-+
-+    .grid {
-+      display: grid;
-+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-+      gap: 20px;
-+      margin-top: 20px;
-+    }
-+
-+    .card {
-+      background: white;
-+      padding: 20px;
-+      border-radius: 8px;
-+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-+      text-align: center;
-+    }
-+
-+    .card h3 {
-+      margin-bottom: 10px;
-+      color: var(--primary);
-+    }
-+
-+    .btn {
-+      display: inline-block;
-+      background: var(--primary);
-+      color: white;
-+      padding: 10px 20px;
-+      text-decoration: none;
-+      border-radius: 5px;
-+      margin-top: 15px;
-+      transition: background 0.3s;
-+    }
-+
-+    .btn:hover {
-+      background: #3e2723;
-+    }
-+
-+    .brew-strength {
-+      max-inline-size: 560px;
-+      margin: 40px auto 0;
-+      text-align: start;
-+    }
-+
-+    .brew-strength label {
-+      display: block;
-+      font-size: 1.25rem;
-+      font-weight: bold;
-+    }
-+
-+    .brew-strength output {
-+      display: block;
-+      margin-block: 12px 4px;
-+      font-weight: 600;
-+      color: var(--primary);
-+    }
-+
-+    .strength-scale {
-+      display: flex;
-+      justify-content: space-between;
-+      font-size: 0.875rem;
-+    }
-+
-+    .strength-slider {
-+      --slider-track-size: 0.5rem;
-+      --slider-thumb-size: 1.5rem;
-+      --slider-track-radius: 999px;
-+      --slider-thumb-radius: 50%;
-+      --slider-track-color: var(--secondary);
-+      --slider-fill-color: var(--primary);
-+      --slider-thumb-color: var(--accent);
-+      --slider-direction: to right;
-+      --attr-min: 1;
-+      --attr-max: 5;
-+      --control-value: 3;
-+      --slider-progress: calc((var(--control-value) - var(--attr-min)) / (var(--attr-max) - var(--attr-min)) * 100%);
-+      -webkit-appearance: none;
-+      appearance: none;
-+      inline-size: 100%;
-+      block-size: 2.75rem;
-+      margin: 0;
-+      padding: 0;
-+      border: 0;
-+      border-radius: 0;
-+      background: transparent;
-+      cursor: pointer;
-+    }
-+
-+    .strength-slider:dir(rtl) {
-+      --slider-direction: to left;
-+    }
-+
-+    @supports (opacity: progress(1, 0, 100)) {
-+      .strength-slider {
-+        --slider-progress: calc(progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%);
-+      }
-+    }
-+
-+    .strength-slider::-webkit-slider-runnable-track {
-+      block-size: var(--slider-track-size);
-+      border: 0;
-+      border-radius: var(--slider-track-radius);
-+      background: linear-gradient(var(--slider-direction), var(--slider-fill-color) var(--slider-progress), var(--slider-track-color) var(--slider-progress));
-+    }
-+
-+    .strength-slider::-webkit-slider-thumb {
-+      -webkit-appearance: none;
-+      appearance: none;
-+      inline-size: var(--slider-thumb-size);
-+      block-size: var(--slider-thumb-size);
-+      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
-+      border: 2px solid var(--primary);
-+      border-radius: var(--slider-thumb-radius);
-+      background: var(--slider-thumb-color);
-+    }
-+
-+    .strength-slider::-moz-range-track {
-+      block-size: var(--slider-track-size);
-+      border: 0;
-+      border-radius: var(--slider-track-radius);
-+      background: var(--slider-track-color);
-+    }
-+
-+    .strength-slider::-moz-range-progress {
-+      block-size: var(--slider-track-size);
-+      border-radius: var(--slider-track-radius);
-+      background: var(--slider-fill-color);
-+    }
-+
-+    .strength-slider::-moz-range-thumb {
-+      box-sizing: border-box;
-+      inline-size: var(--slider-thumb-size);
-+      block-size: var(--slider-thumb-size);
-+      border: 2px solid var(--primary);
-+      border-radius: var(--slider-thumb-radius);
-+      background: var(--slider-thumb-color);
-+    }
-+
-+    .strength-slider:focus-visible {
-+      outline: 2px solid var(--slider-fill-color);
-+      outline-offset: 4px;
-+    }
-+
-+    footer {
-+      background: var(--secondary);
-+      text-align: center;
-+      padding: 40px 20px;
-+      margin-top: 40px;
-+    }
-+
-+    .footer-links {
-+      margin-bottom: 20px;
-+    }
-+
-+    .footer-links a {
-+      margin: 0 10px;
-+      color: var(--text);
-+      text-decoration: none;
-+      font-size: 0.85rem;
-+    }
-+  </style>
-+</head>
-+
-+<body>
-+
-+  <nav>
-+    <div class="logo">THE DAILY GRIND</div>
-+    <ul>
-+      <li><a href="/menu">Menu</a></li>
-+      <li><a href="/locations">Locations</a></li>
-+      <li><a href="/rewards">Rewards</a></li>
-+      <li><a href="/account">My Account</a></li>
-+      <li><a href="/logout" class="logout-link">Logout</a></li>
-+    </ul>
-+  </nav>
-+
-+  <header class="hero">
-+    <h1>Wake Up Your Senses</h1>
-+    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
-+    <a href="/order-online" class="btn">Order Now</a>
-+  </header>
-+
-+  <main class="container">
-+    <section>
-+      <h2 style="text-align: center;">Seasonal Favorites</h2>
-+      <div class="grid">
-+        <div class="card">
-+          <h3>Maple Oat Latte</h3>
-+          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+          <a href="/menu/seasonal" class="btn">View Details</a>
-+        </div>
-+        <div class="card">
-+          <h3>Dark Roast Espresso</h3>
-+          <p>Bold, smokey, and perfect for a morning boost.</p>
-+          <a href="/menu/espresso" class="btn">View Details</a>
-+        </div>
-+        <div class="card">
-+          <h3>Cold Brew</h3>
-+          <p>Steeped for 18 hours for maximum smoothness.</p>
-+          <a href="/menu/cold-brew" class="btn">View Details</a>
-+        </div>
-+      </div>
-+    </section>
-+    <section class="card brew-strength" aria-labelledby="brew-strength-label">
-+      <label id="brew-strength-label" for="brew-strength">Brew strength</label>
-+      <p id="brew-strength-help">Find your preferred intensity, from light and mellow to rich and bold.</p>
-+      <output id="brew-strength-value" for="brew-strength" aria-live="off">Balanced</output>
-+      <input class="strength-slider" id="brew-strength" name="brew-strength" type="range"
-+        min="1" max="5" step="1" value="3" aria-valuetext="Balanced"
-+        aria-describedby="brew-strength-help">
-+      <div class="strength-scale" aria-hidden="true"><span>Light</span><span>Extra bold</span></div>
-+    </section>
-+  </main>
-+
-+  <footer>
-+    <div class="footer-links">
-+      <a href="/about">Our Story</a> |
-+      <a href="/careers">Join the Team</a> |
-+      <a href="/contact">Contact Us</a> |
-+      <a href="/privacy-policy">Privacy</a>
-+    </div>
-+    <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-+  </footer>
-+
-+  <script>
-+    const strengthSlider = document.getElementById('brew-strength');
-+    const strengthOutput = document.getElementById('brew-strength-value');
-+    const strengthLabels = ['Light', 'Mellow', 'Balanced', 'Bold', 'Extra bold'];
-+
-+    if (strengthSlider instanceof HTMLInputElement && strengthOutput instanceof HTMLOutputElement) {
-+      function syncStrength() {
-+        const label = strengthLabels[strengthSlider.valueAsNumber - 1];
-+        strengthSlider.style.setProperty('--attr-min', strengthSlider.min);
-+        strengthSlider.style.setProperty('--attr-max', strengthSlider.max);
-+        strengthSlider.style.setProperty('--control-value', strengthSlider.value);
-+        strengthSlider.setAttribute('aria-valuetext', label);
-+        strengthOutput.value = label;
-+      }
-+
-+      syncStrength();
-+      strengthSlider.addEventListener('input', syncStrength);
-+      strengthSlider.addEventListener('change', syncStrength);
-+      window.addEventListener('pageshow', syncStrength);
-+    }
-+  </script>
-+</body>
-+
-+</html>
 diff --git a/index.html b/index.html
-index 66c9173..67ffb18 100644
+index 5db718e..e24ebb7 100644
 --- a/index.html
 +++ b/index.html
-@@ -135,6 +135,111 @@
+@@ -137,6 +137,122 @@
        background: #3e2723;
      }
  
 +    .brew-strength {
-+      max-inline-size: 560px;
-+      margin: 40px auto 0;
++      max-inline-size: 36rem;
++      margin: 2.5rem auto 0;
++      padding: clamp(1rem, 4vw, 2rem);
 +      text-align: start;
 +    }
 +
-+    .brew-strength label {
-+      display: block;
++    .brew-strength h2 {
++      color: var(--primary);
 +      font-size: 1.25rem;
-+      font-weight: bold;
 +    }
 +
 +    .brew-strength output {
 +      display: block;
-+      margin-block: 12px 4px;
-+      font-weight: 600;
-+      color: var(--primary);
++      color: var(--accent);
++      font-weight: 700;
 +    }
 +
-+    .strength-scale {
-+      display: flex;
-+      justify-content: space-between;
-+      font-size: 0.875rem;
-+    }
-+
-+    .strength-slider {
++    #brew-strength {
 +      --slider-track-size: 0.5rem;
 +      --slider-thumb-size: 1.5rem;
 +      --slider-track-radius: 999px;
 +      --slider-thumb-radius: 50%;
-+      --slider-track-color: var(--secondary);
-+      --slider-fill-color: var(--primary);
-+      --slider-thumb-color: var(--accent);
++      --slider-track-color: var(--border);
++      --slider-fill-color: var(--accent);
++      --slider-thumb-color: var(--primary);
 +      --slider-direction: to right;
-+      --attr-min: 1;
-+      --attr-max: 5;
-+      --control-value: 3;
-+      --slider-progress: calc((var(--control-value) - var(--attr-min)) / (var(--attr-max) - var(--attr-min)) * 100%);
-+      -webkit-appearance: none;
++      --slider-progress-fallback: 33.3333%;
++
 +      appearance: none;
 +      inline-size: 100%;
 +      block-size: 2.75rem;
++      display: block;
 +      margin: 0;
 +      padding: 0;
 +      border: 0;
@@ -419,117 +47,136 @@ index 66c9173..67ffb18 100644
 +      cursor: pointer;
 +    }
 +
-+    .strength-slider:dir(rtl) {
++    #brew-strength:dir(rtl) {
 +      --slider-direction: to left;
 +    }
 +
 +    @supports (opacity: progress(1, 0, 100)) {
-+      .strength-slider {
-+        --slider-progress: calc(progress(var(--control-value), var(--attr-min), var(--attr-max)) * 100%);
++      #brew-strength {
++        --slider-progress: calc(progress(var(--control-value, 1), var(--attr-min, 0), var(--attr-max, 3)) * 100%);
 +      }
 +    }
 +
-+    .strength-slider::-webkit-slider-runnable-track {
++    #brew-strength::-webkit-slider-runnable-track {
 +      block-size: var(--slider-track-size);
 +      border: 0;
 +      border-radius: var(--slider-track-radius);
-+      background: linear-gradient(var(--slider-direction), var(--slider-fill-color) var(--slider-progress), var(--slider-track-color) var(--slider-progress));
++      background: var(--slider-track-color);
++      background: linear-gradient(
++        var(--slider-direction),
++        var(--slider-fill-color) var(--slider-progress, var(--slider-progress-fallback)),
++        var(--slider-track-color) var(--slider-progress, var(--slider-progress-fallback))
++      );
 +    }
 +
-+    .strength-slider::-webkit-slider-thumb {
++    #brew-strength::-webkit-slider-thumb {
 +      -webkit-appearance: none;
 +      appearance: none;
 +      inline-size: var(--slider-thumb-size);
 +      block-size: var(--slider-thumb-size);
 +      margin-block-start: calc((var(--slider-track-size) - var(--slider-thumb-size)) / 2);
-+      border: 2px solid var(--primary);
++      border: 0;
 +      border-radius: var(--slider-thumb-radius);
 +      background: var(--slider-thumb-color);
 +    }
 +
-+    .strength-slider::-moz-range-track {
++    #brew-strength::-moz-range-track {
 +      block-size: var(--slider-track-size);
 +      border: 0;
 +      border-radius: var(--slider-track-radius);
 +      background: var(--slider-track-color);
 +    }
 +
-+    .strength-slider::-moz-range-progress {
++    #brew-strength::-moz-range-progress {
 +      block-size: var(--slider-track-size);
 +      border-radius: var(--slider-track-radius);
 +      background: var(--slider-fill-color);
 +    }
 +
-+    .strength-slider::-moz-range-thumb {
-+      box-sizing: border-box;
++    #brew-strength::-moz-range-thumb {
 +      inline-size: var(--slider-thumb-size);
 +      block-size: var(--slider-thumb-size);
-+      border: 2px solid var(--primary);
++      border: 0;
 +      border-radius: var(--slider-thumb-radius);
 +      background: var(--slider-thumb-color);
 +    }
 +
-+    .strength-slider:focus-visible {
++    #brew-strength:focus-visible {
 +      outline: 2px solid var(--slider-fill-color);
 +      outline-offset: 4px;
++    }
++
++    @media (forced-colors: active) {
++      #brew-strength {
++        appearance: auto;
++      }
++    }
++
++    .brew-strength-options {
++      display: flex;
++      justify-content: space-between;
++      gap: 0.5rem;
++      margin: 0.25rem 0 0;
++      list-style: none;
++      font-size: 0.875rem;
++      line-height: 1.3;
 +    }
 +
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -195,6 +300,15 @@
+@@ -197,6 +313,18 @@
          </div>
        </div>
      </section>
-+    <section class="card brew-strength" aria-labelledby="brew-strength-label">
-+      <label id="brew-strength-label" for="brew-strength">Brew strength</label>
-+      <p id="brew-strength-help">Find your preferred intensity, from light and mellow to rich and bold.</p>
-+      <output id="brew-strength-value" for="brew-strength" aria-live="off">Balanced</output>
-+      <input class="strength-slider" id="brew-strength" name="brew-strength" type="range"
-+        min="1" max="5" step="1" value="3" aria-valuetext="Balanced"
-+        aria-describedby="brew-strength-help">
-+      <div class="strength-scale" aria-hidden="true"><span>Light</span><span>Extra bold</span></div>
++
++    <section class="card brew-strength">
++      <h2><label for="brew-strength">Brew Strength</label></h2>
++      <output id="brew-strength-value" for="brew-strength">Medium</output>
++      <input id="brew-strength" type="range" min="0" max="3" step="1" value="1" aria-valuetext="Medium">
++      <ul class="brew-strength-options" id="brew-strength-options" aria-hidden="true">
++        <li>Mild</li>
++        <li>Medium</li>
++        <li>Bold</li>
++        <li>Extra Bold</li>
++      </ul>
 +    </section>
    </main>
  
    <footer>
-@@ -207,6 +321,27 @@
+@@ -209,6 +337,35 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script>
-+    const strengthSlider = document.getElementById('brew-strength');
-+    const strengthOutput = document.getElementById('brew-strength-value');
-+    const strengthLabels = ['Light', 'Mellow', 'Balanced', 'Bold', 'Extra bold'];
++  <script type="module">
++    const slider = document.getElementById('brew-strength');
++    const currentStrength = document.getElementById('brew-strength-value');
++    const strengthOptions = document.querySelectorAll('#brew-strength-options li');
 +
-+    if (strengthSlider instanceof HTMLInputElement && strengthOutput instanceof HTMLOutputElement) {
-+      function syncStrength() {
-+        const label = strengthLabels[strengthSlider.valueAsNumber - 1];
-+        strengthSlider.style.setProperty('--attr-min', strengthSlider.min);
-+        strengthSlider.style.setProperty('--attr-max', strengthSlider.max);
-+        strengthSlider.style.setProperty('--control-value', strengthSlider.value);
-+        strengthSlider.setAttribute('aria-valuetext', label);
-+        strengthOutput.value = label;
-+      }
++    if (slider instanceof HTMLInputElement && currentStrength instanceof HTMLOutputElement) {
++      const syncStrength = () => {
++        const value = slider.valueAsNumber;
++        const min = Number(slider.min);
++        const max = Number(slider.max);
++        const strength = strengthOptions[value - min]?.textContent;
++
++        if (strength) {
++          currentStrength.value = strength;
++          slider.setAttribute('aria-valuetext', strength);
++        }
++
++        slider.style.setProperty('--attr-min', String(min));
++        slider.style.setProperty('--attr-max', String(max));
++        slider.style.setProperty('--control-value', slider.value);
++        slider.style.setProperty('--slider-progress-fallback', `${(value - min) / (max - min) * 100}%`);
++      };
 +
 +      syncStrength();
-+      strengthSlider.addEventListener('input', syncStrength);
-+      strengthSlider.addEventListener('change', syncStrength);
++      slider.addEventListener('input', syncStrength);
 +      window.addEventListener('pageshow', syncStrength);
 +    }
 +  </script>
++
  </body>
  
  </html>
-diff --git a/package.json b/package.json
-index 2bd4d77..5c14ac8 100644
---- a/package.json
-+++ b/package.json
-@@ -2,6 +2,7 @@
-   "name": "daily-grind",
-   "version": "1.0.0",
-   "scripts": {
-+    "build": "node build.mjs",
-     "start": "pnpm dlx statikk --port ${PORT:-11222}"
-   },
-   "pnpm": {
