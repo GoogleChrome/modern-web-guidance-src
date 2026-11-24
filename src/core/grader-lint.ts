@@ -49,6 +49,7 @@ export function isGen2Grader(filePath: string): boolean {
 }
 
 function constantHelperValue(fn: TsMorphNode, seen: Set<TsMorphNode>): boolean | undefined {
+  if (assertionsIn(fn).length > 0 || fn.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0) return undefined;
   if (Node.isArrowFunction(fn)) {
     const body = unwrap(fn.getBody());
     if (!Node.isBlock(body)) return vacuousBooleanValue(body, seen);
@@ -56,7 +57,6 @@ function constantHelperValue(fn: TsMorphNode, seen: Set<TsMorphNode>): boolean |
   if (!Node.isFunctionDeclaration(fn) && !Node.isArrowFunction(fn) && !Node.isFunctionExpression(fn)) return undefined;
   const body = fn.getBody();
   if (!body || !Node.isBlock(body)) return undefined;
-  if (fn.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0) return undefined;
   const stmts = body.getStatements();
   if (stmts.length === 0 || !Node.isReturnStatement(stmts[stmts.length - 1])) return undefined;
   const returns = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement).filter(r => enclosingFunction(r) === fn);
@@ -83,11 +83,11 @@ function vacuousBooleanValue(node: TsMorphNode, seen: Set<TsMorphNode> = new Set
     if (!Node.isIdentifier(callee)) return undefined;
     const decl = callee.getSymbol()?.getDeclarations()[0];
     if (!decl || seen.has(decl)) return undefined;
-    seen.add(decl);
-    if (Node.isFunctionDeclaration(decl)) return constantHelperValue(decl, seen);
+    const nextSeen = new Set(seen).add(decl);
+    if (Node.isFunctionDeclaration(decl)) return constantHelperValue(decl, nextSeen);
     if (Node.isVariableDeclaration(decl)) {
       const init = decl.getInitializer();
-      if (init) return constantHelperValue(unwrap(init), seen);
+      if (init) return constantHelperValue(unwrap(init), nextSeen);
     }
   }
   return undefined;
@@ -318,6 +318,8 @@ function unwrap(node: TsMorphNode): TsMorphNode {
     Node.isParenthesizedExpression(curr) ||
     Node.isAwaitExpression(curr) ||
     Node.isAsExpression(curr) ||
+    Node.isSatisfiesExpression(curr) ||
+    Node.isTypeAssertion(curr) ||
     Node.isNonNullExpression(curr)
   ) {
     curr = curr.getExpression();
@@ -488,6 +490,70 @@ function everyList(assertCall: TsMorphNode): TsMorphNode | undefined {
   return Node.isPropertyAccessExpression(callee) && callee.getName() === 'every' ? callee.getExpression() : undefined;
 }
 
+function absenceRoots(node: TsMorphNode): string[] {
+  const expr = unwrap(node);
+  const emptySubj = emptinessSubject(expr);
+  if (emptySubj) {
+    const r = rootIdentifier(emptySubj);
+    return r ? [r] : [];
+  }
+  if (Node.isPrefixUnaryExpression(expr) && expr.getOperatorToken() === SyntaxKind.ExclamationToken) {
+    const r = rootIdentifier(expr.getOperand());
+    return r ? [r] : [];
+  }
+  if (Node.isBinaryExpression(expr)) {
+    const op = expr.getOperatorToken().getKind();
+    if (op === SyntaxKind.BarBarToken) return [...absenceRoots(expr.getLeft()), ...absenceRoots(expr.getRight())];
+    const r = rootIdentifier(expr.getLeft());
+    return r ? [r] : [];
+  }
+  return [];
+}
+
+function isPresenceAssertionOn(call: TsMorphNode, root: string, allowDefined = false): boolean {
+  if (!Node.isCallExpression(call) || !isAssertionCall(call)) return false;
+  const callee = call.getExpression().getText();
+  if (callee.startsWith('expect.soft')) return false;
+  const arg = call.getArguments()[0];
+  if (!arg || !referencesIdentifier(arg, root)) return false;
+  if (callee === 'assert' || callee === 'assert.ok') return !emptinessSubject(arg);
+  if (callee !== 'expect') return true;
+  const m = readMatcher(call);
+  if (!m) return false;
+  const numArg = m.arg !== undefined ? Number(m.arg) : NaN;
+  if (m.matcher === 'toBeTruthy') return !m.negated;
+  if (m.matcher === 'toBeDefined') return allowDefined && !m.negated;
+  if (m.matcher === 'toBeFalsy' || m.matcher === 'toBeNull' || m.matcher === 'toBeUndefined') return m.negated;
+  if (m.matcher === 'toBeGreaterThan') return !m.negated && !Number.isNaN(numArg) && numArg >= 0;
+  if (m.matcher === 'toBeGreaterThanOrEqual') return !m.negated && !Number.isNaN(numArg) && numArg >= 1;
+  if (m.matcher === 'toHaveLength' || m.matcher === 'toHaveCount') return !m.negated && numArg > 0;
+  if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher)) {
+    if (m.negated) return ['0', 'false', 'null', 'undefined'].includes(m.arg ?? '');
+    return m.arg !== '0' && m.arg !== 'false' && m.arg !== 'null' && m.arg !== 'undefined';
+  }
+  return true;
+}
+
+function hasBooleanOnlyReturns(block: TsMorphNode): boolean {
+  const returns = block.getDescendantsOfKind(SyntaxKind.ReturnStatement);
+  return (
+    returns.length > 0 &&
+    returns.every(r => {
+      const k = r.getExpression()?.getKind();
+      return k === SyntaxKind.TrueKeyword || k === SyntaxKind.FalseKeyword;
+    })
+  );
+}
+
+function assignedTargetName(expr: TsMorphNode): string | undefined {
+  const parent = expr.getParentWhile(p => Node.isAwaitExpression(p) || Node.isParenthesizedExpression(p))?.getParent() ?? expr.getParent();
+  if (Node.isVariableDeclaration(parent) && Node.isIdentifier(parent.getNameNode())) return parent.getNameNode().getText();
+  if (Node.isBinaryExpression(parent) && parent.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+    return rootIdentifier(parent.getLeft());
+  }
+  return undefined;
+}
+
 function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): void {
   for (const ifStmt of sourceFile.getDescendantsOfKind(SyntaxKind.IfStatement)) {
     const testFn = enclosingTest(ifStmt);
@@ -497,6 +563,15 @@ function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): v
     if (!returns || failsLoudly(thenStmt)) continue;
     const assertsAfter = assertionsIn(testFn).some(a => a.getStart() > ifStmt.getEnd());
     if (!assertsAfter) continue;
+    const roots = absenceRoots(ifStmt.getExpression());
+    const alreadyNarrowed =
+      roots.length > 0 &&
+      roots.every(r =>
+        assertionsIn(testFn).some(
+          a => enclosingFunction(a) === testFn && !isWithinInnerIf(a, testFn) && a.getEnd() <= ifStmt.getStart() && isPresenceAssertionOn(a, r, true)
+        )
+      );
+    if (alreadyNarrowed) continue;
     addViolation(
       ifStmt,
       'no-early-return-before-assertion',
@@ -513,7 +588,7 @@ function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): v
         isNonEmptyArrayLiteral(list) ||
         (root !== undefined &&
           scope !== undefined &&
-          (assertionsIn(scope).some(a => a !== call && !everyList(a) && a.getEnd() <= call.getStart() && referencesIdentifier(a, root)) ||
+          (assertionsIn(scope).some(a => a !== call && !everyList(a) && a.getEnd() <= call.getStart() && isPresenceAssertionOn(a, root)) ||
             scope
               .getDescendantsOfKind(SyntaxKind.IfStatement)
               .some(s => s.getEnd() <= call.getStart() && referencesIdentifier(s.getExpression(), root) && failsLoudly(s.getThenStatement()))));
@@ -521,7 +596,7 @@ function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): v
         addViolation(
           call,
           'no-unguarded-every',
-          `\`.every()\` over \`${list.getText().slice(0, 60)}\` passes when the list is empty. Assert it is non-empty first (expect(list.length).toBeGreaterThan(0)).`
+          `\`.every()\` over \`${list.getText().slice(0, 60)}\` passes when the list is empty. Assert it is non-empty first (expect(list.length).toBeGreaterThan(0)), or for a negative invariant use \`.some(bad)\` with \`.toBe(false)\`.`
         );
       }
     }
@@ -532,10 +607,14 @@ function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): v
       const handler = call.getArguments()[0];
       const receiverAsserts = isAssertionCall(receiver) || assertionsIn(receiver).length > 0;
       const receiverWaits = isWaitCall(receiver) || waitsIn(receiver).length > 0;
-      const assignedToVar = Node.isVariableDeclaration(
-        call.getParentWhile(p => Node.isAwaitExpression(p) || Node.isParenthesizedExpression(p))?.getParent() ?? call.getParent()
-      );
-      if ((receiverAsserts || (receiverWaits && !assignedToVar)) && handler && !failsLoudly(handler)) {
+      const targetName = receiverWaits ? assignedTargetName(call) : undefined;
+      const scope = enclosingFunction(call) ?? sourceFile;
+      const waitAssignedAndUsed =
+        targetName !== undefined &&
+        (enclosingTest(call)
+          ? assertionsIn(scope).some(a => a.getStart() > call.getEnd() && referencesIdentifier(a, targetName))
+          : scope.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getStart() > call.getEnd() && id.getText() === targetName));
+      if ((receiverAsserts || (receiverWaits && !waitAssignedAndUsed)) && handler && !failsLoudly(handler)) {
         addViolation(
           call,
           'no-swallowed-assertion',
@@ -552,9 +631,12 @@ function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): v
   for (const tryStmt of sourceFile.getDescendantsOfKind(SyntaxKind.TryStatement)) {
     const catchClause = tryStmt.getCatchClause();
     const tryBlock = tryStmt.getTryBlock();
-    if (!catchClause || (assertionsIn(tryBlock).length === 0 && waitsIn(tryBlock).length === 0)) continue;
+    const hasTryAssertions = assertionsIn(tryBlock).length > 0;
+    const hasTryWaits = waitsIn(tryBlock).length > 0;
+    if (!catchClause || (!hasTryAssertions && !hasTryWaits)) continue;
     const catchBlock = catchClause.getBlock();
     if (failsLoudly(catchBlock)) continue;
+    if (!hasTryAssertions && !enclosingTest(tryStmt) && hasBooleanOnlyReturns(catchBlock)) continue;
     const recorded = new Set<string>();
     for (const bin of catchBlock.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
       if (bin.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {

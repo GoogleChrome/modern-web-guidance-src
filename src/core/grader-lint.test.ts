@@ -89,15 +89,41 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
           if (!el) return false;
           return isInsideDialog(el.parentElement);
         }
+        function assertAndPass(val) {
+          expect(val).toBeGreaterThan(0);
+          return true;
+        }
+        const leafTrue = () => true;
+        const bothTrue = () => leafTrue() && leafTrue();
         test('example', () => {
           expect(someValue === true).toBe(true);
           expect(items.length > 0).toBe(true);
           expect(hasPolicy(items)).toBe(true);
           expect(isInsideDialog(node)).toBe(true);
+          expect(assertAndPass(count)).toBe(true);
+          expect((val satisfies boolean)).toBe(true);
         });
       `;
       const violations = checkGraderSource('guides/category/slug/grader.ts', code);
       assert.deepStrictEqual(violations.map(v => v.ruleId), []);
+    });
+
+    it('detects constant helpers reused across sibling branches without mutating cycle state', () => {
+      const code = `
+        import { test, expect } from '@playwright/test';
+        const leaf = () => true;
+        function both(flag) {
+          if (flag) return leaf();
+          return leaf();
+        }
+        test('example', () => {
+          expect(both(cond)).toBe(true);
+        });
+      `;
+      assert.deepStrictEqual(
+        checkGraderSource('guides/category/slug/grader.ts', code).map(v => v.ruleId),
+        ['no-vacuous-boolean-expect']
+      );
     });
   });
 
@@ -472,7 +498,7 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
         assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion', 'no-early-return-before-assertion']);
       });
 
-      it('accepts returns that fail first, returns in helpers, and page.evaluate callbacks', () => {
+      it('accepts returns that fail first, TypeScript narrowing after non-soft presence assertions, returns in helpers, and page.evaluate callbacks', () => {
         const code = `
           async function openParentChainForTrigger(page, triggerId) {
             await page.evaluate(async (id) => { const btn = document.getElementById(id); if (!btn) return; btn.click(); });
@@ -480,23 +506,41 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
           test('t', async ({ page }) => {
             const files = getTargetFiles();
             if (files.length === 0) { expect(files.length).toBeGreaterThan(0); return; }
+            const box = await page.locator('.card').boundingBox();
+            expect(box).not.toBeNull();
+            if (!box) return;
+            expect(box.width).toBeGreaterThan(0);
             const ok = await page.evaluate(() => { const orig = document.startViewTransition; if (!orig) return false; return true; });
             expect(ok).toBe(true);
           });`;
         assert.deepStrictEqual(rules(code), []);
       });
+
+      it('still flags early returns after expect.soft or non-presence assertions', () => {
+        const code = `
+          test('t', async ({ page }) => {
+            const box = await page.locator('.card').boundingBox();
+            expect.soft(box).not.toBeNull();
+            if (!box) return;
+            expect(box.width).toBeGreaterThan(0);
+          });`;
+        assert.deepStrictEqual(rules(code), ['no-early-return-before-assertion']);
+      });
     });
 
     describe('no-unguarded-every', () => {
-      it('flags .every() over a list with no presence assertion, directly or through a const', () => {
+      it('flags .every() over a list with no presence assertion, directly, through a const, or after a weak assertion like toBeDefined', () => {
         const code = `
           test('videos are lazy', () => {
             const offscreenVideos = getVideos();
+            expect(offscreenVideos).toBeDefined();
             expect(offscreenVideos.every((v) => v.getAttribute('loading') === 'lazy')).toBe(true);
             const allLazy = offscreenVideos.every((v) => v.loading === 'lazy');
             expect(allLazy).toBeTruthy();
           });`;
-        assert.deepStrictEqual(rules(code), ['no-unguarded-every', 'no-unguarded-every']);
+        const violations = checkGraderSource(GEN2, code);
+        assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-unguarded-every', 'no-unguarded-every']);
+        assert.ok(violations[0].message.includes('.some(bad)'));
       });
 
       it('accepts a presence assertion first, a length guard in the value, literal lists, and negated .some()', () => {
@@ -517,11 +561,12 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
 
     describe('no-swallowed-assertion', () => {
-      it('flags try/catch and .catch() that swallow an assertion or readiness wait', () => {
+      it('flags try/catch, unasserted assigned wait catches, and .catch() that swallow an assertion or readiness wait', () => {
         const code = `
           test('t', async ({ page, locator }) => {
             try { await expect(page.locator('dialog')).toBeVisible(); } catch {}
             try { await page.waitForFunction(() => window.__ready); } catch {}
+            const unused = await page.waitForFunction(() => window.__ready).catch(() => false);
             await expect(page.locator('dialog')).toBeVisible({ timeout: 2000 }).catch(() => {});
             await expect(locator).toBeEnabled({ timeout: 2000 }).catch(() => {});
             await page.waitForFunction(() => window.__ready, undefined, { timeout: 1000 }).catch(() => {});
@@ -535,11 +580,12 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
             'no-swallowed-assertion',
             'no-swallowed-assertion',
             'no-swallowed-assertion',
+            'no-swallowed-assertion',
           ]
         );
       });
 
-      it('accepts catches that rethrow, record the failure for a later assertion, or wrap no assertion', () => {
+      it('accepts catches that rethrow, non-test boolean-returning wait helpers, wait catches assigned and asserted later, or try/catch recording failures', () => {
         const code = `
           async function clickUntilTransition(page, button) {
             for (let attempt = 0; attempt < 5; attempt++) {
@@ -548,7 +594,13 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
               if (recorded) return;
             }
           }
+          async function tryWait(page) {
+            try { await page.waitForSelector('.ready'); return true; } catch { return false; }
+          }
           test('t', async ({ page }) => {
+            let ready = false;
+            ready = await page.waitForFunction(() => window.__ready).catch(() => false);
+            expect(ready).toBe(true);
             try { await expect(a).toBeVisible(); } catch (e) { throw new Error('dialog never opened'); }
             let visible = true;
             try { await expect(b).toBeVisible(); } catch { visible = false; }

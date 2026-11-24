@@ -334,12 +334,16 @@ describe('classifyExpectationsDiff & findStaleEvals', () => {
       '+- Every toast has a close button.',
     ].join('\n');
     assert.deepEqual(classifyExpectationsDiff(changed), { kind: 'changed', removed: 1, added: 2 });
+
+    const nonBulletEdit = ['-## Old Section', '+## New Section'].join('\n');
+    assert.deepEqual(classifyExpectationsDiff(nonBulletEdit), { kind: 'changed', removed: 0, added: 0 });
   });
 
   it('sorts changed above added alphabetically, drops cosmetic diffs, and annotates rendered markdown', () => {
     const g1 = makeGuide({ category: 'ui-components', name: 'z-changed' });
     const g2 = makeGuide({ category: 'built-in-ai', name: 'a-added' });
     const g3 = makeGuide({ category: 'css', name: 'cosmetic-only' });
+    const g4 = makeGuide({ category: 'forms', name: 'unknown-diff' });
 
     const history = new Map<string, GitFileHistory>([
       [
@@ -381,10 +385,29 @@ describe('classifyExpectationsDiff & findStaleEvals', () => {
           diffSummary: null,
         },
       ],
+      [
+        'forms/unknown-diff',
+        {
+          expSha: 'ggg',
+          expTs: 200,
+          expDate: '2026-10-06',
+          expPr: 1701,
+          evalSha: 'hhh',
+          evalTs: 100,
+          evalDate: '2026-06-02',
+        },
+      ],
     ]);
 
-    const stale = findStaleEvals([g1, g2, g3], history);
+    const stale = findStaleEvals([g1, g2, g3, g4], history);
     assert.deepEqual(stale, [
+      {
+        slug: 'forms/unknown-diff',
+        expDate: 'Oct 6',
+        expPr: 1701,
+        evalDate: 'Jun 2',
+        kind: 'changed',
+      },
       {
         slug: 'ui-components/z-changed',
         expDate: 'Oct 4',
@@ -408,7 +431,7 @@ describe('classifyExpectationsDiff & findStaleEvals', () => {
     const md = renderPipelineIssueBody(
       buildPipelineReportData({
         readySinceBySlug: readySince(),
-        guides: [g1, g2, g3],
+        guides: [g1, g2, g3, g4],
         openPrs: [],
         openUseCaseIssues: [],
         openFeatureIssues: [],
@@ -416,7 +439,8 @@ describe('classifyExpectationsDiff & findStaleEvals', () => {
         weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
       })
     );
-    assert.match(md, /#### Stale evals \(2\)/);
+    assert.match(md, /#### Stale evals \(3\)/);
+    assert.match(md, /\*\*forms\/unknown-diff\*\*\]\([^)]+\) · `changed` ·/);
     assert.match(md, /\*\*ui-components\/z-changed\*\*.*`changed \(-1\/\+7\)`/);
     assert.match(md, /\*\*built-in-ai\/a-added\*\*.*`added \(\+3\)`/);
   });

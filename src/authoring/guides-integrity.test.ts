@@ -32,10 +32,10 @@ const LEGACY_GRADER_VIOLATION_LIMITS: Record<string, Partial<Record<GraderRuleId
   'guides/html/shadow-dom/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-atoms/single-line-overflow/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 2 },
   'guides/ui-behaviors/2d-panning/targets/daily-grind/grader.ts': { 'no-absent-or-correct': 1, 'no-unguarded-every': 2 },
-  'guides/ui-behaviors/drag-and-drop/targets/daily-grind/grader.ts': { 'no-early-return-before-assertion': 2, 'no-fixed-timeout': 1 },
+  'guides/ui-behaviors/drag-and-drop/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-components/app-menus/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
   'guides/ui-components/breadcrumbs/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
-  'guides/ui-components/carousel/targets/daily-grind/grader.ts': { 'no-early-return-before-assertion': 3, 'no-fixed-timeout': 2 },
+  'guides/ui-components/carousel/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 2 },
   'guides/ui-components/menu/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 43 },
   'guides/ui-components/progress-ring/targets/daily-grind/grader.ts': { 'no-early-return-before-assertion': 1 },
   'guides/ui-components/tabs/targets/daily-grind/grader.ts': { 'no-swallowed-assertion': 2 },
@@ -366,7 +366,8 @@ describe('Guides Validation (Single Source of Truth)', () => {
       .trim()
       .split('\n')
       .filter(Boolean);
-    const dirtyPathRe = /^(?:\+\+\+ b\/|rename to |Binary files .* and b\/)(?:.*\/)?(?:node_modules\/|dist\/|(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$)/;
+    const dirtyPathRe =
+      /^(?:\+\+\+ b\/|rename to |Binary files .* and b\/|diff --git a\/\S+ b\/)(?:.*\/)?(?:node_modules\/|dist\/|(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$)/;
     const regressions: string[] = [];
 
     for (const relPatch of patchFiles) {
