@@ -29,7 +29,7 @@ index 66c9173..9311e9c 100644
 +      font: inherit; cursor: grab; touch-action: none;
 +      -webkit-user-select: none; user-select: none;
 +    }
-+    .reorder-handle:is(:hover, :focus-visible) { background: var(--accent); outline: none; }
++    .reorder-handle:is(:hover, :focus-visible) { background: var(--accent-on-dark); outline: none; }
 +    .card:has(.reorder-handle:focus-visible) { outline: 3px solid var(--primary); outline-offset: 2px; }
 +    .card.is-lifted { z-index: 2; scale: 1.02; opacity: var(--lift-opacity); box-shadow: var(--lift-shadow); }
 +    .card.is-dragging { pointer-events: none; }

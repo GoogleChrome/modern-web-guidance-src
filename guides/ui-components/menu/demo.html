@@ -5,11 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accessible popup menu</title>
-  <script type="module">
-      if (!HTMLElement.prototype.hasOwnProperty("popover")) {
-        await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
-      }
-    </script>
   <style>
     :root {
       color-scheme: light dark;
@@ -353,6 +348,9 @@
   </main>
 
   <script type="module">
+    if (!HTMLElement.prototype.hasOwnProperty("popover")) {
+      await import("https://unpkg.com/@oddbird/popover-polyfill@latest");
+    }
     // Native focusgroup supplies menu navigation and inferred roles where supported.
     // Only install the local navigation and semantic fallback when it is unavailable.
     function installFocusgroupFallback() {
@@ -397,10 +395,9 @@
     const menuFor = trigger => document.getElementById(trigger.getAttribute('popovertarget'));
     const triggerFor = menu => triggers.find(trigger => menuFor(trigger) === menu);
 
-    // Polyfill patches `:popover-open` to not throw
-    const isOpen = menu => menu.matches(':popover-open, .\:popover-open');
+    const isOpen = menu => menu.matches(':popover-open');
     // A previewed submenu is open with focus still on its trigger; no item inside it is focused.
-    const isPreviewed = menu => menu.matches(':popover-open:not(:focus-within), .\:popover-open:not(:focus-within)');
+    const isPreviewed = menu => menu.matches(':popover-open:not(:focus-within)');
     const rootMenuOf = menu => {
       let root = menu;
       while (root.parentElement.closest('[popover]')) root = root.parentElement.closest('[popover]');

@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..e3f31e6 100644
+index 5db718e..e3f31e6 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,14 +4,117 @@
+@@ -4,16 +4,117 @@
  <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,10 +15,13 @@ index 66c9173..e3f31e6 100644
 +      /* Base brand tokens */
        --primary: #4e342e;
 -      --secondary: #d7ccc8;
-+      --secondary: color-mix(in oklab, var(--primary), white 82%);
-       --accent: #ffab40;
+-      --accent: #b45309;
+-      --accent-on-dark: #ffab40;
+-      --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
++      --secondary: color-mix(in oklab, var(--primary), white 82%);
++      --accent: #ffab40;
 +      --text: color-mix(in oklab, var(--primary), black 20%);
 +      --light: color-mix(in oklab, var(--primary), white 92%);
 +
@@ -123,7 +126,7 @@ index 66c9173..e3f31e6 100644
      }
  
      * {
-@@ -24,13 +127,14 @@
+@@ -26,13 +127,14 @@
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
        line-height: 1.6;
        color: var(--text);
@@ -141,7 +144,7 @@ index 66c9173..e3f31e6 100644
        padding: 1rem 5%;
        display: flex;
        justify-content: space-between;
-@@ -48,6 +152,7 @@
+@@ -50,6 +152,7 @@
  
      nav ul {
        display: flex;
@@ -149,7 +152,7 @@ index 66c9173..e3f31e6 100644
        list-style: none;
      }
  
-@@ -56,18 +161,20 @@
+@@ -58,18 +161,20 @@
      }
  
      nav a {
@@ -161,19 +164,20 @@ index 66c9173..e3f31e6 100644
      }
  
 -    nav a:hover {
+-      color: var(--accent-on-dark);
 +    nav a:hover,
 +    nav a:focus-visible {
-       color: var(--accent);
++      color: var(--accent);
 +      text-decoration: underline;
      }
  
      .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 +      border: 1.5px solid var(--accent);
        padding: 5px 12px;
        border-radius: 4px;
      }
-@@ -75,15 +182,17 @@
+@@ -77,15 +182,17 @@
      /* Hero Section */
      .hero {
        height: 60vh;
@@ -193,7 +197,7 @@ index 66c9173..e3f31e6 100644
        text-align: center;
        padding: 0 20px;
      }
-@@ -100,6 +209,11 @@
+@@ -102,6 +209,11 @@
        padding: 0 20px;
      }
  
@@ -205,7 +209,7 @@ index 66c9173..e3f31e6 100644
      .grid {
        display: grid;
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-@@ -108,35 +222,109 @@
+@@ -110,35 +222,109 @@
      }
  
      .card {
@@ -221,19 +225,19 @@ index 66c9173..e3f31e6 100644
 +      flex-direction: column;
 +      align-items: center;
 +      justify-content: space-between;
-     }
- 
--    .card h3 {
++    }
++
 +    .card-header {
 +      display: flex;
 +      flex-direction: column;
 +      align-items: center;
 +      gap: 8px;
-       margin-bottom: 10px;
++      margin-bottom: 10px;
+     }
+ 
+     .card h3 {
+-      margin-bottom: 10px;
 -      color: var(--primary);
-+    }
-+
-+    .card h3 {
 +      color: var(--heading);
 +    }
 +
@@ -284,8 +288,10 @@ index 66c9173..e3f31e6 100644
        margin-top: 15px;
 -      transition: background 0.3s;
 +      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
-+    }
-+
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
 +    .btn:hover,
 +    .btn:focus-visible {
 +      background-color: var(--btn-hover-bg);
@@ -296,10 +302,8 @@ index 66c9173..e3f31e6 100644
 +      background-color: var(--hero-btn-bg);
 +      color: var(--hero-btn-text);
 +      border-color: var(--hero-btn-border);
-     }
- 
--    .btn:hover {
--      background: #3e2723;
++    }
++
 +    .hero .btn:hover,
 +    .hero .btn:focus-visible {
 +      background-color: var(--hero-btn-hover-bg);
@@ -324,7 +328,7 @@ index 66c9173..e3f31e6 100644
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -149,9 +337,15 @@
+@@ -151,9 +337,15 @@
      .footer-links a {
        margin: 0 10px;
        color: var(--text);
@@ -341,7 +345,7 @@ index 66c9173..e3f31e6 100644
    </style>
  </head>
  
-@@ -176,20 +370,38 @@
+@@ -178,20 +370,38 @@
  
    <main class="container">
      <section>

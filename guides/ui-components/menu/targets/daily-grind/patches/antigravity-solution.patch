@@ -30,11 +30,11 @@ index 66c9173..0bb020e 100644
 +
 +    .nav-menu-trigger:hover,
 +    .nav-menu-trigger[aria-expanded="true"] {
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    .nav-menu-trigger:focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: 4px;
 +      border-radius: 2px;
 +    }
@@ -103,7 +103,7 @@ index 66c9173..0bb020e 100644
 +
 +    button.btn[aria-expanded="true"] {
 +      background: #3e2723;
-+      box-shadow: 0 0 0 2px var(--accent);
++      box-shadow: 0 0 0 2px var(--accent-on-dark);
 +    }
 +
 +    button.btn:focus-visible {

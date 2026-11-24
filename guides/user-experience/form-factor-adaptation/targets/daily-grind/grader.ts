@@ -10,6 +10,9 @@
 // 9. TESTED: Verifies that at a viewport width of 320 CSS pixels, the document does not scroll horizontally.
 // 10. TESTED: Verifies that at a viewport width of 320 CSS pixels, no visible heading, paragraph, button, or link overflows its own box horizontally or vertically (ignoring absolute hit-area pseudo-elements).
 // 11. TESTED: Verifies that no visible button, link, or form control extends outside an ancestor with overflow hidden or clip.
+// 12. SKIPPED: The base application does not contain any fixed bottom bars.
+// 13. TESTED: Verifies that at 320 CSS px viewport width, no visible heading, paragraph, button, link, or form control outside a horizontal scroll container extends past the left or right edge of the viewport.
+// 14. TESTED: Verifies that no two visible buttons or links have overlapping hit areas, counting any absolutely positioned pseudo-element that extends them.
 
 import {
   test,
@@ -627,6 +630,242 @@ test.describe('form-factor-adaptation Target Grader', () => {
       expect(narrowTouch.docScrollWidth).toBeLessThanOrEqual(narrowTouch.docClientWidth);
       expect(narrowTouch.clipped).toEqual([]);
       expect(wide.clipped).toEqual([]);
+    });
+
+    test('Expectation 13: At a viewport width of 320 CSS pixels, no visible heading, paragraph, button, link, or form control outside a horizontal scroll container extends past the left or right edge of the viewport', async ({ page }) => {
+      await page.setViewportSize({ width: 320, height: 800 });
+
+      const report = await page.evaluate(() => {
+        const vw = window.innerWidth;
+        const docEl = document.documentElement;
+        const selector = 'h1, h2, h3, h4, h5, h6, p, button, a, input, select, textarea, [role="button"]';
+
+        const isInsideHorizontalScroller = (el: HTMLElement): boolean => {
+          let anc = el.parentElement;
+          while (anc && anc !== document.documentElement && anc !== document.body) {
+            const cs = window.getComputedStyle(anc);
+            if (
+              (cs.overflowX === 'auto' || cs.overflowX === 'scroll') &&
+              anc.scrollWidth > anc.clientWidth + 1
+            ) {
+              return true;
+            }
+            anc = anc.parentElement;
+          }
+          return false;
+        };
+
+        const visible = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((el) => {
+          const style = window.getComputedStyle(el);
+          if (
+            style.display === 'none' ||
+            style.visibility === 'hidden' ||
+            parseFloat(style.opacity) === 0 ||
+            el.hasAttribute('hidden') ||
+            el.getAttribute('aria-hidden') === 'true'
+          ) {
+            return false;
+          }
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && !isInsideHorizontalScroller(el);
+        });
+
+        const extending = visible.flatMap((el) => {
+          const rect = el.getBoundingClientRect();
+          if (rect.left < -1 || rect.right > vw + 1) {
+            const label = (el.textContent ?? '').trim().slice(0, 30) || el.tagName.toLowerCase();
+            return [`<${el.tagName.toLowerCase()}> "${label}" [${rect.left.toFixed(1)}, ${rect.right.toFixed(1)}] outside [0, ${vw}]`];
+          }
+          return [];
+        });
+
+        return {
+          checkedCount: visible.length,
+          docScrollWidth: docEl.scrollWidth,
+          docClientWidth: docEl.clientWidth,
+          extending,
+        };
+      });
+
+      expect(report.checkedCount).toBeGreaterThan(0);
+      expect(report.docScrollWidth).toBeLessThanOrEqual(report.docClientWidth);
+      expect(report.extending).toEqual([]);
+    });
+
+    test('Expectation 14: No two visible buttons or links have overlapping hit areas, counting any absolutely positioned pseudo-element that extends them', async ({ page }) => {
+      const measureHitAreas = () =>
+        page.evaluate(() => {
+          const elements = Array.from(document.querySelectorAll<HTMLElement>('button, a, [role="button"]')).filter((el) => {
+            const style = window.getComputedStyle(el);
+            if (
+              style.display === 'none' ||
+              style.visibility === 'hidden' ||
+              parseFloat(style.opacity) === 0 ||
+              el.hasAttribute('hidden') ||
+              el.getAttribute('aria-hidden') === 'true'
+            ) {
+              return false;
+            }
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          });
+
+          const boxes = elements.map((el, idx) => {
+            const rect = el.getBoundingClientRect();
+            let left = rect.left;
+            let top = rect.top;
+            let right = rect.right;
+            let bottom = rect.bottom;
+
+            for (const pseudo of ['::before', '::after'] as const) {
+              const ps = window.getComputedStyle(el, pseudo);
+              if (
+                ps.content &&
+                ps.content !== 'none' &&
+                ps.content !== 'normal' &&
+                ps.position === 'absolute' &&
+                ps.display !== 'none' &&
+                ps.visibility !== 'hidden'
+              ) {
+                const pTop = parseFloat(ps.top);
+                const pRight = parseFloat(ps.right);
+                const pBottom = parseFloat(ps.bottom);
+                const pLeft = parseFloat(ps.left);
+                const pWidth = parseFloat(ps.width);
+                const pHeight = parseFloat(ps.height);
+
+                let boxLeft = left;
+                let boxRight = right;
+                if (Number.isFinite(pLeft) && Number.isFinite(pRight)) {
+                  boxLeft = rect.left + pLeft;
+                  boxRight = rect.right - pRight;
+                } else if (Number.isFinite(pLeft) && Number.isFinite(pWidth)) {
+                  boxLeft = rect.left + pLeft;
+                  boxRight = boxLeft + pWidth;
+                } else if (Number.isFinite(pRight) && Number.isFinite(pWidth)) {
+                  boxRight = rect.right - pRight;
+                  boxLeft = boxRight - pWidth;
+                }
+
+                let boxTop = top;
+                let boxBottom = bottom;
+                if (Number.isFinite(pTop) && Number.isFinite(pBottom)) {
+                  boxTop = rect.top + pTop;
+                  boxBottom = rect.bottom - pBottom;
+                } else if (Number.isFinite(pTop) && Number.isFinite(pHeight)) {
+                  boxTop = rect.top + pTop;
+                  boxBottom = boxTop + pHeight;
+                } else if (Number.isFinite(pBottom) && Number.isFinite(pHeight)) {
+                  boxBottom = rect.bottom - pBottom;
+                  boxTop = boxBottom - pHeight;
+                }
+
+                let dx = 0;
+                let dy = 0;
+                if (ps.transform && ps.transform !== 'none') {
+                  const matrix = new DOMMatrix(ps.transform);
+                  dx += matrix.m41;
+                  dy += matrix.m42;
+                }
+                if (ps.translate && ps.translate !== 'none') {
+                  const [txToken, tyToken] = ps.translate.trim().split(/\s+/);
+                  const pseudoWidth = Number.isFinite(pWidth) ? pWidth : boxRight - boxLeft;
+                  const pseudoHeight = Number.isFinite(pHeight) ? pHeight : boxBottom - boxTop;
+                  const resolveTranslate = (token: string | undefined, refSize: number): number => {
+                    if (!token) return 0;
+                    const value = parseFloat(token);
+                    if (!Number.isFinite(value)) return 0;
+                    return token.endsWith('%') ? (value / 100) * refSize : value;
+                  };
+                  dx += resolveTranslate(txToken, pseudoWidth);
+                  dy += resolveTranslate(tyToken, pseudoHeight);
+                }
+
+                boxLeft += dx;
+                boxRight += dx;
+                boxTop += dy;
+                boxBottom += dy;
+
+                left = Math.min(left, boxLeft);
+                right = Math.max(right, boxRight);
+                top = Math.min(top, boxTop);
+                bottom = Math.max(bottom, boxBottom);
+              }
+            }
+
+            return {
+              idx,
+              el,
+              label: (el.textContent ?? '').trim().slice(0, 30) || el.tagName.toLowerCase(),
+              isTargetSizedControl: el.matches('button, [role="button"], nav a'),
+              left,
+              top,
+              right,
+              bottom,
+              width: right - left,
+              height: bottom - top,
+            };
+          });
+
+          const overlaps: string[] = [];
+          for (let i = 0; i < boxes.length; i++) {
+            for (let j = i + 1; j < boxes.length; j++) {
+              const a = boxes[i]!;
+              const b = boxes[j]!;
+              if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+              const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+              const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+              if (overlapX > 0.5 && overlapY > 0.5) {
+                overlaps.push(`"${a.label}" overlaps "${b.label}" by ${overlapX.toFixed(1)}x${overlapY.toFixed(1)}px`);
+              }
+            }
+          }
+
+          const targetControls = boxes.filter((b) => b.isTargetSizedControl);
+          const minWidth = targetControls.reduce((m, b) => Math.min(m, b.width), Infinity);
+          const minHeight = targetControls.reduce((m, b) => Math.min(m, b.height), Infinity);
+
+          return {
+            count: boxes.length,
+            targetCount: targetControls.length,
+            minWidth,
+            minHeight,
+            overlaps,
+          };
+        });
+
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const desktop = await measureHitAreas();
+      expect(desktop.count).toBeGreaterThan(0);
+      expect(desktop.overlaps).toEqual([]);
+
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('Emulation.setTouchEmulationEnabled', {
+        enabled: true,
+        maxTouchPoints: 5,
+      });
+
+      try {
+        for (const viewport of [
+          { width: 390, height: 844 },
+          { width: 320, height: 800 },
+        ]) {
+          await cdp.send('Emulation.setDeviceMetricsOverride', {
+            ...viewport,
+            deviceScaleFactor: 1,
+            mobile: true,
+          });
+          const coarse = await measureHitAreas();
+
+          expect(coarse.targetCount, `${viewport.width}x${viewport.height} targetCount`).toBeGreaterThan(0);
+          // Pair with positive target-size presence so untouched app doesn't vacuously pass
+          expect(coarse.minWidth, `${viewport.width}x${viewport.height} minWidth`).toBeGreaterThanOrEqual(43.5);
+          expect(coarse.minHeight, `${viewport.width}x${viewport.height} minHeight`).toBeGreaterThanOrEqual(43.5);
+          expect(coarse.overlaps, `${viewport.width}x${viewport.height} overlaps`).toEqual([]);
+        }
+      } finally {
+        await cdp.send('Emulation.clearDeviceMetricsOverride');
+      }
     });
   });
 });

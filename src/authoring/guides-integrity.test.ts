@@ -9,11 +9,65 @@ import { marked } from 'marked';
 import { scanAllGuides, processGuideInventory } from '../core/guide-validation.ts';
 import { replaceMacros, MACRO_PATTERN } from '../core/macros.ts';
 import { validateGraderExpectationCoverage, formatCoverageFailureMessage } from '../core/grader-coverage.ts';
+import type { GraderLintViolation, GraderRuleId } from '../core/grader-lint.ts';
 import { gitExec } from '../core/git-utils.ts';
 import { rootDir } from '../core/paths.ts';
 import { findStaleTargets } from './dev.ts';
 
 const REPO_ROOT = rootDir;
+
+// Legacy allowlists/ratchets for pre-existing corpus violations so zero new regressions can land.
+const LEGACY_GRADER_VIOLATION_LIMITS: Record<string, Partial<Record<GraderRuleId, number>>> = {
+  'guides/forms/switch/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 2 },
+  'guides/html/html/targets/devtools-times/grader.ts': { 'no-unguarded-every': 2 },
+  'guides/html/prerendering-custom-elements/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
+  'guides/html/shadow-dom/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
+  'guides/html/web-components/targets/daily-grind/grader.ts': { 'no-unguarded-every': 2 },
+  'guides/security/local-network-access/targets/devtools-times/grader.ts': { 'no-unguarded-every': 1 },
+  'guides/security/secure-external-subresources/targets/daily-grind/grader.ts': { 'no-unguarded-every': 1 },
+  'guides/ui-behaviors/2d-panning/targets/daily-grind/grader.ts': { 'no-unguarded-every': 2 },
+  'guides/ui-behaviors/consistent-cross-document-transitions/targets/devtools-times/grader.ts': { 'no-unguarded-every': 4 },
+  'guides/ui-behaviors/drag-and-drop/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
+  'guides/ui-components/app-menus/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
+  'guides/ui-components/breadcrumbs/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 1 },
+  'guides/ui-components/carousel/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 2 },
+  'guides/ui-components/menu/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 43 },
+  'guides/ui-components/progress/targets/daily-grind/grader.ts': { 'no-unguarded-every': 1 },
+  'guides/ui-components/progress-ring/targets/daily-grind/grader.ts': { 'no-early-return-before-assertion': 1 },
+  'guides/ui-components/spinner/targets/daily-grind/grader.ts': { 'no-unguarded-every': 1 },
+  'guides/user-experience/natural-interactions/targets/daily-grind/grader.ts': { 'no-fixed-timeout': 5 },
+};
+
+const LEGACY_DIRTY_PATCHES = new Set([
+  'guides/accessibility/accessibility/targets/daily-grind/patches/codex-solution.patch',
+  'guides/css/css/targets/daily-grind/patches/antigravity-solution.patch',
+  'guides/forms/slider/targets/daily-grind/patches/codex-solution.patch',
+  'guides/performance/interaction-paint-timing/targets/daily-grind/patches/antigravity-solution.patch',
+  'guides/performance/optimize-image-priority/targets/daily-grind/patches/codex-solution.patch',
+  'guides/security/passkey-management/targets/daily-grind/patches/claude-solution.patch',
+  'guides/security/passkey-management/targets/daily-grind/patches/codex-solution.patch',
+  'guides/security/quick-sign-ins/targets/daily-grind/patches/antigravity-solution.patch',
+  'guides/ui-behaviors/prevent-page-scroll-under-modal-dialog/targets/daily-grind/patches/codex-solution.patch',
+  'guides/ui-components/hovercard/targets/daily-grind/patches/codex-solution.patch',
+  'guides/ui-components/progress-ring/targets/daily-grind/patches/codex-solution.patch',
+  'guides/ui-components/tabs/targets/daily-grind/patches/antigravity-solution.patch',
+  'guides/visual-design/custom-text-decorations/targets/daily-grind/patches/codex-solution.patch',
+  'guides/webmcp/agentic-forms/targets/daily-grind/patches/codex-solution.patch',
+]);
+
+const LEGACY_HEDGED_EXPECTATIONS = new Set([
+  'guides/accessibility/respect-os-text-scale/expectations.md',
+  'guides/css/calculate-with-intrinsic-sizes/expectations.md',
+  'guides/css/css-layout/expectations.md',
+  'guides/css/design-token-reactivity/expectations.md',
+  'guides/forms/forms/expectations.md',
+  'guides/forms/slider/expectations.md',
+  'guides/performance/full-session-analytics/expectations.md',
+  'guides/performance/improve-next-page-load-performance/expectations.md',
+  'guides/ui-atoms/position-aware-tooltips/expectations.md',
+  'guides/ui-behaviors/drag/expectations.md',
+  'guides/ui-behaviors/swipe-to-remove/expectations.md',
+]);
 
 describe('Guides Validation (Single Source of Truth)', () => {
   const guides = scanAllGuides();
@@ -280,11 +334,76 @@ describe('Guides Validation (Single Source of Truth)', () => {
     assert.strictEqual(isVolatileActive(undefined), false);
   });
 
-  it('validates that all graders conform to static anti-pattern checks', async () => {
+  it('validates that all graders conform to static anti-pattern checks (ratcheted)', async () => {
     const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
     const violations = checkAllGraders({ repoRoot: REPO_ROOT });
-    if (violations.size > 0) {
-      assert.fail(`Static grader anti-pattern violations found in ${violations.size} file(s):\n${formatViolations(violations)}`);
+    const regressions = new Map<string, GraderLintViolation[]>();
+
+    for (const [file, list] of violations) {
+      const limits = LEGACY_GRADER_VIOLATION_LIMITS[file] ?? {};
+      const counts = new Map<GraderRuleId, number>();
+      for (const v of list) counts.set(v.ruleId, (counts.get(v.ruleId) ?? 0) + 1);
+      const excessRules = new Set([...counts].filter(([rule, n]) => n > (limits[rule] ?? 0)).map(([rule]) => rule));
+      if (excessRules.size > 0) regressions.set(file, list.filter(v => excessRules.has(v.ruleId)));
     }
+
+    if (regressions.size > 0) {
+      assert.fail(`New static grader anti-pattern violations found in ${regressions.size} file(s):\n${formatViolations(regressions)}`);
+    }
+  });
+
+  it('prevents new target patches from committing build or dependency artifacts', () => {
+    const patchFiles = gitExec(['ls-files', '--', 'guides/*/*/targets/*/patches/*.patch'], { cwd: REPO_ROOT })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    const dirtyPathRe =
+      /^(?:\+\+\+ b\/|rename to |Binary files .* and b\/|diff --git a\/\S+ b\/)(?:.*\/)?(?:node_modules\/|dist\/|(?:package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$)/;
+    const regressions: string[] = [];
+
+    for (const relPatch of patchFiles) {
+      if (LEGACY_DIRTY_PATCHES.has(relPatch)) continue;
+      const lines = fs.readFileSync(path.join(REPO_ROOT, relPatch), 'utf8').split('\n');
+      const dirtyLine = lines.find(l => dirtyPathRe.test(l));
+      if (dirtyLine) regressions.push(`${relPatch}: ${dirtyLine}`);
+    }
+
+    assert.deepStrictEqual(regressions, [], `Dirty patch artifacts found:\n${regressions.join('\n')}`);
+  });
+
+  it('validates task.md format/guide-leak rules and expectations.md hedge words', () => {
+    const guideMentionRe =
+      /modern[- ]web[- ]guidance|\bMWG\b|\bguide\.md\b|\bSKILL\.md\b|\b(?:follow(?:ing)?|read|use|consult|per|according to)\s+(?:the\s+)?(?:[\w-]+\s+)?(?:guide|skill)\b/i;
+    const hedgeRe = /\bSHOULD\b|\b(?:[Pp]referably|[Ii]deally|[Oo]ptionally)\b/;
+    const taskFiles = gitExec(['ls-files', '--', 'guides/*/*/targets/*/task.md'], { cwd: REPO_ROOT })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    const expFiles = gitExec(['ls-files', '--', 'guides/*/*/expectations.md'], { cwd: REPO_ROOT })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+    const errors: string[] = [];
+
+    for (const relTask of taskFiles) {
+      const content = fs.readFileSync(path.join(REPO_ROOT, relTask), 'utf8');
+      const nonEmpty = content.split('\n').filter(l => l.trim() !== '');
+      const prompt = content.replace(/^\s*-\s+/, '').trim();
+      if (nonEmpty.length !== 1 || !/^- \S/.test(nonEmpty[0]) || prompt.endsWith('?')) {
+        errors.push(`${relTask}: task.md must be a single imperative "- " line`);
+      }
+      if (guideMentionRe.test(prompt)) {
+        errors.push(`${relTask}: task.md must not mention guide/skill/MWG`);
+      }
+    }
+
+    for (const relExp of expFiles) {
+      if (LEGACY_HEDGED_EXPECTATIONS.has(relExp)) continue;
+      const stripped = fs.readFileSync(path.join(REPO_ROOT, relExp), 'utf8').replace(/`[^`]*`/g, ' ');
+      const hedged = stripped.split('\n').find(l => /^([-*]|\d+[.)])\s+/.test(l) && hedgeRe.test(l));
+      if (hedged) errors.push(`${relExp}: unambiguous hedge word in "${hedged.trim()}"`);
+    }
+
+    assert.deepStrictEqual(errors, [], errors.join('\n'));
   });
 });

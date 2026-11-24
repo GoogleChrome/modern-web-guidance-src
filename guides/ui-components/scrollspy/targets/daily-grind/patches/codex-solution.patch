@@ -47,7 +47,7 @@ index 66c9173..8dc1e90 100644
      }
  
      nav a {
-@@ -60,6 +64,28 @@
+@@ -60,6 +64,33 @@
        text-decoration: none;
        font-size: 0.9rem;
        transition: color 0.3s;
@@ -56,8 +56,8 @@ index 66c9173..8dc1e90 100644
 +    }
 +
 +    nav a:is(:target-current, .target-current) {
-+      color: var(--accent);
-+      border-bottom-color: var(--accent);
++      color: var(--accent-on-dark);
++      border-bottom-color: var(--accent-on-dark);
 +      text-decoration: underline;
 +      text-underline-offset: 5px;
 +    }
@@ -65,6 +65,11 @@ index 66c9173..8dc1e90 100644
 +    a:focus-visible {
 +      outline: 3px solid var(--accent);
 +      outline-offset: 5px;
++    }
++
++    nav a:focus-visible,
++    .hero a:focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
 +    @media (max-width: 760px) {

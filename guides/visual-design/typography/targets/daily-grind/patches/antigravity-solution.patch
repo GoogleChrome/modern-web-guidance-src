@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..5ca99dc 100644
+index 5db718e..f8b9c6b 100644
 --- a/index.html
 +++ b/index.html
-@@ -22,43 +22,62 @@
+@@ -24,43 +24,62 @@
  
      body {
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -73,12 +73,12 @@ index 66c9173..5ca99dc 100644
        transition: color 0.3s;
      }
  
-@@ -67,14 +86,15 @@
+@@ -69,14 +88,15 @@
      }
  
      .logout-link {
 +      display: inline-block;
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 +      padding: 0.35em 0.75em;
        border-radius: 4px;
@@ -91,7 +91,7 @@ index 66c9173..5ca99dc 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -85,49 +105,71 @@
+@@ -87,49 +107,71 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -175,7 +175,7 @@ index 66c9173..5ca99dc 100644
        transition: background 0.3s;
      }
  
-@@ -138,19 +180,29 @@
+@@ -140,19 +182,29 @@
      footer {
        background: var(--secondary);
        text-align: center;
@@ -210,7 +210,7 @@ index 66c9173..5ca99dc 100644
      }
    </style>
  </head>
-@@ -176,7 +228,7 @@
+@@ -178,7 +230,7 @@
  
    <main class="container">
      <section>

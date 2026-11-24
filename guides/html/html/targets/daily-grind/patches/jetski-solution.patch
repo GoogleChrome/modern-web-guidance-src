@@ -1,5 +1,5 @@
 diff --git a/index.html b/index.html
-index 66c9173..8725e7b 100644
+index 5db718e..7c1d6d4 100644
 --- a/index.html
 +++ b/index.html
 @@ -5,6 +5,7 @@
@@ -10,7 +10,7 @@ index 66c9173..8725e7b 100644
    <style>
      :root {
        --primary: #4e342e;
-@@ -28,7 +29,7 @@
+@@ -30,7 +31,7 @@
      }
  
      /* Navigation */
@@ -19,7 +19,7 @@ index 66c9173..8725e7b 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -46,23 +47,23 @@
+@@ -48,23 +49,23 @@
        letter-spacing: 1px;
      }
  
@@ -44,10 +44,10 @@ index 66c9173..8725e7b 100644
  
 -    nav a:hover {
 +    .site-header a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -93,6 +94,10 @@
+@@ -95,6 +96,10 @@
        margin-bottom: 1rem;
      }
  
@@ -58,7 +58,7 @@ index 66c9173..8725e7b 100644
      /* Content Sections */
      .container {
        max-width: 1100px;
-@@ -101,6 +106,7 @@
+@@ -103,6 +108,7 @@
      }
  
      .grid {
@@ -66,7 +66,7 @@ index 66c9173..8725e7b 100644
        display: grid;
        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
        gap: 20px;
-@@ -146,6 +152,18 @@
+@@ -148,6 +154,18 @@
        margin-bottom: 20px;
      }
  
@@ -85,7 +85,7 @@ index 66c9173..8725e7b 100644
      .footer-links a {
        margin: 0 10px;
        color: var(--text);
-@@ -157,53 +175,63 @@
+@@ -159,53 +177,63 @@
  
  <body>
  

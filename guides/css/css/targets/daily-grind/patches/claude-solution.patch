@@ -1,32 +1,59 @@
 diff --git a/index.html b/index.html
-index 66c9173..4d5848a 100644
+index 5db718e..1b6ebcb 100644
 --- a/index.html
 +++ b/index.html
-@@ -6,151 +6,175 @@
+@@ -6,153 +6,177 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>The Daily Grind | Artisanal Coffee</title>
    <style>
 -    :root {
 -      --primary: #4e342e;
 -      --secondary: #d7ccc8;
--      --accent: #ffab40;
+-      --accent: #b45309;
+-      --accent-on-dark: #ffab40;
+-      --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
--    }
--
++    @layer reset, base, theme, components, utilities;
++
++    @layer reset {
++      * {
++        box-sizing: border-box;
++        margin: 0;
++        padding: 0;
++      }
+     }
+ 
 -    * {
 -      box-sizing: border-box;
 -      margin: 0;
 -      padding: 0;
--    }
--
++    @layer theme {
++      :root {
++        --primary: #4e342e;
++        --secondary: #d7ccc8;
++        --accent: #b45309;
++        --accent-on-dark: #ffab40;
++        --border: #795548;
++        --text: #3e2723;
++        --light: #fafafa;
++      }
+     }
+ 
 -    body {
 -      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 -      line-height: 1.6;
 -      color: var(--text);
 -      background-color: var(--light);
--    }
--
++    @layer base {
++      body {
++        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++        line-height: 1.6;
++        color: var(--text);
++        background-color: var(--light);
++      }
+     }
+ 
 -    /* Navigation */
 -    nav {
 -      background: var(--primary);
@@ -38,148 +65,6 @@ index 66c9173..4d5848a 100644
 -      position: sticky;
 -      top: 0;
 -      z-index: 1000;
--    }
--
--    .logo {
--      font-size: 1.5rem;
--      font-weight: bold;
--      letter-spacing: 1px;
--    }
--
--    nav ul {
--      display: flex;
--      list-style: none;
--    }
--
--    nav ul li {
--      margin-left: 20px;
--    }
--
--    nav a {
--      color: white;
--      text-decoration: none;
--      font-size: 0.9rem;
--      transition: color 0.3s;
--    }
--
--    nav a:hover {
--      color: var(--accent);
--    }
--
--    .logout-link {
--      border: 1px solid var(--accent);
--      padding: 5px 12px;
--      border-radius: 4px;
--    }
--
--    /* Hero Section */
--    .hero {
--      height: 60vh;
--      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
--        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
--      background-size: cover;
--      background-position: center;
--      display: flex;
--      flex-direction: column;
--      justify-content: center;
--      align-items: center;
--      color: white;
--      text-align: center;
--      padding: 0 20px;
--    }
--
--    .hero h1 {
--      font-size: 3rem;
--      margin-bottom: 1rem;
--    }
--
--    /* Content Sections */
--    .container {
--      max-width: 1100px;
--      margin: 40px auto;
--      padding: 0 20px;
--    }
--
--    .grid {
--      display: grid;
--      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
--      gap: 20px;
--      margin-top: 20px;
--    }
--
--    .card {
--      background: white;
--      padding: 20px;
--      border-radius: 8px;
--      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
--      text-align: center;
--    }
--
--    .card h3 {
--      margin-bottom: 10px;
--      color: var(--primary);
--    }
--
--    .btn {
--      display: inline-block;
--      background: var(--primary);
--      color: white;
--      padding: 10px 20px;
--      text-decoration: none;
--      border-radius: 5px;
--      margin-top: 15px;
--      transition: background 0.3s;
--    }
--
--    .btn:hover {
--      background: #3e2723;
--    }
--
--    footer {
--      background: var(--secondary);
--      text-align: center;
--      padding: 40px 20px;
--      margin-top: 40px;
--    }
--
--    .footer-links {
--      margin-bottom: 20px;
--    }
--
--    .footer-links a {
--      margin: 0 10px;
--      color: var(--text);
--      text-decoration: none;
--      font-size: 0.85rem;
-+    @layer reset, base, theme, components, utilities;
-+
-+    @layer reset {
-+      * {
-+        box-sizing: border-box;
-+        margin: 0;
-+        padding: 0;
-+      }
-+    }
-+
-+    @layer theme {
-+      :root {
-+        --primary: #4e342e;
-+        --secondary: #d7ccc8;
-+        --accent: #ffab40;
-+        --text: #3e2723;
-+        --light: #fafafa;
-+      }
-+    }
-+
-+    @layer base {
-+      body {
-+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-+        line-height: 1.6;
-+        color: var(--text);
-+        background-color: var(--light);
-+      }
-+    }
-+
 +    @layer components {
 +      /* Navigation */
 +      nav {
@@ -218,11 +103,11 @@ index 66c9173..4d5848a 100644
 +      }
 +
 +      nav a:is(:hover, :focus-visible) {
-+        color: var(--accent);
++        color: var(--accent-on-dark);
 +      }
 +
 +      .logout-link {
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        padding-block: 5px;
 +        padding-inline: 12px;
 +        border-radius: 4px;
@@ -314,8 +199,119 @@ index 66c9173..4d5848a 100644
 +        text-decoration: none;
 +        font-size: 0.85rem;
 +      }
-+    }
-+
+     }
+ 
+-    .logo {
+-      font-size: 1.5rem;
+-      font-weight: bold;
+-      letter-spacing: 1px;
+-    }
+-
+-    nav ul {
+-      display: flex;
+-      list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
+-    }
+-
+-    nav a {
+-      color: white;
+-      text-decoration: none;
+-      font-size: 0.9rem;
+-      transition: color 0.3s;
+-    }
+-
+-    nav a:hover {
+-      color: var(--accent-on-dark);
+-    }
+-
+-    .logout-link {
+-      border: 1px solid var(--accent-on-dark);
+-      padding: 5px 12px;
+-      border-radius: 4px;
+-    }
+-
+-    /* Hero Section */
+-    .hero {
+-      height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
+-      display: flex;
+-      flex-direction: column;
+-      justify-content: center;
+-      align-items: center;
+-      color: white;
+-      text-align: center;
+-      padding: 0 20px;
+-    }
+-
+-    .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
+-    }
+-
+-    /* Content Sections */
+-    .container {
+-      max-width: 1100px;
+-      margin: 40px auto;
+-      padding: 0 20px;
+-    }
+-
+-    .grid {
+-      display: grid;
+-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+-      gap: 20px;
+-      margin-top: 20px;
+-    }
+-
+-    .card {
+-      background: white;
+-      padding: 20px;
+-      border-radius: 8px;
+-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+-      text-align: center;
+-    }
+-
+-    .card h3 {
+-      margin-bottom: 10px;
+-      color: var(--primary);
+-    }
+-
+-    .btn {
+-      display: inline-block;
+-      background: var(--primary);
+-      color: white;
+-      padding: 10px 20px;
+-      text-decoration: none;
+-      border-radius: 5px;
+-      margin-top: 15px;
+-      transition: background 0.3s;
+-    }
+-
+-    .btn:hover {
+-      background: #3e2723;
+-    }
+-
+-    footer {
+-      background: var(--secondary);
+-      text-align: center;
+-      padding: 40px 20px;
+-      margin-top: 40px;
+-    }
+-
+-    .footer-links {
+-      margin-bottom: 20px;
+-    }
+-
+-    .footer-links a {
+-      margin: 0 10px;
+-      color: var(--text);
+-      text-decoration: none;
+-      font-size: 0.85rem;
 +    @layer utilities {
 +      .text-center {
 +        text-align: center;
@@ -323,7 +319,7 @@ index 66c9173..4d5848a 100644
      }
    </style>
  </head>
-@@ -176,7 +200,7 @@
+@@ -178,7 +202,7 @@
  
    <main class="container">
      <section>

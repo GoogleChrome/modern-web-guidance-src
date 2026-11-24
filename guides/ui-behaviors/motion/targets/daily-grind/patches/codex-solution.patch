@@ -122,11 +122,16 @@ new file mode 100644
 index 0000000..da17461
 --- /dev/null
 +++ b/motion.css
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,138 @@
 +/* Static styles are the default; spatial motion is opt-in below. */
 +:focus-visible {
 +  outline: 3px solid var(--accent);
 +  outline-offset: 5px;
++}
++
++nav :focus-visible,
++.hero :focus-visible {
++  outline-color: var(--accent-on-dark);
 +}
 +
 +nav a {
@@ -147,11 +152,11 @@ index 0000000..da17461
 +  transition: opacity 180ms ease;
 +}
 +
-+nav a:is(:hover, :focus-visible) { color: var(--accent); }
++nav a:is(:hover, :focus-visible) { color: var(--accent-on-dark); }
 +nav a:is(:hover, :focus-visible)::after { opacity: 1; transform: scaleX(1); }
 +.btn { transition: background-color 180ms ease, color 180ms ease; }
 +.btn:is(:hover, :focus-visible) { background-color: #3e2723; }
-+.hero > .btn { background: var(--accent); color: var(--text); font-weight: 600; }
++.hero > .btn { background: var(--accent-on-dark); color: var(--text); font-weight: 600; }
 +.hero > .btn:is(:hover, :focus-visible) { background: #ffc46e; }
 +.card { border: 1px solid transparent; transition: border-color 200ms ease; }
 +.card:is(:hover, :focus-within) { border-color: var(--secondary); }
@@ -183,7 +188,7 @@ index 0000000..da17461
 +  cursor: pointer;
 +  transition: background-color 180ms ease, color 180ms ease;
 +}
-+.roast-toggle:is(:hover, :focus-visible) { background: var(--accent); color: var(--text); }
++.roast-toggle:is(:hover, :focus-visible) { background: var(--accent-on-dark); color: var(--text); }
 +.roast-banner.is-paused .roast-track { animation-play-state: paused; }
 +.motion-note { margin-top: 8px; font-size: 0.8rem; }
 +[hidden] { display: none !important; }

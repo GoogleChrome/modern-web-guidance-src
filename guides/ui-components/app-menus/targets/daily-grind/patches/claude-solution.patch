@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..0052682 100644
+index 5db718e..34b9a6f 100644
 --- a/index.html
 +++ b/index.html
-@@ -33,6 +33,8 @@
+@@ -35,6 +35,8 @@
        color: white;
        padding: 1rem 5%;
        display: flex;
@@ -11,7 +11,7 @@ index 66c9173..0052682 100644
        justify-content: space-between;
        align-items: center;
        position: sticky;
-@@ -46,26 +48,277 @@
+@@ -48,26 +50,277 @@
        letter-spacing: 1px;
      }
  
@@ -38,7 +38,7 @@ index 66c9173..0052682 100644
  
 -    nav a:hover {
 +    .account-links a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 +    /* Application menu bar: one continuous strip, so it reads as a single widget (one Tab stop). */
@@ -97,7 +97,7 @@ index 66c9173..0052682 100644
 +
 +    /* The open or previewed menu's trigger. */
 +    .menubar > button[aria-expanded="true"] {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +
@@ -291,9 +291,9 @@ index 66c9173..0052682 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -159,10 +412,59 @@
+@@ -161,10 +414,59 @@
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -357,7 +357,7 @@ index 66c9173..0052682 100644
        <li><a href="/account">My Account</a></li>
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
-@@ -207,6 +509,398 @@
+@@ -209,6 +511,398 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

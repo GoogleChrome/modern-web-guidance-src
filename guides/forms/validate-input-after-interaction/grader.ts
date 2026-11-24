@@ -236,4 +236,187 @@ test.describe(`Validate Input After Interaction Expectations: ${demoName}`, () =
     expect(errorStyle.borderColor).not.toBe(initialStyle.borderColor);
     expect(await isErrorIndicatorVisible()).toBe(true);
   });
+
+  test("When a value doesn't meet a field's requirements, visible error text says so", async ({ page }) => {
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const field = fields.nth(i);
+      const getVisibleErrorText = () =>
+        field.evaluate((el) => {
+          const errId = el.getAttribute('data-error');
+          const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+          const candidates = errId
+            ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+            : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+          const visible = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+          if (!visible) return '';
+          const clone = visible.cloneNode(true) as Element;
+          clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+          return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+        });
+
+      expect(await getVisibleErrorText()).toBe('');
+
+      await field.focus();
+      await field.fill('invalid');
+      await field.blur();
+
+      await expect.poll(getVisibleErrorText, { timeout: 1000 }).not.toBe('');
+    }
+  });
+
+  test('A field has aria-invalid="true" while its error state is shown, and doesn\'t have aria-invalid="true" before the error appears or after it clears', async ({ page }) => {
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const field = fields.nth(i);
+      expect(await field.getAttribute('aria-invalid')).not.toBe('true');
+
+      await field.focus();
+      await field.fill('invalid');
+      await field.blur();
+      await expect(field).toHaveAttribute('aria-invalid', 'true');
+
+      const inputType = await field.getAttribute('type');
+      await field.fill(inputType === 'password' ? 'Valid#Pass1' : 'user@example.com');
+      await expect.poll(() => field.getAttribute('aria-invalid')).not.toBe('true');
+    }
+  });
+
+  test('After the form is submitted with an invalid field, focus is on the first invalid field', async ({ page }) => {
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    const getFieldValidationState = (fieldLocator: ReturnType<typeof page.locator>) =>
+      fieldLocator.evaluate((el) => {
+        const errId = el.getAttribute('data-error');
+        const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+        const candidates = errId
+          ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+          : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+        const hasVisibleErrorText = candidates.some((node) => {
+          if (!node.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+          const clone = node.cloneNode(true) as Element;
+          clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+          return (clone.textContent || '').replace(/\s+/g, ' ').trim().length > 0;
+        });
+        return {
+          ariaInvalid: el.getAttribute('aria-invalid'),
+          matchesUserInvalid: el.matches(':user-invalid'),
+          hasVisibleErrorText,
+        };
+      });
+
+    // Pair with initial-load check so broken eager-invalid forms fail
+    for (let i = 0; i < count; i++) {
+      const initialState = await getFieldValidationState(fields.nth(i));
+      expect(initialState.ariaInvalid).not.toBe('true');
+      expect(initialState.matchesUserInvalid).toBe(false);
+      expect(initialState.hasVisibleErrorText).toBe(false);
+    }
+
+    const emailField = page.locator('input[type="email"][required], input[required]').first();
+    const submitBtn = page.locator('button[type="submit"], input[type="submit"], button:not([type="button"])').first();
+    expect(await submitBtn.count()).toBeGreaterThan(0);
+    await submitBtn.click();
+
+    await expect(emailField).toBeFocused();
+    await expect.poll(() => getFieldValidationState(emailField)).toEqual({
+      ariaInvalid: 'true',
+      matchesUserInvalid: true,
+      hasVisibleErrorText: true,
+    });
+
+    // When the first field is valid and a subsequent field is invalid, focus moves to that first invalid field
+    if (count > 1) {
+      const firstType = await fields.nth(0).getAttribute('type');
+      await fields.nth(0).fill(firstType === 'password' ? 'Valid#Pass1' : 'user@example.com');
+      await submitBtn.click();
+      await expect(fields.nth(1)).toBeFocused();
+      await expect.poll(() => getFieldValidationState(fields.nth(1))).toEqual({
+        ariaInvalid: 'true',
+        matchesUserInvalid: true,
+        hasVisibleErrorText: true,
+      });
+    }
+  });
+
+  test('While a field has aria-invalid="true", its accessible description includes its visible error text', async ({ page }) => {
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const field = fields.nth(i);
+      await field.focus();
+      await field.fill('invalid');
+      await field.blur();
+
+      await expect(field).toHaveAttribute('aria-invalid', 'true');
+
+      const visibleErrorText = await field.evaluate((el) => {
+        const errId = el.getAttribute('data-error');
+        const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+        const candidates = errId
+          ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+          : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+        const visible = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+        if (!visible) return '';
+        const clone = visible.cloneNode(true) as Element;
+        clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+        return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+      });
+      expect(visibleErrorText.length).toBeGreaterThan(0);
+
+      const escaped = visibleErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(field).toHaveAccessibleDescription(new RegExp(escaped));
+    }
+  });
+
+  test("On page load, no field's accessible description includes its error text", async ({ page }) => {
+    const fields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    const count = await fields.count();
+    expect(count).toBeGreaterThan(0);
+
+    // Trigger validation first to collect each field's error copy and verify linkage when invalid
+    const fieldErrorTexts: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const field = fields.nth(i);
+      await field.focus();
+      await field.fill('invalid');
+      await field.blur();
+
+      const errorText = await field.evaluate((el) => {
+        const errId = el.getAttribute('data-error');
+        const container = el.closest('.form-group, .field') || el.parentElement || document.body;
+        const candidates = errId
+          ? [document.getElementById(errId)].filter((n): n is HTMLElement => Boolean(n))
+          : Array.from(container.querySelectorAll('.error-msg, .error-message, [role="alert"], [id*="error"]'));
+        const errEl = candidates.find((node) => node.checkVisibility({ opacityProperty: true, visibilityProperty: true }));
+        if (!errEl) return '';
+        const clone = errEl.cloneNode(true) as Element;
+        clone.querySelectorAll('[role="img"], [aria-hidden="true"]').forEach((n) => n.remove());
+        return (clone.textContent || '').replace(/\s+/g, ' ').trim();
+      });
+      expect(errorText.length).toBeGreaterThan(0);
+      fieldErrorTexts.push(errorText);
+
+      const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(field).toHaveAccessibleDescription(new RegExp(escaped));
+    }
+
+    // Reload and verify that on initial page load no field's accessible description includes its error text
+    await page.reload();
+    const reloadedFields = page.locator('input[required]:not([type="checkbox"]):not([type="radio"])');
+    for (let i = 0; i < count; i++) {
+      const escaped = fieldErrorTexts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(reloadedFields.nth(i)).not.toHaveAccessibleDescription(new RegExp(escaped));
+    }
+  });
 });

@@ -111,7 +111,7 @@ index 0000000..3cf45b0
 +button { font: inherit; cursor: pointer; }
 +.btn { border: 0; }
 +.nav-trigger { color: white; background: transparent; border: 1px solid var(--secondary); border-radius: 4px; padding: 4px 12px; }
-+.nav-trigger:hover, .nav-trigger[aria-expanded="true"] { color: var(--accent); background: #3e2723; }
++.nav-trigger:hover, .nav-trigger[aria-expanded="true"] { color: var(--accent-on-dark); background: #3e2723; }
 +.order-trigger { margin-top: 10px; background: white; color: var(--primary); border: 1px solid var(--primary); }
 +.order-trigger[aria-expanded="true"] { background: var(--secondary); }
 +:is(button, a):focus-visible { outline: 3px solid #c76b00; outline-offset: 3px; }

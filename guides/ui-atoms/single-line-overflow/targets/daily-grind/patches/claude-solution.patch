@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..119a287 100644
+index 5db718e..bcc523c 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,6 +28,14 @@
+@@ -30,6 +30,14 @@
      }
  
      /* Navigation */
@@ -17,7 +17,7 @@ index 66c9173..119a287 100644
      nav {
        background: var(--primary);
        color: white;
-@@ -35,12 +43,15 @@
+@@ -37,12 +45,15 @@
        display: flex;
        justify-content: space-between;
        align-items: center;
@@ -33,7 +33,7 @@ index 66c9173..119a287 100644
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
-@@ -48,24 +59,86 @@
+@@ -50,24 +61,86 @@
  
      nav ul {
        display: flex;
@@ -67,7 +67,7 @@ index 66c9173..119a287 100644
 -    nav a:hover {
 +    nav a:hover,
 +    nav a:focus-visible {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 +    @keyframes truncated {
@@ -120,9 +120,9 @@ index 66c9173..119a287 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -160,11 +233,11 @@
+@@ -162,11 +235,11 @@
    <nav>
      <div class="logo">THE DAILY GRIND</div>
      <ul>
@@ -139,7 +139,7 @@ index 66c9173..119a287 100644
      </ul>
    </nav>
  
-@@ -207,6 +280,23 @@
+@@ -209,6 +282,23 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

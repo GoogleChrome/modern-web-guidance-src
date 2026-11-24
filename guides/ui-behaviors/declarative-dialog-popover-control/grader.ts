@@ -147,6 +147,22 @@ test.describe(`Declarative Dialog and Popover Expectations: ${demoName}`, () => 
       expect(exists).toBe(true);
     });
 
+    test('Every button with commandfor and command attributes inside a <form> sets an explicit type="button" attribute', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        const commandButtons = Array.from(document.querySelectorAll('button[commandfor][command]'));
+        const formButtonsMissingType = commandButtons
+          .filter((btn) => btn.closest('form') !== null || btn.hasAttribute('form'))
+          .filter((btn) => (btn.getAttribute('type') || '').toLowerCase() !== 'button')
+          .map((btn) => btn.outerHTML);
+        return {
+          totalCommandButtons: commandButtons.length,
+          formButtonsMissingType,
+        };
+      });
+      expect(result.totalCommandButtons).toBeGreaterThan(0);
+      expect(result.formButtonsMissingType).toEqual([]);
+    });
+
     test('Invokers polyfill is loaded conditionally', async ({ page }) => {
       const scriptInfo = await page.locator('script').evaluateAll(tags =>
         tags.map(t => ({ src: t.getAttribute('src') || '', text: t.textContent || '' }))

@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..4c4d6e1 100644
+index 5db718e..9ae71ff 100644
 --- a/index.html
 +++ b/index.html
-@@ -31,10 +31,12 @@
+@@ -33,10 +33,12 @@
      nav {
        background: var(--primary);
        color: white;
@@ -16,7 +16,7 @@ index 66c9173..4c4d6e1 100644
        position: sticky;
        top: 0;
        z-index: 1000;
-@@ -46,23 +48,72 @@
+@@ -48,23 +50,72 @@
        letter-spacing: 1px;
      }
  
@@ -63,16 +63,16 @@ index 66c9173..4c4d6e1 100644
 -      margin-left: 20px;
 +    [role="menubar"] > button:hover {
 +      background: rgba(255, 255, 255, 0.14);
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    [role="menubar"] > button[aria-expanded="true"] {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +
 +    [role="menubar"] > button:focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: -2px;
 +    }
 +
@@ -93,10 +93,10 @@ index 66c9173..4c4d6e1 100644
  
 -    nav a:hover {
 +    .nav-actions a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -72,6 +123,234 @@
+@@ -74,6 +125,234 @@
        border-radius: 4px;
      }
  
@@ -331,7 +331,7 @@ index 66c9173..4c4d6e1 100644
      /* Hero Section */
      .hero {
        height: 60vh;
-@@ -159,15 +438,114 @@
+@@ -161,15 +440,114 @@
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
@@ -450,7 +450,7 @@ index 66c9173..4c4d6e1 100644
    <header class="hero">
      <h1>Wake Up Your Senses</h1>
      <p>Ethically sourced, locally roasted, delivered to your cup.</p>
-@@ -207,6 +585,558 @@
+@@ -209,6 +587,558 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

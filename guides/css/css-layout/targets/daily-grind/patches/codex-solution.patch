@@ -6,10 +6,10 @@ index 0000000..849ddff
 @@ -0,0 +1 @@
 +dist/
 diff --git a/index.html b/index.html
-index 66c9173..ccddc02 100644
+index 5db718e..9d59dfb 100644
 --- a/index.html
 +++ b/index.html
-@@ -25,22 +25,27 @@
+@@ -27,22 +27,27 @@
        line-height: 1.6;
        color: var(--text);
        background-color: var(--light);
@@ -40,7 +40,7 @@ index 66c9173..ccddc02 100644
        font-size: 1.5rem;
        font-weight: bold;
        letter-spacing: 1px;
-@@ -48,14 +53,21 @@
+@@ -50,14 +55,21 @@
  
      nav ul {
        display: flex;
@@ -64,10 +64,10 @@ index 66c9173..ccddc02 100644
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
-@@ -68,13 +80,15 @@
+@@ -70,13 +82,15 @@
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 +      padding-block: 0.3125rem;
 +      padding-inline: 0.75rem;
@@ -82,7 +82,7 @@ index 66c9173..ccddc02 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -82,52 +96,97 @@
+@@ -84,52 +98,97 @@
        display: flex;
        flex-direction: column;
        justify-content: center;
@@ -194,7 +194,7 @@ index 66c9173..ccddc02 100644
        transition: background 0.3s;
      }
  
-@@ -138,16 +197,21 @@
+@@ -140,16 +199,21 @@
      footer {
        background: var(--secondary);
        text-align: center;
@@ -220,7 +220,7 @@ index 66c9173..ccddc02 100644
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
-@@ -176,7 +240,7 @@
+@@ -178,7 +242,7 @@
  
    <main class="container">
      <section>
@@ -229,7 +229,7 @@ index 66c9173..ccddc02 100644
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
-@@ -199,9 +263,9 @@
+@@ -201,9 +265,9 @@
  
    <footer>
      <div class="footer-links">

@@ -6,17 +6,19 @@ index 0000000..178135c
 @@ -0,0 +1 @@
 +/dist/
 diff --git a/index.html b/index.html
-index 66c9173..fd65efa 100644
+index 5db718e..fd65efa 100644
 --- a/index.html
 +++ b/index.html
-@@ -7,11 +7,95 @@
+@@ -7,13 +7,95 @@
    <title>The Daily Grind | Artisanal Coffee</title>
    <style>
      :root {
 +      color-scheme: light dark;
        --primary: #4e342e;
 -      --secondary: #d7ccc8;
--      --accent: #ffab40;
+-      --accent: #b45309;
+-      --accent-on-dark: #ffab40;
+-      --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
 +      --page: #fbf7f3;
@@ -109,7 +111,7 @@ index 66c9173..fd65efa 100644
      }
  
      * {
-@@ -24,13 +108,14 @@
+@@ -26,13 +108,14 @@
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
        line-height: 1.6;
        color: var(--text);
@@ -127,7 +129,7 @@ index 66c9173..fd65efa 100644
        padding: 1rem 5%;
        display: flex;
        justify-content: space-between;
-@@ -56,7 +141,7 @@
+@@ -58,18 +141,29 @@
      }
  
      nav a {
@@ -136,10 +138,11 @@ index 66c9173..fd65efa 100644
        text-decoration: none;
        font-size: 0.9rem;
        transition: color 0.3s;
-@@ -64,6 +149,17 @@
+     }
  
      nav a:hover {
-       color: var(--accent);
+-      color: var(--accent-on-dark);
++      color: var(--accent);
 +      text-decoration: underline;
 +    }
 +
@@ -154,7 +157,12 @@ index 66c9173..fd65efa 100644
      }
  
      .logout-link {
-@@ -75,7 +171,8 @@
+-      border: 1px solid var(--accent-on-dark);
++      border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+@@ -77,7 +171,8 @@
      /* Hero Section */
      .hero {
        height: 60vh;
@@ -164,7 +172,7 @@ index 66c9173..fd65efa 100644
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
        background-position: center;
-@@ -83,7 +180,7 @@
+@@ -85,7 +180,7 @@
        flex-direction: column;
        justify-content: center;
        align-items: center;
@@ -173,7 +181,7 @@ index 66c9173..fd65efa 100644
        text-align: center;
        padding: 0 20px;
      }
-@@ -108,7 +205,8 @@
+@@ -110,7 +205,8 @@
      }
  
      .card {
@@ -183,7 +191,7 @@ index 66c9173..fd65efa 100644
        padding: 20px;
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-@@ -117,13 +215,40 @@
+@@ -119,13 +215,40 @@
  
      .card h3 {
        margin-bottom: 10px;
@@ -227,7 +235,7 @@ index 66c9173..fd65efa 100644
        padding: 10px 20px;
        text-decoration: none;
        border-radius: 5px;
-@@ -132,11 +257,24 @@
+@@ -134,11 +257,24 @@
      }
  
      .btn:hover {
@@ -254,7 +262,7 @@ index 66c9173..fd65efa 100644
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -152,6 +290,10 @@
+@@ -154,6 +290,10 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
@@ -265,7 +273,7 @@ index 66c9173..fd65efa 100644
    </style>
  </head>
  
-@@ -180,6 +322,7 @@
+@@ -182,6 +322,7 @@
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
@@ -273,7 +281,7 @@ index 66c9173..fd65efa 100644
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
            <a href="/menu/seasonal" class="btn">View Details</a>
          </div>
-@@ -190,6 +333,7 @@
+@@ -192,6 +333,7 @@
          </div>
          <div class="card">
            <h3>Cold Brew</h3>

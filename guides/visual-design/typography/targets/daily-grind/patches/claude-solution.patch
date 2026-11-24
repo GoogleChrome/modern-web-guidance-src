@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..13986fe 100644
+index 5db718e..ba29b2d 100644
 --- a/index.html
 +++ b/index.html
-@@ -22,17 +22,41 @@
+@@ -24,17 +24,41 @@
  
      body {
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -44,7 +44,7 @@ index 66c9173..13986fe 100644
        justify-content: space-between;
        align-items: center;
        position: sticky;
-@@ -41,24 +65,24 @@
+@@ -43,24 +67,24 @@
      }
  
      .logo {
@@ -76,10 +76,10 @@ index 66c9173..13986fe 100644
        transition: color 0.3s;
      }
  
-@@ -68,13 +92,13 @@
+@@ -70,13 +94,13 @@
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 +      padding: 0.3em 0.75em;
        border-radius: 4px;
@@ -92,7 +92,7 @@ index 66c9173..13986fe 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -85,12 +109,23 @@
+@@ -87,12 +111,23 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -119,7 +119,7 @@ index 66c9173..13986fe 100644
      }
  
      /* Content Sections */
-@@ -107,6 +142,10 @@
+@@ -109,6 +144,10 @@
        margin-top: 20px;
      }
  
@@ -130,7 +130,7 @@ index 66c9173..13986fe 100644
      .card {
        background: white;
        padding: 20px;
-@@ -116,7 +155,8 @@
+@@ -118,7 +157,8 @@
      }
  
      .card h3 {
@@ -140,7 +140,7 @@ index 66c9173..13986fe 100644
        color: var(--primary);
      }
  
-@@ -124,10 +164,12 @@
+@@ -126,10 +166,12 @@
        display: inline-block;
        background: var(--primary);
        color: white;
@@ -155,7 +155,7 @@ index 66c9173..13986fe 100644
        transition: background 0.3s;
      }
  
-@@ -140,17 +182,24 @@
+@@ -142,17 +184,24 @@
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
@@ -183,7 +183,7 @@ index 66c9173..13986fe 100644
      }
    </style>
  </head>
-@@ -176,7 +225,7 @@
+@@ -178,7 +227,7 @@
  
    <main class="container">
      <section>
