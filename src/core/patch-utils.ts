@@ -131,8 +131,8 @@ export function capturePatchFromGit(
   try {
     const targetPath = relativeSubdir || '.';
 
-    // Stage untracked files with intent-to-add so git diff includes them
-    gitExec(['add', '-N', '--ignore-removal', '--', targetPath], {
+    // Stage untracked files with intent-to-add so git diff includes them (excluding build/dep dirs)
+    gitExec(['add', '-N', '--ignore-removal', '--', targetPath, ...EXCLUDED_PATCH_PATHSPECS], {
       cwd: workDir,
       isolated: true,
       stdio: 'ignore',
