@@ -162,6 +162,35 @@ test.describe('Platform controls dismiss dialog tests', () => {
     expect(openedWithShowModal).toBe(true);
   });
 
+  test('There is a visible close control to close the modal dialog', async ({ page }) => {
+    const dialogCount = await page.locator('dialog').count();
+    expect(dialogCount).toBeGreaterThan(0);
+
+    const dialogs = await page.locator('dialog').all();
+    for (const dialog of dialogs) {
+      const dialogId = await dialog.getAttribute('id');
+      const specificOpener = dialogId
+        ? page.locator(`button[command="show-modal"][commandfor="${dialogId}"]`)
+        : page.locator('button:visible');
+      const opener = (await specificOpener.count()) > 0
+        ? specificOpener.first()
+        : page.locator('button:visible').first();
+      await opener.click();
+      await expect(dialog).toBeVisible();
+
+      const closeBtn = dialog.locator('button[command="close"], form[method="dialog"] button, button:has-text("Close"), button[aria-label*="Close" i]').first();
+      await expect(closeBtn).toBeVisible();
+
+      const box = await closeBtn.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThan(0);
+      expect(box!.height).toBeGreaterThan(0);
+
+      await closeBtn.click();
+      await expect(dialog).toBeHidden();
+    }
+  });
+
   test('No fallback mechanism is provided for dismissing with the Esc key', async ({ page }) => {
     const listeners = await page.evaluate(() => (window as any)._registeredKeyListeners || []);
 
