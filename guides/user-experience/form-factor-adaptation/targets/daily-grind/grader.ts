@@ -760,6 +760,32 @@ test.describe('form-factor-adaptation Target Grader', () => {
                   boxTop = boxBottom - pHeight;
                 }
 
+                let dx = 0;
+                let dy = 0;
+                if (ps.transform && ps.transform !== 'none') {
+                  const matrix = new DOMMatrix(ps.transform);
+                  dx += matrix.m41;
+                  dy += matrix.m42;
+                }
+                if (ps.translate && ps.translate !== 'none') {
+                  const [txToken, tyToken] = ps.translate.trim().split(/\s+/);
+                  const pseudoWidth = Number.isFinite(pWidth) ? pWidth : boxRight - boxLeft;
+                  const pseudoHeight = Number.isFinite(pHeight) ? pHeight : boxBottom - boxTop;
+                  const resolveTranslate = (token: string | undefined, refSize: number): number => {
+                    if (!token) return 0;
+                    const value = parseFloat(token);
+                    if (!Number.isFinite(value)) return 0;
+                    return token.endsWith('%') ? (value / 100) * refSize : value;
+                  };
+                  dx += resolveTranslate(txToken, pseudoWidth);
+                  dy += resolveTranslate(tyToken, pseudoHeight);
+                }
+
+                boxLeft += dx;
+                boxRight += dx;
+                boxTop += dy;
+                boxBottom += dy;
+
                 left = Math.min(left, boxLeft);
                 right = Math.max(right, boxRight);
                 top = Math.min(top, boxTop);
