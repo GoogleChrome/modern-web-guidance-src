@@ -1,6 +1,7 @@
 import {
   test,
   expect,
+  skipUnless,
   getTargetFiles,
   getCssStyleSheet,
   getJsProject,
@@ -500,5 +501,94 @@ test.describe('anchor-positioning-tab-underline Target Grader', () => {
       const duration = metrics ? metrics.underline.maxTransitionDuration : 0;
       expect(duration).toBeGreaterThan(0);
     });
+
+    test('In a right-to-left tab list, the underline stays visible and aligned with both inline edges of the active tab item as selection changes', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.evaluate(() => {
+        const nav = document.querySelector('nav');
+        if (nav) nav.setAttribute('dir', 'rtl');
+        const ul = document.querySelector('nav ul');
+        if (ul) ul.setAttribute('dir', 'rtl');
+      });
+
+      const initialMetrics = await getNavUnderlineAndActiveMetrics(page);
+      expect(initialMetrics).not.toBeNull();
+      expect(initialMetrics!.underline.isVisible).toBe(true);
+      expect(Math.abs(initialMetrics!.underline.left - initialMetrics!.active.left)).toBeLessThanOrEqual(2);
+      expect(Math.abs(initialMetrics!.underline.right - initialMetrics!.active.right)).toBeLessThanOrEqual(2);
+
+      const secondLink = page.locator('nav ul li:nth-child(2) a');
+      await secondLink.click();
+      const updatedMetrics = await getNavUnderlineAndActiveMetrics(page);
+      expect(updatedMetrics).not.toBeNull();
+      expect(updatedMetrics!.underline.isVisible).toBe(true);
+      expect(Math.abs(updatedMetrics!.underline.left - initialMetrics!.underline.left)).toBeGreaterThan(5);
+      expect(Math.abs(updatedMetrics!.underline.left - updatedMetrics!.active.left)).toBeLessThanOrEqual(2);
+      expect(Math.abs(updatedMetrics!.underline.right - updatedMetrics!.active.right)).toBeLessThanOrEqual(2);
+    });
+  });
+
+  test('When CSS Anchor Positioning is unsupported, a static border marks the active tab item', () => {
+    skipUnless({ unsupported: 'anchor-positioning' });
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+
+    const findFallbackBorderRules = (rules: Iterable<CSSRule>, inFallbackSupports = false): boolean => {
+      for (const rule of rules) {
+        const isNotAnchorSupports =
+          rule instanceof CSSSupportsRule &&
+          /\bnot\b/i.test(rule.conditionText) &&
+          /(position-anchor|anchor-name|anchor\()/i.test(rule.conditionText);
+        const nextInFallback = inFallbackSupports || isNotAnchorSupports;
+
+        if (nextInFallback && (rule instanceof CSSStyleRule || rule instanceof CSSNestedDeclarations)) {
+          const border =
+            rule.style.getPropertyValue('border-block-end') ||
+            rule.style.getPropertyValue('border-block-end-width') ||
+            rule.style.getPropertyValue('border-bottom') ||
+            rule.style.getPropertyValue('border-bottom-width');
+          if (border && !/^0(px)?$/i.test(border.trim()) && !/^none$/i.test(border.trim())) {
+            return true;
+          }
+        }
+        if ('cssRules' in rule && rule.cssRules) {
+          if (findFallbackBorderRules(rule.cssRules as Iterable<CSSRule>, nextInFallback)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    expect(findFallbackBorderRules(stylesheet.cssRules)).toBe(true);
+  });
+
+  test('When anchor positioning animations are unsupported but CSS Anchor Positioning is supported, the underline moves immediately to the new active tab item', async ({
+    page,
+    TARGET_URL,
+  }) => {
+    skipUnless({ unsupported: 'anchor-positioning-animations' });
+    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
+    const styles = getActiveStyleDeclarations(stylesheet);
+    const hasAnchoredUnderline = styles.some((s) =>
+      s.getPropertyValue('position-anchor').trim().startsWith('--'),
+    );
+    expect(hasAnchoredUnderline).toBe(true);
+
+    await page.goto(TARGET_URL);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const initialMetrics = await getNavUnderlineAndActiveMetrics(page);
+    expect(initialMetrics).not.toBeNull();
+
+    const secondLink = page.locator('nav ul li:nth-child(2) a');
+    await secondLink.click();
+    const updatedMetrics = await getNavUnderlineAndActiveMetrics(page);
+    const secondTabBox = await page.locator('nav ul li:nth-child(2)').boundingBox();
+
+    expect(updatedMetrics).not.toBeNull();
+    expect(secondTabBox).not.toBeNull();
+    expect(Math.abs(updatedMetrics!.underline.left - secondTabBox!.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(updatedMetrics!.underline.width - secondTabBox!.width)).toBeLessThanOrEqual(2);
   });
 });

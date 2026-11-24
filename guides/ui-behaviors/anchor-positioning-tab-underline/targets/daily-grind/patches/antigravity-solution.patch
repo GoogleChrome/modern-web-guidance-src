@@ -1,44 +1,53 @@
 diff --git a/index.html b/index.html
-index 66c9173..182d030 100644
+index 66c9173..ed0d8c3 100644
 --- a/index.html
 +++ b/index.html
-@@ -51,10 +51,35 @@
+@@ -49,12 +49,44 @@
+     nav ul {
+       display: flex;
        list-style: none;
-     }
- 
-+    ul::before {
++      position: relative;
++    }
++
++    nav ul::before {
 +      content: '';
 +      position: absolute;
 +      position-anchor: --active;
-+      inset-block-start: calc(anchor(bottom) + .1lh);
-+      inset-inline-start: anchor(left);
-+      inset-inline-end: anchor(right);
-+      /* Border-based underline preserves visibility in forced-colors mode */
++      inset-block-start: calc(anchor(self-end) + .1lh);
++      inset-inline-start: anchor(self-start);
++      inset-inline-end: anchor(self-end);
 +      border-block-end: .25lh solid var(--accent);
-+
-+      @media (prefers-reduced-motion: no-preference) {
-+        transition: inset .2s;
-+      }
++      pointer-events: none;
 +    }
 +
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset .2s;
++      }
+     }
+ 
      nav ul li {
        margin-left: 20px;
      }
  
-+    li.active {
++    nav ul li.active {
 +      anchor-name: --active;
 +    }
 +
-+    ul li.active {
-+      @supports not (position-anchor: auto) {
-+        border-bottom: .25lh var(--accent) solid;
++    @supports not (position-anchor: --active) {
++      nav ul::before {
++        content: none;
++      }
++
++      nav ul li.active {
++        border-block-end: .25lh solid var(--accent);
 +      }
 +    }
 +
      nav a {
        color: white;
        text-decoration: none;
-@@ -157,10 +182,10 @@
+@@ -157,10 +189,10 @@
  
  <body>
  
@@ -51,26 +60,33 @@ index 66c9173..182d030 100644
        <li><a href="/locations">Locations</a></li>
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
-@@ -207,6 +232,24 @@
+@@ -207,6 +239,31 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
-+
-+    navItems.forEach((item) => {
-+      item.addEventListener('click', (event) => {
-+        event.preventDefault();
-+
-+        navItems.forEach((li) => {
-+          li.classList.remove('active');
-+          li.querySelector('a')?.removeAttribute('aria-current');
++    const navList = document.querySelector('nav[aria-label="Primary"] ul');
++    if (navList) {
++      const tabLinks = navList.querySelectorAll('a:not(.logout-link)');
++      tabLinks.forEach((link) => {
++        link.addEventListener('click', (event) => {
++          event.preventDefault();
++          const currentActive = navList.querySelector('li.active');
++          if (currentActive) {
++            currentActive.classList.remove('active');
++            const currentLink = currentActive.querySelector('a');
++            if (currentLink) {
++              currentLink.removeAttribute('aria-current');
++            }
++          }
++          const nextItem = link.closest('li');
++          if (nextItem) {
++            nextItem.classList.add('active');
++          }
++          link.setAttribute('aria-current', 'page');
 +        });
-+
-+        item.classList.add('active');
-+        item.querySelector('a')?.setAttribute('aria-current', 'page');
 +      });
-+    });
++    }
 +  </script>
 +
  </body>

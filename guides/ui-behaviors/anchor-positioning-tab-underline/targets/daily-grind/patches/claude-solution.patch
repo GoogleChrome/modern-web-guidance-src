@@ -1,34 +1,31 @@
 diff --git a/index.html b/index.html
-index 66c9173..9fdb121 100644
+index 66c9173..f208860 100644
 --- a/index.html
 +++ b/index.html
-@@ -49,6 +49,7 @@
-     nav ul {
-       display: flex;
-       list-style: none;
-+      position: relative;
+@@ -55,6 +55,45 @@
+       margin-left: 20px;
      }
  
-     nav ul li {
-@@ -72,6 +73,36 @@
-       border-radius: 4px;
-     }
- 
-+    /* Anchor positioning: make active li the named anchor */
++    /* Active nav item: anchor for the animated underline */
 +    nav ul li.active {
-+      anchor-name: --active-nav;
++      anchor-name: --active-nav-item;
 +    }
 +
-+    /* Animated underline via pseudo-element on the list container */
++    nav ul li.active > a {
++      color: var(--accent);
++    }
++
++    /* Animated underline indicator, drawn by a pseudo-element on the list */
 +    nav ul::before {
 +      content: '';
 +      position: absolute;
-+      position-anchor: --active-nav;
-+      inset-block-start: calc(anchor(bottom) + .1lh);
-+      inset-inline-start: anchor(left);
-+      inset-inline-end: anchor(right);
-+      /* Border-based underline preserves visibility in forced-colors mode */
++      position-anchor: --active-nav-item;
++      inset-block-start: calc(anchor(self-end) + .1lh);
++      inset-inline-start: anchor(self-start);
++      inset-inline-end: anchor(self-end);
++      /* Border (not background/box-shadow) so it survives forced colors mode */
 +      border-block-end: .25lh solid var(--accent);
++      pointer-events: none;
 +    }
 +
 +    @media (prefers-reduced-motion: no-preference) {
@@ -37,48 +34,81 @@ index 66c9173..9fdb121 100644
 +      }
 +    }
 +
-+    /* Fallback: static border-bottom when anchor positioning is unsupported */
-+    @supports not (position-anchor: auto) {
++    /* Fallback: no anchor positioning support, use a static border */
++    @supports not (position-anchor: --active-nav-item) {
++      nav ul::before {
++        content: none;
++      }
++
 +      nav ul li.active {
-+        border-bottom: .25lh var(--accent) solid;
++        border-block-end: .25lh solid var(--accent);
 +      }
 +    }
 +
-     /* Hero Section */
-     .hero {
-       height: 60vh;
-@@ -157,10 +188,10 @@
- 
- <body>
- 
--  <nav>
-+  <nav aria-label="Primary">
+     nav a {
+       color: white;
+       text-decoration: none;
+@@ -160,10 +199,10 @@
+   <nav>
      <div class="logo">THE DAILY GRIND</div>
      <ul>
 -      <li><a href="/menu">Menu</a></li>
-+      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
-       <li><a href="/locations">Locations</a></li>
-       <li><a href="/rewards">Rewards</a></li>
-       <li><a href="/account">My Account</a></li>
-@@ -197,6 +228,21 @@
-     </section>
-   </main>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li class="nav-tab active"><a href="/menu" aria-current="page">Menu</a></li>
++      <li class="nav-tab"><a href="/locations">Locations</a></li>
++      <li class="nav-tab"><a href="/rewards">Rewards</a></li>
++      <li class="nav-tab"><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
+@@ -207,6 +246,48 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
  
 +  <script>
-+    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
-+    navItems.forEach(item => {
-+      item.querySelector('a').addEventListener('click', e => {
-+        e.preventDefault();
-+        navItems.forEach(li => {
-+          li.classList.remove('active');
-+          li.querySelector('a').removeAttribute('aria-current');
++    (function () {
++      const tabs = Array.from(document.querySelectorAll('nav li.nav-tab'));
++
++      function setActive(tab) {
++        tabs.forEach(function (item) {
++          const link = item.querySelector('a');
++          const isActive = item === tab;
++          item.classList.toggle('active', isActive);
++          if (!link) return;
++          if (isActive) {
++            link.setAttribute('aria-current', 'page');
++          } else {
++            link.removeAttribute('aria-current');
++          }
 +        });
-+        item.classList.add('active');
-+        item.querySelector('a').setAttribute('aria-current', 'page');
++      }
++
++      // Reflect the current URL on load, if it matches a nav item.
++      const current = tabs.find(function (item) {
++        const link = item.querySelector('a');
++        return link && link.pathname === window.location.pathname;
 +      });
-+    });
++      if (current) setActive(current);
++
++      // Move the underline in-page when a nav item is selected. The animation
++      // cannot run across full page loads, so the selection is handled here.
++      tabs.forEach(function (item) {
++        const link = item.querySelector('a');
++        if (!link) return;
++        link.addEventListener('click', function (event) {
++          if (event.defaultPrevented || event.button !== 0 ||
++            event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
++            return;
++          }
++          event.preventDefault();
++          setActive(item);
++        });
++      });
++    })();
 +  </script>
 +
-   <footer>
-     <div class="footer-links">
-       <a href="/about">Our Story</a> |
+ </body>
+ 
+ </html>
