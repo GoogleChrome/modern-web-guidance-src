@@ -13,7 +13,7 @@ web-feature-ids:
 Scrollability hints show users that a region has more content in a given direction, and disappear at that end of the content. There are two kinds:
 
 - **Shadows** are drawn over the edge of the scrollport, as if the content were tucked under it. Show them with scroll-state container queries on pseudo-elements of the scroller.
-- **Fades** make the content itself fade out at the edge. Draw them with a `mask-image` on the scroller, driven by a scroll-driven animation.
+- **Fades** make the content itself fade out at the edge. Draw them with a mask on the scroller, driven by a scroll-driven animation.
 
 Both need no scroll listeners and no extra elements in the markup.
 
@@ -97,7 +97,7 @@ Pseudo-elements can query their own originating element, so the scroller's `::be
 
 ## Fades
 
-Fade the content with a `mask-image` gradient on the scroller itself. Animate the gradient's stops with a scroll-driven animation on the scroller's own scroll position: each fade grows from 0 as the user scrolls away from that end, and shrinks back to 0 as they reach the other end. When the content fits, the scroll timeline is inactive and there is no fade.
+Fade the content with a mask on the scroller itself: an opaque layer minus a gradient band at each end. Masking only the bands keeps everything else visible, including a focus outline on the scroller, which a single gradient clipped to the border box would hide. Animate each band's size with a scroll-driven animation on the scroller's own scroll position: each fade grows from 0 as the user scrolls away from that end, and shrinks back to 0 as they reach the other end. When the content fits, the scroll timeline is inactive and there is no fade.
 
 ```css
 @property --fade-start {
@@ -116,9 +116,14 @@ Fade the content with a `mask-image` gradient on the scroller itself. Animate th
   overflow-x: auto;
   /* Example value: how far each fade reaches */
   --fade-size: 3rem;
+  /* Gradient directions and positions are physical, so flip them for right-to-left content */
   --fade-dir: right;
-  mask-image: linear-gradient(to var(--fade-dir), transparent, black var(--fade-start),
-    black calc(100% - var(--fade-end)), transparent);
+  --fade-start-pos: 0;
+  --fade-end-pos: 100%;
+  mask:
+    linear-gradient(black, black) no-clip subtract,
+    linear-gradient(to var(--fade-dir), black, transparent) var(--fade-start-pos) 0 / var(--fade-start) 100% no-repeat no-clip,
+    linear-gradient(to var(--fade-dir), transparent, black) var(--fade-end-pos) 0 / var(--fade-end) 100% no-repeat no-clip;
   animation: reveal-fade-start linear both, hide-fade-end linear both;
   animation-timeline: scroll(self inline);
   /* Each fade animates over the first or last --fade-size of scrolling */
@@ -126,6 +131,8 @@ Fade the content with a `mask-image` gradient on the scroller itself. Animate th
 
   &:dir(rtl) {
     --fade-dir: left;
+    --fade-start-pos: 100%;
+    --fade-end-pos: 0;
   }
 }
 
@@ -144,8 +151,8 @@ Fade the content with a `mask-image` gradient on the scroller itself. Animate th
 
 - MANDATORY: Register `--fade-start` and `--fade-end` with `@property`. Unregistered custom properties do not interpolate, so the fades would jump.
 - Set `scroll-padding-inline` (or `scroll-padding-block`) to the fade size if the scroller uses scroll snapping or contains focusable items, so snapped and focused items never stop inside a fade.
-- For vertical scrollers, use `to bottom`, `scroll(self block)`, and `overflow-y`.
-- For right-to-left content, use `to left` in the gradient. The scroll timeline follows the writing direction but gradient directions are physical, so `to right` would put each fade on the wrong edge.
+- For vertical scrollers, use `to bottom`, put the bands at `0 0` and `0 100%` with sizes `100% var(--fade-start)` and `100% var(--fade-end)`, and use `scroll(self block)` and `overflow-y`.
+- For right-to-left content, flip `--fade-dir` and swap the band positions, as in the `:dir(rtl)` rule above. The scroll timeline follows the writing direction, but gradient directions and mask positions are physical.
 
 ## Accessibility considerations
 

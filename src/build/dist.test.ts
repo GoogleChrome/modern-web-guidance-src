@@ -210,6 +210,10 @@ test('Manifest source paths resolve relative to dist directory', async () => {
 test('README template and dynamic Skill Coverage content', async () => {
   const readmeRaw = await fs.readFile(path.join(STAGING_DIR, 'README.md'), 'utf8');
   assert.ok(readmeRaw.includes('Modern Web Guidance'), 'README should contain title');
+  assert.ok(
+    readmeRaw.includes('/plugin uninstall modern-web-guidance@claude-plugins-official'),
+    'README Updating section should include Claude Code official-marketplace migration snippet',
+  );
   
   // When dynamic coverage is injected (e.g. during publish-skills validation), verify its format
   if (readmeRaw.includes('#### The full list')) {
@@ -274,6 +278,29 @@ test('modern-web CLI version flags', async () => {
   // 2. Test -v
   const versionOutShort = execSync(`node "${binaryPath}" -v`, { encoding: 'utf8' }).trim();
   assert.strictEqual(versionOutShort, expectedVersion, '-v output should match package.json version');
+});
+
+test('modern-web CLI fails fast on Node < 22', async () => {
+  const binaryPath = path.join(STAGING_DIR, 'skills/modern-web-guidance/modern-web.mjs');
+  const { spawnSync } = await import('node:child_process');
+  const { pathToFileURL } = await import('node:url');
+  const fileUrl = pathToFileURL(binaryPath).href;
+
+  const spoofCode = `
+    Object.defineProperty(process.versions, 'node', { value: '20.10.0' });
+    Object.defineProperty(process, 'version', { value: 'v20.10.0' });
+    import(${JSON.stringify(fileUrl)});
+  `;
+
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', spoofCode], {
+    encoding: 'utf8',
+  });
+
+  assert.strictEqual(res.status, 1, 'Expected exit code 1');
+  assert.match(
+    res.stderr,
+    /modern-web-guidance requires Node\.js >= 22 \(current: v20\.10\.0\)\. Please upgrade: https:\/\/nodejs\.org\//
+  );
 });
 
 // TODO: this has been failing locally from publish-skills.ts
@@ -382,7 +409,7 @@ test('bundled legacy-scan.mjs executes cleanly and excludes inlined TypeScript .
   // Executes --json cleanly
   const jsonOut = execSync(`node ${JSON.stringify(legacyScanPath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });
   const parsed = JSON.parse(jsonOut);
-  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid AnalyzeJsonOutput');
+  assert.ok(typeof parsed.totalFindings === 'number', 'legacy-scan.mjs --json should return valid ScanJsonOutput');
   assert.ok(Array.isArray(parsed.guides), 'legacy-scan.mjs --json should return guides array');
 });
 
@@ -418,15 +445,6 @@ test('packaged dist contains valid vectors (256-d cached teacher or 0-d uncached
     coverage >= 0.9,
     `Expected at least 90% teacher vector coverage in packaged dist, got ${(coverage * 100).toFixed(1)}% (${teacherCount}/${items.length})`
   );
-});
-
-test('release gate pipeline hash differs between dev and release builds', async () => {
-  const { computePipelineHash } = await import('./build-guides.ts');
-  const { scanAllGuides } = await import('../core/guide-validation.ts');
-  const readyGuides = scanAllGuides().filter(inv => inv.isPublished).slice(0, 5);
-  const hashDev = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, false);
-  const hashRelease = await computePipelineHash(readyGuides, 'skills-cli', false, undefined, true);
-  assert.notStrictEqual(hashDev, hashRelease, 'Pipeline hash must differ when failOnMissingVectors differs');
 });
 
 

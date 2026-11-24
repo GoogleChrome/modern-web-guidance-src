@@ -120,9 +120,7 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
-export type DistTag = 'latest' | 'next';
-
-export function processSkills(publishRoot: string, distTag: DistTag = 'latest') {
+export function processSkills(publishRoot: string) {
   console.log("Processing standalone skills from configuration...");
   const skills = config.standaloneSkills;
 
@@ -164,16 +162,15 @@ export function processSkills(publishRoot: string, distTag: DistTag = 'latest') 
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
-      .replaceAll('SKILL_VERSION', skillVersion)
-      .replaceAll('modern-web-guidance@latest', `modern-web-guidance@${distTag}`);
+      .replaceAll('SKILL_VERSION', skillVersion);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, chunkCacheDir?: string }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors, chunkCacheDir } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -197,6 +194,7 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       outputDir: DIST_DIR,
       target: 'skills-cli',
       failOnMissingVectors,
+      chunkCacheDir,
     });
 
     // Create a copy of language-model.md for prompt-api alias (regular file, not symlink, for archive compatibility)
@@ -255,8 +253,8 @@ async function main(opts: { publishRoot: string, version?: string, failOnMissing
       );
 
       console.log("Bundling legacy-scan.mjs...");
-      const resultAnalyze = await esbuild.build({
-        entryPoints: [path.join(rootDir, "src/analyzing/cli.ts")],
+      const resultLegacyScan = await esbuild.build({
+        entryPoints: [path.join(rootDir, "src/legacy-scan/cli.ts")],
         bundle: true,
         platform: "node",
         format: "esm",
@@ -281,7 +279,7 @@ const __dirname = __dirnameFunction(__filename);
 
       fs.writeFileSync(
         path.join(ROOT_DIST_DIR, "legacy-scan.meta.json"),
-        JSON.stringify(resultAnalyze.metafile)
+        JSON.stringify(resultLegacyScan.metafile)
       );
 
       console.log("Bundling modern-web.mjs...");
@@ -291,8 +289,13 @@ const __dirname = __dirnameFunction(__filename);
         platform: "node",
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
-        define: {
-          "__MWG_DIST_TAG__": JSON.stringify(distTag),
+        banner: {
+          js: `const [__mwg_major] = process.versions.node.split('.').map(Number);
+if (__mwg_major < 22) {
+  console.error(\`modern-web-guidance requires Node.js >= 22 (current: \${process.version}). Please upgrade: https://nodejs.org/\`);
+  process.exit(1);
+}
+`,
         },
         plugins: [{
           name: 'external-cli-modules',
@@ -300,7 +303,7 @@ const __dirname = __dirnameFunction(__filename);
             build.onResolve({ filter: /search\.ts$/ }, _args => {
               return { path: './search.mjs', external: true }
             });
-            build.onResolve({ filter: /(?:analyzing\/cli|cli)\.ts$/ }, _args => {
+            build.onResolve({ filter: /\/legacy-scan\/cli\.ts$/ }, _args => {
               return { path: './legacy-scan.mjs', external: true }
             });
           },
@@ -324,7 +327,7 @@ const __dirname = __dirnameFunction(__filename);
       fs.writeFileSync(modernWebMjsPath, updatedModernWebContent);
 
       generateThirdPartyNotices(
-        [resultSearch.metafile, resultAnalyze.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
+        [resultSearch.metafile, resultLegacyScan.metafile, resultModernWeb.metafile, resultWatchdog.metafile],
         path.join(publishRoot, "THIRD_PARTY_NOTICES")
       );
 
@@ -333,7 +336,7 @@ const __dirname = __dirnameFunction(__filename);
       throw error;
     }
 
-    const { skillsCount, skillNames } = processSkills(publishRoot, distTag);
+    const { skillsCount, skillNames } = processSkills(publishRoot);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { skillsCount, skillNames };
@@ -402,7 +405,7 @@ function generateThirdPartyNotices(metafiles: esbuild.Metafile[], outputFilePath
   fs.writeFileSync(outputFilePath, stringifiedDependencies);
 }
 
-function getLatestVersion() {
+export function getLatestVersion() {
   const output = gitExec(['tag', '-l', 'v*.*.*', '--merged', 'HEAD', '--sort=-v:refname'], {
     stdio: ['pipe', 'pipe', 'ignore'],
   });
@@ -431,7 +434,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 /**
  * Strips unused 2.37 MB TypeScript .d.ts standard library strings (lib.dom.d.ts,
  * lib.webworker.d.ts, etc.) inlined in @ts-morph/common for in-memory type checking,
- * which analyzer rules never invoke.
+ * which legacy-scan rules never invoke.
  *
  * Fails fast if the file is never matched or if the replacement fails.
  */

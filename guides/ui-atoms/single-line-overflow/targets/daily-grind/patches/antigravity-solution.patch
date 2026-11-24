@@ -1,0 +1,164 @@
+diff --git a/index.html b/index.html
+index 66c9173..609ebfe 100644
+--- a/index.html
++++ b/index.html
+@@ -6,6 +6,12 @@
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
+   <style>
++    @property --truncated {
++      syntax: "<integer>";
++      inherits: false;
++      initial-value: 0;
++    }
++
+     :root {
+       --primary: #4e342e;
+       --secondary: #d7ccc8;
+@@ -38,40 +44,110 @@
+       position: sticky;
+       top: 0;
+       z-index: 1000;
++      gap: 1rem;
+     }
+ 
+     .logo {
+       font-size: 1.5rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
++      flex-shrink: 0;
+     }
+ 
+     nav ul {
+       display: flex;
+       list-style: none;
++      align-items: center;
++      min-inline-size: 0;
++      min-width: 0;
+     }
+ 
+     nav ul li {
+       margin-left: 20px;
++      min-inline-size: 0;
++      min-width: 0;
++      flex-shrink: 1;
+     }
+ 
+     nav a {
++      display: block;
++      white-space: nowrap;
++      overflow: hidden;
++      text-overflow: ellipsis;
++      max-inline-size: 100%;
+       color: white;
+       text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
++      animation: truncated linear both;
++      animation-timeline: scroll(self inline);
+     }
+ 
+     nav a:hover {
+       color: var(--accent);
+     }
+ 
++    nav a:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
+     }
+ 
++    @keyframes truncated {
++      from, to {
++        --truncated: 1;
++      }
++    }
++
++    nav a.truncated {
++      --truncated: 1;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      /* Outside the query: a container cannot query itself */
++      nav a:is(:hover, :focus-visible) {
++        text-overflow: clip;
++      }
++
++      @container style(--truncated: 1) {
++        nav a:is(:hover, :focus-visible) > span {
++          /* Needs its own box to be moved. It stays inline otherwise, so the ellipsis renders. */
++          display: inline-block;
++          /* Forward by the element's width, then back by the text's own width */
++          margin-inline-start: 100%;
++          /* 1px short, so the text still overflows and the timeline stays active */
++          translate: calc(1px - 100%);
++          /* Example values. Set only here: when the pointer leaves, the text snaps back behind the ellipsis */
++          transition: margin-inline-start 2s ease-in, translate 2s ease-in;
++        }
++
++        /* The overflow is on the left, so the text moves right */
++        nav a:is(:hover, :focus-visible):dir(rtl) > span,
++        [dir="rtl"] nav a:is(:hover, :focus-visible) > span {
++          translate: calc(100% - 1px);
++        }
++      }
++
++      /* Fallback for browsers without container style queries */
++      nav a.truncated:is(:hover, :focus-visible) > span {
++        display: inline-block;
++        margin-inline-start: 100%;
++        translate: calc(1px - 100%);
++        transition: margin-inline-start 2s ease-in, translate 2s ease-in;
++      }
++
++      nav a.truncated:is(:hover, :focus-visible):dir(rtl) > span,
++      [dir="rtl"] nav a.truncated:is(:hover, :focus-visible) > span {
++        translate: calc(100% - 1px);
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -160,11 +236,11 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu"><span>Menu</span></a></li>
++      <li><a href="/locations"><span>Locations</span></a></li>
++      <li><a href="/rewards"><span>Rewards</span></a></li>
++      <li><a href="/account"><span>My Account</span></a></li>
++      <li><a href="/logout" class="logout-link"><span>Logout</span></a></li>
+     </ul>
+   </nav>
+ 
+@@ -207,6 +283,18 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const observer = new ResizeObserver(entries => {
++      for (const { target } of entries) {
++        target.classList.toggle('truncated', target.scrollWidth > target.clientWidth);
++      }
++    });
++
++    for (const label of document.querySelectorAll('nav a')) {
++      observer.observe(label);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

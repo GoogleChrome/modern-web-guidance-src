@@ -1,0 +1,1 @@
+- Refactor the Seasonal Favorites section in `index.html` into a responsive tabbed coffee menu (`id="coffee-menu"`) featuring our drink cards across several beverage categories, and ensure the tab bar provides a smooth, intuitive user experience even on narrow viewports where not all category tabs fit on screen at once.

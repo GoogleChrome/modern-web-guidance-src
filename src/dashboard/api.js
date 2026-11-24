@@ -1,5 +1,5 @@
 import { authenticatedFetch, parseResultKey } from './utils.js';
-import { PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
+import { PUBLIC_ARTIFACTS_FILE, PUBLIC_EVALS_BASE, isLocalServer, resolveDataSource } from './data-source.js';
 
 /** @typedef {import('./data-source.js').DataSource} DataSource */
 
@@ -46,6 +46,8 @@ export class ApiClient {
         /** @type {DataSource} */
         this.source = source;
         this.gcsPrefix = 'https://storage.googleapis.com/storage/v1/b/guidance-evals/o/';
+        /** @type {Map<string, Promise<Record<string, string> | null>>} */
+        this._publicArtifacts = new Map();
     }
 
     /**
@@ -139,7 +141,7 @@ export class ApiClient {
     /**
      * Whether an optional file exists for the current source. The public copy
      * has no listing API and every optional file it carries is named in
-     * `run.files`, so nothing is probed there.
+     * `trial.files`, so nothing is probed there.
      * @private
      * @param {string} path
      * @returns {Promise<boolean>}
@@ -152,71 +154,72 @@ export class ApiClient {
 
     // --- High-level API Methods ---
 
-    /** 
-     * Fetches the overall array of test suites/runs listed for the dashboard.
-     * @returns {Promise<{ suites: { id: string, source: string }[] }>}
+    /**
+     * Fetches the overall array of evaluation jobs listed for the dashboard.
+     * @returns {Promise<{ jobs: { id: string, source: string }[] }>}
      */
-    async getSuites() {
+    async getJobs() {
         if (this.source === 'remote') {
             // Check Google Cloud Storage via JSON API
             const gcsUrl = `${this.gcsPrefix}?delimiter=/`;
             const res = await authenticatedFetch(gcsUrl);
-            if (!res.ok) throw new Error('Failed to load remote suites');
+            if (!res.ok) throw new Error('Failed to load remote jobs');
 
             const data = await res.json();
             const prefixes = /** @type {string[]} */ (data.prefixes || []);
-            const suites = prefixes
+            const jobs = prefixes
                 .map(prefix => prefix.replace(/\/$/, ''))
                 .filter(name => name !== 'single_task')
                 .map(id => ({ id, source: 'remote' }));
-            return { suites };
+            return { jobs };
         } else if (this.source === 'public') {
-            const manifest = await this.getSuitesManifest();
-            return { suites: manifest.map(entry => ({ id: entry.testId, source: 'public' })) };
+            const manifest = await this.getJobsManifest();
+            return { jobs: manifest.map(entry => ({ id: entry.testId, source: 'public' })) };
         } else {
             // Fetch directly from server.js /api/suites endpoint
             const res = await fetch('/api/suites');
-            if (!res.ok) throw new Error('Failed to load local suites');
-            return await res.json();
+            if (!res.ok) throw new Error('Failed to load local jobs');
+            const data = await res.json();
+            return { jobs: data.suites || [] };
         }
     }
 
     /**
-     * Fetches the precomputed `suites.gen.json` manifest (one summary per suite).
+     * Fetches the precomputed `suites.gen.json` manifest (one summary per job).
      * Only the bucket and the public copy have one; the dev server builds it on the fly.
-     * @returns {Promise<import('./summary-extractor.js').SuiteSummary[]>}
+     * @returns {Promise<import('./summary-extractor.js').JobSummary[]>}
      */
-    async getSuitesManifest() {
+    async getJobsManifest() {
         if (this.source !== 'remote' && this.source !== 'public') {
-            throw new Error(`No suites manifest for source "${this.source}"`);
+            throw new Error(`No jobs manifest for source "${this.source}"`);
         }
         const res = await this._fetch(`suites.gen.json?t=${cacheBuster(this.source)}`);
         if (res.status === 404 && this.source === 'public') return [];
-        if (!res.ok) throw new HttpError(`Failed to fetch ${this.source} suites manifest (${res.status})`, res.status);
+        if (!res.ok) throw new HttpError(`Failed to fetch ${this.source} jobs manifest (${res.status})`, res.status);
         const manifest = await res.json();
-        if (!Array.isArray(manifest)) throw new Error(`Malformed ${this.source} suites manifest`);
+        if (!Array.isArray(manifest)) throw new Error(`Malformed ${this.source} jobs manifest`);
         return manifest;
     }
 
-    /** 
-     * Fetches the evals.json payload for a specific root test ID.
-     * @param {string} testId
+    /**
+     * Fetches the evals.json payload for a specific job ID.
+     * @param {string} jobId
      * @returns {Promise<import('../harness/lib/metrics.ts').EvalsReport>}
      */
-    async getEvals(testId) {
-        const path = `${testId}/evals.json?t=${cacheBuster(this.source)}`;
+    async getEvals(jobId) {
+        const path = `${jobId}/evals.json?t=${cacheBuster(this.source)}`;
         const res = await this._fetch(path);
         if (!res.ok) throw new HttpError(`Failed to load data from ${this._formatUrl(path)}`, res.status);
         return await res.json();
     }
 
-    /** 
+    /**
      * Fetches the optional jetski automation metadata payload.
-     * @param {string} testId
+     * @param {string} jobId
      * @returns {Promise<any>}
      */
-    async getJetskiInfo(testId) {
-        const path = `${testId}/jetski_info.json`;
+    async getJetskiInfo(jobId) {
+        const path = `${jobId}/jetski_info.json`;
         if (!(await this._fileExists(path))) return null;
 
         try {
@@ -231,21 +234,21 @@ export class ApiClient {
         return null; // Not fatal if missing
     }
 
-    /** 
+    /**
      * Checks if a test_suite.log file exists via a fast HEAD or silent remote prefix search.
-     * @param {string} testId
+     * @param {string} jobId
      * @returns {Promise<boolean>}
      */
-    async checkLogExists(testId) {
+    async checkLogExists(jobId) {
         try {
-            return await this._fileExists(`${testId}/test_suite.log`);
+            return await this._fileExists(`${jobId}/test_suite.log`);
         } catch {
             return false;
         }
     }
 
     /**
-     * Fetches the optional per-run `trajectory_summary.json` payload when present.
+     * Fetches the optional per-trial `trajectory_summary.json` payload when present.
      * Returns `null` silently on public/static copies or when the file does not exist.
      * @param {string} basePath
      * @returns {Promise<import('./evals.d.ts').TrajectorySummary | null>}
@@ -265,31 +268,31 @@ export class ApiClient {
         return null;
     }
 
-    /** 
-     * Resolves the correct base path for specific run details, parsing legacy logic.
-     * @param {string} testId
-     * @param {import('../harness/lib/metrics.ts').RunResult} run
-     * @param {string} testName
+    /**
+     * Resolves the correct base path for specific trial details, parsing legacy logic.
+     * @param {string} jobId
+     * @param {import('../harness/lib/metrics.ts').RunResult} trial
+     * @param {string} resultKey
      * @returns {Promise<{ setupPath: string, resultPath: string, usedBasePath: string } | null>}
      */
-    async getResultInfo(testId, run, testName) {
-        const parsed = parseResultKey(testName);
+    async getResultInfo(jobId, trial, resultKey) {
+        const parsed = parseResultKey(resultKey);
         if (!parsed) return null;
-        const { task: taskName, guide: guideName, runType } = parsed;
-        const actualBaseApp = run.baseApp;
-        let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
+        const { baseApp: baseAppName, guide: guideName, condition } = parsed;
+        const actualBaseApp = trial.baseApp;
+        let logicalBasePath = `${jobId}/${trial.runNumber}/${guideName}/${baseAppName}/${condition}`;
 
         // The public copy carries a pre-built agent.patch and nothing to diff against, so there is
-        // nothing to probe. An empty setupPath tells the UI there is no built app for this run.
+        // nothing to probe. An empty setupPath tells the UI there is no built app for this trial.
         if (this.source === 'public') {
             return { setupPath: '', resultPath: `${logicalBasePath}/agent.patch`, usedBasePath: logicalBasePath };
         }
 
-        let entryPointPath = run.targetFile ? `${logicalBasePath}/${run.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
+        let entryPointPath = trial.targetFile ? `${logicalBasePath}/${trial.targetFile}` : await this._findBestEntryPoint(logicalBasePath);
 
-        // Fallback for older results stored in a depth-2 folder structure (runDir/taskName/runType)
+        // Fallback for older results stored in a depth-2 folder structure (trialDir/baseAppName/condition)
         if (!entryPointPath) {
-            const legacyPath = `${testId}/${run.runNumber}/${taskName}/${runType}`;
+            const legacyPath = `${jobId}/${trial.runNumber}/${baseAppName}/${condition}`;
             const legacyEntryPoint = await this._findBestEntryPoint(legacyPath);
             if (legacyEntryPoint) {
                 logicalBasePath = legacyPath;
@@ -302,8 +305,8 @@ export class ApiClient {
         // Calculate relative sub-path to build the setup apps correlation
         const relativePath = entryPointPath.replace(logicalBasePath + '/', '');
 
-        // Try run-local base_app first (at the appName level, not inside guided/unguided), fallback to centralized base_apps for older runs
-        const localBaseAppPath = `${testId}/${run.runNumber}/${guideName}/${taskName}/base_app/${relativePath}`;
+        // Try trial-local base_app first (at the task level, not inside guided/unguided), fallback to centralized base_apps for older trials
+        const localBaseAppPath = `${jobId}/${trial.runNumber}/${guideName}/${baseAppName}/base_app/${relativePath}`;
         const exists = await this._fileExists(localBaseAppPath);
 
         const setupPath = exists ? localBaseAppPath : `base_apps/${actualBaseApp}/${relativePath}`;
@@ -366,12 +369,12 @@ export class ApiClient {
         return bestCandidate;
     }
 
-    /** 
-     * Lists relevant metadata files (like raw results or trajectories) for a specific test execution dir.
+    /**
+     * Lists relevant metadata files (like raw results or trajectories) for a specific trial dir.
      * @param {string} basePath
      * @returns {Promise<string[] | undefined>}
      */
-    async getRunFiles(basePath) {
+    async getTrialFiles(basePath) {
         let files = [];
         try {
             if (this.source === 'public' || this.source === 'static') {
@@ -396,9 +399,34 @@ export class ApiClient {
                 }
             }
         } catch (e) {
-            console.log('Error checking run files:', e);
+            console.log('Error checking trial files:', e);
         }
         return files;
+    }
+
+    /**
+     * A public job's `PUBLIC_ARTIFACTS_FILE`: the text of every trial artifact, keyed by path,
+     * loaded once per page. Null for a job that has none, whose artifacts are separate files.
+     * No cache-buster: the host's own revalidation answers a repeat visit without a new download.
+     * @private
+     * @param {string} jobId
+     * @returns {Promise<Record<string, string> | null>}
+     */
+    _getPublicArtifacts(jobId) {
+        const cached = this._publicArtifacts.get(jobId);
+        if (cached) return cached;
+        const path = `${jobId}/${PUBLIC_ARTIFACTS_FILE}`;
+        /** @type {Promise<Record<string, string> | null>} */
+        const artifacts = this._fetch(path).then(res => {
+            if (res.status === 404) return null;
+            if (!res.ok) throw new HttpError(`Failed to load data from ${this._formatUrl(path)}`, res.status);
+            return res.json();
+        });
+        // Only a loaded file is remembered. A failure, or a job that has none yet, is asked for again on the next click.
+        const forget = () => this._publicArtifacts.delete(jobId);
+        artifacts.then(loaded => { if (loaded === null) forget(); }, forget);
+        this._publicArtifacts.set(jobId, artifacts);
+        return artifacts;
     }
 
     /** 
@@ -410,6 +438,18 @@ export class ApiClient {
         // Base apps are never uploaded to GCS. Force them to be fetched locally.
         const isBaseApp = path.startsWith('base_apps/');
         const isTasks = path.startsWith('tasks/');
+
+        if (this.source === 'public' && !isBaseApp && !isTasks) {
+            const [jobId, ...rest] = path.replace(/^\/+/, '').split('/');
+            const artifacts = await this._getPublicArtifacts(jobId);
+            // A job last published one file per artifact has no PUBLIC_ARTIFACTS_FILE and is read
+            // file by file below. Delete that fallback once every published job has been rebuilt.
+            if (artifacts !== null) {
+                const key = rest.join('/');
+                if (!Object.hasOwn(artifacts, key)) throw new Error('File not found (404).');
+                return artifacts[key];
+            }
+        }
 
         if (this.source === 'remote' && !isBaseApp && !isTasks) {
             const exists = await this._checkRemoteFileExists(path);

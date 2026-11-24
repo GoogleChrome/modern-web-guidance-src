@@ -20,7 +20,7 @@ A "use case" in this project is not a description of a feature; it's a task that
 * **Action-oriented thinking**: Frame every use case as a task, and make sure it starts with a verb. Instead of "Scroll-driven animations support horizontal scrolling," use something like "Synchronize an animation's progress with the horizontal scroll distance of a container."
 * **Bridge the knowledge gap**: Assume the developer knows *what* they want to build (e.g., "I need a sticky header that shrinks on scroll") but might not know *which* modern web feature is the best solution (e.g., scroll-driven animations). Your use cases should facilitate this discovery by focusing on the desired outcome.
 * **Balance Generality and Distinctness**: The use case **description** should be general enough to capture the overall intent and match a wide range of user prompts. However, to leverage the vector search effectively, ensure the guide uses **clear, descriptive headings**. The RAG system chunks content by heading, making specific parts of your guide discoverable for specific prompts. The implementation details within those chunks must remain **distinct and specific** to ensure the agent receives an unambiguous solution. For example, instead of saying "Fade an image in/out..." in the description, say "Smoothly hide/show a component...".
-* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. **NEVER** mention the specific API methods, properties, or the target feature name in the description itself. For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
+* **Focus on the WHAT not the HOW**: Do not mention the solution in the use case description. Default to omitting specific API methods, properties, or the target feature name in the description unless retrieval genuinely needs it (and note that `gd dev` task generation strips feature and API names when building `task.md`). For example, avoid phrases like "...by doing..." or "...through the use of...". Ideally, the use case description should remain constant, even if the recommended features or best practices for implementing it change over time.
 * **Scope**: Aim for 2-5 distinct use cases per feature. Each use case should represent a distinct implementation pattern or a significant variation in how the feature is applied. IMPORTANT: Not every sub-feature or feature variation needs a use case.
 * **MANDATORY: Drop niche use cases**: Every guide must solve a tangible, high-priority developer need. Do not document niche features or visual tricks with negligible practical impact. Omit use cases unlikely to match real developer prompts.
 * **Merge rather than split**: If two proposed use cases would result in guides that are 99% identical, combine them into one, more general use case. Duplicate guides bloat context windows and create confusing contradictions.
@@ -43,6 +43,8 @@ This guidance is ultimately served through a RAG (Retrieval-Augmented Generation
 * **Distinct value proposition**: Every new guide must offer a distinct solution to a distinct problem.
 
 ## Implementation and scaffolding
+
+External contributors (non-Peers/ATLs/Owners) should use Steps 1–3 to draft the proposal and open a [`new-use-case` issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml) rather than opening a stub PR. Steps 4–6 apply to onboarded [Peers](../../../GOVERNANCE.md#peers), Content ATLs, and Owners (or external contributors working on an approved issue).
 
 The following steps are REQUIRED for creating a new use case:
 
@@ -79,10 +81,11 @@ The following steps are REQUIRED for creating a new use case:
 
   Create a `guide.md` file in the new subdirectory. For now, the guide should only contain metadata about the use case. The actual content of the guide will be filled in later after peer review.
 
-  The required YAML frontmatter fields are:
+  The required YAML frontmatter fields for a stub are:
 
   - **name**: Guide ID matching the `<guide-id>` subdirectory name.
   - **description**: Action-oriented imperative sentence describing the use case.
+  - **draft**: Set to `stub` to withhold the placeholder from distribution until full guidance is authored.
   - **web-feature-ids**: List of web feature IDs that the use case relies on. These can be found in the `web-features` package or via webstatus.dev.
 
   For example:
@@ -91,6 +94,7 @@ The following steps are REQUIRED for creating a new use case:
   ---
   name: background-fetch-priority
   description: Deprioritize background data fetches made with the Fetch API to prevent network contention with user-initiated requests.
+  draft: stub
   web-feature-ids:
     - fetch-priority
     - fetch
@@ -103,6 +107,6 @@ The following steps are REQUIRED for creating a new use case:
 
 * **Step 6: Get the use case approved**
 
-  Submit the use case for review by creating a Pull Request with the `guide.md` frontmatter stub (or by filing a [new-use-case issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml)) for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md).
+  External contributors propose new use cases by filing a [`new-use-case` issue](../../../.github/ISSUE_TEMPLATE/new-use-case.yml) for review by the category's [Content Area Tech Lead (ATL)](../../../docs/ATLS.md). Onboarded [Peers](../../../GOVERNANCE.md#peers), Content ATLs, and Owners may submit a Stage 1 stub PR with the `guide.md` frontmatter stub (or fast-track directly to Stage 2).
 
 After the use case is approved, proceed to **Stage 2** using the [`project-guides`](../project-guides/SKILL.md) skill to author the full `guide.md`, `demo.html`, and `expectations.md`.

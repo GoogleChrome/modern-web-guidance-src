@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
+import { parseExpectations, validateHtmlTags, validateHeadings, validateGuideTitle, validateBaselineClaims, validateGuide, inventoryGuide, classifyGuide, scanAllGuides, getSupportedBaseApps, extractH1Heading, extractAllH1Headings, stripAllComments, checkOriginTrialGraduations, detectEvals, parseGuideMetadata, getPendingGuideStage, ProjectStatus, type GuideInventory, validateCallouts, validatePendingGuideRefs, validateCategory, validateHeadingHtmlTags, validateSecureSrc, validateCodeFences, validateAnchorLinks } from './guide-validation.ts';
 import { extractFeatureIds } from './feature-parser.ts';
 import { maskComments, validateMacros } from './macros.ts';
 import { guidesDir } from './paths.ts';
@@ -144,6 +144,71 @@ describe('GUIDE_REF publication target validation', () => {
       assert.ok(validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
       write('draft: wip\n');
       assert.ok(!validateGuide(guidePath).errors.some(e => e.includes('unpublished guide')));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('validateMacros web-feature-ids coverage', () => {
+  const missing = (id: string, macro: string) =>
+    `Feature "${id}" is missing from "web-feature-ids" in frontmatter (referenced in ${macro} macro in test.md).`;
+  const validate = (body: string, webFeatureIds: string[]) => validateMacros(maskComments(body), 'test.md', { webFeatureIds });
+
+  test('reports each referenced feature missing from web-feature-ids once, naming the first macro', () => {
+    const body = [
+      '{{ BASELINE_STATUS("light-dark") }}',
+      '{{ BASELINE_STATUS("scrollbar-color", "css.properties.scrollbar-color") }}',
+      '{{ FEATURE("customizable-select", "usage") }}',
+      "{{FEATURE_FALLBACKS( 'popover' )}}",
+      '{{ FEATURE_ISSUES("popover") }}',
+      '{{ BASELINE_STATUS("popover") }}',
+      '{{ INCLUDE("features/temporal.md") }}',
+      '{{ INCLUDE("features/accent-color.md#fallbacks") }}',
+      '{{ FEATURE("tmp-cross-origin-storage") }}',
+    ].join('\n\n');
+    assert.deepStrictEqual(validate(body, ['light-dark']), [
+      missing('scrollbar-color', 'BASELINE_STATUS'),
+      missing('customizable-select', 'FEATURE'),
+      missing('popover', 'FEATURE_FALLBACKS'),
+      missing('temporal', 'INCLUDE'),
+      missing('accent-color', 'INCLUDE'),
+      missing('tmp-cross-origin-storage', 'FEATURE'),
+    ]);
+    assert.deepStrictEqual(validate(body, ['light-dark', 'scrollbar-color', 'customizable-select', 'popover', 'temporal', 'accent-color', 'tmp-cross-origin-storage']), []);
+  });
+
+  test('ignores commented-out macros, non-feature macros, and macros that already fail validation', () => {
+    const body = [
+      '{# {{ BASELINE_STATUS("scrollbar-color") }} #}',
+      'Inline {# {{ FEATURE("popover") }} #} note.',
+      'See {{ GUIDE_REF("forms") }}.',
+      '{{ INCLUDE("guides/visual-design/typography/guide.md#responsive-typography") }}',
+      '{{ BASELINE_STATUS("not-a-real-feature-xyz") }}',
+    ].join('\n\n');
+    const errors = validate(body, []);
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /not-a-real-feature-xyz/);
+    assert.doesNotMatch(errors[0], /web-feature-ids/);
+  });
+
+  test('is skipped when no web-feature-ids are given', () => {
+    assert.deepStrictEqual(validateMacros('{{ BASELINE_STATUS("popover") }}', 'test.md'), []);
+  });
+
+  test('validateGuide checks against the frontmatter, including guides without web-feature-ids', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'macro-ids-'));
+    const guidePath = path.join(dir, 'macro-ids', 'guide.md');
+    fs.mkdirSync(path.dirname(guidePath));
+    const write = (idsLine: string) => fs.writeFileSync(guidePath, `---\nname: macro-ids\ndescription: d\n${idsLine}---\n# Macro ids\n\n{{ BASELINE_STATUS("popover") }}\n`);
+    const unlisted = (errors: string[]) => errors.filter(e => e.includes('missing from "web-feature-ids"'));
+    try {
+      write('web-feature-ids: []\n');
+      assert.strictEqual(unlisted(validateGuide(guidePath).errors).length, 1);
+      write('');
+      assert.strictEqual(unlisted(validateGuide(guidePath).errors).length, 1);
+      write('web-feature-ids:\n  - popover\n');
+      assert.deepStrictEqual(validateGuide(guidePath).errors, []);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -675,6 +740,31 @@ describe('inventoryGuide and classifyGuide target discovery', () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('scanAllGuides', () => {
+  test('scans the provided directory instead of the default guides directory', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-all-guides-test-'));
+    const guideDir = path.join(tmpDir, 'performance', 'my-guide');
+    fs.mkdirSync(guideDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(guideDir, 'guide.md'),
+      `---\nname: my-guide\ndescription: A test guide\nweb-feature-ids: []\n---\n\n# My Guide\n`,
+    );
+
+    try {
+      const guides = scanAllGuides(tmpDir);
+      assert.strictEqual(guides.length, 1);
+      assert.strictEqual(guides[0].dir, guideDir);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('returns an empty list when the provided directory does not exist', () => {
+    const missingDir = path.join(os.tmpdir(), 'scan-all-guides-missing-' + Date.now());
+    assert.deepStrictEqual(scanAllGuides(missingDir), []);
   });
 });
 

@@ -18,10 +18,17 @@ All submissions to Google Open Source projects require a signed Contributor Lice
 Contributor roles (**Contributors**, **Peers**, **Content ATLs**, and **Owners**), authoring permissions, and review policies are defined in **[`GOVERNANCE.md`](./GOVERNANCE.md)**. Because guidance is ingested directly by AI coding assistants, authoring brand-new guidance from scratch is reserved for onboarded [Peers](./GOVERNANCE.md#peers) unless permitted by a [Content ATL](./docs/ATLS.md) or [Owner](./GOVERNANCE.md#owners), while anyone can open issues to propose use cases or submit PRs to improve existing guides.
 
 
-## Proposal First for Non-Trivial Changes
+## Send Us the Problem, Not the Patch
 
-* For new guide topics, significant refactors, or new architectural features, please [open an issue first](https://github.com/GoogleChrome/modern-web-guidance-src/issues) to align on scope and design before writing code.
-* For typo fixes, minor doc clarifications, and small bug fixes, feel free to open a PR directly.
+Generating a patch is cheap; validating that a change is spec-compliant, empirically sound, and aligned with our evaluation suite takes maintainer time.
+
+* **Sign the Google CLA before opening a PR:** Visit **[cla.developers.google.com](https://cla.developers.google.com/)** and sign the CLA using the exact email address configured in your `git config user.email` *before* submitting your pull request. Strip any AI `Co-Authored-By:` commit trailers, as non-human emails fail the CLA check.
+* **Problem first (Issue required):** Except for unambiguous typo or broken-link fixes, **all pull requests require an agreed-upon issue first** (assigned to you or labeled `pr-welcome`)—including changes to `guides/` content, `demo.html`, `expectations.md`, `src/` tooling, and `targets/` evaluations. A pull request with no agreed problem behind it will be closed.
+* **An open issue is not an invitation to submit a PR:** Issues on the tracker are often maintainer task items, unrefined proposals, or part of a batched effort. Do not open a PR for an open issue (or for a follow-up mentioned in a review comment) unless a maintainer has **assigned the issue to you** or labeled it `pr-welcome`. Unsolicited ("issue-sniping") PRs and duplicate competing PRs will be closed without review.
+* **Scope & concurrency limits for external Contributors:**
+  * **1 open PR at a time:** Unless you are an onboarded [Peer, Content ATL, or Owner](./GOVERNANCE.md), limit yourself to **one** open pull request at a time (including drafts). Wait for your open PR to be merged or closed before opening another.
+  * **1 guide per PR:** External content PRs must be scoped to a single guide directory (`guides/<category>/<slug>/`), unless a multi-guide change is approved on the linked issue (e.g., extracting shared content into `features/`). Unsolicited multi-guide or cross-category sweeps will be closed.
+* **AI-assisted contributions:** You are responsible for understanding and verifying the technical and web-spec accuracy of every AI-assisted issue, PR, or comment you submit, and following the etiquette in [`AGENTS.md`](./AGENTS.md#github--pr-etiquette).
 
 
 ## Choose Your Contribution Track
@@ -67,7 +74,7 @@ pnpm typecheck && pnpm lint
 pnpm preflight
 ```
 
-When using a coding agent to author changes or address PR review feedback, follow the workflows and PR review etiquette in [`AGENTS.md`](./AGENTS.md#pr-review-etiquette).
+When using a coding agent to author changes or address PR review feedback, follow the workflows and GitHub etiquette in [`AGENTS.md`](./AGENTS.md#github--pr-etiquette).
 
 
 ## Project Agent Skills
@@ -84,7 +91,7 @@ This repository includes a curated set of **Agent Skills** in [`.agents/skills/`
 | **Evaluations & Graders** | [`project-evals`](./.agents/skills/project-evals/SKILL.md) | Playwright test grader generation and calibration criteria (Stage 3). |
 | **Baseline Status** | [`web-baseline`](./.agents/skills/web-baseline/SKILL.md) | Checking browser compatibility and Baseline status across web platform features. |
 | **Coding Standards** | [`project-coding-standards`](./.agents/skills/project-coding-standards/SKILL.md) | Architecture conventions, strict typing, canonical enums, and PR review standards for CLI and tooling code. |
-| **Eval Diagnostics** | [`eval-investigation`](./.agents/skills/eval-investigation/SKILL.md), [`nightly-eval-investigation`](./.agents/skills/nightly-eval-investigation/SKILL.md), [`dev-prompt-canary`](./.agents/skills/dev-prompt-canary/SKILL.md) | Investigating local/nightly evaluation runs and validating `gd dev` prompt changes. |
+| **Eval Diagnostics** | [`nightly-eval-investigation`](./.agents/skills/nightly-eval-investigation/SKILL.md), [`dev-prompt-canary`](./.agents/skills/dev-prompt-canary/SKILL.md), [`grader-replay`](./.agents/skills/grader-replay/SKILL.md) | Investigating nightly evaluation runs, validating `gd dev` prompt changes, and replaying graders. |
 | **Repo Maintenance** | [`project-maintenance`](./.agents/skills/project-maintenance/SKILL.md), [`coherence-auditor`](./.agents/skills/coherence-auditor/SKILL.md) | Routine dependency updates, link/doc coherence checks, and workspace hygiene. |
 
 

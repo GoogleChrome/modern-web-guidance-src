@@ -6,6 +6,7 @@ import path from 'node:path';
 import {
   DEFAULT_ALLOWLIST_PATH,
   globToRegExp,
+  isCuratedSuite,
   loadValidatedAllowlist,
   newestFirst,
   overrideFor,
@@ -59,6 +60,33 @@ describe('selectSuites', () => {
   test('selects nothing when include is empty', () => {
     assert.deepEqual(selectSuites({ ...allowlist, include: [] }, ['nightly-x-codex_cli']), []);
   });
+
+  test('checked-in allowlist selects unsuffixed and model-suffixed nightlies while rejecting arbitrary suffixes', () => {
+    const checkedIn = loadValidatedAllowlist(DEFAULT_ALLOWLIST_PATH);
+    assert.deepEqual(
+      selectSuites(checkedIn, [
+        'nightly-2026-11-18_19-25-19-claude_code',
+        'nightly-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+        'nightly-2026-11-18_19-25-19-claude_code-jdoe',
+        'nightly-2026-11-18_19-25-18-antigravity_cli',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gemini-4-argon-medium',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gpt-6.1-sol',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-smoke',
+        'nightly-2026-11-18_19-25-20-codex_cli',
+        'nightly-2026-11-18_19-25-20-codex_cli-gpt-6.1-sol',
+        'trial-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+      ]),
+      [
+        'nightly-2026-11-18_19-25-18-antigravity_cli',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gemini-4-argon-medium',
+        'nightly-2026-11-18_19-25-18-antigravity_cli-gpt-6.1-sol',
+        'nightly-2026-11-18_19-25-19-claude_code',
+        'nightly-2026-11-18_19-25-19-claude_code-claude-opus-5-5',
+        'nightly-2026-11-18_19-25-20-codex_cli',
+        'nightly-2026-11-18_19-25-20-codex_cli-gpt-6.1-sol',
+      ],
+    );
+  });
 });
 
 describe('overrideFor', () => {
@@ -68,6 +96,22 @@ describe('overrideFor', () => {
       excludeGuides: ['security'],
     });
     assert.equal(overrideFor(allowlist, 'other'), undefined);
+  });
+});
+
+describe('isCuratedSuite', () => {
+  test('returns true for exact non-scheduled suites in the allowlist', () => {
+    assert.equal(isCuratedSuite('one-off-2026-05-13_19-17-28', allowlist), true);
+    assert.equal(isCuratedSuite('opus-medium-1.0-rc-2026-11-08'), true);
+  });
+
+  test('returns false for scheduled nightlies and weeklies', () => {
+    assert.equal(isCuratedSuite('nightly-2026-10-20_20-43-48-codex_cli', allowlist), false);
+    assert.equal(isCuratedSuite('weekly-2026-10-20-codex_cli', allowlist), false);
+  });
+
+  test('returns false when allowlist is passed and suite is not in include', () => {
+    assert.equal(isCuratedSuite('unknown-suite', allowlist), false);
   });
 });
 
@@ -198,6 +242,21 @@ describe('retention helpers', () => {
     assert.deepEqual(ids({ maxSuitesPerAgent: 2 }), ['x1', 'x2', 'c1', 'c2', 'n1'], 'per-agent cap skips the surplus and keeps scanning');
     assert.deepEqual(ids({ maxSuitesPerAgent: 2, maxSuites: 3 }), ['x1', 'x2', 'c1'], 'per-agent first, then the global cap');
   });
+
+  test('withinSuiteCaps preserves curated baseline suites regardless of rolling nightly caps', () => {
+    const curatedAllowlist: PublicAllowlist = {
+      ...allowlist,
+      include: [...allowlist.include, 'curated-baseline-run'],
+      retention: { maxSuitesPerAgent: 1, maxSuites: 2 },
+    };
+    const ranked = [
+      { id: 'nightly-recent-1', agent: 'codex_cli' },
+      { id: 'nightly-recent-2', agent: 'codex_cli' },
+      { id: 'curated-baseline-run', agent: 'codex_cli' },
+    ];
+    const kept = withinSuiteCaps(curatedAllowlist, ranked).map(s => s.id);
+    assert.deepEqual(kept, ['nightly-recent-1', 'curated-baseline-run']);
+  });
 });
 
 describe('suiteCreatedAt', () => {
@@ -205,6 +264,10 @@ describe('suiteCreatedAt', () => {
 
   test('reads the run time out of a nightly id', () => {
     assert.equal(suiteCreatedAt('nightly-2026-10-20_20-43-48-codex_cli', fallback).toISOString(), '2026-10-20T20:43:48.000Z');
+  });
+
+  test('reads date out of a date-only suite id', () => {
+    assert.equal(suiteCreatedAt('opus-medium-1.0-rc-2026-11-08', fallback).toISOString(), '2026-11-08T00:00:00.000Z');
   });
 
   test('falls back for ids without a timestamp', () => {

@@ -6,6 +6,8 @@ web-feature-ids:
   - conic-gradients
   - masks
   - registered-custom-properties
+  - background-clip-border-area
+  - attr
 ---
 
 # Progress ring
@@ -31,12 +33,17 @@ Use a wrapper to hold both the visual ring and the optional center content. The 
 ```html
 <div class="progress-ring-wrapper">
   <progress value="75" max="100" aria-label="Task progress" class="progress-ring"></progress>
-  <!-- Optional: Content to display in the center -->
-  <div class="progress-ring-content">
+  <!-- Optional: Content to display in the center. Hidden from assistive
+       technologies because it repeats the value of the <progress> element. -->
+  <div class="progress-ring-content" aria-hidden="true">
     75%
   </div>
 </div>
 ```
+
+Hide the center content from assistive technologies with `aria-hidden="true"`. The `<progress>` element already exposes its value, so screen readers would otherwise announce it twice.
+
+If the center content shows the value in another form, such as "3 of 5 files" or a percentage, set the same text in `aria-valuetext` on the `<progress>` element whenever you update it, otherwise screen readers only get the number.
 
 ### 2. Styles
 
@@ -65,7 +72,7 @@ progress.progress-ring::slider-fill {
 
 #### Container and Ring
 
-The wrapper provides the positioning context. The `<progress>` element handles the visual gradient.
+The wrapper provides the positioning context. The `<progress>` element handles the visual gradient. Forced colors mode removes background gradients, so in `@media (forced-colors: active)`, opt the ring out with `forced-color-adjust: none` and draw it with system colors, or the ring disappears.
 
 ```css
 .progress-ring-wrapper {
@@ -95,6 +102,13 @@ progress.progress-ring {
   background-clip: border-area;
   border: var(--thickness) solid transparent;
   background-origin: border-box;
+
+  @media (forced-colors: active) {
+    /* Keeps the gradient, which forced colors mode removes, and draws it in system colors */
+    forced-color-adjust: none;
+    --fill-color: CanvasText;
+    --track-color: Canvas;
+  }
 }
 
 .progress-ring-content {
@@ -160,12 +174,15 @@ If the transition is absolutely necessary, you can check for `@property` support
 For browsers that don't yet support `background-clip: border-area`, fall back to a `mask-image` to hollow out the center of the `<progress>` element.
 
 ```css
+/* Declarations inside a top-level @supports need a selector, or the parser drops them. */
 @supports not (background-clip: border-area) {
-  mask-image: radial-gradient(
-    transparent calc(50% - var(--thickness)),
-    black calc(50% - var(--thickness) + 0.5px)
-  );
-  border: 0;
+  progress.progress-ring {
+    mask-image: radial-gradient(
+      transparent calc(50% - var(--thickness)),
+      black calc(50% - var(--thickness) + 0.5px)
+    );
+    border: 0;
+  }
 }
 ```
 

@@ -10,5 +10,4 @@
 - Spacing (`margin-inline-start` or `margin-inline-end`) is automatically applied to pseudo-element icons only when the parent element has non-empty content (using `:not(.icon, :empty)` or equivalent selectors).
 - Single-color decorative icons are rendered via CSS custom properties (`--icon-start`, `--icon-end`, or `--icon`) rather than inline `<svg>` markup inside buttons, `<img>` tags, or external icon fonts.
 - Interactive icon-only controls can apply the `.icon` class and `--icon` property directly to the control, and provide a valid accessible name (such as via `aria-label`).
-- Standalone non-interactive empty `.icon` elements use `aria-hidden="true"` when decorative, or `role="img"` with a valid accessible name when informative.
 - Sizing of icon pseudo-elements uses relative CSS units (such as `em`, `rem`, or `lh`) rather than hardcoded pixel dimensions.

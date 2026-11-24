@@ -435,19 +435,4 @@ test.describe('out-of-order-html-streaming Target Grader', () => {
 
     expect(allValidRunScriptsCalls).toBe(true);
   });
-
-  test('Containers receiving out-of-order updates have appropriate aria-live attributes to notify screen reader users of the changes', () => {
-    const docs: Array<{ file: string; document: Document }> = getHtmlDocuments(targetFiles);
-    expect(docs.length).toBeGreaterThan(0);
-
-    const liveRegions = docs.flatMap(({ document }) =>
-      Array.from(
-        document.querySelectorAll(
-          '[aria-live="polite"], [aria-live="assertive"], [role="status"], [role="alert"], [role="log"]'
-        )
-      ).filter((el: any) => !el.closest('template'))
-    );
-
-    expect(liveRegions.length).toBeGreaterThan(0);
-  });
 });

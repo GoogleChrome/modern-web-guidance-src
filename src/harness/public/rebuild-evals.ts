@@ -171,6 +171,8 @@ export interface RebuildOptions {
   excludeGuides?: readonly string[];
   /** Extra tokens (e.g. operator LDAPs) that must not appear anywhere in the output. */
   forbiddenTokens?: LeakOptions['forbiddenTokens'];
+  /** Whether this suite is a curated baseline run. */
+  curated?: boolean;
 }
 
 type SuiteField = (typeof PUBLIC_SUITE_FIELDS)[number];
@@ -180,6 +182,7 @@ type AssertionField = (typeof PUBLIC_ASSERTION_FIELDS)[number];
 /** The shape of a published `evals.json`. */
 export type PublicEvals = Pick<EvalsReport, SuiteField | 'summary' | 'stats'> & {
   reasoningEffort?: ReasoningEffort;
+  curated?: boolean;
   results: Record<string, PublicRun[]>;
 };
 
@@ -211,6 +214,7 @@ export function rebuildEvals(raw: EvalsReport, options: RebuildOptions): PublicE
   const rebuilt = scrubValue<PublicEvals>({
     ...pickFields(raw, PUBLIC_SUITE_FIELDS),
     ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(options.curated ? { curated: true } : {}),
     summary: metrics.summary,
     stats: metrics.testStats,
     results,

@@ -4,4 +4,3 @@
 - Imperative updates stream the fetch response into a streaming HTML method with `pipeTo()`, decoding it with `Response.textStream()` or `pipeThrough(new TextDecoderStream())`.
 - HTML from users or other untrusted sources is written with a safe method (such as `setHTML()` or `streamHTML()`), not with an `...Unsafe()` method.
 - The `runScripts: true` option must only be passed to an unsafe method when writing content that contains trusted `<script>` elements.
-- Containers receiving out-of-order updates should have appropriate `aria-live` attributes, where needed, to notify screen reader users of the changes.

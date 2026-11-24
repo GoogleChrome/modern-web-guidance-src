@@ -34,12 +34,13 @@ const NOT_INSIDE_URL = String.raw`(?<![\w:.])`;
 const NOT_IN_WORD = String.raw`(?<![\w.])`;
 
 /**
- * What the rewrite treats as a home directory: `/usr/local/google/home/<x>/...`,
- * `/home/<x>/...`, `/Users/<x>/...` with something inside it. The user segment
- * is included in the match; the segment after it is only required (lookahead),
- * so a route such as `/home/about` is not rewritten.
+ * What the rewrite treats as a home directory: cloudtop
+ * (`usr/local/google/home/<x>/...` with or without leading slash), `/home/<x>/...`,
+ * `/Users/<x>/...` with something inside it. The user segment is included in
+ * the match; the segment after it is only required (lookahead), so a route such
+ * as `/home/about` is not rewritten.
  */
-const HOME_DIR = String.raw`/(?:usr/local/google/home|home|Users)/${SEGMENT}+(?=/${SEGMENT})`;
+const HOME_DIR = String.raw`(?:/?usr/local/google/home|/(?:home|Users))/${SEGMENT}+(?=/${SEGMENT})`;
 
 /** A home directory root: `~` or a `HOME_DIR`. */
 const HOME_ROOT = String.raw`(?:~|${HOME_DIR})`;
@@ -69,13 +70,14 @@ const HOME_DIR_RE = new RegExp(`${NOT_INSIDE_URL}${HOME_DIR}`, 'g');
  * Detection is wider than the rewrite: a bare home directory with nothing
  * after the user (`HOME=/home/<x>`, `"cwd":"/Users/<x>"`) is a leak even
  * though the rewrite, which only trusts shapes it can prove, leaves it alone.
- * Cloudtop homes are flagged wherever they appear; `/home` and `/Users` only
+ * Cloudtop homes are flagged wherever they appear (including without a leading
+ * slash, e.g. after a quote or string start); `/home` and `/Users` only
  * when they start a path (so `./home/Home` and `host/Users/profile` pass, but
  * an app route like `/home/about` fails closed). The user segment is captured
  * so `harvestUserSegments` can turn it into a forbidden token, and so a
  * `GENERIC_USERS` account can be told apart from a person.
  */
-const CLOUDTOP_HOME_RE = new RegExp(String.raw`/usr/local/google/home/(${SEGMENT}+)`, 'g');
+const CLOUDTOP_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/?usr/local/google/home/(${SEGMENT}+)`, 'g');
 const POSIX_HOME_RE = new RegExp(String.raw`${NOT_IN_WORD}/(?:home|Users)/(${SEGMENT}+)`, 'g');
 /** Drive letter or WSL mount, then `\`, `/`, or JSON-escaped `\\`; also inside `file:///C:/Users/...`. */
 const WINDOWS_HOME_RE = /(?:[A-Za-z]:|\/mnt\/[a-z])(?:\\+|\/)users(?:\\+|\/)([^\\/\s"']+)/gi;

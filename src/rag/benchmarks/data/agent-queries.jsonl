@@ -960,13 +960,13 @@
 {"qid":"aq0960","query":"container query component","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-19","words":3,"split":"test"}
 {"qid":"aq0961","query":"container query responsive card","expectedGuide":"size-aware-styling","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
 {"qid":"aq0962","query":"responsive card container query","expectedGuide":"size-aware-styling","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
-{"qid":"aq0963","query":"fade content mask","expectedGuide":"soft-edge-content-fade","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
-{"qid":"aq0964","query":"fade content mask gradient","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
-{"qid":"aq0965","query":"fade out content gradient","expectedGuide":"soft-edge-content-fade","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
-{"qid":"aq0966","query":"fade out content gradient mask","expectedGuide":"soft-edge-content-fade","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"test"}
-{"qid":"aq0967","query":"fade out content mask","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
-{"qid":"aq0968","query":"fade out transparent preview paywall mask","expectedGuide":"soft-edge-content-fade","agent":"jetski_cli","runDate":"2026-09-09","words":6,"split":"test"}
-{"qid":"aq0969","query":"mask-image content fade out preview","expectedGuide":"soft-edge-content-fade","agent":"antigravity_cli","runDate":"2026-10-06","words":5,"split":"test"}
+{"qid":"aq0963","query":"fade content mask","expectedGuide":"teaser","agent":"codex_cli","runDate":"2026-10-19","words":3,"split":"test"}
+{"qid":"aq0964","query":"fade content mask gradient","expectedGuide":"teaser","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
+{"qid":"aq0965","query":"fade out content gradient","expectedGuide":"teaser","agent":"claude_code","runDate":"2026-10-19","words":4,"split":"test"}
+{"qid":"aq0966","query":"fade out content gradient mask","expectedGuide":"teaser","agent":"claude_code","runDate":"2026-10-22","words":5,"split":"test"}
+{"qid":"aq0967","query":"fade out content mask","expectedGuide":"teaser","agent":"antigravity_cli","runDate":"2026-10-20","words":4,"split":"test"}
+{"qid":"aq0968","query":"fade out transparent preview paywall mask","expectedGuide":"teaser","agent":"jetski_cli","runDate":"2026-09-09","words":6,"split":"test"}
+{"qid":"aq0969","query":"mask-image content fade out preview","expectedGuide":"teaser","agent":"antigravity_cli","runDate":"2026-10-06","words":5,"split":"test"}
 {"qid":"aq0970","query":"compare precise timestamps","expectedGuide":"sort-high-precision-timestamps","agent":"codex_cli","runDate":"2026-10-23","words":3,"split":"test"}
 {"qid":"aq0971","query":"parse nanosecond UTC timestamps","expectedGuide":"sort-high-precision-timestamps","agent":"antigravity_cli","runDate":"2026-10-24","words":4,"split":"test"}
 {"qid":"aq0972","query":"sort timestamps nanosecond precision","expectedGuide":"sort-high-precision-timestamps","agent":"claude_code","runDate":"2026-10-22","words":4,"split":"test"}

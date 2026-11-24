@@ -1,0 +1,1 @@
+- Update The Daily Grind homepage so the navigation bar, hero banner, seasonal favorites cards, and footer adapt their layouts, text, and interactive links and buttons to fit any screen or container size, keeping touch targets comfortable to tap and preventing any elements from colliding with device system UI.

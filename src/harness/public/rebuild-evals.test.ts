@@ -61,15 +61,21 @@ describe('rebuildEvals: field allowlists', () => {
     const raw = loadFixture();
     const out = build(raw);
 
-    const allowed = new Set<string>([...PUBLIC_SUITE_FIELDS, 'reasoningEffort', 'summary', 'stats', 'results']);
+    const allowed = new Set<string>([...PUBLIC_SUITE_FIELDS, 'reasoningEffort', 'curated', 'summary', 'stats', 'results']);
     for (const key of Object.keys(out)) {
       assert.ok(allowed.has(key), `unexpected suite field: ${key}`);
     }
     assert.ok(!('reasoningEffort' in out), 'older suites without reasoningEffort must keep omitting it');
+    assert.ok(!('curated' in out), 'regular suites must omit curated');
     for (const field of PRIVATE_SUITE_FIELDS) {
       assert.ok(field in raw, `fixture should contain ${field} so this test is meaningful`);
       assert.ok(!(field in out), `${field} leaked into public evals`);
     }
+  });
+
+  test('sets curated: true when curated option is enabled', () => {
+    const out = build(loadFixture(), { curated: true });
+    assert.equal(out.curated, true);
   });
 
   test('copies valid reasoningEffort and omits absent or malformed reasoningEffort', () => {
