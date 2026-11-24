@@ -184,4 +184,49 @@ test.describe('Pull-to-Reveal Grader', () => {
     expect(scrollStatus?.hasScrolled).toBe(true);
     expect(scrollStatus?.topDiff).toBeLessThan(5);
   });
+
+  test('Each pull to reveal interaction has an associated trigger <button> for revealing the hidden content', async ({ page }) => {
+    const triggerButton = page.locator('button:visible').first();
+    await expect(triggerButton).toBeVisible();
+
+    const buttonInfo = await triggerButton.evaluate((btn) => {
+      const ariaLabel = (btn.getAttribute('aria-label') || '').trim();
+      const labelledBy = (btn.getAttribute('aria-labelledby') || '').trim().split(/\s+/).filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent?.trim() || '').join(' ').trim();
+      const text = (btn.textContent || '').trim();
+      return {
+        accessibleName: ariaLabel || labelledBy || text,
+      };
+    });
+    expect(buttonInfo.accessibleName.length).toBeGreaterThan(0);
+
+    await triggerButton.click();
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => {
+        const snapPoints = Array.from(document.querySelectorAll('*')).filter((el) => {
+          const style = window.getComputedStyle(el);
+          return style.scrollSnapAlign === 'start' || style.scrollSnapAlign.startsWith('start ');
+        });
+        if (snapPoints.length < 2) return false;
+        const hiddenEl = snapPoints[0] as HTMLElement;
+        const target = snapPoints[1] as HTMLElement;
+        let container: HTMLElement | null = target.parentElement;
+        while (container) {
+          const style = window.getComputedStyle(container);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') break;
+          container = container.parentElement;
+        }
+        if (!container) {
+          container = (document.scrollingElement || document.documentElement) as HTMLElement;
+        }
+        const isRoot = container === document.documentElement || container === document.scrollingElement;
+        const cRect = isRoot
+          ? { top: 0, bottom: window.innerHeight }
+          : container.getBoundingClientRect();
+        const hRect = hiddenEl.getBoundingClientRect();
+        return hRect.bottom > cRect.top + 5 && hRect.top < cRect.bottom;
+      });
+    }, { timeout: 1500 }).toBe(true);
+  });
 });
