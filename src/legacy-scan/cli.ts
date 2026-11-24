@@ -1,5 +1,4 @@
-import { constants as fsConstants } from 'node:fs';
-import { lstat, open, realpath, stat } from 'node:fs/promises';
+import { lstat, readFile, realpath, stat } from 'node:fs/promises';
 import { basename, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
@@ -453,24 +452,10 @@ export async function runLegacyScanCli(
   let findings: ScanFinding[];
 
   if (targetStat.isFile()) {
-    let content: string;
-    try {
-      const handle = await open(realTarget, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
-      try {
-        const fdStat = await handle.stat();
-        if (!fdStat.isFile()) {
-          return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
-        }
-        if (fdStat.size > MAX_SOURCE_FILE_BYTES) {
-          return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
-        }
-        content = await handle.readFile('utf8');
-      } finally {
-        await handle.close();
-      }
-    } catch {
-      return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
+    if (targetStat.size > MAX_SOURCE_FILE_BYTES) {
+      return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
     }
+    const content = await readFile(realTarget, 'utf8');
     const rel = insideBaseCwd ? relative(resolvedBaseCwd, resolvedDir).replace(/\\/g, '/') : '';
     findings = scanFiles(new Map([[rel || basename(resolvedDir), content]]), activeRules, {
       includeDocsAndTests: true,

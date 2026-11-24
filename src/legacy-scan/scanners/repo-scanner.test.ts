@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -360,6 +360,8 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
       await writeFile(join(outsideDir, 'secret.ts'), 'legacyTarget("outside");\n');
       await writeFile(join(outsideDir, 'nested', 'deep.ts'), 'legacyTarget("deep-outside");\n');
       await writeFile(join(repoDir, 'src', 'real.ts'), 'legacyTarget("real");\n');
+      await writeFile(join(repoDir, 'src', 'exec.ts'), 'legacyTarget("exec");\n');
+      await chmod(join(repoDir, 'src', 'exec.ts'), 0o755);
       await writeFile(join(repoDir, 'src', 'untracked.ts'), 'legacyTarget("untracked");\n');
       await writeFile(join(repoDir, '.gitignore'), 'ignored.ts\n');
       await writeFile(join(repoDir, 'ignored.ts'), 'legacyTarget("ignored");\n');
@@ -374,7 +376,12 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
       await execFileAsync('git', ['init'], { cwd: repoDir });
       await execFileAsync(
         'git',
-        ['add', '.gitignore', 'src/real.ts', 'src/tracked-outside-link.ts', 'src/tracked-inside-link.ts'],
+        ['add', '.gitignore', 'src/real.ts', 'src/exec.ts', 'src/tracked-outside-link.ts', 'src/tracked-inside-link.ts'],
+        { cwd: repoDir },
+      );
+      await execFileAsync(
+        'git',
+        ['update-index', '--add', '--cacheinfo', '160000,e69de29bb2d1d6434b8b29ae775ad8c2e48c5391,src/submod'],
         { cwd: repoDir },
       );
 
@@ -384,10 +391,10 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
 
       assert.deepEqual(
         findings.map((f) => f.file).sort(),
-        ['src/real.ts', 'src/untracked.ts'],
+        ['src/exec.ts', 'src/real.ts', 'src/untracked.ts'],
       );
-      assert.equal(stats.scannedFileCount, 2);
-      assert.equal(stats.eligibleFileCount, 2);
+      assert.equal(stats.scannedFileCount, 3);
+      assert.equal(stats.eligibleFileCount, 3);
 
       // Repo with only untracked files must still enumerate them cleanly
       const untrackedOnlyDir = join(workspace, 'untracked-only');

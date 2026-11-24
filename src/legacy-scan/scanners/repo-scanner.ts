@@ -53,7 +53,6 @@ export function resolveMaxFiles(maxFiles?: number): number {
 }
 
 const execFileAsync = promisify(execFile);
-const GIT_SYMLINK_MODE = '120000';
 
 /**
  * Returns `true` when normalized `candidatePath` sits at or inside normalized `rootPath`.
@@ -110,15 +109,11 @@ async function tryReadFileContent(
       return undefined;
     }
     const entryStat = await lstat(fullPath);
-    if (entryStat.isSymbolicLink() || !entryStat.isFile()) {
+    if (!entryStat.isFile() || entryStat.size > MAX_SOURCE_FILE_BYTES) {
       return undefined;
     }
     const handle = await open(fullPath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
     try {
-      const fileStat = await handle.stat();
-      if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
-        return undefined;
-      }
       const content = await handle.readFile('utf8');
       const disposition = classifyFile(relPath, content, session);
       if (disposition === 'source' || disposition === 'vendored') {
@@ -180,49 +175,44 @@ async function collectDirectoryPaths(
   return outPaths;
 }
 
-function parseCachedGitFiles(stdout: string): string[] {
-  const paths: string[] = [];
-  for (const record of stdout.split('\0')) {
-    if (!record) continue;
-    const tabIdx = record.indexOf('\t');
-    const spaceIdx = record.indexOf(' ');
-    if (tabIdx === -1 || spaceIdx === -1 || spaceIdx > tabIdx) continue;
-    if (record.slice(0, spaceIdx) === GIT_SYMLINK_MODE) continue;
-    const filePath = record.slice(tabIdx + 1);
-    if (filePath) {
-      paths.push(filePath);
-    }
-  }
-  return paths;
-}
-
 async function tryEnumerateGitFiles(realRepoRoot: string): Promise<string[] | null> {
-  const execOpts = {
-    cwd: realRepoRoot,
-    maxBuffer: 50 * 1024 * 1024,
-    timeout: 10_000,
-  } as const;
-
-  let cachedStdout: string;
-  let othersStdout: string;
+  let stdout: string;
   try {
-    const [cachedRes, othersRes] = await Promise.all([
-      execFileAsync('git', ['ls-files', '-z', '-s', '--cached'], execOpts),
-      execFileAsync('git', ['ls-files', '-z', '--others', '--exclude-standard'], execOpts),
-    ]);
-    cachedStdout = cachedRes.stdout;
-    othersStdout = othersRes.stdout;
+    const res = await execFileAsync(
+      'git',
+      ['ls-files', '-z', '-t', '-s', '--cached', '--others', '--exclude-standard'],
+      {
+        cwd: realRepoRoot,
+        maxBuffer: 50 * 1024 * 1024,
+        timeout: 10_000,
+      },
+    );
+    stdout = res.stdout;
   } catch {
     return null;
   }
 
-  if (!cachedStdout && !othersStdout) {
+  if (!stdout) {
     return null;
   }
 
-  const cachedPaths = parseCachedGitFiles(cachedStdout);
-  const untrackedPaths = othersStdout.split('\0').filter(Boolean);
-  return Array.from(new Set([...cachedPaths, ...untrackedPaths]));
+  const paths = new Set<string>();
+  for (const record of stdout.split('\0')) {
+    if (!record) continue;
+    if (record.startsWith('? ')) {
+      const filePath = record.slice(2);
+      if (filePath) paths.add(filePath);
+      continue;
+    }
+    const tabIdx = record.indexOf('\t');
+    if (tabIdx === -1) continue;
+    const mode = record.slice(2, 8);
+    if (mode === '100644' || mode === '100755') {
+      const filePath = record.slice(tabIdx + 1);
+      if (filePath) paths.add(filePath);
+    }
+  }
+  return Array.from(paths);
 }
 
 /**
