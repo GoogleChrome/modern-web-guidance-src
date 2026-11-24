@@ -358,10 +358,19 @@ test.describe('switch Target Grader', () => {
       }
 
       const ratio = await switchLocator.evaluate((el) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
         const parseRgba = (str: string): [number, number, number, number] | null => {
-          const m = str.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i);
-          if (!m) return null;
-          return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] !== undefined ? Number(m[4]) : 1];
+          const trimmed = str.trim();
+          if (!trimmed || trimmed === 'none') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = trimmed;
+          ctx.fillRect(0, 0, 1, 1);
+          const d = ctx.getImageData(0, 0, 1, 1).data;
+          return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
         };
         const composite = (
           fg: [number, number, number, number],
