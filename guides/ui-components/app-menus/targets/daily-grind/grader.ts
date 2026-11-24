@@ -99,6 +99,40 @@ test.describe('Application Menu Bar Grader', () => {
       await page.goto(TARGET_URL);
     });
 
+    test('The top-level triggers have an accessible name that includes their visible text labels, along with role="menuitem"', async ({ page }) => {
+      const triggers = page.locator('[role="menubar"] > button, [role="menubar"] > [commandfor]');
+      await expect(triggers.first()).toBeAttached();
+      const count = await triggers.count();
+      expect(count).toBeGreaterThan(0);
+
+      const results = await triggers.evaluateAll((els) =>
+        els.map((el) => {
+          const role = el.getAttribute('role');
+          const visibleText = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+          const ariaLabel = el.getAttribute('aria-label')?.trim();
+          const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim();
+          let accName = visibleText;
+          if (ariaLabel) {
+            accName = ariaLabel;
+          } else if (ariaLabelledBy) {
+            const refText = ariaLabelledBy
+              .split(/\s+/)
+              .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+              .filter(Boolean)
+              .join(' ');
+            if (refText) accName = refText;
+          }
+          return { role, visibleText, accName };
+        }),
+      );
+
+      for (const r of results) {
+        expect(r.role).toBe('menuitem');
+        expect(r.visibleText.length).toBeGreaterThan(0);
+        expect(r.accName.toLowerCase()).toContain(r.visibleText.toLowerCase());
+      }
+    });
+
     test('Exactly one top-level trigger in the menubar is in the Tab order (tabindex="0") and every other top-level trigger has tabindex="-1"', async ({ page }) => {
       const triggers = page.locator('[role="menubar"] > button, [role="menubar"] > [commandfor]');
       await expect(triggers.first()).toBeAttached();
