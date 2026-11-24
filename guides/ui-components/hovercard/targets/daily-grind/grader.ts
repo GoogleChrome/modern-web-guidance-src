@@ -44,6 +44,19 @@ test.describe('hovercard Target Grader', () => {
     expect(popovers.length).toBeGreaterThan(0);
 
     const allRules = getRules(targetFiles);
+    const insetProps = [
+      'top',
+      'left',
+      'right',
+      'bottom',
+      'inset',
+      'inset-block',
+      'inset-block-start',
+      'inset-block-end',
+      'inset-inline',
+      'inset-inline-start',
+      'inset-inline-end',
+    ];
 
     const hasPositionArea = allRules.some((rule) => {
       const style = getRuleStyle(rule);
@@ -53,7 +66,14 @@ test.describe('hovercard Target Grader', () => {
       return posArea.length > 0 || insetArea.length > 0;
     });
 
-    expect(hasPositionArea).toBe(true);
+    // Option 1 (polyfill-compatible) in anchor-positioning feature docs uses anchor() on inset properties instead of position-area.
+    const hasAnchorInset = allRules.some((rule) => {
+      const style = getRuleStyle(rule);
+      if (!style) return false;
+      return insetProps.some((prop) => /\banchor\s*\(/.test(style.getPropertyValue(prop)));
+    });
+
+    expect(hasPositionArea || hasAnchorInset).toBe(true);
   });
 
   test('The popover has a transition that includes display: allow-discrete and overlay: allow-discrete.', () => {
@@ -166,6 +186,23 @@ test.describe('hovercard Target Grader', () => {
 
       const openPopover = page.locator('[popover]:popover-open').first();
       await expect(openPopover).toBeVisible({ timeout: 5000 });
+    });
+
+    test('The trigger link references its popover via aria-describedby and does not have aria-expanded.', async ({ page }) => {
+      const triggers = page.locator('a[interestfor]');
+      const count = await triggers.count();
+      expect(count).toBeGreaterThan(0);
+
+      for (let i = 0; i < count; i++) {
+        const trigger = triggers.nth(i);
+        const targetId = await trigger.getAttribute('interestfor');
+        expect(targetId).toBeTruthy();
+        const describedBy = await trigger.getAttribute('aria-describedby');
+        const tokens = (describedBy ?? '').trim().split(/\s+/).filter(Boolean);
+        expect(tokens).toContain(targetId);
+        const ariaExpanded = await trigger.getAttribute('aria-expanded');
+        expect(ariaExpanded).toBeNull();
+      }
     });
   });
 });

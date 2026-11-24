@@ -1,234 +1,162 @@
-diff --git a/build.mjs b/build.mjs
+diff --git a/hovercards.mjs b/hovercards.mjs
 new file mode 100644
-index 0000000..8739bdf
+index 0000000..2af04dd
 --- /dev/null
-+++ b/build.mjs
-@@ -0,0 +1,4 @@
-+import { copyFile, mkdir } from 'node:fs/promises';
++++ b/hovercards.mjs
+@@ -0,0 +1,82 @@
++const expandedTriggers = new WeakSet();
 +
-+await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
-+await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
-diff --git a/index.html b/dist/index.html
-similarity index 56%
-copy from index.html
-copy to dist/index.html
-index 66c9173..e7ef540 100644
---- a/index.html
-+++ b/dist/index.html
-@@ -135,6 +135,76 @@
-       background: #3e2723;
-     }
- 
-+    [popover].hovercard {
-+      position: fixed;
-+      position-area: block-end span-inline-end;
-+      position-try-fallbacks: flip-block, flip-inline;
-+      width: 320px;
-+      max-width: calc(100vw - 32px);
-+      max-height: calc(100dvh - 32px);
-+      overflow: auto;
-+      margin: 8px;
-+      padding: 20px;
-+      border: 1px solid var(--secondary);
-+      border-radius: 8px;
-+      background: white;
-+      color: var(--text);
-+      box-shadow: 0 8px 28px rgb(62 39 35 / 20%);
-+      opacity: 0;
-+      transform-origin: top;
-+    }
++/** @param {string | null} text */
++function normalize(text) {
++  return (text ?? "").replace(/\s+/g, " ").trim();
++}
 +
-+    [popover].hovercard:popover-open {
-+      opacity: 1;
-+      transform: translateY(0) scale(1);
-+    }
++/** @param {Node} node @returns {string} */
++function textWithAlt(node) {
++  if (node instanceof Text) return node.data;
++  if (!(node instanceof Element)) return "";
++  if (node.matches("img, area")) return node.getAttribute("alt") ?? "";
++  return Array.from(node.childNodes, textWithAlt).join("");
++}
 +
-+    .hovercard h3 {
-+      color: var(--primary);
-+      margin-bottom: 8px;
-+    }
++/** @param {Element} trigger */
++function triggerName(trigger) {
++  const labelIds = normalize(trigger.getAttribute("aria-labelledby")).split(" ").filter(Boolean);
++  const labelText = labelIds.map((id) => {
++    const label = document.getElementById(id);
++    return label ? normalize(label.getAttribute("aria-label")) || textWithAlt(label) : "";
++  }).join(" ");
 +
-+    .hovercard dl {
-+      display: grid;
-+      grid-template-columns: auto 1fr;
-+      gap: 4px 12px;
-+      margin: 12px 0;
-+    }
++  return normalize(labelText)
++    || normalize(trigger.getAttribute("aria-label"))
++    || normalize(textWithAlt(trigger))
++    || normalize(trigger.getAttribute("title"));
++}
 +
-+    .hovercard dt {
-+      font-weight: 600;
-+    }
++/** @param {Element} hint */
++function isOpen(hint) {
++  return hint.matches(String.raw`:is(:popover-open, .\:popover-open)`);
++}
 +
-+    .hovercard summary {
-+      cursor: pointer;
-+      color: var(--primary);
-+      font-weight: 600;
-+    }
++function wireInterestHints() {
++  for (const trigger of document.querySelectorAll("[interestfor]")) {
++    const id = trigger.getAttribute("interestfor");
++    if (!id) continue;
++    const hint = document.getElementById(id);
++    if (!hint || hint.getAttribute("popover") !== "hint") continue;
 +
-+    .hovercard details p {
-+      margin-top: 8px;
-+    }
++    const name = triggerName(trigger);
++    if (name === normalize(textWithAlt(hint))) continue;
++    if (!hint.hasAttribute("role")) hint.setAttribute("role", "tooltip");
 +
-+    a:focus-visible,
-+    .hovercard summary:focus-visible {
-+      outline: 3px solid var(--accent);
-+      outline-offset: 4px;
-+    }
-+
-+    @media (prefers-reduced-motion: no-preference) {
-+      [popover].hovercard {
-+        transition: opacity 0.2s, transform 0.2s, display 0.2s, overlay 0.2s;
-+        transition-behavior: allow-discrete;
++    if (!name) {
++      if (!trigger.hasAttribute("aria-labelledby")) trigger.setAttribute("aria-labelledby", id);
++    } else if (trigger.getAttribute("popovertarget") === id || trigger.getAttribute("commandfor") === id) {
++      if (!trigger.hasAttribute("aria-expanded")) {
++        trigger.setAttribute("aria-expanded", String(isOpen(hint)));
++        expandedTriggers.add(trigger);
 +      }
-+
-+      @starting-style {
-+        [popover].hovercard:popover-open {
-+          opacity: 0;
-+          transform: translateY(-8px) scale(0.97);
-+        }
-+      }
++    } else if (!trigger.hasAttribute("aria-describedby")) {
++      trigger.setAttribute("aria-describedby", id);
 +    }
++  }
++}
 +
-     footer {
-       background: var(--secondary);
-       text-align: center;
-@@ -181,20 +251,59 @@
-         <div class="card">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
--          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <a href="/menu/seasonal" class="btn" interestfor="maple-preview" aria-label="View details for Maple Oat Latte">View Details</a>
-         </div>
-         <div class="card">
-           <h3>Dark Roast Espresso</h3>
-           <p>Bold, smokey, and perfect for a morning boost.</p>
--          <a href="/menu/espresso" class="btn">View Details</a>
-+          <a href="/menu/espresso" class="btn" interestfor="espresso-preview" aria-label="View details for Dark Roast Espresso">View Details</a>
-         </div>
-         <div class="card">
-           <h3>Cold Brew</h3>
-           <p>Steeped for 18 hours for maximum smoothness.</p>
--          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview" aria-label="View details for Cold Brew">View Details</a>
-         </div>
-       </div>
-     </section>
++document.addEventListener("toggle", (event) => {
++  const hint = event.target;
++  if (!(hint instanceof HTMLElement) || hint.getAttribute("popover") !== "hint" || !hint.id) return;
 +
-+    <div id="maple-preview" popover="hint" class="hovercard" aria-labelledby="maple-preview-title">
-+      <h3 id="maple-preview-title">Maple Oat Latte</h3>
-+      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+      <dl>
-+        <dt>Milk</dt><dd>Oat</dd>
-+        <dt>Flavor</dt><dd>Maple, creamy</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the flavor</summary>
-+        <p>A mellow latte with the sweetness of maple and a smooth oat milk finish.</p>
-+      </details>
-+    </div>
++  for (const trigger of document.querySelectorAll("[interestfor]")) {
++    if (expandedTriggers.has(trigger) && trigger.getAttribute("interestfor") === hint.id) {
++      trigger.setAttribute("aria-expanded", String(isOpen(hint)));
++    }
++  }
++}, { capture: true });
 +
-+    <div id="espresso-preview" popover="hint" class="hovercard" aria-labelledby="espresso-preview-title">
-+      <h3 id="espresso-preview-title">Dark Roast Espresso</h3>
-+      <p>Bold, smokey, and perfect for a morning boost.</p>
-+      <dl>
-+        <dt>Roast</dt><dd>Dark</dd>
-+        <dt>Flavor</dt><dd>Bold, smoky</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the flavor</summary>
-+        <p>A concentrated coffee with a deep roasted character and a bold finish.</p>
-+      </details>
-+    </div>
++Object.assign(window, { wireInterestHints });
++wireInterestHints();
 +
-+    <div id="cold-brew-preview" popover="hint" class="hovercard" aria-labelledby="cold-brew-preview-title">
-+      <h3 id="cold-brew-preview-title">Cold Brew</h3>
-+      <p>Steeped for 18 hours for maximum smoothness.</p>
-+      <dl>
-+        <dt>Method</dt><dd>Slow steeped</dd>
-+        <dt>Brew time</dt><dd>18 hours</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the brew</summary>
-+        <p>A long, slow steep brings out the smooth coffee character of this cold brew.</p>
-+      </details>
-+    </div>
-   </main>
- 
-   <footer>
++async function loadHovercardPolyfills() {
++  if (!Object.prototype.hasOwnProperty.call(HTMLElement.prototype, "popover")) {
++    await import("https://unpkg.com/@oddbird/popover-polyfill@0.7.3/dist/popover.min.js");
++  }
++  if (!("interestForElement" in HTMLButtonElement.prototype)) {
++    await import("https://unpkg.com/interestfor@1.0.14/src/interestfor.min.js");
++  }
++}
++
++loadHovercardPolyfills().catch((error) => console.warn("Drink preview polyfills could not load.", error));
 diff --git a/index.html b/index.html
-index 66c9173..e7ef540 100644
+index 66c9173..a228923 100644
 --- a/index.html
 +++ b/index.html
-@@ -135,6 +135,76 @@
+@@ -135,6 +135,73 @@
        background: #3e2723;
      }
  
-+    [popover].hovercard {
-+      position: fixed;
-+      position-area: block-end span-inline-end;
-+      position-try-fallbacks: flip-block, flip-inline;
-+      width: 320px;
-+      max-width: calc(100vw - 32px);
-+      max-height: calc(100dvh - 32px);
++    .card > [interestfor] {
++      --interest-delay-start: 0.25s;
++      --interest-delay-end: 0.5s;
++      interest-delay-start: var(--interest-delay-start);
++      interest-delay-end: var(--interest-delay-end);
++      anchor-name: var(--drink-anchor);
++    }
++
++    .grid:has(> .card > [interestfor]:is(:interest-source, .interest-source)) > .card > [interestfor] {
++      --interest-delay-start: 0s;
++    }
++
++    .hovercard[popover] {
++      inline-size: min(18rem, calc(100% - 2rem));
++      max-block-size: calc(100% - 2rem);
 +      overflow: auto;
-+      margin: 8px;
-+      padding: 20px;
++      padding: 1rem;
 +      border: 1px solid var(--secondary);
 +      border-radius: 8px;
 +      background: white;
 +      color: var(--text);
-+      box-shadow: 0 8px 28px rgb(62 39 35 / 20%);
-+      opacity: 0;
-+      transform-origin: top;
++      box-shadow: 0 8px 24px rgb(62 39 35 / 18%);
++      text-align: start;
 +    }
 +
-+    [popover].hovercard:popover-open {
-+      opacity: 1;
-+      transform: translateY(0) scale(1);
-+    }
-+
-+    .hovercard h3 {
++    .hovercard h4 {
 +      color: var(--primary);
-+      margin-bottom: 8px;
++      margin-bottom: 0.25rem;
 +    }
 +
-+    .hovercard dl {
-+      display: grid;
-+      grid-template-columns: auto 1fr;
-+      gap: 4px 12px;
-+      margin: 12px 0;
++    @supports (position-area: block-end span-inline-end) {
++      .hovercard[popover] {
++        inset: auto;
++        margin: 0;
++        position-anchor: var(--drink-anchor);
++        position-area: block-end span-inline-end;
++        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++      }
 +    }
 +
-+    .hovercard dt {
-+      font-weight: 600;
-+    }
-+
-+    .hovercard summary {
-+      cursor: pointer;
-+      color: var(--primary);
-+      font-weight: 600;
-+    }
-+
-+    .hovercard details p {
-+      margin-top: 8px;
-+    }
-+
-+    a:focus-visible,
-+    .hovercard summary:focus-visible {
-+      outline: 3px solid var(--accent);
-+      outline-offset: 4px;
++    @supports not selector(:popover-open) {
++      .hovercard[popover]:not(.\:popover-open) {
++        display: none;
++      }
 +    }
 +
 +    @media (prefers-reduced-motion: no-preference) {
-+      [popover].hovercard {
-+        transition: opacity 0.2s, transform 0.2s, display 0.2s, overlay 0.2s;
++      .hovercard[popover] {
++        opacity: 0;
++        transform: scale(0.97);
++        transition: opacity 160ms, transform 160ms, display 160ms, overlay 160ms;
 +        transition-behavior: allow-discrete;
 +      }
 +
++      .hovercard[popover]:is(:popover-open, .\:popover-open) {
++        opacity: 1;
++        transform: none;
++      }
++
 +      @starting-style {
-+        [popover].hovercard:popover-open {
++        .hovercard[popover]:is(:popover-open, .\:popover-open) {
 +          opacity: 0;
-+          transform: translateY(-8px) scale(0.97);
++          transform: scale(0.97);
 +        }
 +      }
 +    }
@@ -236,78 +164,62 @@ index 66c9173..e7ef540 100644
      footer {
        background: var(--secondary);
        text-align: center;
-@@ -181,20 +251,59 @@
-         <div class="card">
+@@ -178,20 +245,32 @@
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
++        <div class="card" style="--drink-anchor: --maple-oat-latte">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <a href="/menu/seasonal" class="btn" interestfor="maple-preview" aria-label="View details for Maple Oat Latte">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-oat-latte-preview">View Details</a>
++          <div id="maple-oat-latte-preview" class="hovercard" popover="hint">
++            <h4>Maple Oat Latte</h4>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          </div>
          </div>
-         <div class="card">
+-        <div class="card">
++        <div class="card" style="--drink-anchor: --dark-roast-espresso">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <a href="/menu/espresso" class="btn" interestfor="espresso-preview" aria-label="View details for Dark Roast Espresso">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="dark-roast-espresso-preview">View Details</a>
++          <div id="dark-roast-espresso-preview" class="hovercard" popover="hint">
++            <h4>Dark Roast Espresso</h4>
++            <p>A bold espresso with a smoky flavor.</p>
++          </div>
          </div>
-         <div class="card">
+-        <div class="card">
++        <div class="card" style="--drink-anchor: --cold-brew">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview" aria-label="View details for Cold Brew">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview">View Details</a>
++          <div id="cold-brew-preview" class="hovercard" popover="hint">
++            <h4>Cold Brew</h4>
++            <p>Steeped for 18 hours for a smooth finish.</p>
++          </div>
          </div>
        </div>
      </section>
-+
-+    <div id="maple-preview" popover="hint" class="hovercard" aria-labelledby="maple-preview-title">
-+      <h3 id="maple-preview-title">Maple Oat Latte</h3>
-+      <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-+      <dl>
-+        <dt>Milk</dt><dd>Oat</dd>
-+        <dt>Flavor</dt><dd>Maple, creamy</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the flavor</summary>
-+        <p>A mellow latte with the sweetness of maple and a smooth oat milk finish.</p>
-+      </details>
-+    </div>
-+
-+    <div id="espresso-preview" popover="hint" class="hovercard" aria-labelledby="espresso-preview-title">
-+      <h3 id="espresso-preview-title">Dark Roast Espresso</h3>
-+      <p>Bold, smokey, and perfect for a morning boost.</p>
-+      <dl>
-+        <dt>Roast</dt><dd>Dark</dd>
-+        <dt>Flavor</dt><dd>Bold, smoky</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the flavor</summary>
-+        <p>A concentrated coffee with a deep roasted character and a bold finish.</p>
-+      </details>
-+    </div>
-+
-+    <div id="cold-brew-preview" popover="hint" class="hovercard" aria-labelledby="cold-brew-preview-title">
-+      <h3 id="cold-brew-preview-title">Cold Brew</h3>
-+      <p>Steeped for 18 hours for maximum smoothness.</p>
-+      <dl>
-+        <dt>Method</dt><dd>Slow steeped</dd>
-+        <dt>Brew time</dt><dd>18 hours</dd>
-+      </dl>
-+      <details>
-+        <summary>Explore the brew</summary>
-+        <p>A long, slow steep brings out the smooth coffee character of this cold brew.</p>
-+      </details>
-+    </div>
-   </main>
+@@ -207,6 +286,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
  
-   <footer>
++  <script type="module" src="./hovercards.mjs"></script>
+ </body>
+ 
+ </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..5c14ac8 100644
+index 2bd4d77..b64bfc7 100644
 --- a/package.json
 +++ b/package.json
 @@ -2,6 +2,7 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node build.mjs",
++    "build": "node --check hovercards.mjs",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
    "pnpm": {
