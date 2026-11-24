@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..6d48b61 100644
+index 5db718e..18ee740 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
      }
  
      /* Navigation */
@@ -11,7 +11,7 @@ index 66c9173..6d48b61 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -40,45 +40,57 @@
+@@ -42,45 +42,57 @@
        z-index: 1000;
      }
  
@@ -47,14 +47,14 @@ index 66c9173..6d48b61 100644
  
 -    nav a:hover {
 +    .primary-nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 -    .logout-link {
 +    .logout-button {
 +      color: white;
 +      background: transparent;
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
        border-radius: 4px;
 +      cursor: pointer;
@@ -78,7 +78,7 @@ index 66c9173..6d48b61 100644
        display: flex;
        flex-direction: column;
        justify-content: center;
-@@ -86,6 +98,28 @@
+@@ -88,6 +100,28 @@
        color: white;
        text-align: center;
        padding: 0 20px;
@@ -107,7 +107,7 @@ index 66c9173..6d48b61 100644
      }
  
      .hero h1 {
-@@ -100,11 +134,16 @@
+@@ -102,11 +136,16 @@
        padding: 0 20px;
      }
  
@@ -124,7 +124,7 @@ index 66c9173..6d48b61 100644
      }
  
      .card {
-@@ -146,8 +185,15 @@
+@@ -148,8 +187,15 @@
        margin-bottom: 20px;
      }
  
@@ -141,7 +141,7 @@ index 66c9173..6d48b61 100644
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
-@@ -157,53 +203,74 @@
+@@ -159,53 +205,74 @@
  
  <body>
  

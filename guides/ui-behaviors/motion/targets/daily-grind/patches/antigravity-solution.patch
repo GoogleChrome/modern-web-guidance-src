@@ -1,14 +1,16 @@
 diff --git a/index.html b/index.html
-index 66c9173..6726fc9 100644
+index 5db718e..2617b9c 100644
 --- a/index.html
 +++ b/index.html
-@@ -8,10 +8,13 @@
+@@ -8,12 +8,15 @@
    <style>
      :root {
        --primary: #4e342e;
 +      --primary-dark: #3e2723;
        --secondary: #d7ccc8;
-       --accent: #ffab40;
+       --accent: #b45309;
+       --accent-on-dark: #ffab40;
+       --border: #795548;
 +      --accent-soft: #ffe0b2;
        --text: #3e2723;
        --light: #fafafa;
@@ -16,7 +18,7 @@ index 66c9173..6726fc9 100644
      }
  
      * {
-@@ -38,6 +41,34 @@
+@@ -40,6 +43,34 @@
        position: sticky;
        top: 0;
        z-index: 1000;
@@ -51,7 +53,7 @@ index 66c9173..6726fc9 100644
      }
  
      .logo {
-@@ -49,6 +80,7 @@
+@@ -51,6 +82,7 @@
      nav ul {
        display: flex;
        list-style: none;
@@ -59,7 +61,7 @@ index 66c9173..6726fc9 100644
      }
  
      nav ul li {
-@@ -59,23 +91,49 @@
+@@ -61,23 +93,40 @@
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
@@ -72,31 +74,22 @@ index 66c9173..6726fc9 100644
 +        color 0.25s ease,
 +        background-color 0.25s ease,
 +        border-color 0.25s ease;
-+
-+      &:hover,
-+      &:focus-visible {
-+        color: var(--accent);
-+      }
  
 -    nav a:hover {
--      color: var(--accent);
-+      @media (prefers-reduced-motion: no-preference) {
-+        transition:
-+          color 0.25s ease,
-+          background-color 0.25s ease,
-+          border-color 0.25s ease,
-+          translate 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-+          scale 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-+
-+        &:hover,
-+        &:focus-visible {
-+          translate: 0 -2px;
-+        }
+-      color: var(--accent-on-dark);
++      &:hover,
++      &:focus-visible {
++        color: var(--accent-on-dark);
 +      }
++
++      --accent: #b45309;
++      --accent-on-dark: #ffab40;
++      --border: #795548;
++      --accent-soft: #ffe0b2;
      }
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
        border-radius: 4px;
 +
@@ -115,7 +108,7 @@ index 66c9173..6726fc9 100644
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
        background-position: center;
-@@ -85,12 +143,123 @@
+@@ -87,12 +136,123 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -241,7 +234,7 @@ index 66c9173..6726fc9 100644
      }
  
      /* Content Sections */
-@@ -108,11 +277,37 @@
+@@ -110,11 +270,37 @@
      }
  
      .card {
@@ -281,7 +274,7 @@ index 66c9173..6726fc9 100644
      }
  
      .card h3 {
-@@ -126,13 +321,170 @@
+@@ -128,13 +314,170 @@
        color: white;
        padding: 10px 20px;
        text-decoration: none;
@@ -315,8 +308,10 @@ index 66c9173..6726fc9 100644
 +          scale: 1.04;
 +        }
 +      }
-+    }
-+
+     }
+ 
+-    .btn:hover {
+-      background: #3e2723;
 +    .hero-cta {
 +      background: var(--accent);
 +      color: var(--primary-dark);
@@ -327,10 +322,8 @@ index 66c9173..6726fc9 100644
 +        background-color: #ffd180;
 +        color: var(--primary-dark);
 +      }
-     }
- 
--    .btn:hover {
--      background: #3e2723;
++    }
++
 +    /* Animated Drink Details Overlay (Top-Layer Dialog) */
 +    .drink-details-overlay {
 +      border: none;
@@ -455,7 +448,7 @@ index 66c9173..6726fc9 100644
      }
  
      footer {
-@@ -151,11 +503,17 @@
+@@ -153,11 +496,17 @@
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
@@ -474,7 +467,7 @@ index 66c9173..6726fc9 100644
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
-@@ -166,37 +524,72 @@
+@@ -168,37 +517,72 @@
        <li><a href="/account">My Account</a></li>
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
@@ -554,7 +547,7 @@ index 66c9173..6726fc9 100644
    <footer>
      <div class="footer-links">
        <a href="/about">Our Story</a> |
-@@ -207,6 +600,234 @@
+@@ -209,6 +593,234 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

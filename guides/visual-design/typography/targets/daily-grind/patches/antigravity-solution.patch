@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..0bb4112 100644
+index 5db718e..27b344a 100644
 --- a/index.html
 +++ b/index.html
-@@ -22,9 +22,24 @@
+@@ -24,9 +24,24 @@
  
      body {
        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -28,7 +28,7 @@ index 66c9173..0bb4112 100644
      }
  
      /* Navigation */
-@@ -41,9 +56,9 @@
+@@ -43,9 +58,9 @@
      }
  
      .logo {
@@ -40,7 +40,7 @@ index 66c9173..0bb4112 100644
      }
  
      nav ul {
-@@ -52,13 +67,13 @@
+@@ -54,13 +69,13 @@
      }
  
      nav ul li {
@@ -56,10 +56,10 @@ index 66c9173..0bb4112 100644
        transition: color 0.3s;
      }
  
-@@ -68,13 +83,13 @@
+@@ -70,13 +85,13 @@
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 +      padding: 0.3125rem 0.75rem;
        border-radius: 4px;
@@ -72,7 +72,7 @@ index 66c9173..0bb4112 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -85,49 +100,66 @@
+@@ -87,49 +102,66 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -149,7 +149,7 @@ index 66c9173..0bb4112 100644
        transition: background 0.3s;
      }
  
-@@ -138,19 +170,24 @@
+@@ -140,19 +172,24 @@
      footer {
        background: var(--secondary);
        text-align: center;

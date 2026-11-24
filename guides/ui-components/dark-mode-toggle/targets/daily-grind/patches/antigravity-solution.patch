@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..ec56355 100644
+index 5db718e..886fa58 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,14 +4,32 @@
+@@ -4,16 +4,34 @@
  <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +27,9 @@ index 66c9173..ec56355 100644
        --primary: #4e342e;
 -      --secondary: #d7ccc8;
 +      --secondary: light-dark(#d7ccc8, #2b1d19);
-       --accent: #ffab40;
+       --accent: #b45309;
+       --accent-on-dark: #ffab40;
+       --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
 +      --text: light-dark(#3e2723, #efebe9);
@@ -38,7 +40,7 @@ index 66c9173..ec56355 100644
      }
  
      * {
-@@ -27,6 +45,18 @@
+@@ -29,6 +47,18 @@
        background-color: var(--light);
      }
  
@@ -57,7 +59,7 @@ index 66c9173..ec56355 100644
      /* Navigation */
      nav {
        background: var(--primary);
-@@ -48,6 +78,7 @@
+@@ -50,6 +80,7 @@
  
      nav ul {
        display: flex;
@@ -65,7 +67,7 @@ index 66c9173..ec56355 100644
        list-style: none;
      }
  
-@@ -72,6 +103,52 @@
+@@ -74,6 +105,52 @@
        border-radius: 4px;
      }
  
@@ -118,7 +120,7 @@ index 66c9173..ec56355 100644
      /* Hero Section */
      .hero {
        height: 60vh;
-@@ -108,16 +185,17 @@
+@@ -110,16 +187,17 @@
      }
  
      .card {
@@ -139,7 +141,7 @@ index 66c9173..ec56355 100644
      }
  
      .btn {
-@@ -137,6 +215,7 @@
+@@ -139,6 +217,7 @@
  
      footer {
        background: var(--secondary);
@@ -147,7 +149,7 @@ index 66c9173..ec56355 100644
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -165,6 +244,30 @@
+@@ -167,6 +246,30 @@
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
        <li><a href="/logout" class="logout-link">Logout</a></li>
@@ -178,7 +180,7 @@ index 66c9173..ec56355 100644
      </ul>
    </nav>
  
-@@ -207,6 +310,54 @@
+@@ -209,6 +312,54 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..7aa44bc 100644
+index 5db718e..4457353 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
      }
  
      /* Navigation */
@@ -11,7 +11,7 @@ index 66c9173..7aa44bc 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -46,26 +46,79 @@
+@@ -48,26 +48,79 @@
        letter-spacing: 1px;
      }
  
@@ -42,7 +42,7 @@ index 66c9173..7aa44bc 100644
  
 -    nav a:hover {
 +    header nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 +    .visually-hidden:where(:not(:focus-within, :active)) {
@@ -93,9 +93,9 @@ index 66c9173..7aa44bc 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -146,6 +199,18 @@
+@@ -148,6 +201,18 @@
        margin-bottom: 20px;
      }
  
@@ -114,7 +114,7 @@ index 66c9173..7aa44bc 100644
      .footer-links a {
        margin: 0 10px;
        color: var(--text);
-@@ -157,7 +222,10 @@
+@@ -159,7 +224,10 @@
  
  <body>
  
@@ -126,7 +126,7 @@ index 66c9173..7aa44bc 100644
      <div class="logo">THE DAILY GRIND</div>
      <ul>
        <li><a href="/menu">Menu</a></li>
-@@ -167,43 +235,46 @@
+@@ -169,43 +237,46 @@
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
    </nav>

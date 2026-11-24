@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..3aa1ade 100644
+index 5db718e..6cb26b2 100644
 --- a/index.html
 +++ b/index.html
-@@ -27,6 +27,34 @@
+@@ -29,6 +29,34 @@
        background-color: var(--light);
      }
  
@@ -37,7 +37,7 @@ index 66c9173..3aa1ade 100644
      /* Navigation */
      nav {
        background: var(--primary);
-@@ -48,6 +76,7 @@
+@@ -50,6 +78,7 @@
  
      nav ul {
        display: flex;
@@ -45,7 +45,7 @@ index 66c9173..3aa1ade 100644
        list-style: none;
      }
  
-@@ -56,20 +85,34 @@
+@@ -58,20 +87,34 @@
      }
  
      nav a {
@@ -60,7 +60,7 @@ index 66c9173..3aa1ade 100644
      }
  
      nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
 +      text-decoration-color: currentColor;
 +      text-decoration-thickness: 2px;
      }
@@ -68,7 +68,7 @@ index 66c9173..3aa1ade 100644
      .logout-link {
 +      background: transparent;
 +      color: white;
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
        border-radius: 4px;
 +      font-family: inherit;
@@ -82,7 +82,7 @@ index 66c9173..3aa1ade 100644
      }
  
      /* Hero Section */
-@@ -100,11 +143,20 @@
+@@ -102,11 +145,20 @@
        padding: 0 20px;
      }
  
@@ -107,7 +107,7 @@ index 66c9173..3aa1ade 100644
      }
  
      .card {
-@@ -113,6 +165,7 @@
+@@ -115,6 +167,7 @@
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
@@ -115,7 +115,7 @@ index 66c9173..3aa1ade 100644
      }
  
      .card h3 {
-@@ -120,19 +173,92 @@
+@@ -122,19 +175,92 @@
        color: var(--primary);
      }
  
@@ -209,7 +209,7 @@ index 66c9173..3aa1ade 100644
      }
  
      footer {
-@@ -147,11 +273,19 @@
+@@ -149,11 +275,19 @@
      }
  
      .footer-links a {
@@ -230,7 +230,7 @@ index 66c9173..3aa1ade 100644
    </style>
  </head>
  
-@@ -164,7 +298,7 @@
+@@ -166,7 +300,7 @@
        <li><a href="/locations">Locations</a></li>
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
@@ -239,7 +239,7 @@ index 66c9173..3aa1ade 100644
      </ul>
    </nav>
  
-@@ -177,21 +311,42 @@
+@@ -179,21 +313,42 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
@@ -286,7 +286,7 @@ index 66c9173..3aa1ade 100644
          </div>
        </div>
      </section>
-@@ -207,6 +362,23 @@
+@@ -209,6 +364,23 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

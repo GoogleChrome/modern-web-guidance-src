@@ -23,10 +23,10 @@ index 0000000..2336ba9
 +}
 +console.log('Built Daily Grind in dist/.');
 diff --git a/index.html b/index.html
-index 66c9173..1ee8a96 100644
+index 5db718e..1ee8a96 100644
 --- a/index.html
 +++ b/index.html
-@@ -5,154 +5,8 @@
+@@ -5,156 +5,8 @@
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>The Daily Grind | Artisanal Coffee</title>
@@ -34,7 +34,9 @@ index 66c9173..1ee8a96 100644
 -    :root {
 -      --primary: #4e342e;
 -      --secondary: #d7ccc8;
--      --accent: #ffab40;
+-      --accent: #b45309;
+-      --accent-on-dark: #ffab40;
+-      --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
 -    }
@@ -88,11 +90,11 @@ index 66c9173..1ee8a96 100644
 -    }
 -
 -    nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 -    }
 -
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 -      border-radius: 4px;
 -    }
@@ -183,7 +185,7 @@ index 66c9173..1ee8a96 100644
  </head>
  
  <body>
-@@ -176,7 +30,7 @@
+@@ -178,7 +30,7 @@
  
    <main class="container">
      <section>
@@ -192,7 +194,7 @@ index 66c9173..1ee8a96 100644
        <div class="grid">
          <div class="card">
            <h3>Maple Oat Latte</h3>
-@@ -195,6 +49,16 @@
+@@ -197,6 +49,16 @@
          </div>
        </div>
      </section>

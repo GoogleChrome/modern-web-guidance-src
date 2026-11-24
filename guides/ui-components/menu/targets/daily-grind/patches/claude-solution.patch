@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..5ffa39b 100644
+index 5db718e..7462fb0 100644
 --- a/index.html
 +++ b/index.html
-@@ -48,6 +48,7 @@
+@@ -50,6 +50,7 @@
  
      nav ul {
        display: flex;
@@ -10,12 +10,12 @@ index 66c9173..5ffa39b 100644
        list-style: none;
      }
  
-@@ -66,10 +67,13 @@
-       color: var(--accent);
+@@ -68,10 +69,13 @@
+       color: var(--accent-on-dark);
      }
  
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 -      border-radius: 4px;
 +    .visually-hidden {
@@ -28,7 +28,7 @@ index 66c9173..5ffa39b 100644
      }
  
      /* Hero Section */
-@@ -152,6 +156,292 @@
+@@ -154,6 +158,292 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
@@ -321,7 +321,7 @@ index 66c9173..5ffa39b 100644
    </style>
  </head>
  
-@@ -160,11 +450,100 @@
+@@ -162,11 +452,100 @@
    <nav>
      <div class="logo">THE DAILY GRIND</div>
      <ul>
@@ -425,7 +425,7 @@ index 66c9173..5ffa39b 100644
      </ul>
    </nav>
  
-@@ -181,17 +560,204 @@
+@@ -183,17 +562,204 @@
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
@@ -633,7 +633,7 @@ index 66c9173..5ffa39b 100644
          </div>
        </div>
      </section>
-@@ -207,6 +773,424 @@
+@@ -209,6 +775,424 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
