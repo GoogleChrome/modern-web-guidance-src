@@ -7,6 +7,13 @@ import {
   computeDevReportFlag,
   computeTargetSummary,
   buildInitialDevReport,
+  findChangedGuideFiles,
+  copyChangedGuideFiles,
+  formatGuideFileDiff,
+  buildSuggestedEditsSection,
+  getGraderSuggestionCoverageLoss,
+  extractSuggestedEditsSection,
+  HIGH_UNGUIDED_PASS_RATE_THRESHOLD,
   type TargetEvalSummary,
 } from './dev-report.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
@@ -62,30 +69,31 @@ test('computeDevReportFlag enforces strict priority ordering', () => {
   assert.strictEqual(missingGuideResult.flag, 'MISSING_EXPECTED_GUIDE');
   assert.ok(missingGuideResult.flagDetails.includes("did not consume the expected guide 'size-aware-styling'"));
 
-  // 4. Low guided pass rate (< 90%)
-  const lowPassRateResult = computeDevReportFlag({
-    guideName: 'size-aware-styling',
-    hasEarlyFailure: false,
-    toolsUsed: ['modern-web-guidance'],
-    guidesConsumed: ['size-aware-styling'],
-    guidedPassRate: 75,
-  });
-  assert.strictEqual(lowPassRateResult.flag, 'LOW_GUIDED_PASS_RATE');
-  assert.ok(lowPassRateResult.flagDetails.includes('75%'));
-
-  // 5. High unguided pass rate (=== 100%)
+  // 4. High unguided pass rate (>= HIGH_UNGUIDED_PASS_RATE_THRESHOLD)
   const highUnguidedResult = computeDevReportFlag({
     guideName: 'size-aware-styling',
     hasEarlyFailure: false,
     toolsUsed: ['modern-web-guidance'],
     guidesConsumed: ['size-aware-styling'],
     guidedPassRate: 100,
-    unguidedPassRate: 100,
+    unguidedPassRate: HIGH_UNGUIDED_PASS_RATE_THRESHOLD,
   });
   assert.strictEqual(highUnguidedResult.flag, 'HIGH_UNGUIDED_PASS_RATE');
-  assert.ok(highUnguidedResult.flagDetails.includes('Unguided pass rate is 100%'));
+  assert.ok(highUnguidedResult.flagDetails.includes(`Unguided pass rate is ${HIGH_UNGUIDED_PASS_RATE_THRESHOLD}%`));
 
-  // 6. Healthy (>= 90%, unguided < 100%, and all tools/guides present)
+  // 5. Healthy even when guided pass rate is low (pass rate is informational)
+  const lowGuidedHealthy = computeDevReportFlag({
+    guideName: 'size-aware-styling',
+    hasEarlyFailure: false,
+    toolsUsed: ['modern-web-guidance'],
+    guidesConsumed: ['size-aware-styling'],
+    guidedPassRate: 50,
+    unguidedPassRate: 25,
+  });
+  assert.strictEqual(lowGuidedHealthy.flag, 'HEALTHY');
+  assert.ok(lowGuidedHealthy.flagDetails.includes('informational'));
+
+  // 6. Healthy (unguided < 80%, and all tools/guides present)
   const healthyResult = computeDevReportFlag({
     guideName: 'size-aware-styling',
     hasEarlyFailure: false,
@@ -95,7 +103,7 @@ test('computeDevReportFlag enforces strict priority ordering', () => {
     unguidedPassRate: 75,
   });
   assert.strictEqual(healthyResult.flag, 'HEALTHY');
-  assert.ok(healthyResult.flagDetails.includes('≥ 90%'));
+  assert.ok(healthyResult.flagDetails.includes('below 80%'));
 });
 
 test('computeTargetSummary extracts metrics and flags from evals.json correctly', (t) => {
@@ -152,7 +160,7 @@ test('computeTargetSummary extracts metrics and flags from evals.json correctly'
   assert.strictEqual(summary?.baseApp, 'daily-grind');
   assert.strictEqual(summary?.guidedPassRate, 50);
   assert.strictEqual(summary?.unguidedPassRate, 50);
-  assert.strictEqual(summary?.flag, 'LOW_GUIDED_PASS_RATE');
+  assert.strictEqual(summary?.flag, 'HEALTHY');
 });
 
 test('buildInitialDevReport builds interleaved report with evals and diagnostic placeholders', (t) => {
@@ -184,16 +192,17 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
     },
     {
       baseApp: 'devtools-times',
-      flag: 'LOW_GUIDED_PASS_RATE',
-      flagDetails: 'Low pass rate',
-      guidedPassRate: 50,
-      unguidedPassRate: 0,
+      flag: 'HIGH_UNGUIDED_PASS_RATE',
+      flagDetails: 'Unguided pass rate is 85%',
+      guidedPassRate: 100,
+      unguidedPassRate: 85,
     },
   ];
 
   const report = buildInitialDevReport(tmpDir, summaries, { category, name });
   assert.ok(report.includes('# Evaluation Report: size-aware-styling'));
   assert.ok(report.includes('> [!NOTE]'));
+  assert.ok(report.includes('Nothing in this report has been applied to the PR'));
   assert.ok(report.includes('needs-dev-rerun'));
   assert.ok(report.includes('## Summary'));
   assert.ok(report.includes('<!-- TODO: Complete overall summary across all targets -->'));
@@ -204,7 +213,7 @@ test('buildInitialDevReport builds interleaved report with evals and diagnostic 
   assert.ok(report.includes('##### Run 1 Details'));
   assert.ok(report.includes('Check 1'));
   assert.ok(report.includes('### Diagnostic Analysis & Actionable Recommendations'));
-  assert.ok(report.includes('## Target: `devtools-times` (Status: `LOW_GUIDED_PASS_RATE`)'));
+  assert.ok(report.includes('## Target: `devtools-times` (Status: `HIGH_UNGUIDED_PASS_RATE`)'));
   assert.ok(report.includes('#### DEVTOOLS-TIMES - GUIDED'));
   assert.ok(report.includes('Check 2'));
 
@@ -307,7 +316,7 @@ test('collectSpecs ignores skipped Playwright tests during calibration reporting
   assert.deepStrictEqual(collectSpecs(suite, false), ['Failing test']);
 });
 
-test('computeTargetSummary flags target when any baseline variant drops below 90% guided pass rate', (t) => {
+test('computeTargetSummary flags target when any baseline variant hits high unguided pass rate', (t) => {
   const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dev-report-multi-baseline-'));
   const tmpDir = path.join(rootTmp, 'switch');
   const category = 'forms';
@@ -318,7 +327,7 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
 
   const mockEvalsJson = {
     summary: {
-      guidedPassRate: 92, // Aggregate looks healthy (11/12), but daily-grind-limited is 80% (4/5)
+      guidedPassRate: 100,
       unguidedPassRate: 50,
       guidedEarlyFailures: 0,
     },
@@ -326,7 +335,7 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
       'daily-grind - switch - guided': { medianPassRate: 100 },
       'daily-grind - switch - unguided': { medianPassRate: 50 },
       'daily-grind-limited - switch - guided': { medianPassRate: 80 },
-      'daily-grind-limited - switch - unguided': { medianPassRate: 50 },
+      'daily-grind-limited - switch - unguided': { medianPassRate: 90 },
     },
     results: {
       'daily-grind - switch - guided': [
@@ -358,8 +367,47 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
 
   const summary = computeTargetSummary(tmpDir, 'daily-grind', { category, name });
   assert.ok(summary !== null);
-  assert.strictEqual(summary?.flag, 'LOW_GUIDED_PASS_RATE');
-  assert.strictEqual(summary?.guidedPassRate, 80);
+  assert.strictEqual(summary?.flag, 'HIGH_UNGUIDED_PASS_RATE');
+  assert.strictEqual(summary?.unguidedPassRate, 90);
   assert.ok(summary?.flagDetails.startsWith('[daily-grind-limited] '));
+});
+
+test('findChangedGuideFiles, copyChangedGuideFiles, and buildSuggestedEditsSection preserve untouched files and flag grader coverage drops', (t) => {
+  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-suggestions-'));
+  t.after(() => fs.rmSync(rootTmp, { recursive: true, force: true }));
+
+  const orig = path.join(rootTmp, 'orig');
+  const edited = path.join(rootTmp, 'edited');
+  fs.mkdirSync(path.join(orig, 'targets', 'daily-grind', 'patches'), { recursive: true });
+  fs.mkdirSync(path.join(edited, 'targets', 'daily-grind', 'patches'), { recursive: true });
+
+  fs.writeFileSync(path.join(orig, 'guide.md'), '# Guide\nOriginal\n');
+  fs.writeFileSync(path.join(orig, 'targets', 'daily-grind', 'task.md'), '- Task\n');
+  fs.writeFileSync(path.join(orig, 'targets', 'daily-grind', 'patches', 'claude-solution.patch'), 'patch-1');
+
+  fs.writeFileSync(path.join(edited, 'guide.md'), '# Guide\nUpdated\n');
+  fs.writeFileSync(path.join(edited, 'targets', 'daily-grind', 'task.md'), '- Task\n');
+  fs.writeFileSync(path.join(edited, 'targets', 'daily-grind', 'patches', 'claude-solution.patch'), 'patch-2');
+  fs.writeFileSync(path.join(edited, 'report.md'), 'ignored');
+
+  const changes = findChangedGuideFiles(orig, edited, { includePatches: false });
+  assert.deepStrictEqual(changes.map(c => c.file), ['guide.md']);
+
+  const diffs = changes.map(c => ({ file: `guides/css/x/${c.file}`, diff: formatGuideFileDiff(c, 'guides/css/x/') }));
+  const section = buildSuggestedEditsSection(diffs, [], 'results/guides/css/x/suggestions.patch');
+  assert.ok(section.includes('## Suggested Edits'));
+  assert.ok(section.includes('+Updated'));
+  assert.ok(extractSuggestedEditsSection(`# Report\n${section}`)?.startsWith('## Suggested Edits'));
+
+  assert.strictEqual(getGraderSuggestionCoverageLoss({ expectationsChanged: false, beforeTestCount: 3, afterTestCount: 2 }), 'reduces the number of `test()` blocks from 3 to 2');
+  assert.strictEqual(getGraderSuggestionCoverageLoss({ expectationsChanged: true, beforeTestCount: 3, afterTestCount: 2 }), null);
+
+  // copyChangedGuideFiles only rewrites changed files
+  const past = new Date(Date.now() - 60_000);
+  fs.utimesSync(path.join(orig, 'targets', 'daily-grind', 'task.md'), past, past);
+  const taskMtimeBefore = fs.statSync(path.join(orig, 'targets', 'daily-grind', 'task.md')).mtimeMs;
+  copyChangedGuideFiles(edited, orig);
+  assert.strictEqual(fs.readFileSync(path.join(orig, 'guide.md'), 'utf8'), '# Guide\nUpdated\n');
+  assert.strictEqual(fs.statSync(path.join(orig, 'targets', 'daily-grind', 'task.md')).mtimeMs, taskMtimeBefore);
 });
 

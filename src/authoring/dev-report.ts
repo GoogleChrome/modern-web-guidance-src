@@ -1,18 +1,28 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { cGreen, cYellow, cCyan, cBold, cRed } from '../core/colors.ts';
-import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE, GRADER_FILE } from '../core/guide-validation.ts';
-import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/paths.ts';
+import { createTwoFilesPatch, FILE_HEADERS_ONLY } from 'diff';
+import { cGreen, cYellow, cCyan, cBold } from '../core/colors.ts';
+import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_FILE, TARGETS_DIR, REPORT_FILE, GRADER_FILE, TASK_FILE } from '../core/guide-validation.ts';
+import { resolveGuideResultsDir, rootDir, type GuideResultsInventory } from '../core/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
-import { testGrader } from '../grading/run-grader.ts';
+import { extractTestTitles } from '../core/grader-coverage.ts';
+
+/** Pass-rate threshold above which an unguided run requires a fix or explanation before merge. */
+export const HIGH_UNGUIDED_PASS_RATE_THRESHOLD = 80;
+
+/** File next to `report.md` holding the report agent's suggested edits as one patch. */
+export const SUGGESTIONS_PATCH_FILE = 'suggestions.patch';
+export const SUGGESTED_EDITS_HEADING = 'Suggested Edits';
+const HOW_TO_ACCEPT_SUGGESTIONS = `To accept a suggestion, apply it and push, or ask for it in a review comment. Then add the **\`needs-dev-rerun\`** label: the next \`gd dev-gap\` run applies the edits review comments ask for, then regenerates whatever the changed files require. Edits to the \`description\` in \`guide.md\` regenerate all target artifacts, other edits to \`guide.md\` or \`expectations.md\` keep \`task.md\` and regenerate the patches and \`grader.ts\`, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.`;
+/** Keeps the PR body (which is `report.md`) under GitHub's 65,536-character limit. */
+const MAX_EMBEDDED_DIFF_CHARS = 30_000;
 
 export type DevReportFlag =
   | 'CALIBRATION_FAILED'
   | 'INFRASTRUCTURE_ERROR'
   | 'MISSING_GUIDANCE_TOOL'
   | 'MISSING_EXPECTED_GUIDE'
-  | 'LOW_GUIDED_PASS_RATE'
   | 'HIGH_UNGUIDED_PASS_RATE'
   | 'HEALTHY';
 
@@ -22,6 +32,63 @@ export interface TargetEvalSummary {
   flagDetails: string;
   guidedPassRate: number;
   unguidedPassRate: number | null;
+}
+
+/** A guide file whose content differs between two copies of a guide directory. */
+export interface GuideFileChange {
+  file: string;
+  before: string | null;
+  after: string | null;
+}
+
+function listGuideFiles(root: string, includePatches: boolean): string[] {
+  const files = [GUIDE_FILE, EXPECTATIONS_FILE].filter(f => fs.existsSync(path.join(root, f)));
+  const targetsRoot = path.join(root, TARGETS_DIR);
+  if (!fs.existsSync(targetsRoot)) return files;
+  for (const app of fs.readdirSync(targetsRoot, { withFileTypes: true })) {
+    if (!app.isDirectory()) continue;
+    const appRel = `${TARGETS_DIR}/${app.name}`;
+    for (const file of [TASK_FILE, GRADER_FILE]) {
+      if (fs.existsSync(path.join(root, appRel, file))) files.push(`${appRel}/${file}`);
+    }
+    const patchesDir = path.join(root, appRel, 'patches');
+    if (includePatches && fs.existsSync(patchesDir)) {
+      for (const patch of fs.readdirSync(patchesDir, { withFileTypes: true })) {
+        if (patch.isFile()) files.push(`${appRel}/patches/${patch.name}`);
+      }
+    }
+  }
+  return files;
+}
+
+/**
+ * Compares agent-editable guide files in `editedRoot` against `originalRoot`, sorted by path.
+ */
+export function findChangedGuideFiles(originalRoot: string, editedRoot: string, opts: { includePatches: boolean }): GuideFileChange[] {
+  const read = (root: string, file: string) => {
+    const p = path.join(root, file);
+    return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+  };
+  const files = new Set([...listGuideFiles(originalRoot, opts.includePatches), ...listGuideFiles(editedRoot, opts.includePatches)]);
+  const changes: GuideFileChange[] = [];
+  for (const file of [...files].sort()) {
+    const before = read(originalRoot, file);
+    const after = read(editedRoot, file);
+    if (before !== after) changes.push({ file, before, after });
+  }
+  return changes;
+}
+
+/**
+ * Copies changed guide files from `fromRoot` onto `toRoot` without touching mtimes of unchanged files.
+ */
+export function copyChangedGuideFiles(fromRoot: string, toRoot: string): void {
+  for (const { file, after } of findChangedGuideFiles(toRoot, fromRoot, { includePatches: true })) {
+    if (after === null) continue;
+    const dest = path.join(toRoot, file);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, after);
+  }
 }
 
 /**
@@ -35,6 +102,7 @@ export async function applyPrReviewFeedback(
     branchDiff?: string;
     comments?: string;
     rerunMode?: string;
+    previousReport?: string;
   }
 ): Promise<void> {
   if (!prContext.comments?.trim()) return;
@@ -61,24 +129,13 @@ export async function applyPrReviewFeedback(
       branchCommits: prContext.branchCommits,
       branchDiff: prContext.branchDiff,
       rerunMode: prContext.rerunMode,
+      suggestedEdits: prContext.previousReport ? extractSuggestedEditsSection(prContext.previousReport) : undefined,
     });
 
     console.log(cCyan(`Invoking ${agent} to address review comments directly on disk...`));
     await runAgent(agent, prompt, workDir, { homeDir: tempHome });
 
-    // Sync modified files back to targetDir
-    const workGuide = path.join(workDir, GUIDE_FILE);
-    if (fs.existsSync(workGuide)) {
-      fs.copyFileSync(workGuide, path.join(targetDir, GUIDE_FILE));
-    }
-    const workExp = path.join(workDir, EXPECTATIONS_FILE);
-    if (fs.existsSync(workExp)) {
-      fs.copyFileSync(workExp, path.join(targetDir, EXPECTATIONS_FILE));
-    }
-    const workTargets = path.join(workDir, 'targets');
-    if (fs.existsSync(workTargets)) {
-      fs.cpSync(workTargets, path.join(targetDir, TARGETS_DIR), { recursive: true });
-    }
+    copyChangedGuideFiles(workDir, targetDir);
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }
@@ -126,26 +183,22 @@ export function computeDevReportFlag(input: {
     };
   }
 
-  // Priority 4: Guided Pass Rate >= 90%
-  if (input.guidedPassRate < 90) {
-    return {
-      flag: 'LOW_GUIDED_PASS_RATE',
-      flagDetails: `Guided pass rate is ${input.guidedPassRate}% (below 90% threshold).`,
-    };
-  }
-
-  // Priority 5: Unguided Pass Rate === 100%
-  if (input.unguidedPassRate === 100) {
+  // Priority 4: High unguided pass rate needs a fix or a note before merge. A low guided rate is never a flag.
+  const unguided = input.unguidedPassRate;
+  if (typeof unguided === 'number' && unguided >= HIGH_UNGUIDED_PASS_RATE_THRESHOLD) {
     return {
       flag: 'HIGH_UNGUIDED_PASS_RATE',
-      flagDetails: `Unguided pass rate is 100% (unguided agent passed all checks without guidance).`,
+      flagDetails: `Unguided pass rate is ${unguided}% (at or above the ${HIGH_UNGUIDED_PASS_RATE_THRESHOLD}% threshold) without guidance; needs a fix or a note before merge.`,
     };
   }
 
-  // Priority 6: Healthy
+  // Priority 5: Healthy
+  const unguidedStr = typeof unguided === 'number'
+    ? `unguided pass rate is ${unguided}% (below ${HIGH_UNGUIDED_PASS_RATE_THRESHOLD}%)`
+    : 'no unguided run';
   return {
     flag: 'HEALTHY',
-    flagDetails: `Guided pass rate is ${input.guidedPassRate}% (≥ 90%) and expected guide was consumed.`,
+    flagDetails: `Calibrated, the guided run consumed the expected guide, and ${unguidedStr}. Guided pass rate ${input.guidedPassRate}% is informational.`,
   };
 }
 
@@ -249,8 +302,12 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
   const anyUnhealthy = summaries.some(s => s.flag !== 'HEALTHY');
   if (anyUnhealthy) {
     content += `> [!NOTE]\n`;
-    content += `> **Reviewer Next Steps**: If any targets are flagged or require adjustments, recommended fixes have already been applied directly to the files in this PR.\n`;
-    content += `> - After reviewing, add the **\`needs-dev-rerun\`** label. The next \`gd dev-gap\` run regenerates whatever the changed files require: edits to the \`description\` in \`guide.md\` regenerate all target artifacts, other edits to \`guide.md\` or \`expectations.md\` keep \`task.md\` and regenerate the patches and \`grader.ts\`, edits to \`task.md\` regenerate the solution patches and \`grader.ts\`, and edits to \`grader.ts\` re-run calibration and agent evaluations.\n\n`;
+    content += `> **Reviewer Next Steps**: Nothing in this report has been applied to the PR. Suggested fixes, if any, are under **${SUGGESTED_EDITS_HEADING}** at the end.\n`;
+    content += `> - ${HOW_TO_ACCEPT_SUGGESTIONS}\n`;
+    if (summaries.some(s => s.flag === 'HIGH_UNGUIDED_PASS_RATE')) {
+      content += `> - A \`HIGH_UNGUIDED_PASS_RATE\` target needs a fix, or a note on the PR saying why the rate is legitimate (for example, the guide adds little lift), before merge.\n`;
+    }
+    content += `\n`;
   }
 
   content += `## Summary\n\n`;
@@ -278,7 +335,94 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 }
 
 /**
- * Runs the agent-driven evaluation report generation phase across all targets for a guide.
+ * Checks whether a suggested `grader.ts` edit drops active `test()` blocks without changing `expectations.md`.
+ */
+export function getGraderSuggestionCoverageLoss(input: {
+  expectationsChanged: boolean;
+  beforeTestCount: number;
+  afterTestCount: number;
+}): string | null {
+  if (input.expectationsChanged) return null;
+  if (input.afterTestCount < input.beforeTestCount) {
+    return `reduces the number of \`test()\` blocks from ${input.beforeTestCount} to ${input.afterTestCount}`;
+  }
+  return null;
+}
+
+/** Unified diff of one changed file, prefixed by `pathPrefix` (the guide's repo-relative directory). */
+export function formatGuideFileDiff(change: GuideFileChange, pathPrefix: string): string {
+  return createTwoFilesPatch(
+    change.before === null ? '/dev/null' : `a/${pathPrefix}${change.file}`,
+    change.after === null ? '/dev/null' : `b/${pathPrefix}${change.file}`,
+    change.before ?? '',
+    change.after ?? '',
+    undefined,
+    undefined,
+    { headerOptions: FILE_HEADERS_ONLY }
+  );
+}
+
+/**
+ * Builds the `## Suggested Edits` section appended to `report.md`.
+ */
+export function buildSuggestedEditsSection(
+  diffs: ReadonlyArray<{ file: string; diff: string }>,
+  coverageWarnings: readonly string[],
+  patchDisplayPath: string
+): string {
+  let section = `\n\n---\n\n## ${SUGGESTED_EDITS_HEADING}\n\n`;
+  section += `> [!IMPORTANT]\n`;
+  section += `> The report agent suggested these edits. None of them are applied to this PR.\n`;
+  section += `> - ${HOW_TO_ACCEPT_SUGGESTIONS}\n`;
+  section += `> - On the machine that ran \`gd dev\`, \`git apply ${patchDisplayPath}\` from the repository root applies all of them.\n\n`;
+  for (const warning of coverageWarnings) {
+    section += `> [!WARNING]\n> ${warning}\n\n`;
+  }
+
+  let budget = MAX_EMBEDDED_DIFF_CHARS;
+  const omitted: string[] = [];
+  for (const { file, diff } of diffs) {
+    if (diff.length > budget) {
+      omitted.push(file);
+      continue;
+    }
+    budget -= diff.length;
+    section += `### \`${file}\`\n\n\`\`\`diff\n${diff.trimEnd()}\n\`\`\`\n\n`;
+  }
+  if (omitted.length > 0) {
+    section += `Not shown here because of the PR body size limit (see \`${patchDisplayPath}\`): ${omitted.map(f => `\`${f}\``).join(', ')}.\n`;
+  }
+  return section;
+}
+
+/** The `## Suggested Edits` section of a previous report, or undefined if absent. */
+export function extractSuggestedEditsSection(report: string): string | undefined {
+  const start = report.search(new RegExp(`^## ${SUGGESTED_EDITS_HEADING}$`, 'm'));
+  return start === -1 ? undefined : report.slice(start).trim();
+}
+
+function findGraderCoverageWarnings(changes: readonly GuideFileChange[], originalRoot: string, editedRoot: string): string[] {
+  const expectationsChanged = changes.some(c => c.file === EXPECTATIONS_FILE);
+  const warnings: string[] = [];
+  for (const change of changes) {
+    if (!change.file.endsWith(`/${GRADER_FILE}`) || change.before === null || change.after === null) continue;
+    const before = path.join(originalRoot, change.file);
+    const after = path.join(editedRoot, change.file);
+    const loss = getGraderSuggestionCoverageLoss({
+      expectationsChanged,
+      beforeTestCount: extractTestTitles(before).length,
+      afterTestCount: extractTestTitles(after).length,
+    });
+    if (loss) {
+      warnings.push(`**Coverage loss**: the suggested edit to \`${change.file}\` ${loss} without changing \`${EXPECTATIONS_FILE}\`. Don't accept it as is; fix \`${EXPECTATIONS_FILE}\` or \`task.md\` instead.`);
+    }
+  }
+  return warnings;
+}
+
+/**
+ * Runs the agent-driven evaluation report across all targets for a guide.
+ * Workspace edits become `suggestions.patch` + `## Suggested Edits` and are never written to disk.
  */
 export async function runDevReport(
   targetDir: string,
@@ -310,17 +454,12 @@ export async function runDevReport(
   }
 
   const finalReportPath = path.join(guideResultsDir, REPORT_FILE);
+  const suggestionsPath = path.join(guideResultsDir, SUGGESTIONS_PATCH_FILE);
   const initialReportContent = buildInitialDevReport(targetDir, summaries, guideInfo);
 
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('report');
-  const initialGraders = new Map<string, string>();
-  for (const s of summaries) {
-    const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
-    if (fs.existsSync(graderPath)) {
-      initialGraders.set(s.baseApp, fs.readFileSync(graderPath, 'utf8'));
-    }
-  }
+  let suggestionCount = 0;
 
   try {
     // Copy guide.md, expectations.md, targets, and results to report sandbox
@@ -348,52 +487,27 @@ export async function runDevReport(
       prContext,
     });
 
-    console.log(cCyan(`Invoking ${agent} to perform qualitative evaluation report and apply recommended file updates...`));
+    console.log(cCyan(`Invoking ${agent} to write the evaluation report and suggest file edits...`));
     await runAgent(agent, reportPrompt, workDir, { homeDir: tempHome });
 
+    // Workspace edits become suggestions; never mutate guide.md, expectations.md, or targets/ on disk.
+    const changes = findChangedGuideFiles(targetDir, workDir, { includePatches: false });
+    suggestionCount = changes.length;
+    let report = fs.readFileSync(workReportPath, 'utf8');
     fs.mkdirSync(guideResultsDir, { recursive: true });
-    fs.copyFileSync(workReportPath, finalReportPath);
-
-    // Sync any modified guide, expectations, and target files back to targetDir
-    const workGuideFile = path.join(workDir, GUIDE_FILE);
-    if (fs.existsSync(workGuideFile)) {
-      fs.copyFileSync(workGuideFile, path.join(targetDir, GUIDE_FILE));
+    if (changes.length > 0) {
+      const pathPrefix = `${path.relative(rootDir, targetDir).split(path.sep).join('/')}/`;
+      const diffs = changes.map(change => ({ file: `${pathPrefix}${change.file}`, diff: formatGuideFileDiff(change, pathPrefix) }));
+      fs.writeFileSync(suggestionsPath, diffs.map(d => d.diff).join(''));
+      report += buildSuggestedEditsSection(
+        diffs,
+        findGraderCoverageWarnings(changes, targetDir, workDir),
+        path.relative(rootDir, suggestionsPath).split(path.sep).join('/')
+      );
+    } else {
+      fs.rmSync(suggestionsPath, { force: true });
     }
-    const workExpFile = path.join(workDir, EXPECTATIONS_FILE);
-    if (fs.existsSync(workExpFile)) {
-      fs.copyFileSync(workExpFile, path.join(targetDir, EXPECTATIONS_FILE));
-    }
-    const workTargetsDir = path.join(workDir, 'targets');
-    if (fs.existsSync(workTargetsDir)) {
-      fs.cpSync(workTargetsDir, path.join(targetDir, TARGETS_DIR), {
-        recursive: true,
-        filter: (src) => !src.endsWith('-solution.patch'),
-      });
-    }
-
-    // Verify calibration if report agent modified any targets/<target>/grader.ts
-    for (const s of summaries) {
-      const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
-      const originalGraderPath = path.join(workDir, 'targets', s.baseApp, GRADER_FILE);
-      if (fs.existsSync(graderPath) && fs.existsSync(originalGraderPath)) {
-        const originalContent = initialGraders.get(s.baseApp);
-        const newContent = fs.readFileSync(graderPath, 'utf8');
-        if (originalContent && originalContent !== newContent) {
-          console.log(cCyan(`\nValidating calibration for modified ${s.baseApp} grader...`));
-          const calib = await testGrader(path.join(targetDir, TARGETS_DIR, s.baseApp));
-          if (!calib.success) {
-            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader failed calibration: ${calib.errorDetails || 'Unknown error'}. Reverting grader.ts changes.`));
-            fs.writeFileSync(graderPath, originalContent);
-            if (fs.existsSync(finalReportPath)) {
-              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` failed calibration testing (${calib.errorDetails || 'calibration failure'}) and were automatically reverted on disk.\n`;
-              fs.appendFileSync(finalReportPath, revertWarning);
-            }
-          } else {
-            console.log(cGreen(`✅ Modified ${s.baseApp} grader passed calibration!`));
-          }
-        }
-      }
-    }
+    fs.writeFileSync(finalReportPath, report);
   } finally {
     fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });
   }
@@ -408,6 +522,9 @@ export async function runDevReport(
     console.log(`  ${icon} ${cBold(s.baseApp)}: ${flagColor(s.flag)} (${unguidedStr}guided: ${s.guidedPassRate}%)`);
   }
   console.log(`\n  ${cGreen('📄 Full Evaluation Report:')} ${path.relative(process.cwd(), finalReportPath)}`);
+  if (suggestionCount > 0) {
+    console.log(`  ${cYellow(`📝 ${suggestionCount} suggested file edit(s), not applied:`)} ${path.relative(process.cwd(), suggestionsPath)}`);
+  }
   const relativeGuideDir = path.relative(process.cwd(), targetDir);
   console.log(`\n  ${cCyan('💡 Next step:')} Create a PR with this evaluation report:`);
   console.log(`     ${cBold(`gd pr ${relativeGuideDir}`)}`);

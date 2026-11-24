@@ -61,9 +61,15 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('getTargetFiles'));
   assert.ok(prompt.includes('getCssStyleSheet'));
   assert.ok(prompt.includes('CSSOMNom'));
+  assert.ok(prompt.includes('expectNever'));
   assert.ok(prompt.includes('Right Instrument for the Claim: Parsers vs. Browser'));
   assert.ok(prompt.includes('Structure and API Usage (Parsers)'));
   assert.ok(prompt.includes('Runtime Behavior (Browser)'));
+  assert.ok(prompt.includes('Poll to End State'));
+  assert.ok(prompt.includes('Mock Browser APIs Faithfully'));
+  assert.ok(prompt.includes('toJSON()'));
+  assert.ok(prompt.includes('Pair `MUST NOT` Checks with Positive Presence Assertions'));
+  assert.ok(prompt.includes('Anti-loosening rule'));
   assert.ok(prompt.includes('One Expectation per Test'));
   assert.ok(prompt.includes('precondition assertion'));
   assert.ok(prompt.includes('hooks (`id` or `data-` attributes) that `task.md` names'));
@@ -74,7 +80,7 @@ test('buildTargetGraderPrompt includes Option B scoping rules and locked solutio
   assert.ok(prompt.includes('Utility CSS Flexibility'));
   assert.ok(prompt.includes('LOCKED'));
   assert.ok(prompt.includes('No Patch-Specific Identifier Overfitting'));
-  assert.ok(prompt.includes('No Vacuous Guards or `test.skip()`'));
+  assert.ok(prompt.includes('No Vacuous Guards, `test.skip()`, or Fallback Loops'));
   assert.ok(prompt.includes('npx oxlint'));
 });
 
@@ -145,7 +151,7 @@ test('buildTargetTaskPrompt includes reviewer feedback block only when comments 
   assert.ok(withComments.includes('Carefully address any reviewer suggestions regarding the developer prompt in `task.md`'));
 });
 
-test('buildTargetGraderPrompt formats failure context correctly when provided', () => {
+test('buildTargetGraderPrompt formats failure context and untouched starting-app fallback correctly', () => {
   const prompt = buildTargetGraderPrompt({
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
@@ -154,14 +160,15 @@ test('buildTargetGraderPrompt formats failure context correctly when provided', 
       [Agents.CLAUDE_CODE]: 'patches/claude-solution.patch',
       [Agents.CODEX_CLI]: 'patches/codex-solution.patch',
     },
-    zeroPassratePatchFile: 'patches/zero-passrate.patch',
     graderFile: 'grader.ts',
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',
     failureContext: 'Golden test failed on assertion getComputedStyle',
   });
-  assert.ok(prompt.includes('PREVIOUS FAILURE CONTEXT'));
+  assert.ok(prompt.includes('CALIBRATION FAILURES TO FIX IN THE GRADER'));
   assert.ok(prompt.includes('Golden test failed on assertion getComputedStyle'));
+  assert.ok(prompt.includes('Untouched Starting App'));
+  assert.ok(!prompt.includes('zero-passrate.patch'));
 });
 
 test('buildTargetGraderPrompt includes discipline scoping only for discipline guides', () => {
@@ -220,6 +227,8 @@ test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping
   const disciplineSolutionPrompt = buildSolutionPrompt({ ...baseSolutionOpts, isDisciplineGuide: true });
   assert.ok(disciplineSolutionPrompt.includes('discipline guide'));
   assert.ok(disciplineSolutionPrompt.includes('you do NOT need to implement every pattern'));
+  assert.ok(disciplineSolutionPrompt.includes('never on a purely static client-side site'));
+  assert.ok(!disciplineSolutionPrompt.includes('any web application (such as document metadata or response headers)'));
   assert.ok(!buildSolutionPrompt(baseSolutionOpts).includes('discipline guide'));
 
   const baseZeroOpts = {
@@ -256,16 +265,16 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions without 
   assert.ok(!disciplinePrompt.includes('understand the use case'));
 });
 
-test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags and inputs', () => {
+test('buildDevReportPrompt creates Red-Line aligned diagnostic prompt without 90% threshold or disk mutation', () => {
   const prompt = buildDevReportPrompt({
     guideName: 'size-aware-styling',
     targets: [
       {
         baseApp: 'daily-grind',
-        flag: 'LOW_GUIDED_PASS_RATE',
-        flagDetails: 'Guided pass rate is 75% (below 90% threshold)',
+        flag: 'HIGH_UNGUIDED_PASS_RATE',
+        flagDetails: 'Unguided pass rate is 85% (at or above the 80% threshold)',
         guidedPassRate: 75,
-        unguidedPassRate: 50,
+        unguidedPassRate: 85,
       },
     ],
   });
@@ -274,19 +283,19 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('report.md'));
   assert.ok(prompt.includes('## Summary'));
   assert.ok(prompt.includes('Top-Level Summary'));
-  assert.ok(prompt.includes('LOW_GUIDED_PASS_RATE'));
+  assert.ok(!prompt.includes('LOW_GUIDED_PASS_RATE'));
+  assert.ok(!prompt.includes('90%'));
+  assert.ok(!prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
   assert.ok(prompt.includes('HIGH_UNGUIDED_PASS_RATE'));
   assert.ok(prompt.includes('CALIBRATION_FAILED'));
-  assert.ok(prompt.includes('Treat `guide.md` as Authoritative over `expectations.md`'));
-  assert.ok(prompt.includes('do NOT hand-edit `targets/<target>/grader.ts` in the same pass'));
-  assert.ok(prompt.includes('presume `targets/<target>/grader.ts` or `targets/<target>/task.md` is at fault'));
+  assert.ok(prompt.includes('SUGGESTED EDITS (NEVER APPLIED TO DISK)'));
+  assert.ok(prompt.includes('suggestions.patch'));
+  assert.ok(prompt.includes('Never trim `expectations.md` or loosen `grader.ts` just to make calibration pass'));
+  assert.ok(prompt.includes('**Never** rewrite `task.md` to name `guide.md`'));
   assert.ok(prompt.includes('daily-grind'));
   assert.ok(prompt.includes('Evaluation Results'));
   assert.ok(prompt.includes('Diagnostic Analysis & Actionable Recommendations'));
   assert.ok(prompt.includes('ROOT-CAUSE DIAGNOSIS RULES'));
-  assert.ok(prompt.includes('add the needs-dev-rerun label'));
-  assert.ok(prompt.includes('```diff'));
-  assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
 });
 
 test('buildDevReportPrompt includes PR context and reviewer feedback instructions when provided', () => {
@@ -295,7 +304,7 @@ test('buildDevReportPrompt includes PR context and reviewer feedback instruction
     targets: [
       {
         baseApp: 'daily-grind',
-        flag: 'LOW_GUIDED_PASS_RATE',
+        flag: 'HEALTHY',
         flagDetails: 'Guided pass rate is 50%',
         guidedPassRate: 50,
         unguidedPassRate: 20,
@@ -316,6 +325,11 @@ test('buildDevReportPrompt includes PR context and reviewer feedback instruction
   assert.ok(prompt.includes('LeaVerou'));
   assert.ok(prompt.includes('Honor reviewer feedback'));
   assert.ok(prompt.includes('without blindly overwriting human-authored changes'));
+});
+
+test('dev-prompts contains no internal invariant IDs', () => {
+  const src = fs.readFileSync(path.join(__dirname, 'dev-prompts.ts'), 'utf8');
+  assert.doesNotMatch(src, /\b(?:GRADE|TASK|EXP|CAL|PROC|MET|DL)-\d+\b/);
 });
 
 test('buildApplyReviewFeedbackPrompt explains needs-dev-rerun regeneration', () => {

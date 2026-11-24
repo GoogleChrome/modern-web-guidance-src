@@ -132,12 +132,16 @@ export async function generateTargetGrader(
       solutionPatchFiles[agent] = SOLUTION_PATCH_FILES[agent];
     }
 
+    const zeroPassratePath = path.join(targetDir, ZERO_PASSRATE_PATCH_FILE);
+    const hasNonEmptyZeroPassrate =
+      fs.existsSync(zeroPassratePath) && fs.readFileSync(zeroPassratePath, 'utf8').trim().length > 0;
+
     const prompt = buildTargetGraderPrompt({
       guideFile: GUIDE_FILE,
       expectationsFile: EXPECTATIONS_FILE,
       taskFile: TASK_FILE,
       solutionPatchFiles,
-      zeroPassratePatchFile: ZERO_PASSRATE_PATCH_FILE,
+      zeroPassratePatchFile: hasNonEmptyZeroPassrate ? ZERO_PASSRATE_PATCH_FILE : undefined,
       graderFile: GRADER_FILE,
       baseApp,
       templateFile: 'template.grader.ts',
