@@ -329,3 +329,79 @@ test('Uses transitionable visibility to handle entry/exit animations and avoid t
 
   expect(hasVisibilityTransition && hasNonZeroDuration).toBe(true);
 });
+
+// Test 7: Focus management when scroll-position-aware element disappears
+test('Moves focus to scrollable region or body when focused scroll-position-aware element disappears', async ({ page }) => {
+  await page.goto(targetUrl);
+
+  const info = await page.evaluate(() => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    let scroller: HTMLElement | null = null;
+    for (const el of elements) {
+      const style = window.getComputedStyle(el);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        scroller = el as HTMLElement;
+        break;
+      }
+    }
+    if (!scroller) {
+      scroller = (document.querySelector('.scroller') || document.scrollingElement || document.documentElement) as HTMLElement;
+    }
+    scroller.style.scrollBehavior = 'auto';
+    scroller.scrollTop = 250;
+    return {
+      isRootScroller: scroller === document.documentElement || scroller === document.body,
+    };
+  });
+
+  await page.waitForFunction(() => {
+    const el = document.querySelector('.back-to-top, #backToTop, [class*="back-to-top"]')
+      || Array.from(document.querySelectorAll('a, button')).find((n) => n.textContent?.toLowerCase().includes('top'));
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    return style.visibility !== 'hidden' && parseFloat(style.opacity || '0') > 0.5;
+  }, null, { timeout: 2000 });
+
+  const floating = page.locator('.back-to-top, #backToTop, [class*="back-to-top"], a:has-text("Top"), button:has-text("Top")').first();
+  await floating.focus();
+  await expect(floating).toBeFocused();
+
+  await page.evaluate(() => {
+    const elements = Array.from(document.querySelectorAll('*'));
+    let scroller: HTMLElement | null = null;
+    for (const el of elements) {
+      const style = window.getComputedStyle(el);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        scroller = el as HTMLElement;
+        break;
+      }
+    }
+    if (!scroller) {
+      scroller = (document.querySelector('.scroller') || document.scrollingElement || document.documentElement) as HTMLElement;
+    }
+    scroller.scrollTop = 0;
+  });
+
+  await expect.poll(async () => {
+    return await page.evaluate((isRoot) => {
+      const el = document.querySelector('.back-to-top, #backToTop, [class*="back-to-top"]')
+        || Array.from(document.querySelectorAll('a, button')).find((n) => n.textContent?.toLowerCase().includes('top'));
+      if (!el) return { hidden: false, focusMoved: false };
+      const style = window.getComputedStyle(el);
+      const hidden = style.visibility === 'hidden' || style.display === 'none';
+      const active = document.activeElement;
+      if (isRoot) {
+        return { hidden, focusMoved: active === document.body };
+      }
+      const scroller = Array.from(document.querySelectorAll('*')).find((n) => {
+        const s = window.getComputedStyle(n);
+        return s.overflowY === 'auto' || s.overflowY === 'scroll';
+      });
+      const focusMoved = Boolean(
+        (scroller && active === scroller) ||
+        (!scroller && active === document.body)
+      );
+      return { hidden, focusMoved };
+    }, info.isRootScroller);
+  }, { timeout: 2000 }).toEqual({ hidden: true, focusMoved: true });
+});

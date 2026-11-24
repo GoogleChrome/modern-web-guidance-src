@@ -253,4 +253,93 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     await trigger.hover();
     await expect(tooltip).toBeVisible();
   });
+
+  test('Every tooltip whose text differs from its trigger accessible name has role="tooltip" and proper ARIA wiring', async ({ page }) => {
+    const pairs = await collectTooltipPairs(page);
+    const differing = pairs.filter((p) => p.differs);
+
+    expect(differing.length).toBeGreaterThan(0);
+
+    for (const pair of differing) {
+      expect(pair.role).toBe('tooltip');
+      if (!pair.hasOtherName) {
+        expect(pair.hasAriaLabelledByTooltip).toBe(true);
+      } else if (pair.isToggletip) {
+        expect(pair.initialAriaExpanded).toBe('false');
+        const trigger = page.locator(`[interestfor="${pair.id}"]`).first();
+        const tooltip = page.locator(`#${pair.id}`);
+        await trigger.click();
+        await expect(tooltip).toBeVisible();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+        await page.keyboard.press('Escape');
+        await expect(tooltip).toBeHidden();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      } else {
+        expect(pair.hasAriaDescribedByTooltip).toBe(true);
+      }
+    }
+  });
+
+  test('When tooltip text matches trigger accessible name, trigger does not reference it in aria-describedby or aria-expanded', async ({ page }) => {
+    const pairs = await collectTooltipPairs(page);
+    expect(pairs.length).toBeGreaterThan(0);
+
+    const matchingViolations = pairs
+      .filter((p) => !p.differs && (p.hasAriaDescribedByTooltip || p.hasAriaExpanded))
+      .map((p) => p.id);
+    expect(matchingViolations).toEqual([]);
+  });
 });
+
+async function collectTooltipPairs(page: import('@playwright/test').Page) {
+  return await page.evaluate(() => {
+    const norm = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
+    const visibleText = (el: Element) => {
+      const clone = el.cloneNode(true) as Element;
+      clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+      const alts = Array.from(clone.querySelectorAll('img[alt]')).map((img) => img.getAttribute('alt') ?? '');
+      return norm(`${clone.textContent ?? ''} ${alts.join(' ')}`);
+    };
+    const baseAccessibleName = (el: Element, excludeId: string) => {
+      const labelledBy = (el.getAttribute('aria-labelledby') ?? '')
+        .split(/\s+/)
+        .filter((id) => id && id !== excludeId)
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' ');
+      return (
+        norm(labelledBy) ||
+        norm(el.getAttribute('aria-label')) ||
+        visibleText(el) ||
+        norm(el.getAttribute('title'))
+      );
+    };
+
+    const triggers = Array.from(document.querySelectorAll('[interestfor]'));
+    return triggers
+      .map((trigger) => {
+        const id = trigger.getAttribute('interestfor') || '';
+        const tooltip = id ? document.getElementById(id) : null;
+        if (!tooltip) return null;
+        const baseName = baseAccessibleName(trigger, id);
+        const tooltipText = norm(tooltip.textContent);
+        const differs = tooltipText !== baseName;
+        const isToggletip =
+          trigger.getAttribute('popovertarget') === id ||
+          trigger.getAttribute('commandfor') === id;
+        const labelledByIds = (trigger.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
+        const describedByIds = (trigger.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+        return {
+          id,
+          differs,
+          role: tooltip.getAttribute('role'),
+          hasOtherName: baseName.length > 0,
+          isToggletip,
+          hasAriaLabelledByTooltip: labelledByIds.includes(id),
+          hasAriaDescribedByTooltip: describedByIds.includes(id),
+          hasAriaExpanded: trigger.hasAttribute('aria-expanded'),
+          initialAriaExpanded: trigger.getAttribute('aria-expanded'),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  });
+}
