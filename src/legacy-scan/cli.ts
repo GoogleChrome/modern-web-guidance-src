@@ -125,75 +125,6 @@ function formatParseErrorNotice(parseErrorCount: number): string | undefined {
     : undefined;
 }
 
-interface ScanNoteInput {
-  readonly isDefaultQualifiedMode: boolean;
-  readonly totalFindings: number;
-  readonly activeGuideCount: number;
-  readonly activeRuleCount: number;
-  readonly scannedFileCount: number;
-  readonly eligibleFileCount: number;
-  readonly truncatedByMaxFiles: boolean;
-  readonly unsupportedNotice?: string;
-  readonly parseErrorNotice?: string;
-}
-
-function buildScanNote(input: ScanNoteInput): string | undefined {
-  const {
-    isDefaultQualifiedMode,
-    totalFindings,
-    activeGuideCount,
-    activeRuleCount,
-    scannedFileCount,
-    eligibleFileCount,
-    truncatedByMaxFiles,
-    unsupportedNotice,
-    parseErrorNotice,
-  } = input;
-  const parts: string[] = [];
-
-  if (truncatedByMaxFiles) {
-    parts.push(
-      `Partial scan only: ${formatTruncationNotice(scannedFileCount, eligibleFileCount).replace(/^Scanned/, 'scanned')}`,
-    );
-  }
-  if (unsupportedNotice) {
-    parts.push(unsupportedNotice);
-  }
-  if (parseErrorNotice) {
-    parts.push(parseErrorNotice);
-  }
-
-  if (isDefaultQualifiedMode) {
-    const guidesLabel = plural(activeGuideCount, 'guide');
-    if (totalFindings === 0) {
-      if (scannedFileCount === 0 && !truncatedByMaxFiles) {
-        parts.push(
-          `0 scannable files found; checked 0 of ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
-        );
-      } else if (truncatedByMaxFiles || unsupportedNotice || parseErrorNotice) {
-        parts.push(
-          `Found 0 legacy patterns in the scanned subset across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`,
-        );
-      } else {
-        parts.push(
-          `No legacy patterns found across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
-        );
-      }
-    } else {
-      const itemsLabel = plural(totalFindings, 'item');
-      parts.push(
-        truncatedByMaxFiles
-          ? `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${itemsLabel} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
-          : `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${itemsLabel} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`,
-      );
-    }
-  } else if (scannedFileCount === 0 && !truncatedByMaxFiles) {
-    parts.push('0 scannable files found.');
-  }
-
-  return parts.join(' ') || undefined;
-}
-
 const MAX_FILES_CLI_RE = /^(?:0|[1-9]\d*)$/;
 
 function parseMaxFilesCliOption(raw: string): number | null {
@@ -581,17 +512,32 @@ export async function runLegacyScanCli(
 
   const unsupportedNotice = formatUnsupportedFilesNotice(skippedUnsupportedFiles);
   const parseErrorNotice = formatParseErrorNotice(parseErrorCount);
-  const note = buildScanNote({
-    isDefaultQualifiedMode,
-    totalFindings,
-    activeGuideCount,
-    activeRuleCount,
-    scannedFileCount,
-    eligibleFileCount,
-    truncatedByMaxFiles,
-    unsupportedNotice,
-    parseErrorNotice,
-  });
+  const truncationHint = truncatedByMaxFiles
+    ? `Partial scan only: ${formatTruncationNotice(scannedFileCount, eligibleFileCount).replace(/^Scanned/, 'scanned')}`
+    : undefined;
+
+  let corpusHint: string | undefined;
+  if (isDefaultQualifiedMode) {
+    const guidesLabel = plural(activeGuideCount, 'guide');
+    if (totalFindings === 0) {
+      if (scannedFileCount === 0 && !truncatedByMaxFiles) {
+        corpusHint = `0 scannable files found; checked 0 of ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+      } else if (truncatedByMaxFiles || unsupportedNotice || parseErrorNotice) {
+        corpusHint = `Found 0 legacy patterns in the scanned subset across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`;
+      } else {
+        corpusHint = `No legacy patterns found across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+      }
+    } else {
+      corpusHint = truncatedByMaxFiles
+        ? `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${plural(totalFindings, 'item')} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
+        : `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${plural(totalFindings, 'item')} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
+    }
+  } else if (scannedFileCount === 0 && !truncatedByMaxFiles) {
+    corpusHint = '0 scannable files found.';
+  }
+  const note =
+    [truncationHint, unsupportedNotice, parseErrorNotice, corpusHint].filter(Boolean).join(' ') ||
+    undefined;
 
   const data: ScanJsonOutput = {
     targetDir,

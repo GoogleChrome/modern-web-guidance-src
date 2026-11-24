@@ -1720,14 +1720,17 @@ void test('parse error & unrecoverable exception isolation with deduplicated par
     },
   };
 
-  await t.test('direct helper exports remain backward-compatible and return [] on malformed package.json or unrecoverable CSS exceptions', () => {
-    assert.deepEqual(scanCss('broken.css', unrecoverableCss, [cssRule.matcher]), []);
-    assert.deepEqual(scanCssRules('broken.css', unrecoverableCss, [cssRule]), []);
-    assert.deepEqual(
-      scanPackageJson('package.json', '{ "dependencies": {', [depRule.matcher]),
-      [],
+  await t.test('direct scanner helpers propagate unrecoverable parse errors while scanFiles/scanRepoFiles isolate them', () => {
+    assert.throws(() => scanCss('broken.css', unrecoverableCss, [cssRule.matcher]), RangeError);
+    assert.throws(() => scanCssRules('broken.css', unrecoverableCss, [cssRule]), RangeError);
+    assert.throws(
+      () => scanPackageJson('package.json', '{ "dependencies": {', [depRule.matcher]),
+      SyntaxError,
     );
-    assert.deepEqual(scanPackageJsonRules('package.json', '{ "dependencies": {', [depRule]), []);
+    assert.throws(
+      () => scanPackageJsonRules('package.json', '{ "dependencies": {', [depRule]),
+      SyntaxError,
+    );
   });
 
   await t.test('counts malformed package.json and unrecoverable .css exceptions once per file without aborting remaining files', () => {

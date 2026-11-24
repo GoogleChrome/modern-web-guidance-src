@@ -398,25 +398,19 @@ function findPackageLine(
   return 1;
 }
 
-function runPackageJsonRules<T extends { readonly matcher: DependencyRuleMatcher }>(
+/**
+ * Scans `package.json` content against rules with DependencyRuleMatchers in a single parse pass.
+ */
+export function scanPackageJsonRules<T extends { readonly matcher: DependencyRuleMatcher }>(
   filePath: string,
   packageJsonContent: string,
   rules: readonly T[],
-  ignoreParseError: boolean,
 ): { rule: T; match: ScanMatch }[] {
   if (rules.length === 0) {
     return [];
   }
 
-  let pkgData: unknown;
-  try {
-    pkgData = JSON.parse(packageJsonContent);
-  } catch (err) {
-    if (ignoreParseError && err instanceof SyntaxError) {
-      return [];
-    }
-    throw err;
-  }
+  const pkgData: unknown = JSON.parse(packageJsonContent);
 
   if (!isRecord(pkgData) || isPureNodeBackendOrCliPackage(pkgData)) {
     return [];
@@ -473,30 +467,6 @@ function runPackageJsonRules<T extends { readonly matcher: DependencyRuleMatcher
   }
 
   return results;
-}
-
-/**
- * Scans `package.json` content against rules with DependencyRuleMatchers in a single
- * parse pass, propagating `JSON.parse` SyntaxError exceptions to the caller.
- */
-export function scanPackageJsonRulesStrict<T extends { readonly matcher: DependencyRuleMatcher }>(
-  filePath: string,
-  packageJsonContent: string,
-  rules: readonly T[],
-): { rule: T; match: ScanMatch }[] {
-  return runPackageJsonRules(filePath, packageJsonContent, rules, false);
-}
-
-/**
- * Scans `package.json` content against rules with DependencyRuleMatchers in a single
- * parse pass, returning `[]` on malformed JSON.
- */
-export function scanPackageJsonRules<T extends { readonly matcher: DependencyRuleMatcher }>(
-  filePath: string,
-  packageJsonContent: string,
-  rules: readonly T[],
-): { rule: T; match: ScanMatch }[] {
-  return runPackageJsonRules(filePath, packageJsonContent, rules, true);
 }
 
 /**

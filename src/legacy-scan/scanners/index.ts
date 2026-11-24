@@ -13,9 +13,9 @@ import type {
   RuleMatcher,
 } from '../schema.ts';
 import { sliceStructuredContext } from './context-slicer.ts';
-import { scanCssRulesStrict } from './css-scanner.ts';
+import { scanCssRules } from './css-scanner.ts';
 import {
-  scanPackageJsonRulesStrict,
+  scanPackageJsonRules,
   scanVendoredLibraryRules,
 } from './dependency-scanner.ts';
 import { scanHtmlRules, scanJsxRules } from './dom-scanner.ts';
@@ -47,24 +47,12 @@ import {
   isMarkupPath,
   prepareHtmlForDomScan,
   stripPreprocessorLineComments,
-  type ScriptBlock,
 } from './sfc-extractor.ts';
 
 export * from './ast-helpers.ts';
 export * from './context-slicer.ts';
-export {
-  normalizeCssDeclValue,
-  scanCss,
-  scanCssRules,
-} from './css-scanner.ts';
-export {
-  createDependencyMatcher,
-  isPureNodeBackendOrCliPackage,
-  scanPackageJson,
-  scanPackageJsonRules,
-  scanVendoredLibraryFile,
-  scanVendoredLibraryRules,
-} from './dependency-scanner.ts';
+export * from './css-scanner.ts';
+export * from './dependency-scanner.ts';
 export * from './dom-scanner.ts';
 export * from './file-filter.ts';
 export * from './js-scanner.ts';
@@ -311,26 +299,22 @@ function scanExtractedStyles(
   }
   const findings: ScanFinding[] = [];
   let hadParseError = false;
-  let styleBlocks: readonly string[];
   try {
-    styleBlocks = extractStyleBlocks(ctx.relPath, ctx.content);
+    for (const strippedCss of extractStyleBlocks(ctx.relPath, ctx.content)) {
+      if (isMinifiedContent(strippedCss)) continue;
+      try {
+        findings.push(
+          ...materializeRuleMatches(
+            ctx,
+            scanCssRules(ctx.relPath, strippedCss, rules, ctx.content),
+          ),
+        );
+      } catch {
+        hadParseError = true;
+      }
+    }
   } catch {
-    return { findings: [], hadParseError: true };
-  }
-  for (const strippedCss of styleBlocks) {
-    if (isMinifiedContent(strippedCss)) {
-      continue;
-    }
-    try {
-      findings.push(
-        ...materializeRuleMatches(
-          ctx,
-          scanCssRulesStrict(ctx.relPath, strippedCss, rules, ctx.content),
-        ),
-      );
-    } catch {
-      hadParseError = true;
-    }
+    hadParseError = true;
   }
   return { findings, hadParseError };
 }
@@ -358,31 +342,25 @@ function processMultiBlockFile(
   }
 
   if (rules.js.length > 0) {
-    let scriptBlocks: readonly ScriptBlock[] = [];
     try {
-      scriptBlocks = extractScriptBlocks(ctx.relPath, ctx.content);
+      for (const block of extractScriptBlocks(ctx.relPath, ctx.content)) {
+        if (isMinifiedContent(block.strippedContent)) continue;
+        try {
+          findings.push(
+            ...scanJsAst(ctx, block.virtualPath, block.strippedContent, rules.js, [], pool),
+          );
+        } catch {
+          hadParseError = true;
+        }
+      }
     } catch {
       hadParseError = true;
-    }
-    for (const block of scriptBlocks) {
-      if (isMinifiedContent(block.strippedContent)) {
-        continue;
-      }
-      try {
-        findings.push(
-          ...scanJsAst(ctx, block.virtualPath, block.strippedContent, rules.js, [], pool),
-        );
-      } catch {
-        hadParseError = true;
-      }
     }
   }
 
   const styleResult = scanExtractedStyles(ctx, rules.css);
   findings.push(...styleResult.findings);
-  hadParseError ||= styleResult.hadParseError;
-
-  return { findings, hadParseError };
+  return { findings, hadParseError: hadParseError || styleResult.hadParseError };
 }
 
 function resolveFileFilterOptions(options?: ScanOptions): FileFilterOptions | undefined {
@@ -579,7 +557,7 @@ export function scanLoadedFile(
           session.rules.dep.length > 0
             ? materializeRuleMatches(
                 ctx,
-                scanPackageJsonRulesStrict(relPath, content, session.rules.dep),
+                scanPackageJsonRules(relPath, content, session.rules.dep),
               )
             : [],
         hadParseError: false,
@@ -589,19 +567,18 @@ export function scanLoadedFile(
     const ext = posix.extname(lowerPath);
 
     if (STYLESHEET_EXTENSIONS.has(ext)) {
-      if (session.rules.css.length === 0) {
-        return { findings: [], hadParseError: false };
-      }
-      // Strip SCSS/Less `//` comments so cssomnom does not attach them to the next selector.
       const cssContent =
         ext === '.scss' || ext === '.less'
           ? stripPreprocessorLineComments(content)
           : content;
       return {
-        findings: materializeRuleMatches(
-          ctx,
-          scanCssRulesStrict(relPath, cssContent, session.rules.css, content),
-        ),
+        findings:
+          session.rules.css.length > 0
+            ? materializeRuleMatches(
+                ctx,
+                scanCssRules(relPath, cssContent, session.rules.css, content),
+              )
+            : [],
         hadParseError: false,
       };
     }
@@ -623,8 +600,7 @@ export function scanLoadedFile(
       }
       const styleResult = scanExtractedStyles(ctx, session.rules.css);
       findings.push(...styleResult.findings);
-      hadParseError ||= styleResult.hadParseError;
-      return { findings, hadParseError };
+      return { findings, hadParseError: hadParseError || styleResult.hadParseError };
     }
 
     return { findings: [], hadParseError: false };
