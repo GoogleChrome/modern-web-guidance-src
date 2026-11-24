@@ -253,4 +253,120 @@ test.describe(`Interest-Triggered Tooltips Expectations: ${demoName}`, () => {
     await trigger.hover();
     await expect(tooltip).toBeVisible();
   });
+
+  test('Every tooltip whose text differs from its trigger accessible name has role="tooltip" and proper ARIA wiring', async ({ page }) => {
+    const pairs = await page.evaluate(() => {
+      const norm = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
+      const baseAccessibleName = (el: Element, excludeId: string) => {
+        const labelledBy = (el.getAttribute('aria-labelledby') ?? '')
+          .split(/\s+/)
+          .filter((id) => id && id !== excludeId)
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ');
+        const alts = Array.from(el.querySelectorAll('img[alt]')).map((img) => img.getAttribute('alt') ?? '');
+        const textOnly = Array.from(el.childNodes)
+          .filter((n) => n.nodeType === Node.TEXT_NODE || (n.nodeType === Node.ELEMENT_NODE && !(n as Element).hasAttribute('aria-hidden')))
+          .map((n) => n.textContent ?? '')
+          .join(' ');
+        return (
+          norm(labelledBy) ||
+          norm(el.getAttribute('aria-label')) ||
+          norm(`${textOnly} ${alts.join(' ')}`) ||
+          norm(el.getAttribute('title'))
+        );
+      };
+
+      const triggers = Array.from(document.querySelectorAll('[interestfor]'));
+      return triggers
+        .map((trigger) => {
+          const id = trigger.getAttribute('interestfor') || '';
+          const tooltip = id ? document.getElementById(id) : null;
+          if (!tooltip) return null;
+          const baseName = baseAccessibleName(trigger, id);
+          const tooltipText = norm(tooltip.textContent);
+          const differs = tooltipText !== baseName;
+          const isToggletip =
+            trigger.getAttribute('popovertarget') === id ||
+            trigger.getAttribute('commandfor') === id;
+          const labelledByIds = (trigger.getAttribute('aria-labelledby') ?? '').split(/\s+/).filter(Boolean);
+          const describedByIds = (trigger.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+          return {
+            id,
+            differs,
+            role: tooltip.getAttribute('role'),
+            hasOtherName: baseName.length > 0,
+            isToggletip,
+            hasAriaLabelledByTooltip: labelledByIds.includes(id),
+            hasAriaDescribedByTooltip: describedByIds.includes(id),
+            initialAriaExpanded: trigger.getAttribute('aria-expanded'),
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null && item.differs);
+    });
+
+    expect(pairs.length).toBeGreaterThan(0);
+
+    for (const pair of pairs) {
+      expect(pair.role).toBe('tooltip');
+      if (!pair.hasOtherName) {
+        expect(pair.hasAriaLabelledByTooltip).toBe(true);
+      } else if (pair.isToggletip) {
+        expect(pair.initialAriaExpanded).toBe('false');
+        const trigger = page.locator(`[interestfor="${pair.id}"]`).first();
+        const tooltip = page.locator(`#${pair.id}`);
+        await trigger.click();
+        await expect(tooltip).toBeVisible();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+        await page.keyboard.press('Escape');
+        await expect(tooltip).toBeHidden();
+        await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      } else {
+        expect(pair.hasAriaDescribedByTooltip).toBe(true);
+      }
+    }
+  });
+
+  test('When tooltip text matches trigger accessible name, trigger does not reference it in aria-describedby or aria-expanded', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      const norm = (s: string | null | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
+      const baseAccessibleName = (el: Element, excludeId: string) => {
+        const labelledBy = (el.getAttribute('aria-labelledby') ?? '')
+          .split(/\s+/)
+          .filter((id) => id && id !== excludeId)
+          .map((id) => document.getElementById(id)?.textContent ?? '')
+          .join(' ');
+        const alts = Array.from(el.querySelectorAll('img[alt]')).map((img) => img.getAttribute('alt') ?? '');
+        return (
+          norm(labelledBy) ||
+          norm(el.getAttribute('aria-label')) ||
+          norm(`${el.textContent ?? ''} ${alts.join(' ')}`) ||
+          norm(el.getAttribute('title'))
+        );
+      };
+
+      const triggers = Array.from(document.querySelectorAll('[interestfor]'));
+      const matchingViolations: string[] = [];
+      let validPairs = 0;
+
+      for (const trigger of triggers) {
+        const id = trigger.getAttribute('interestfor') || '';
+        const tooltip = id ? document.getElementById(id) : null;
+        if (!tooltip) continue;
+        validPairs++;
+        const baseName = baseAccessibleName(trigger, id);
+        const tooltipText = norm(tooltip.textContent);
+        if (tooltipText === baseName) {
+          const describedByIds = (trigger.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+          if (describedByIds.includes(id) || trigger.hasAttribute('aria-expanded')) {
+            matchingViolations.push(id);
+          }
+        }
+      }
+
+      return { validPairs, matchingViolations };
+    });
+
+    expect(result.validPairs).toBeGreaterThan(0);
+    expect(result.matchingViolations).toEqual([]);
+  });
 });
