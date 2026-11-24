@@ -1,4 +1,4 @@
-import { normalizeCssDeclValue } from '../scanners/css-scanner.ts';
+import { normalizeCssDeclValue } from '../scanners/css-value.ts';
 import type {
   AnalyzerRule,
   CssMatcherContext,

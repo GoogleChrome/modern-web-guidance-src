@@ -67,6 +67,7 @@ Commands:
   list                      List all available use cases
   retrieve <ids>            Retrieve use case(s) by ID(s), comma-separated
   legacy-scan [path] [options]  Analyze codebase for legacy web platform patterns
+  verify <url> [options]    Verify live page (and/or --dir) against modern web guidance
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
   set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
@@ -109,6 +110,19 @@ async function main() {
     const logger = new ClearcutLogger({ skillVersion });
     await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.LEGACY_SCAN);
     process.exit(writeAnalyzeCliResult(result));
+  }
+
+  if (command === "verify") {
+    maybeEmitUpdateMessage(skillVersion);
+    const { runVerifyingCli, writeVerifyingCliResult } = await import("../verifying/cli.ts");
+    const args = process.argv.slice(2);
+    const cmdIdx = args.indexOf(command);
+    if (cmdIdx !== -1) args.splice(cmdIdx, 1);
+    const startTime = Date.now();
+    const result = await runVerifyingCli(args);
+    const logger = new ClearcutLogger({ skillVersion });
+    await logger.logToolCommand(Date.now() - startTime, result.exitCode === 0, CommandType.VERIFY);
+    process.exit(writeVerifyingCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {

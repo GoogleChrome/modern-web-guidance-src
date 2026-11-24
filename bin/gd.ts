@@ -39,6 +39,7 @@ type OptionName = keyof typeof ALL_OPTIONS;
 
 const COMMAND_METADATA = {
   'legacy-scan': { desc: 'Analyze codebase for legacy web platform patterns', flags: ['json', 'guide', 'include-docs-and-tests'] },
+  verify: { desc: 'Verify live page (or --dir) against modern web guidance', flags: ['json'] },
   dev: { desc: 'Auto-generate and calibrate guide artifacts', flags: ['grade', 'test-grader', 'gen-grader', 'guided', 'no-test', 'cross-app', 'targets'] },
   'dev-gap': { desc: 'Run dev + pr for each guide missing evals or PR labeled for rerun', flags: ['dry-run', 'limit', 'targets'] },
   eval: { desc: 'Run the evaluation dataset, or specific tasks', flags: ['config', 'ui'] },
@@ -198,7 +199,7 @@ function showHelp() {
     },
     {
       title: 'Codebase Analysis',
-      commands: ['legacy-scan'],
+      commands: ['legacy-scan', 'verify'],
     },
     {
       title: 'Evaluation & Dashboard',
@@ -227,7 +228,7 @@ function showHelp() {
       const meta = COMMAND_METADATA[cmd as CommandName];
       if (!meta) continue;
 
-      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'run' ? ' <base-app> <prompt>' : cmd === 'eval' ? ' [tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <trialA> <trialB>' : '';
+      const args = (cmd === 'dev' || cmd === 'pr') ? ' <dir>' : cmd === 'legacy-scan' ? ' [path]' : cmd === 'verify' ? ' <url>' : cmd === 'run' ? ' <base-app> <prompt>' : cmd === 'eval' ? ' [tasks...]' : cmd === 'baselinestatus' ? ' <query>' : cmd === 'compare' ? ' <trialA> <trialB>' : '';
       console.log(`  ${cCyan((cmd + args).padEnd(28))} ${meta.desc}`);
 
       if (meta.flags.length > 0) {
@@ -254,6 +255,13 @@ async function main() {
     const { runAnalyzeCli, writeAnalyzeCliResult } = await import('../src/analyzing/cli.ts');
     const result = await runAnalyzeCli(process.argv.slice(3));
     writeAnalyzeCliResult(result);
+    process.exit(result.exitCode);
+  }
+
+  if (command === 'verify') {
+    const { runVerifyingCli, writeVerifyingCliResult } = await import('../src/verifying/cli.ts');
+    const result = await runVerifyingCli(process.argv.slice(3));
+    writeVerifyingCliResult(result);
     process.exit(result.exitCode);
   }
 

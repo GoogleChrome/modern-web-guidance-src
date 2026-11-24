@@ -178,6 +178,30 @@ describe('modern-web CLI', () => {
     assert.ok(res2.stdout.includes('Usage: modern-web-guidance legacy-scan'));
   });
 
+  it('forwards --help and --skill-version cleanly for verify', () => {
+    const helpVerify = runCLI(['--help', 'verify']);
+    assert.strictEqual(helpVerify.status, 0);
+    assert.ok(helpVerify.stdout.includes('Usage: modern-web-guidance verify <url> [options]'));
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-verify-cli-test-'));
+    try {
+      const verifyRes = runCLI([
+        '--skill-version',
+        '2026_01_01-test',
+        'verify',
+        '--dir',
+        tempDir,
+        '--json',
+      ]);
+      assert.strictEqual(verifyRes.status, 0);
+      const parsed = JSON.parse(verifyRes.stdout);
+      assert.strictEqual(parsed.passed, true);
+      assert.strictEqual(parsed.targetDir, tempDir);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
     const clearedAgentEnv = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map((k) => [k, undefined]));

@@ -4,7 +4,7 @@ import type {
   DomMatcherContext,
   DomRuleMatcher,
 } from '../schema.ts';
-import { DOM_RULE_EXTENSIONS } from '../scanners/file-filter.ts';
+import { DOM_RULE_EXTENSIONS } from '../scanners/format-registry.ts';
 
 export const AUTOFILL_PAYMENT_FORM_GUIDE_HASH = 'b673d8824bbc';
 

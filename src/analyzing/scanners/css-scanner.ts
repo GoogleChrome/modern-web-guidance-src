@@ -19,7 +19,10 @@ import type {
   CssRuleMatcher,
   CssRuleView,
 } from '../schema.ts';
+import { normalizeCssDeclValue } from './css-value.ts';
 import { matchesFastTokens } from './js-scanner.ts';
+
+export { normalizeCssDeclValue };
 
 const CONDITION_PROP_RE = /\(\s*(--[\w-]+|[a-zA-Z-]+)\s*:/g;
 const DECL_PROP_RE = /(?:^|[;{])\s*(--[\w-]+|[a-zA-Z][a-zA-Z0-9_-]*)\s*:/g;
@@ -203,10 +206,6 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
   }
 
   return results;
-}
-
-export function normalizeCssDeclValue(raw: string | null | undefined): string {
-  return raw?.replace(/\s*!important\s*$/i, '').trim().toLowerCase() ?? '';
 }
 
 export function scanCss(
