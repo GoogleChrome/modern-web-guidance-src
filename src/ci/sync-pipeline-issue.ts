@@ -18,6 +18,7 @@ import {
   detectEvals,
   EXPECTATIONS_FILE,
   getPendingGuideStage,
+  GRADER_FILE,
   GUIDE_FILE,
   isEvalFile,
   parseGuideMetadata,
@@ -40,7 +41,20 @@ const PIPELINE_BASELINE_DATE = '2026-07-22';
 export const PIPELINE_SCALE_MAX = 200;
 const CHART_Y_MIN = 100;
 const DAY_MS = 86_400_000;
-const BULK_EVAL_SWEEP_MIN_SLUGS = 5;
+const BULK_PATCH_SWEEP_MIN_SLUGS = 5;
+const BULK_EVAL_SWEEP_MIN_SLUGS = 15;
+
+export function isBulkEvalSweepCommit(params: {
+  expSlugCount: number;
+  evalSlugCount: number;
+  hasGraderChanges: boolean;
+}): boolean {
+  if (params.expSlugCount > 0) return false;
+  return (
+    params.evalSlugCount >= BULK_EVAL_SWEEP_MIN_SLUGS ||
+    (!params.hasGraderChanges && params.evalSlugCount >= BULK_PATCH_SWEEP_MIN_SLUGS)
+  );
+}
 
 export function computeScaleMax(maxVal: number): number {
   return Math.max(PIPELINE_SCALE_MAX, Math.ceil(maxVal / 50) * 50);
@@ -253,14 +267,9 @@ export function classifyExpectationsDiff(diffText: string): ExpectationsDiffSumm
   return null;
 }
 
-function collectGitGuideHistory(): Map<string, GitFileHistory> {
-  const cwd = rootDir;
+export function collectGitGuideHistoryFromLog(output: string): Map<string, GitFileHistory> {
   const history = new Map<string, GitFileHistory>();
   const fallbackEval = new Map<string, { evalSha: string; evalTs: number; evalDate: string }>();
-  const output = gitExec(
-    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
-    { cwd }
-  );
 
   for (const block of output.split('\nCOMMIT|')) {
     const trimmed = block.trim();
@@ -277,17 +286,28 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
 
     const expSlugs = new Set<string>();
     const evalSlugs = new Set<string>();
+    let hasGraderChanges = false;
 
     for (const rawLine of lines.slice(1)) {
       const parsed = parseGuidePath(rawLine.trim());
       if (!parsed) continue;
       if (parsed.relPath === EXPECTATIONS_FILE) expSlugs.add(parsed.slug);
-      if (isEvalFile(parsed.relPath)) evalSlugs.add(parsed.slug);
+      if (isEvalFile(parsed.relPath)) {
+        evalSlugs.add(parsed.slug);
+        if (path.posix.basename(parsed.relPath) === GRADER_FILE) {
+          hasGraderChanges = true;
+        }
+      }
     }
 
-    // Repo-wide grader formatting/lint sweeps touch many evals with zero expectations updates;
-    // ignore them unless a guide has no other eval commit in history.
-    const isBulkEvalSweep = evalSlugs.size >= BULK_EVAL_SWEEP_MIN_SLUGS && expSlugs.size === 0;
+    // Repo-wide formatting/lint sweeps (15+ guides) or non-grader eval sweeps (5+ guides with
+    // zero grader.ts edits, e.g. patch hygiene sweeps) shouldn't mask earlier expectations updates
+    // unless a guide has no other eval commit in history.
+    const isBulkEvalSweep = isBulkEvalSweepCommit({
+      expSlugCount: expSlugs.size,
+      evalSlugCount: evalSlugs.size,
+      hasGraderChanges,
+    });
 
     for (const slug of new Set([...expSlugs, ...evalSlugs])) {
       let entry = history.get(slug);
@@ -322,6 +342,17 @@ function collectGitGuideHistory(): Map<string, GitFileHistory> {
       entry.evalDate = fb.evalDate;
     }
   }
+
+  return history;
+}
+
+function collectGitGuideHistory(): Map<string, GitFileHistory> {
+  const cwd = rootDir;
+  const output = gitExec(
+    ['log', '--find-renames', '-m', '--first-parent', '--diff-filter=AM', '--name-only', '--format=COMMIT|%H|%ct|%cs|%s', '--', 'guides/'],
+    { cwd }
+  );
+  const history = collectGitGuideHistoryFromLog(output);
 
   for (const [slug, entry] of history.entries()) {
     if (entry.expTs <= entry.evalTs || !entry.evalSha || !entry.expSha) continue;

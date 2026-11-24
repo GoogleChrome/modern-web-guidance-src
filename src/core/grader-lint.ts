@@ -152,7 +152,7 @@ function readMatcher(expectCall: TsMorphNode): { negated: boolean; matcher: stri
   return undefined;
 }
 
-function isNonNullOrFalsyAssertion(call: TsMorphNode, idName: string): boolean {
+function isPresenceAssertion(call: TsMorphNode, idName: string): boolean {
   if (!Node.isCallExpression(call) || !isAssertionCall(call)) return false;
   const callee = call.getExpression().getText();
   if (callee.startsWith('expect.soft')) return false;
@@ -183,14 +183,31 @@ function isPositiveListAssertion(call: TsMorphNode, listKey: string): boolean {
   const numArg = m.arg !== undefined ? Number(m.arg) : NaN;
   if (m.matcher === 'toBeGreaterThan') return !m.negated && !Number.isNaN(numArg) && numArg >= 0;
   if (m.matcher === 'toBeGreaterThanOrEqual') return !m.negated && !Number.isNaN(numArg) && numArg >= 1;
-  if (m.matcher === 'toHaveLength' || m.matcher === 'toHaveCount') return !m.negated && numArg > 0;
-  if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher) && !m.negated) {
-    if (argKey === `${listKey}.length` || argKey === `${listKey}.size`) return m.arg !== '0';
-    if (m.arg === 'true') {
+  if (m.matcher === 'toHaveLength' || m.matcher === 'toHaveCount') return m.negated ? numArg === 0 : numArg > 0;
+  if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher)) {
+    if (argKey === `${listKey}.length` || argKey === `${listKey}.size`) {
+      return m.negated ? m.arg === '0' : m.arg !== '0';
+    }
+    if (m.arg === String(!m.negated)) {
       return argKey.includes('.some(') || new RegExp(`${listKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(?:length|size)\\s*(?:>|>=)`).test(argKey);
     }
   }
   return false;
+}
+
+function collectConjuncts(node: TsMorphNode, seen = new Set<TsMorphNode>()): TsMorphNode[] {
+  let curr = unwrap(node);
+  if (Node.isIdentifier(curr)) {
+    const decl = curr.getSymbol()?.getDeclarations()[0];
+    if (Node.isVariableDeclaration(decl) && decl.getInitializer() && !seen.has(decl)) {
+      seen.add(decl);
+      curr = unwrap(decl.getInitializer()!);
+    }
+  }
+  if (Node.isBinaryExpression(curr) && curr.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken) {
+    return [...collectConjuncts(curr.getLeft(), seen), ...collectConjuncts(curr.getRight(), seen)];
+  }
+  return [curr];
 }
 
 function checkGen2ExtraRules(
@@ -210,14 +227,18 @@ function checkGen2ExtraRules(
       .getDescendantsOfKind(SyntaxKind.Identifier)
       .filter(id => {
         const p = id.getParent();
-        return !(Node.isPropertyAccessExpression(p) && p.getNameNode() === id) && !(Node.isCallExpression(p) && p.getExpression() === id);
+        return (
+          id.getText() !== 'undefined' &&
+          !(Node.isPropertyAccessExpression(p) && p.getNameNode() === id) &&
+          !(Node.isCallExpression(p) && p.getExpression() === id)
+        );
       })
       .map(id => id.getText());
     const narrowed =
       condIds.length > 0 &&
       condIds.every(id =>
         assertionsIn(testFn).some(
-          a => enclosingFunction(a) === testFn && !isWithinInnerIf(a, testFn) && a.getEnd() <= ifStmt.getStart() && isNonNullOrFalsyAssertion(a, id)
+          a => enclosingFunction(a) === testFn && !isWithinInnerIf(a, testFn) && a.getEnd() <= ifStmt.getStart() && isPresenceAssertion(a, id)
         )
       );
     if (narrowed) continue;
@@ -239,19 +260,23 @@ function checkGen2ExtraRules(
         m && ((m.matcher === 'toBeTruthy' && !m.negated) || (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher) && m.arg === String(!m.negated)));
       const arg = call.getArguments()[0];
       if (truthyAssert && arg) {
-        let target = unwrap(arg);
-        if (Node.isIdentifier(target)) {
-          const decl = target.getSymbol()?.getDeclarations()[0];
-          if (Node.isVariableDeclaration(decl) && decl.getInitializer()) target = unwrap(decl.getInitializer()!);
-        }
-        const targetCallee = Node.isCallExpression(target) ? target.getExpression() : undefined;
-        if (Node.isPropertyAccessExpression(targetCallee) && targetCallee.getName() === 'every') {
-          const list = unwrap(targetCallee.getExpression());
+        const conjuncts = collectConjuncts(arg);
+        const scope = enclosingTest(call) ?? enclosingFunction(call);
+        for (let i = 0; i < conjuncts.length; i++) {
+          const target = conjuncts[i];
+          const targetCallee = Node.isCallExpression(target) ? target.getExpression() : undefined;
+          if (!Node.isPropertyAccessExpression(targetCallee) || targetCallee.getName() !== 'every') continue;
+
+          let list = unwrap(targetCallee.getExpression());
+          if (Node.isCallExpression(list) && list.getExpression().getText() === 'Array.from' && list.getArguments()[0]) {
+            list = unwrap(list.getArguments()[0]);
+          }
           const listKey = list.getText().replace(/\s+/g, '');
           const isNonEmptyLiteral = Node.isArrayLiteralExpression(list) && list.getElements().length > 0 && !list.getElements().some(e => Node.isSpreadElement(e));
-          const scope = enclosingTest(call) ?? enclosingFunction(call);
-          const hasInlineGuard = target.getAncestors().some(
-            a => Node.isBinaryExpression(a) && a.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken && a.getLeft().getText().replace(/\s+/g, '').includes(listKey)
+          const escapedListKey = listKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const lengthOrSizeRe = new RegExp(`(?:^|[^A-Za-z0-9_$.])${escapedListKey}\\??\\.(?:length|size)\\b`);
+          const hasInlineGuard = conjuncts.some(
+            (other, idx) => idx !== i && lengthOrSizeRe.test(other.getText().replace(/\s+/g, ''))
           );
           const guarded =
             isNonEmptyLiteral ||

@@ -7,6 +7,7 @@ import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
   classifyExpectationsDiff,
+  collectGitGuideHistoryFromLog,
   computeScaleMax,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
@@ -14,6 +15,7 @@ import {
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
+  isBulkEvalSweepCommit,
   parseEvalReportFromPrBody,
   PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
@@ -422,6 +424,42 @@ describe('classifyExpectationsDiff & findStaleEvals', () => {
     assert.match(md, /#### Stale evals \(2\)/);
     assert.match(md, /\*\*ui-components\/z-changed\*\*.*`changed \(-1\/\+7\)`/);
     assert.match(md, /\*\*built-in-ai\/a-added\*\*.*`added \(\+3\)`/);
+  });
+
+  it('distinguishes batch stale-eval grader PRs (5-14 guides) from patch-only (5+) and repo-wide (15+) bulk sweeps', () => {
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 5, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 10, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 14, hasGraderChanges: true }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 15, hasGraderChanges: true }), true);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 5, hasGraderChanges: false }), true);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 0, evalSlugCount: 4, hasGraderChanges: false }), false);
+    assert.equal(isBulkEvalSweepCommit({ expSlugCount: 1, evalSlugCount: 20, hasGraderChanges: false }), false);
+
+    const makeGraderPaths = (count: number) =>
+      Array.from({ length: count }, (_, i) => `guides/css/guide-${i}/targets/daily-grind/grader.ts`).join('\n');
+    const makePatchPaths = (count: number) =>
+      Array.from({ length: count }, (_, i) => `guides/css/guide-${i}/targets/daily-grind/patches/claude-solution.patch`).join('\n');
+
+    const log = [
+      // Repo-wide 15-grader sweep should be ignored when an earlier real eval commit exists
+      `COMMIT|sha-sweep15|400|2026-11-20|chore: lint graders (#3800)\n${makeGraderPaths(15)}`,
+      // Patch-only sweep of 5+ guides should be ignored
+      `COMMIT|sha-patches|350|2026-11-19|patches: clean node_modules (#3700)\n${makePatchPaths(5)}`,
+      // Real 8-guide stale-eval grader fix PR (#3691) MUST count as evalTs
+      `COMMIT|sha-batch8|300|2026-11-18|evals: fix stale graders (#3691)\n${makeGraderPaths(8)}`,
+      // Earlier expectations update
+      `COMMIT|sha-exp|200|2026-11-10|docs: update guide-0 expectations (#3500)\nguides/css/guide-0/expectations.md`,
+      // Initial eval
+      `COMMIT|sha-init|100|2026-11-01|evals: initial guide-0 (#3400)\nguides/css/guide-0/targets/daily-grind/grader.ts`,
+    ].join('\n');
+
+    const hist = collectGitGuideHistoryFromLog(log);
+    const guide0 = hist.get('css/guide-0');
+    assert.ok(guide0);
+    assert.equal(guide0.evalSha, 'sha-batch8');
+    assert.equal(guide0.evalTs, 300);
+    assert.equal(guide0.expTs, 200);
+    assert.ok(guide0.evalTs > guide0.expTs, 'batch grader PR should clear stale status');
   });
 });
 
