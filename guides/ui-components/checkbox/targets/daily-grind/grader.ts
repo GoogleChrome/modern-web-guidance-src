@@ -356,4 +356,263 @@ test.describe('checkbox Target Grader', () => {
       hasScaleZeroBase && hasScaleOneActive && hasReducedMotionScaleTransition,
     ).toBe(true);
   });
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Checked and indeterminate state colors have a contrast ratio of at least 3:1 with the background color', async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const results = await page.evaluate(async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const parseColor = (str: string): [number, number, number, number] | null => {
+          if (!ctx || !str || str === 'none' || str === 'transparent') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = str;
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]! / 255];
+        };
+
+        const composite = (
+          fg: [number, number, number, number],
+          bg: [number, number, number, number],
+        ): [number, number, number, number] => {
+          const a = fg[3] + bg[3] * (1 - fg[3]);
+          if (a === 0) return [255, 255, 255, 1];
+          return [
+            (fg[0] * fg[3] + bg[0] * bg[3] * (1 - fg[3])) / a,
+            (fg[1] * fg[3] + bg[1] * bg[3] * (1 - fg[3])) / a,
+            (fg[2] * fg[3] + bg[2] * bg[3] * (1 - fg[3])) / a,
+            a,
+          ];
+        };
+
+        const getEffectiveBg = (el: Element | null, stopAt?: Element | null): [number, number, number, number] => {
+          const layers: Array<[number, number, number, number]> = [];
+          let curr: Element | null = el;
+          while (curr && curr !== stopAt) {
+            const bg = parseColor(window.getComputedStyle(curr).backgroundColor);
+            if (bg && bg[3] > 0) layers.push(bg);
+            curr = curr.parentElement;
+          }
+          let acc: [number, number, number, number] = [255, 255, 255, 1];
+          for (let i = layers.length - 1; i >= 0; i--) {
+            acc = composite(layers[i]!, acc);
+          }
+          return acc;
+        };
+
+        const luminance = ([r, g, b]: [number, number, number, number]): number => {
+          const chan = [r, g, b].map((v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * chan[0]! + 0.7152 * chan[1]! + 0.0722 * chan[2]!;
+        };
+
+        const contrast = (c1: [number, number, number, number], c2: [number, number, number, number]): number => {
+          const l1 = luminance(c1);
+          const l2 = luminance(c2);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const checkboxes = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).filter(
+          (el) => {
+            const cs = window.getComputedStyle(el);
+            return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.disabled;
+          },
+        );
+
+        const checks: Array<{ state: string; ratio: number; missingIndicator?: boolean }> = [];
+
+        for (const cb of checkboxes) {
+          const origChecked = cb.checked;
+          const origIndet = cb.indeterminate;
+
+          for (const state of ['checked', 'indeterminate'] as const) {
+            cb.checked = state === 'checked';
+            cb.indeterminate = state === 'indeterminate';
+            await Promise.allSettled(
+              cb.getAnimations({ subtree: true }).map((a) => a.finished),
+            );
+
+            const cs = window.getComputedStyle(cb);
+            const surroundingBg = getEffectiveBg(cb.parentElement);
+            const boxBg = getEffectiveBg(cb);
+
+            let fgColor: [number, number, number, number] | null = null;
+            let bgColor: [number, number, number, number] = boxBg;
+
+            if (cs.appearance === 'none') {
+              for (const pseudo of ['::before', '::after'] as const) {
+                const ps = window.getComputedStyle(cb, pseudo);
+                const isRendered =
+                  Boolean(ps.content) &&
+                  ps.content !== 'none' &&
+                  ps.display !== 'none' &&
+                  ps.visibility !== 'hidden' &&
+                  parseFloat(ps.opacity) !== 0 &&
+                  ps.scale !== '0' &&
+                  !/^matrix\(\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?/.test(ps.transform);
+                if (!isRendered) continue;
+
+                const pBg = parseColor(ps.backgroundColor);
+                if (pBg && pBg[3] > 0) {
+                  fgColor = composite(pBg, boxBg);
+                  bgColor = boxBg;
+                  break;
+                }
+                const pBorder =
+                  (parseFloat(ps.borderBottomWidth) > 0 && parseColor(ps.borderBottomColor)) ||
+                  (parseFloat(ps.borderTopWidth) > 0 && parseColor(ps.borderTopColor)) ||
+                  null;
+                if (pBorder && pBorder[3] > 0) {
+                  fgColor = composite(pBorder, boxBg);
+                  bgColor = boxBg;
+                  break;
+                }
+                if (ps.content !== '""' && ps.content !== "''") {
+                  const pText = parseColor(ps.color);
+                  if (pText && pText[3] > 0) {
+                    fgColor = composite(pText, boxBg);
+                    bgColor = boxBg;
+                    break;
+                  }
+                }
+              }
+            } else {
+              const accent = parseColor(cs.accentColor);
+              if (accent && accent[3] > 0) {
+                fgColor = composite(accent, surroundingBg);
+                bgColor = surroundingBg;
+              }
+            }
+
+            if (fgColor) {
+              checks.push({ state, ratio: contrast(fgColor, bgColor) });
+            } else {
+              checks.push({ state, ratio: 0, missingIndicator: true });
+            }
+          }
+
+          cb.checked = origChecked;
+          cb.indeterminate = origIndet;
+        }
+
+        return { checkboxCount: checkboxes.length, checks };
+      });
+
+      expect(results.checkboxCount).toBeGreaterThan(0);
+      expect(results.checks.length).toBe(results.checkboxCount * 2);
+      for (const item of results.checks) {
+        expect(item.missingIndicator, `${item.state} state must render a visible indicator`).toBeFalsy();
+        expect(item.ratio, `${item.state} state contrast ratio ${item.ratio.toFixed(2)} must be >= 3`).toBeGreaterThanOrEqual(3);
+      }
+    });
+
+    test('Focus indicators have a contrast ratio of at least 3:1 with the background color', async ({
+      page,
+    }) => {
+      const checkboxes = page.locator('input[type="checkbox"]:not(:disabled)');
+      const count = await checkboxes.count();
+      expect(count).toBeGreaterThan(0);
+
+      const firstCb = checkboxes.first();
+      // Tab to a checkbox so :focus-visible is active
+      let focused = false;
+      for (let i = 0; i < 60; i++) {
+        await page.keyboard.press('Tab');
+        const isCb = await page.evaluate(
+          () =>
+            document.activeElement instanceof HTMLInputElement &&
+            document.activeElement.type === 'checkbox' &&
+            document.activeElement.matches(':focus-visible'),
+        );
+        if (isCb) {
+          focused = true;
+          break;
+        }
+      }
+      if (!focused) {
+        await firstCb.focus();
+      }
+
+      const ratio = await page.evaluate(() => {
+        const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        if (!active) return 0;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const parseColor = (str: string): [number, number, number, number] | null => {
+          if (!ctx || !str || str === 'none' || str === 'transparent') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = str;
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]! / 255];
+        };
+        const composite = (
+          fg: [number, number, number, number],
+          bg: [number, number, number, number],
+        ): [number, number, number, number] => {
+          const a = fg[3] + bg[3] * (1 - fg[3]);
+          if (a === 0) return [255, 255, 255, 1];
+          return [
+            (fg[0] * fg[3] + bg[0] * bg[3] * (1 - fg[3])) / a,
+            (fg[1] * fg[3] + bg[1] * bg[3] * (1 - fg[3])) / a,
+            (fg[2] * fg[3] + bg[2] * bg[3] * (1 - fg[3])) / a,
+            a,
+          ];
+        };
+        const luminance = ([r, g, b]: [number, number, number, number]): number => {
+          const chan = [r, g, b].map((v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * chan[0]! + 0.7152 * chan[1]! + 0.0722 * chan[2]!;
+        };
+        const contrast = (c1: [number, number, number, number], c2: [number, number, number, number]): number => {
+          const l1 = luminance(c1);
+          const l2 = luminance(c2);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const cs = window.getComputedStyle(active);
+        const outlineWidth = parseFloat(cs.outlineWidth) || 0;
+        if (cs.outlineStyle === 'none' || outlineWidth <= 0) return 0;
+
+        const outlineColor = parseColor(cs.outlineColor);
+        if (!outlineColor || outlineColor[3] <= 0) return 0;
+
+        const layers: Array<[number, number, number, number]> = [];
+        let curr: Element | null = active.parentElement;
+        while (curr) {
+          const bg = parseColor(window.getComputedStyle(curr).backgroundColor);
+          if (bg && bg[3] > 0) layers.push(bg);
+          curr = curr.parentElement;
+        }
+        let bg: [number, number, number, number] = [255, 255, 255, 1];
+        for (let i = layers.length - 1; i >= 0; i--) {
+          bg = composite(layers[i]!, bg);
+        }
+
+        return contrast(composite(outlineColor, bg), bg);
+      });
+
+      expect(ratio).toBeGreaterThanOrEqual(3);
+    });
+  });
 });
