@@ -814,24 +814,32 @@ test.describe('form-factor-adaptation Target Grader', () => {
       expect(desktop.overlaps).toEqual([]);
 
       const cdp = await page.context().newCDPSession(page);
-      await cdp.send('Emulation.setDeviceMetricsOverride', {
-        width: 390,
-        height: 844,
-        deviceScaleFactor: 1,
-        mobile: true,
-      });
       await cdp.send('Emulation.setTouchEmulationEnabled', {
         enabled: true,
         maxTouchPoints: 5,
       });
-      const coarse = await measureHitAreas();
-      await cdp.send('Emulation.clearDeviceMetricsOverride');
 
-      expect(coarse.targetCount).toBeGreaterThan(0);
-      // Pair with positive target-size presence so untouched app doesn't vacuously pass
-      expect(coarse.minWidth).toBeGreaterThanOrEqual(43.5);
-      expect(coarse.minHeight).toBeGreaterThanOrEqual(43.5);
-      expect(coarse.overlaps).toEqual([]);
+      try {
+        for (const viewport of [
+          { width: 390, height: 844 },
+          { width: 320, height: 800 },
+        ]) {
+          await cdp.send('Emulation.setDeviceMetricsOverride', {
+            ...viewport,
+            deviceScaleFactor: 1,
+            mobile: true,
+          });
+          const coarse = await measureHitAreas();
+
+          expect(coarse.targetCount, `${viewport.width}x${viewport.height} targetCount`).toBeGreaterThan(0);
+          // Pair with positive target-size presence so untouched app doesn't vacuously pass
+          expect(coarse.minWidth, `${viewport.width}x${viewport.height} minWidth`).toBeGreaterThanOrEqual(43.5);
+          expect(coarse.minHeight, `${viewport.width}x${viewport.height} minHeight`).toBeGreaterThanOrEqual(43.5);
+          expect(coarse.overlaps, `${viewport.width}x${viewport.height} overlaps`).toEqual([]);
+        }
+      } finally {
+        await cdp.send('Emulation.clearDeviceMetricsOverride');
+      }
     });
   });
 });

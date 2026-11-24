@@ -314,79 +314,185 @@ test.describe('spinner Target Grader', () => {
       const arcState = await progress.evaluate((el) => {
         const cs = window.getComputedStyle(el);
         const bgImage = cs.backgroundImage;
-        const bgColor = cs.backgroundColor;
+        const bgColorStr = cs.backgroundColor;
 
-        const evalDeg = (expr: string): number | null => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const resolveRgba = (colorStr: string): [number, number, number, number] | null => {
+          if (!ctx || !colorStr || colorStr === 'none') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = colorStr;
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]!];
+        };
+
+        const sameColor = (
+          a: [number, number, number, number],
+          b: [number, number, number, number] | null,
+        ): boolean => {
+          if (!b) return false;
+          return (
+            Math.abs(a[0] - b[0]) <= 2 &&
+            Math.abs(a[1] - b[1]) <= 2 &&
+            Math.abs(a[2] - b[2]) <= 2 &&
+            Math.abs(a[3] - b[3]) <= 2
+          );
+        };
+
+        const isVisibleSpinnerColor = (
+          rgba: [number, number, number, number] | null,
+          trackBg: [number, number, number, number] | null,
+        ): boolean => {
+          if (!rgba || rgba[3] === 0) return false;
+          return !sameColor(rgba, trackBg);
+        };
+
+        const parseAngleToDeg = (expr: string): number | null => {
           const cleaned = expr.trim();
-          const simple = cleaned.match(/^(-?\d+(?:\.\d+)?)deg$/);
-          if (simple) return parseFloat(simple[1]!);
-          const calcSub = cleaned.match(/^calc\(\s*(-?\d+(?:\.\d+)?)deg\s*-\s*(-?\d+(?:\.\d+)?)deg\s*\)$/);
-          if (calcSub) return parseFloat(calcSub[1]!) - parseFloat(calcSub[2]!);
-          const calcAdd = cleaned.match(/^calc\(\s*(-?\d+(?:\.\d+)?)deg\s*\+\s*(-?\d+(?:\.\d+)?)deg\s*\)$/);
-          if (calcAdd) return parseFloat(calcAdd[1]!) + parseFloat(calcAdd[2]!);
-          // Handle nested calc like calc((90deg + 158deg) - (90deg + 0deg))
-          const nums = cleaned.replace(/deg/g, '').replace(/^calc/, '');
-          if (/^[\s0-9.+\-*/()]+$/.test(nums)) {
-            try {
-              const val = Function(`"use strict"; return (${nums});`)();
-              if (typeof val === 'number' && Number.isFinite(val)) return val;
-            } catch {}
+          const simple = cleaned.match(/^(-?\d*\.?\d+(?:e[+-]?\d+)?)(deg|turn|rad|grad|%)$/i);
+          if (simple) {
+            const v = Number(simple[1]);
+            const unit = simple[2]!.toLowerCase();
+            if (unit === 'deg') return v;
+            if (unit === 'turn') return v * 360;
+            if (unit === 'rad') return (v * 180) / Math.PI;
+            if (unit === 'grad') return v * 0.9;
+            if (unit === '%') return (v / 100) * 360;
+          }
+          if (/^calc\(/i.test(cleaned)) {
+            const converted = cleaned
+              .slice(5, -1)
+              .replace(/(-?\d*\.?\d+)(deg|turn|rad|grad|%)/gi, (_, n, u) => {
+                const v = Number(n);
+                const unit = u.toLowerCase();
+                if (unit === 'turn') return String(v * 360);
+                if (unit === 'rad') return String((v * 180) / Math.PI);
+                if (unit === 'grad') return String(v * 0.9);
+                if (unit === '%') return String((v / 100) * 360);
+                return String(v);
+              });
+            if (/^[\s0-9.+\-*/()]+$/.test(converted)) {
+              try {
+                const val = Function(`"use strict"; return (${converted});`)();
+                if (typeof val === 'number' && Number.isFinite(val)) return val;
+              } catch {}
+            }
           }
           return null;
         };
 
-        // Parse conic-gradient(from ..., <color> <stop>, ...)
-        let arcSweepDeg: number | null = null;
-        let arcColor: string | null = null;
-        const cgMatch = bgImage.match(/conic-gradient\((.*)\)/);
-        if (cgMatch) {
-          const inner = cgMatch[1]!;
-          const parts: string[] = [];
+        const splitTopLevel = (str: string, separator: 'comma' | 'space'): string[] => {
+          const out: string[] = [];
           let depth = 0;
           let cur = '';
-          for (const ch of inner) {
+          for (const ch of str) {
             if (ch === '(') depth++;
             else if (ch === ')') depth--;
-            if (ch === ',' && depth === 0) {
-              parts.push(cur.trim());
+            const isSep = separator === 'comma' ? ch === ',' : /\s/.test(ch);
+            if (isSep && depth === 0) {
+              if (cur.trim()) out.push(cur.trim());
               cur = '';
             } else {
               cur += ch;
             }
           }
-          if (cur.trim()) parts.push(cur.trim());
+          if (cur.trim()) out.push(cur.trim());
+          return out;
+        };
 
-          const firstColorStop = parts[0]?.startsWith('from ') ? parts[1] : parts[0];
-          if (firstColorStop) {
-            const colorMatch = firstColorStop.match(/^(rgba?\([^)]+\)|oklch\([^)]+\)|oklab\([^)]+\)|#[0-9a-f]+|[a-z]+)\s+(.+)$/i);
-            if (colorMatch) {
-              arcColor = colorMatch[1]!.trim();
-              arcSweepDeg = evalDeg(colorMatch[2]!);
+        const extractConicInner = (input: string): string | null => {
+          const idx = input.indexOf('conic-gradient(');
+          if (idx === -1) return null;
+          let depth = 0;
+          const start = idx + 'conic-gradient('.length;
+          for (let i = start; i < input.length; i++) {
+            if (input[i] === '(') depth++;
+            else if (input[i] === ')') {
+              if (depth === 0) return input.slice(start, i);
+              depth--;
+            }
+          }
+          return null;
+        };
+
+        const trackBg = resolveRgba(bgColorStr);
+        const inner = extractConicInner(bgImage);
+        let maxVisibleSweepDeg = 0;
+
+        if (inner) {
+          const parts = splitTopLevel(inner, 'comma');
+          const stopParts =
+            parts[0] && /^(from\s|at\s|in\s)/i.test(parts[0]) ? parts.slice(1) : parts;
+
+          const parsedStops: Array<{
+            color: [number, number, number, number] | null;
+            positions: number[];
+          }> = [];
+
+          for (const part of stopParts) {
+            const tokens = splitTopLevel(part, 'space');
+            if (tokens.length === 0) continue;
+            // Skip color-hint-only entries (single angle/percentage)
+            if (tokens.length === 1 && parseAngleToDeg(tokens[0]!) !== null) continue;
+            const color = resolveRgba(tokens[0]!);
+            const positions: number[] = [];
+            for (let i = 1; i < tokens.length; i++) {
+              const deg = parseAngleToDeg(tokens[i]!);
+              if (deg !== null) positions.push(deg);
+            }
+            parsedStops.push({ color, positions });
+          }
+
+          // Expand stops into monotonic (color, deg) anchors per CSS Images 4
+          const anchors: Array<{ color: [number, number, number, number] | null; deg: number }> = [];
+          let prevDeg = -Infinity;
+          for (let i = 0; i < parsedStops.length; i++) {
+            const stop = parsedStops[i]!;
+            if (stop.positions.length === 0) {
+              const deg =
+                i === 0 ? 0 : i === parsedStops.length - 1 ? 360 : Math.max(prevDeg, (i / (parsedStops.length - 1)) * 360);
+              prevDeg = Math.max(prevDeg, deg);
+              anchors.push({ color: stop.color, deg: prevDeg });
+            } else {
+              for (const rawDeg of stop.positions) {
+                prevDeg = Math.max(prevDeg, rawDeg);
+                anchors.push({ color: stop.color, deg: prevDeg });
+              }
+            }
+          }
+
+          // CSS fills [0deg, firstAnchor.deg] solidly with firstAnchor.color if firstAnchor.deg > 0
+          if (anchors.length > 0 && anchors[0]!.deg > 0 && isVisibleSpinnerColor(anchors[0]!.color, trackBg)) {
+            maxVisibleSweepDeg = Math.max(maxVisibleSweepDeg, Math.min(360, anchors[0]!.deg));
+          }
+
+          for (let i = 0; i < anchors.length - 1; i++) {
+            const cur = anchors[i]!;
+            const next = anchors[i + 1]!;
+            const sweep = Math.max(0, Math.min(360, next.deg) - Math.max(0, cur.deg));
+            if (
+              sweep > 0 &&
+              (isVisibleSpinnerColor(cur.color, trackBg) || isVisibleSpinnerColor(next.color, trackBg))
+            ) {
+              maxVisibleSweepDeg = Math.max(maxVisibleSweepDeg, sweep);
             }
           }
         }
 
-        // Fallback check on --_from / --_to if backgroundImage didn't resolve calc
-        const fromVal = evalDeg(cs.getPropertyValue('--_from'));
-        const toVal = evalDeg(cs.getPropertyValue('--_to'));
-        const varSweep = fromVal !== null && toVal !== null ? toVal - fromVal : null;
-
         return {
           bgImage,
-          bgColor,
-          arcColor,
-          arcSweepDeg,
-          varSweep,
+          bgColor: bgColorStr,
+          maxVisibleSweepDeg,
         };
       });
 
       expect(arcState.bgImage).toContain('conic-gradient');
-      const sweep = arcState.arcSweepDeg ?? arcState.varSweep ?? 0;
-      expect(sweep).toBeGreaterThan(0);
-      expect(arcState.arcColor).toBeTruthy();
-      expect(arcState.arcColor).not.toBe('rgba(0, 0, 0, 0)');
-      expect(arcState.arcColor).not.toBe('transparent');
-      expect(arcState.arcColor).not.toBe(arcState.bgColor);
+      expect(arcState.maxVisibleSweepDeg).toBeGreaterThan(0);
     });
   });
 });

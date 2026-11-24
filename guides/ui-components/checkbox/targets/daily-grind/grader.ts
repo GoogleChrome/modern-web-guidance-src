@@ -364,15 +364,22 @@ test.describe('checkbox Target Grader', () => {
 
     test('Checked and indeterminate state colors have a contrast ratio of at least 3:1 with the background color', async ({
       page,
-      TARGET_URL,
     }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.goto(TARGET_URL);
       const results = await page.evaluate(async () => {
-        const parseRgba = (str: string): [number, number, number, number] | null => {
-          const m = str.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i);
-          if (!m) return null;
-          return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] !== undefined ? Number(m[4]) : 1];
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const parseColor = (str: string): [number, number, number, number] | null => {
+          if (!ctx || !str || str === 'none' || str === 'transparent') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = str;
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]! / 255];
         };
 
         const composite = (
@@ -393,7 +400,7 @@ test.describe('checkbox Target Grader', () => {
           const layers: Array<[number, number, number, number]> = [];
           let curr: Element | null = el;
           while (curr && curr !== stopAt) {
-            const bg = parseRgba(window.getComputedStyle(curr).backgroundColor);
+            const bg = parseColor(window.getComputedStyle(curr).backgroundColor);
             if (bg && bg[3] > 0) layers.push(bg);
             curr = curr.parentElement;
           }
@@ -425,7 +432,7 @@ test.describe('checkbox Target Grader', () => {
           },
         );
 
-        const checks: Array<{ state: string; ratio: number }> = [];
+        const checks: Array<{ state: string; ratio: number; missingIndicator?: boolean }> = [];
 
         for (const cb of checkboxes) {
           const origChecked = cb.checked;
@@ -448,24 +455,42 @@ test.describe('checkbox Target Grader', () => {
             if (cs.appearance === 'none') {
               for (const pseudo of ['::before', '::after'] as const) {
                 const ps = window.getComputedStyle(cb, pseudo);
-                if (ps.content && ps.content !== 'none') {
-                  const pBg = parseRgba(ps.backgroundColor);
-                  if (pBg && pBg[3] > 0) {
-                    fgColor = composite(pBg, boxBg);
+                const isRendered =
+                  Boolean(ps.content) &&
+                  ps.content !== 'none' &&
+                  ps.display !== 'none' &&
+                  ps.visibility !== 'hidden' &&
+                  parseFloat(ps.opacity) !== 0 &&
+                  ps.scale !== '0' &&
+                  !/^matrix\(\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?\s*,\s*0(?:\.0+)?/.test(ps.transform);
+                if (!isRendered) continue;
+
+                const pBg = parseColor(ps.backgroundColor);
+                if (pBg && pBg[3] > 0) {
+                  fgColor = composite(pBg, boxBg);
+                  bgColor = boxBg;
+                  break;
+                }
+                const pBorder =
+                  (parseFloat(ps.borderBottomWidth) > 0 && parseColor(ps.borderBottomColor)) ||
+                  (parseFloat(ps.borderTopWidth) > 0 && parseColor(ps.borderTopColor)) ||
+                  null;
+                if (pBorder && pBorder[3] > 0) {
+                  fgColor = composite(pBorder, boxBg);
+                  bgColor = boxBg;
+                  break;
+                }
+                if (ps.content !== '""' && ps.content !== "''") {
+                  const pText = parseColor(ps.color);
+                  if (pText && pText[3] > 0) {
+                    fgColor = composite(pText, boxBg);
                     bgColor = boxBg;
                     break;
                   }
                 }
               }
-              if (!fgColor) {
-                const borderColor = parseRgba(cs.borderTopColor);
-                if (borderColor && borderColor[3] > 0) {
-                  fgColor = composite(borderColor, surroundingBg);
-                  bgColor = surroundingBg;
-                }
-              }
             } else {
-              const accent = parseRgba(cs.accentColor);
+              const accent = parseColor(cs.accentColor);
               if (accent && accent[3] > 0) {
                 fgColor = composite(accent, surroundingBg);
                 bgColor = surroundingBg;
@@ -474,6 +499,8 @@ test.describe('checkbox Target Grader', () => {
 
             if (fgColor) {
               checks.push({ state, ratio: contrast(fgColor, bgColor) });
+            } else {
+              checks.push({ state, ratio: 0, missingIndicator: true });
             }
           }
 
@@ -485,8 +512,9 @@ test.describe('checkbox Target Grader', () => {
       });
 
       expect(results.checkboxCount).toBeGreaterThan(0);
-      expect(results.checks.length).toBeGreaterThan(0);
+      expect(results.checks.length).toBe(results.checkboxCount * 2);
       for (const item of results.checks) {
+        expect(item.missingIndicator, `${item.state} state must render a visible indicator`).toBeFalsy();
         expect(item.ratio, `${item.state} state contrast ratio ${item.ratio.toFixed(2)} must be >= 3`).toBeGreaterThanOrEqual(3);
       }
     });
@@ -519,13 +547,22 @@ test.describe('checkbox Target Grader', () => {
       }
 
       const ratio = await page.evaluate(() => {
-        const active = document.activeElement as HTMLElement | null;
+        const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         if (!active) return 0;
 
-        const parseRgba = (str: string): [number, number, number, number] | null => {
-          const m = str.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,/\s]+([\d.]+))?\s*\)/i);
-          if (!m) return null;
-          return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] !== undefined ? Number(m[4]) : 1];
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+        const parseColor = (str: string): [number, number, number, number] | null => {
+          if (!ctx || !str || str === 'none' || str === 'transparent') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = str;
+          ctx.fillRect(0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          return [data[0]!, data[1]!, data[2]!, data[3]! / 255];
         };
         const composite = (
           fg: [number, number, number, number],
@@ -557,13 +594,13 @@ test.describe('checkbox Target Grader', () => {
         const outlineWidth = parseFloat(cs.outlineWidth) || 0;
         if (cs.outlineStyle === 'none' || outlineWidth <= 0) return 0;
 
-        const outlineColor = parseRgba(cs.outlineColor);
+        const outlineColor = parseColor(cs.outlineColor);
         if (!outlineColor || outlineColor[3] <= 0) return 0;
 
         const layers: Array<[number, number, number, number]> = [];
         let curr: Element | null = active.parentElement;
         while (curr) {
-          const bg = parseRgba(window.getComputedStyle(curr).backgroundColor);
+          const bg = parseColor(window.getComputedStyle(curr).backgroundColor);
           if (bg && bg[3] > 0) layers.push(bg);
           curr = curr.parentElement;
         }

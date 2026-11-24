@@ -537,6 +537,35 @@ test.describe('motion Target Grader', () => {
     }) => {
       await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+      // Run view() scroll-reveal pass before opening a modal dialog so body:has(dialog[open]) scroll locks cannot interfere
+      const noPrefScrollReveals = await page.evaluate(async () => {
+        const getDomKey = (el: Element): string => {
+          const parts: string[] = [];
+          let curr: Element | null = el;
+          while (curr && curr !== document.documentElement) {
+            const parent: Element | null = curr.parentElement;
+            const idx = parent ? Array.from(parent.children).indexOf(curr) : 0;
+            const tag = curr.tagName.toLowerCase();
+            const idPart = curr.id ? `#${curr.id}` : '';
+            parts.push(`${tag}${idPart}[${idx}]`);
+            curr = parent;
+          }
+          return parts.reverse().join('>');
+        };
+
+        const results: Array<{ key: string; opacity: number }> = [];
+        for (const el of document.querySelectorAll<HTMLElement>('*')) {
+          const cs = window.getComputedStyle(el);
+          const timeline = cs.getPropertyValue('animation-timeline');
+          if (timeline && timeline.includes('view(')) {
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            results.push({ key: getDomKey(el), opacity: parseFloat(window.getComputedStyle(el).opacity) });
+          }
+        }
+        return results;
+      });
+
       const viewDetailsNoPref = page
         .locator('.card')
         .getByRole('button', { name: /view details/i })
@@ -556,24 +585,42 @@ test.describe('motion Target Grader', () => {
         return parseFloat(window.getComputedStyle(el).opacity);
       });
 
-      const noPrefScrollReveals = await page.evaluate(async () => {
-        const all = Array.from(document.querySelectorAll<HTMLElement>('*'));
-        const results: Array<{ index: number; opacity: number }> = [];
-        for (let i = 0; i < all.length; i++) {
-          const el = all[i]!;
-          const cs = window.getComputedStyle(el);
-          const timeline = cs.getPropertyValue('animation-timeline');
-          if (timeline && timeline.includes('view(')) {
-            el.scrollIntoView({ block: 'center', behavior: 'instant' });
-            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-            results.push({ index: i, opacity: parseFloat(window.getComputedStyle(el).opacity) });
-          }
-        }
-        return results;
-      });
-
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
+
+      let reducedScrollOpacities: Array<{ key: string; opacity: number }> = [];
+      if (noPrefScrollReveals.length > 0) {
+        reducedScrollOpacities = await page.evaluate(async (keys) => {
+          const getDomKey = (el: Element): string => {
+            const parts: string[] = [];
+            let curr: Element | null = el;
+            while (curr && curr !== document.documentElement) {
+              const parent: Element | null = curr.parentElement;
+              const idx = parent ? Array.from(parent.children).indexOf(curr) : 0;
+              const tag = curr.tagName.toLowerCase();
+              const idPart = curr.id ? `#${curr.id}` : '';
+              parts.push(`${tag}${idPart}[${idx}]`);
+              curr = parent;
+            }
+            return parts.reverse().join('>');
+          };
+
+          const byKey = new Map<string, HTMLElement>();
+          for (const el of document.querySelectorAll<HTMLElement>('*')) {
+            byKey.set(getDomKey(el), el);
+          }
+
+          const results: Array<{ key: string; opacity: number }> = [];
+          for (const key of keys) {
+            const el = byKey.get(key);
+            if (!el) continue;
+            el.scrollIntoView({ block: 'center', behavior: 'instant' });
+            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+            results.push({ key, opacity: parseFloat(window.getComputedStyle(el).opacity) });
+          }
+          return results;
+        }, noPrefScrollReveals.map((r) => r.key));
+      }
 
       const viewDetailsReduce = page
         .locator('.card')
@@ -598,22 +645,10 @@ test.describe('motion Target Grader', () => {
       expect(reducedOverlayOpacity).toBeCloseTo(noPrefOverlayOpacity, 2);
 
       if (noPrefScrollReveals.length > 0) {
-        const reducedScrollOpacities = await page.evaluate(async (indices) => {
-          const all = Array.from(document.querySelectorAll<HTMLElement>('*'));
-          const opacities: number[] = [];
-          for (const idx of indices) {
-            const el = all[idx];
-            if (!el) continue;
-            el.scrollIntoView({ block: 'center', behavior: 'instant' });
-            await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-            opacities.push(parseFloat(window.getComputedStyle(el).opacity));
-          }
-          return opacities;
-        }, noPrefScrollReveals.map((r) => r.index));
-
         expect(reducedScrollOpacities.length).toBe(noPrefScrollReveals.length);
         for (let i = 0; i < noPrefScrollReveals.length; i++) {
-          expect(reducedScrollOpacities[i]).toBeCloseTo(noPrefScrollReveals[i]!.opacity, 2);
+          expect(reducedScrollOpacities[i]!.key).toBe(noPrefScrollReveals[i]!.key);
+          expect(reducedScrollOpacities[i]!.opacity).toBeCloseTo(noPrefScrollReveals[i]!.opacity, 2);
         }
       }
     });
