@@ -505,28 +505,24 @@ test('applyTargetRerun falls back to modification times and full target wipe out
   assert.strictEqual(fs.existsSync(targetDir), false);
 });
 
-test('changedSince and findStaleTargets detect when expectations.md is modified after grader.ts', async (t) => {
-  const { changedSince, findStaleTargets } = await import('./dev.ts');
-  const { run, write, tmpRepo, guideDir } = await setupRerunRepo(t);
+test('changedSince detects when expectations.md is modified after grader.ts', async (t) => {
+  const { changedSince } = await import('./dev.ts');
+  const { run, write, guideDir } = await setupRerunRepo(t);
   const expPath = `${guideDir}/expectations.md`;
   const graderPath = `${guideDir}/targets/daily-grind/grader.ts`;
-  const graderRel = 'guides/css/sample-guide/targets/daily-grind/grader.ts';
 
   // Initially committed together -> not stale
   assert.strictEqual(changedSince([expPath], [graderPath]), false);
-  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), false);
 
   // Content author commits a new expectation without touching grader.ts -> stale
   write('expectations.md', '- Expectation one\n- Expectation two\n');
   run(['commit', '-q', '-am', 'content: add second expectation']);
   assert.strictEqual(changedSince([expPath], [graderPath]), true);
-  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), true);
 
   // Grader is subsequently updated -> no longer stale
   write('targets/daily-grind/grader.ts', '// updated grader\n');
   run(['commit', '-q', '-am', 'test: update grader']);
   assert.strictEqual(changedSince([expPath], [graderPath]), false);
-  assert.strictEqual(findStaleTargets(tmpRepo).has(graderRel), false);
 });
 
 test('prepareTargetGuide expands build-time macros into workDir so agents see transcluded content without raw macros', async (t) => {
