@@ -468,6 +468,10 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
             expect(box).not.toBeNull();
             if (!box) return;
             expect(box.width).toBeGreaterThan(0);
+            const definedBox = await page.locator('.card').boundingBox();
+            expect(definedBox).toBeDefined();
+            if (definedBox === undefined) return;
+            expect(definedBox?.width).toBeGreaterThan(0);
             const ok = await page.evaluate(() => { const orig = document.startViewTransition; if (!orig) return false; return true; });
             expect(ok).toBe(true);
           });`;
@@ -489,7 +493,7 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
 
     describe('no-unguarded-every', () => {
-      it('flags .every() over a list with no non-empty guard, after toBeTruthy/toBeDefined, or when only a sibling property was asserted', () => {
+      it('flags .every() over a list with no non-empty guard, after toBeTruthy/toBeDefined, with bare && guards, or when only a sibling property was asserted', () => {
         const code = `
           test('videos are lazy', () => {
             const offscreenVideos = getVideos();
@@ -498,23 +502,43 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
             expect(offscreenVideos.every((v) => v.getAttribute('loading') === 'lazy')).toBe(true);
             const allLazy = offscreenVideos.every((v) => v.loading === 'lazy');
             expect(allLazy).toBeTruthy();
+            expect(flag && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            expect(offscreenVideos && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            const bareGuard = offscreenVideos && offscreenVideos.every((v) => v.loading === 'lazy');
+            expect(bareGuard).toBe(true);
             expect(result.extCount).toBeGreaterThan(0);
             expect(result.extStylesheets.every((s) => !s.hasSheet)).toBe(true);
           });`;
         const violations = checkGraderSource(GEN2, code);
-        assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-unguarded-every', 'no-unguarded-every', 'no-unguarded-every']);
+        assert.deepStrictEqual(violations.map(v => v.ruleId), [
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+          'no-unguarded-every',
+        ]);
         assert.ok(violations[0].message.includes('.some(bad)'));
       });
 
-      it('accepts a non-empty assertion first, a length guard in the value, literal lists, and negated .some()', () => {
+      it('accepts a non-empty assertion first (including negated zero checks), a length/size guard in &&, literal lists, and negated .some()', () => {
         const code = `
           test('videos are lazy', () => {
             const offscreenVideos = getVideos();
             const hasLazyOffscreenVideo = offscreenVideos.length > 0 && offscreenVideos.every((v) => v.loading === 'lazy');
             expect(hasLazyOffscreenVideo).toBe(true);
+            expect(offscreenVideos.size > 0 && offscreenVideos.every((v) => v.loading === 'lazy')).toBe(true);
+            const propSet = getPropSet();
+            expect(propSet.size > 0 && Array.from(propSet).every((p) => p.length > 0)).toBe(true);
             const decls = getDecls();
             expect(decls.length).toBeGreaterThan(0);
             expect(decls.every((d) => d.ok)).toBe(true);
+            const notEmptyLen = getDecls();
+            expect(notEmptyLen).not.toHaveLength(0);
+            expect(notEmptyLen.every((d) => d.ok)).toBe(true);
+            const notZeroLen = getDecls();
+            expect(notZeroLen.length).not.toBe(0);
+            expect(notZeroLen.every((d) => d.ok)).toBe(true);
             expect(['a', 'b'].every((s) => s.length === 1)).toBe(true);
             const hasNearZeroOverride = decls.some((d) => /0\\.01ms/.test(d.text));
             expect(hasNearZeroOverride).toBe(false);
