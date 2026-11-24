@@ -7,13 +7,26 @@ import { rootDir } from './paths.ts';
 
 const MAX_SNIPPET_LENGTH = 120;
 
-export type GraderRuleId =
-  | 'no-vacuous-boolean-expect'
-  | 'no-tautological-expect'
-  | 'no-test-skip'
-  | 'no-gen2-file-goto'
-  | 'no-unguarded-conditional-assertions'
-  | 'invalid-skip-unless';
+/**
+ * Rule registry for grader static checks (aligned with The 8 Red Lines in project-evals).
+ * `blocking` rules fail CI via `checkAllGraders()`; non-blocking rules are tracked via a legacy
+ * allowlist/ratchet or advisory reporting until existing graders are updated.
+ */
+export const GRADER_RULES = {
+  'no-vacuous-boolean-expect': { redLine: 1, blocking: true },
+  'no-tautological-expect': { redLine: 1, blocking: true },
+  'no-test-skip': { redLine: 1, blocking: true },
+  'no-gen2-file-goto': { redLine: 1, blocking: true },
+  'no-unguarded-conditional-assertions': { redLine: 1, blocking: true },
+  'invalid-skip-unless': { redLine: 1, blocking: true },
+  'no-early-return-before-assertion': { redLine: 1, blocking: true },
+  'no-unguarded-every': { redLine: 1, blocking: true },
+  'no-swallowed-assertion': { redLine: 1, blocking: true },
+  'no-absent-or-correct': { redLine: 1, blocking: false },
+  'no-fixed-timeout': { redLine: 1, blocking: false },
+} as const satisfies Record<string, { redLine: number; blocking: boolean }>;
+
+export type GraderRuleId = keyof typeof GRADER_RULES;
 
 export interface GraderLintViolation {
   filePath: string;
@@ -35,20 +48,59 @@ export function isGen2Grader(filePath: string): boolean {
   return path.posix.basename(path.posix.dirname(targetDir)) === TARGETS_DIR;
 }
 
+function constantHelperValue(fn: TsMorphNode, seen: Set<TsMorphNode>): boolean | undefined {
+  if (Node.isArrowFunction(fn)) {
+    const body = unwrap(fn.getBody());
+    if (!Node.isBlock(body)) return vacuousBooleanValue(body, seen);
+  }
+  if (!Node.isFunctionDeclaration(fn) && !Node.isArrowFunction(fn) && !Node.isFunctionExpression(fn)) return undefined;
+  const body = fn.getBody();
+  if (!body || !Node.isBlock(body)) return undefined;
+  if (fn.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0) return undefined;
+  const stmts = body.getStatements();
+  if (stmts.length === 0 || !Node.isReturnStatement(stmts[stmts.length - 1])) return undefined;
+  const returns = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement).filter(r => enclosingFunction(r) === fn);
+  const values = returns.map(r => {
+    const expr = r.getExpression();
+    return expr ? vacuousBooleanValue(expr, seen) : undefined;
+  });
+  if (values.length > 0 && values.every(v => v === true)) return true;
+  if (values.length > 0 && values.every(v => v === false)) return false;
+  return undefined;
+}
+
+function vacuousBooleanValue(node: TsMorphNode, seen: Set<TsMorphNode> = new Set()): boolean | undefined {
+  const expr = unwrap(node);
+  const kind = expr.getKind();
+  if (kind === SyntaxKind.TrueKeyword) return true;
+  if (kind === SyntaxKind.FalseKeyword) return false;
+  if (Node.isPrefixUnaryExpression(expr) && expr.getOperatorToken() === SyntaxKind.ExclamationToken) {
+    const inner = vacuousBooleanValue(expr.getOperand(), seen);
+    return inner === undefined ? undefined : !inner;
+  }
+  if (Node.isCallExpression(expr)) {
+    const callee = unwrap(expr.getExpression());
+    if (!Node.isIdentifier(callee)) return undefined;
+    const decl = callee.getSymbol()?.getDeclarations()[0];
+    if (!decl || seen.has(decl)) return undefined;
+    seen.add(decl);
+    if (Node.isFunctionDeclaration(decl)) return constantHelperValue(decl, seen);
+    if (Node.isVariableDeclaration(decl)) {
+      const init = decl.getInitializer();
+      if (init) return constantHelperValue(unwrap(init), seen);
+    }
+  }
+  return undefined;
+}
+
 function isVacuousBoolean(node: TsMorphNode): boolean {
-  const kind = node.getKind();
-  if (kind === SyntaxKind.TrueKeyword || kind === SyntaxKind.FalseKeyword) {
-    return true;
-  }
-  if (Node.isPrefixUnaryExpression(node) && node.getOperatorToken() === SyntaxKind.ExclamationToken) {
-    return isVacuousBoolean(node.getOperand());
-  }
-  return false;
+  return vacuousBooleanValue(node) !== undefined;
 }
 
 function isAssertionCall(node: TsMorphNode): boolean {
   if (!Node.isCallExpression(node)) return false;
   const expr = node.getExpression().getText();
+  if (expr === 'expectNever') return true;
   const isExp = expr === 'expect' || expr.startsWith('expect.');
   const isAss = expr === 'assert' || expr.startsWith('assert.');
   if (!isExp && !isAss) return false;
@@ -250,7 +302,352 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
     }
   }
 
+  if (isGen2) checkGen2Vacuity(sourceFile, addViolation);
+
   return violations;
+}
+
+type AddViolation = (node: TsMorphNode, ruleId: GraderRuleId, message: string) => void;
+
+const TEST_CALLEES = new Set(['test', 'it', 'test.only', 'it.only']);
+const WAIT_GUIDANCE = "wait on readiness; for a claim that something doesn't happen, use expectNever(page, predicate, { forMs })";
+
+function unwrap(node: TsMorphNode): TsMorphNode {
+  let curr = node;
+  while (
+    Node.isParenthesizedExpression(curr) ||
+    Node.isAwaitExpression(curr) ||
+    Node.isAsExpression(curr) ||
+    Node.isNonNullExpression(curr)
+  ) {
+    curr = curr.getExpression();
+  }
+  return curr;
+}
+
+function enclosingFunction(node: TsMorphNode): TsMorphNode | undefined {
+  return node.getFirstAncestor(a => Node.isFunctionLikeDeclaration(a));
+}
+
+function enclosingTest(node: TsMorphNode): TsMorphNode | undefined {
+  let fn = enclosingFunction(node);
+  while (fn) {
+    const call = fn.getParent();
+    if (Node.isCallExpression(call) && TEST_CALLEES.has(call.getExpression().getText())) return fn;
+    fn = enclosingFunction(fn);
+  }
+  return undefined;
+}
+
+function assertionsIn(node: TsMorphNode): TsMorphNode[] {
+  return node.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isAssertionCall);
+}
+
+function isWaitCall(node: TsMorphNode): boolean {
+  if (!Node.isCallExpression(node)) return false;
+  const callee = node.getExpression();
+  return Node.isPropertyAccessExpression(callee) && callee.getName().startsWith('waitFor');
+}
+
+function waitsIn(node: TsMorphNode): TsMorphNode[] {
+  return node.getDescendantsOfKind(SyntaxKind.CallExpression).filter(isWaitCall);
+}
+
+function failsLoudly(node: TsMorphNode): boolean {
+  return node.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0 || assertionsIn(node).length > 0;
+}
+
+function rootIdentifier(node: TsMorphNode): string | undefined {
+  let curr = unwrap(node);
+  for (;;) {
+    if (Node.isIdentifier(curr)) return curr.getText();
+    if (Node.isCallExpression(curr)) {
+      const callee = curr.getExpression();
+      const firstArg = curr.getArguments()[0];
+      if (Node.isPropertyAccessExpression(callee) && ['Object', 'Array'].includes(callee.getExpression().getText()) && firstArg) {
+        curr = unwrap(firstArg);
+      } else {
+        curr = unwrap(callee);
+      }
+    } else if (Node.isPropertyAccessExpression(curr) || Node.isElementAccessExpression(curr)) {
+      curr = unwrap(curr.getExpression());
+    } else if (Node.isArrayLiteralExpression(curr)) {
+      const spread = curr.getElements().find(e => Node.isSpreadElement(e));
+      if (!spread || !Node.isSpreadElement(spread)) return undefined;
+      curr = unwrap(spread.getExpression());
+    } else {
+      return undefined;
+    }
+  }
+}
+
+function referencesIdentifier(node: TsMorphNode, name: string): boolean {
+  if (Node.isIdentifier(node)) return node.getText() === name;
+  return node.getDescendantsOfKind(SyntaxKind.Identifier).some(id => id.getText() === name);
+}
+
+function countOrLengthSubject(node: TsMorphNode): TsMorphNode | undefined {
+  const expr = unwrap(node);
+  if (Node.isPropertyAccessExpression(expr) && ['length', 'size'].includes(expr.getName())) {
+    return expr.getExpression();
+  }
+  if (Node.isCallExpression(expr) && expr.getArguments().length === 0) {
+    const callee = expr.getExpression();
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'count') {
+      return callee.getExpression();
+    }
+  }
+  return undefined;
+}
+
+function emptinessSubject(node: TsMorphNode): TsMorphNode | undefined {
+  const expr = unwrap(node);
+  if (Node.isPrefixUnaryExpression(expr) && expr.getOperatorToken() === SyntaxKind.ExclamationToken) {
+    return countOrLengthSubject(expr.getOperand());
+  }
+  if (!Node.isBinaryExpression(expr)) return undefined;
+  const op = expr.getOperatorToken().getKind();
+  const subject = countOrLengthSubject(expr.getLeft());
+  const right = expr.getRight().getText();
+  if (!subject) return undefined;
+  const isEmpty =
+    ([SyntaxKind.EqualsEqualsEqualsToken, SyntaxKind.EqualsEqualsToken, SyntaxKind.LessThanEqualsToken].includes(op) && right === '0') ||
+    (op === SyntaxKind.LessThanToken && right === '1');
+  return isEmpty ? subject : undefined;
+}
+
+function isAbsenceCheck(node: TsMorphNode): boolean {
+  const expr = unwrap(node);
+  if (emptinessSubject(expr)) return true;
+  if (Node.isPrefixUnaryExpression(expr) && expr.getOperatorToken() === SyntaxKind.ExclamationToken) {
+    return !Node.isBinaryExpression(unwrap(expr.getOperand()));
+  }
+  if (Node.isBinaryExpression(expr)) {
+    const op = expr.getOperatorToken().getKind();
+    if (op === SyntaxKind.BarBarToken) return isAbsenceCheck(expr.getLeft()) || isAbsenceCheck(expr.getRight());
+    if ([SyntaxKind.EqualsEqualsEqualsToken, SyntaxKind.EqualsEqualsToken].includes(op)) {
+      return ['null', 'undefined', "'undefined'", '"undefined"'].includes(expr.getRight().getText());
+    }
+  }
+  return false;
+}
+
+function readMatcher(expectCall: TsMorphNode): { negated: boolean; matcher: string; arg?: string } | undefined {
+  let negated = false;
+  let curr = expectCall.getParent();
+  while (Node.isPropertyAccessExpression(curr)) {
+    const name = curr.getName();
+    if (name === 'not') {
+      negated = !negated;
+      curr = curr.getParent();
+      continue;
+    }
+    const call = curr.getParent();
+    if (!Node.isCallExpression(call)) return undefined;
+    return { negated, matcher: name, arg: call.getArguments()[0]?.getText() };
+  }
+  return undefined;
+}
+
+function assertedTruthiness(assertCall: TsMorphNode): boolean | undefined {
+  if (!Node.isCallExpression(assertCall)) return undefined;
+  const callee = assertCall.getExpression().getText();
+  if (callee === 'assert' || callee === 'assert.ok') return true;
+  if (callee !== 'expect' && callee !== 'expect.soft') return undefined;
+  const m = readMatcher(assertCall);
+  if (!m) return undefined;
+  let polarity: boolean | undefined;
+  if (m.matcher === 'toBeTruthy') polarity = true;
+  else if (m.matcher === 'toBeFalsy') polarity = false;
+  else if (['toBe', 'toEqual', 'toStrictEqual'].includes(m.matcher) && (m.arg === 'true' || m.arg === 'false')) {
+    polarity = m.arg === 'true';
+  }
+  return polarity === undefined ? undefined : polarity !== m.negated;
+}
+
+function resolveConstInitializer(node: TsMorphNode): TsMorphNode {
+  const expr = unwrap(node);
+  if (!Node.isIdentifier(expr)) return expr;
+  const decl = expr.getSymbol()?.getDeclarations()[0];
+  if (!Node.isVariableDeclaration(decl)) return expr;
+  const init = decl.getInitializer();
+  return init ? unwrap(init) : expr;
+}
+
+function isNonEmptyArrayLiteral(node: TsMorphNode): boolean {
+  const expr = resolveConstInitializer(node);
+  return Node.isArrayLiteralExpression(expr) && expr.getElements().length > 0 && !expr.getElements().some(e => Node.isSpreadElement(e));
+}
+
+function everyList(assertCall: TsMorphNode): TsMorphNode | undefined {
+  if (!Node.isCallExpression(assertCall) || assertedTruthiness(assertCall) !== true) return undefined;
+  const firstArg = assertCall.getArguments()[0];
+  if (!firstArg) return undefined;
+  const value = resolveConstInitializer(firstArg);
+  const callee = Node.isCallExpression(value) ? value.getExpression() : undefined;
+  return Node.isPropertyAccessExpression(callee) && callee.getName() === 'every' ? callee.getExpression() : undefined;
+}
+
+function checkGen2Vacuity(sourceFile: SourceFile, addViolation: AddViolation): void {
+  for (const ifStmt of sourceFile.getDescendantsOfKind(SyntaxKind.IfStatement)) {
+    const testFn = enclosingTest(ifStmt);
+    if (!testFn || enclosingFunction(ifStmt) !== testFn || !isAbsenceCheck(ifStmt.getExpression())) continue;
+    const thenStmt = ifStmt.getThenStatement();
+    const returns = Node.isReturnStatement(thenStmt) || (Node.isBlock(thenStmt) && thenStmt.getStatements().some(s => Node.isReturnStatement(s)));
+    if (!returns || failsLoudly(thenStmt)) continue;
+    const assertsAfter = assertionsIn(testFn).some(a => a.getStart() > ifStmt.getEnd());
+    if (!assertsAfter) continue;
+    addViolation(
+      ifStmt,
+      'no-early-return-before-assertion',
+      'Early return skips the assertions that follow when the thing under test is missing, so the test passes vacuously. Assert presence instead (expect(x).toBeTruthy() / toBeGreaterThan(0)).'
+    );
+  }
+
+  for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+    const list = everyList(call);
+    if (list) {
+      const root = rootIdentifier(list);
+      const scope = enclosingTest(call) ?? enclosingFunction(call);
+      const guarded =
+        isNonEmptyArrayLiteral(list) ||
+        (root !== undefined &&
+          scope !== undefined &&
+          (assertionsIn(scope).some(a => a !== call && !everyList(a) && a.getEnd() <= call.getStart() && referencesIdentifier(a, root)) ||
+            scope
+              .getDescendantsOfKind(SyntaxKind.IfStatement)
+              .some(s => s.getEnd() <= call.getStart() && referencesIdentifier(s.getExpression(), root) && failsLoudly(s.getThenStatement()))));
+      if (!guarded) {
+        addViolation(
+          call,
+          'no-unguarded-every',
+          `\`.every()\` over \`${list.getText().slice(0, 60)}\` passes when the list is empty. Assert it is non-empty first (expect(list.length).toBeGreaterThan(0)).`
+        );
+      }
+    }
+
+    const callee = call.getExpression();
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'catch') {
+      const receiver = callee.getExpression();
+      const handler = call.getArguments()[0];
+      const receiverAsserts = isAssertionCall(receiver) || assertionsIn(receiver).length > 0;
+      const receiverWaits = isWaitCall(receiver) || waitsIn(receiver).length > 0;
+      const assignedToVar = Node.isVariableDeclaration(
+        call.getParentWhile(p => Node.isAwaitExpression(p) || Node.isParenthesizedExpression(p))?.getParent() ?? call.getParent()
+      );
+      if ((receiverAsserts || (receiverWaits && !assignedToVar)) && handler && !failsLoudly(handler)) {
+        addViolation(
+          call,
+          'no-swallowed-assertion',
+          `A \`.catch()\` handler swallows a failed assertion or wait, so the test cannot fail: ${WAIT_GUIDANCE}.`
+        );
+      }
+    }
+
+    if (Node.isPropertyAccessExpression(callee) && callee.getName() === 'waitForTimeout') {
+      addViolation(call, 'no-fixed-timeout', `Fixed waitForTimeout() makes the verdict timing-dependent: ${WAIT_GUIDANCE}.`);
+    }
+  }
+
+  for (const tryStmt of sourceFile.getDescendantsOfKind(SyntaxKind.TryStatement)) {
+    const catchClause = tryStmt.getCatchClause();
+    const tryBlock = tryStmt.getTryBlock();
+    if (!catchClause || (assertionsIn(tryBlock).length === 0 && waitsIn(tryBlock).length === 0)) continue;
+    const catchBlock = catchClause.getBlock();
+    if (failsLoudly(catchBlock)) continue;
+    const recorded = new Set<string>();
+    for (const bin of catchBlock.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+      if (bin.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+        const name = rootIdentifier(bin.getLeft());
+        if (name) recorded.add(name);
+      }
+    }
+    for (const c of catchBlock.getDescendantsOfKind(SyntaxKind.CallExpression)) {
+      const e = c.getExpression();
+      if (Node.isPropertyAccessExpression(e) && ['push', 'add', 'set'].includes(e.getName())) {
+        const name = rootIdentifier(e.getExpression());
+        if (name) recorded.add(name);
+      }
+    }
+    const scope = enclosingFunction(tryStmt) ?? sourceFile;
+    const assertedLater = assertionsIn(scope).some(a => a.getStart() > tryStmt.getEnd() && [...recorded].some(r => referencesIdentifier(a, r)));
+    if (assertedLater) continue;
+    addViolation(
+      tryStmt,
+      'no-swallowed-assertion',
+      `This catch block swallows a failed assertion or wait from its try block, so the test cannot fail. Rethrow, or remove the try/catch: ${WAIT_GUIDANCE}.`
+    );
+  }
+
+  for (const newExpr of sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)) {
+    if (newExpr.getExpression().getText() !== 'Promise') continue;
+    const executor = newExpr.getArguments()[0];
+    if (!executor || !(Node.isArrowFunction(executor) || Node.isFunctionExpression(executor))) continue;
+    const resolveName = executor.getParameters()[0]?.getName();
+    const timers = executor.getDescendantsOfKind(SyntaxKind.CallExpression).filter(c => c.getExpression().getText() === 'setTimeout');
+    const isSleep = resolveName !== undefined && timers.some(t => {
+      const cb = t.getArguments()[0];
+      return cb !== undefined && (cb.getText() === resolveName || (Node.isArrowFunction(cb) && cb.getBody().getText().replace(/[{};\s]/g, '') === `${resolveName}()`));
+    });
+    if (!isSleep) continue;
+    const raced = newExpr.getAncestors().some(a => Node.isCallExpression(a) && /^Promise\.(race|any)$/.test(a.getExpression().getText()));
+    if (raced) continue;
+    addViolation(newExpr, 'no-fixed-timeout', `A fixed setTimeout() sleep makes the verdict timing-dependent: ${WAIT_GUIDANCE}.`);
+  }
+
+  for (const bin of sourceFile.getDescendantsOfKind(SyntaxKind.BinaryExpression)) {
+    if (bin.getOperatorToken().getKind() !== SyntaxKind.BarBarToken) continue;
+    const parent = bin.getParent();
+    if (Node.isBinaryExpression(parent) && parent.getOperatorToken().getKind() === SyntaxKind.BarBarToken) continue;
+    const disjuncts: TsMorphNode[] = [];
+    const flatten = (n: TsMorphNode) => {
+      const e = unwrap(n);
+      if (Node.isBinaryExpression(e) && e.getOperatorToken().getKind() === SyntaxKind.BarBarToken) {
+        flatten(e.getLeft());
+        flatten(e.getRight());
+      } else {
+        disjuncts.push(e);
+      }
+    };
+    flatten(bin);
+    const emptyIdx = disjuncts.findIndex(d => emptinessSubject(d));
+    if (emptyIdx === -1 || disjuncts.length < 2) continue;
+    if (!flowsIntoTruthyAssertion(bin)) continue;
+    addViolation(
+      bin,
+      'no-absent-or-correct',
+      `\`${disjuncts[emptyIdx].getText()} || ...\` passes when the list is empty ("absent, or correct"). Assert presence, then correctness.`
+    );
+  }
+}
+
+function flowsIntoTruthyAssertion(value: TsMorphNode): boolean {
+  const climb = (start: TsMorphNode): boolean => {
+    let node = start;
+    let polarity = true;
+    for (;;) {
+      const parent = node.getParent();
+      if (!parent) return false;
+      if (Node.isParenthesizedExpression(parent) || Node.isAwaitExpression(parent)) {
+        node = parent;
+      } else if (Node.isPrefixUnaryExpression(parent) && parent.getOperatorToken() === SyntaxKind.ExclamationToken) {
+        polarity = !polarity;
+        node = parent;
+      } else if (Node.isBinaryExpression(parent) && parent.getOperatorToken().getKind() === SyntaxKind.AmpersandAmpersandToken) {
+        node = parent;
+      } else if (Node.isCallExpression(parent) && parent.getArguments()[0] === node) {
+        const asserted = assertedTruthiness(parent);
+        return asserted !== undefined && asserted === polarity;
+      } else if (Node.isVariableDeclaration(parent) && parent.getInitializer() === node && polarity) {
+        const nameNode = parent.getNameNode();
+        if (!Node.isIdentifier(nameNode)) return false;
+        return nameNode.findReferencesAsNodes().some(ref => ref !== nameNode && climb(ref));
+      } else {
+        return false;
+      }
+    }
+  };
+  return climb(value);
 }
 
 const NO_LIB_COMPILER_OPTIONS = { noLib: true, noResolve: true };
@@ -301,13 +698,20 @@ export function findGraderFiles(repoRootDir: string = rootDir): string[] {
     .sort();
 }
 
-export function checkAllGraders(options?: { repoRoot?: string; project?: Project }): Map<string, GraderLintViolation[]> {
+/** Lints every grader. By default returns only `blocking` rules; `includeReportOnly` adds the rest. */
+export function checkAllGraders(options?: {
+  repoRoot?: string;
+  project?: Project;
+  includeReportOnly?: boolean;
+}): Map<string, GraderLintViolation[]> {
   const baseDir = options?.repoRoot ?? rootDir;
   const graderFiles = findGraderFiles(baseDir);
   const resultMap = new Map<string, GraderLintViolation[]>();
 
   for (const file of graderFiles) {
-    const violations = checkGraderFile(file, options?.project);
+    const violations = checkGraderFile(file, options?.project).filter(
+      v => options?.includeReportOnly || GRADER_RULES[v.ruleId].blocking
+    );
     if (violations.length > 0) {
       const relPath = path.relative(baseDir, file);
       resultMap.set(relPath, violations);
