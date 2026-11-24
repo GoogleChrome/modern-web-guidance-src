@@ -64,13 +64,13 @@ index 5db718e..1074e81 100644
 +    }
 +
 +    [role="menubar"] > button:focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: -2px;
 +    }
 +
 +    /* Active style for the open or previewed menu. */
 +    [role="menubar"] > button[aria-expanded="true"] {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary);
 +    }
 +

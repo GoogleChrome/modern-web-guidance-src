@@ -100,7 +100,7 @@ index 5db718e..72eb7db 100644
 +    .breadcrumb > ol > li > a:focus-visible {
 +      position: relative;
 +      z-index: 1;
-+      outline: 3px solid var(--accent);
++      outline: 3px solid var(--accent-on-dark);
 +      outline-offset: -3px;
 +      background-color: #271815;
 +      color: #ffffff;

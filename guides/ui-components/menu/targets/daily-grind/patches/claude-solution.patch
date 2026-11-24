@@ -28,7 +28,7 @@ index 5db718e..7462fb0 100644
      }
  
      /* Hero Section */
-@@ -154,6 +158,292 @@
+@@ -154,6 +158,296 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
@@ -94,13 +94,17 @@ index 5db718e..7462fb0 100644
 +    }
 +
 +    .nav-trigger:hover {
-+      color: var(--accent);
-+      border-color: var(--accent);
++      color: var(--accent-on-dark);
++      border-color: var(--accent-on-dark);
++    }
++
++    .nav-trigger:focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
 +    .nav-trigger[aria-expanded="true"] {
-+      color: var(--accent);
-+      border-color: var(--accent);
++      color: var(--accent-on-dark);
++      border-color: var(--accent-on-dark);
 +      background: rgba(255, 255, 255, 0.1);
 +    }
 +
@@ -111,7 +115,7 @@ index 5db718e..7462fb0 100644
 +    }
 +
 +    .btn.menu-trigger[aria-expanded="true"] {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +

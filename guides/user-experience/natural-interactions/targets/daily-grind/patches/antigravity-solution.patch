@@ -31,7 +31,7 @@ index 5db718e..6cb26b2 100644
 +
 +    nav :where(a, button):focus-visible,
 +    .hero :where(a, button):focus-visible {
-+      outline-color: var(--accent);
++      outline-color: var(--accent-on-dark);
 +    }
 +
      /* Navigation */
@@ -77,8 +77,8 @@ index 5db718e..6cb26b2 100644
 +    }
 +
 +    .logout-link:hover {
-+      color: var(--accent);
-+      border-color: var(--accent);
++      color: var(--accent-on-dark);
++      border-color: var(--accent-on-dark);
      }
  
      /* Hero Section */

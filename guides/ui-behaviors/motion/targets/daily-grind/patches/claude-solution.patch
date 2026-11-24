@@ -20,7 +20,7 @@ index 5db718e..e74ac0c 100644
 +      position: absolute;
 +      inset: auto 0 0 0;
 +      height: 3px;
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      transform-origin: left center;
 +      scale: 0 1;
 +
@@ -151,7 +151,7 @@ index 5db718e..e74ac0c 100644
 +    }
 +
 +    .roast-banner__item strong {
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    /* Copy used only to make the loop seamless */
@@ -179,7 +179,7 @@ index 5db718e..e74ac0c 100644
 +      flex-shrink: 0;
 +      background: transparent;
 +      color: white;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      border-radius: 999px;
 +      padding: 4px 14px;
 +      font: inherit;
@@ -196,7 +196,7 @@ index 5db718e..e74ac0c 100644
 +
 +    .roast-banner__toggle:hover,
 +    .roast-banner__toggle:focus-visible {
-+      background-color: var(--accent);
++      background-color: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +
@@ -276,7 +276,7 @@ index 5db718e..e74ac0c 100644
  
 +    /* Hero call-to-action */
 +    .hero .btn {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +      font-weight: 600;
 +    }

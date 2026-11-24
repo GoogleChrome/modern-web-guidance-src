@@ -87,7 +87,7 @@ index 5db718e..7ed37a5 100644
 +    .more-btn {
 +      background: transparent;
 +      color: white;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      padding: 4px 12px;
 +      border-radius: 4px;
 +      font-size: 0.9rem;
@@ -98,7 +98,7 @@ index 5db718e..7ed37a5 100644
 +
 +    .more-btn:hover,
 +    .more-btn:focus-visible {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +

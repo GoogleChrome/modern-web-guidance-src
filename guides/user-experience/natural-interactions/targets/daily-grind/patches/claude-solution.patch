@@ -35,7 +35,7 @@ index 5db718e..bde4b7d 100644
 +    }
 +
 +    nav a.logout-link:hover {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary);
 +      text-decoration-color: transparent;
 +    }
@@ -116,7 +116,7 @@ index 5db718e..bde4b7d 100644
 +    }
 +
 +    .hero .btn {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +

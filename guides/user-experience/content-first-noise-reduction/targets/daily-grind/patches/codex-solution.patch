@@ -9,7 +9,7 @@ diff --git a/index.html b/index.html
 index 5db718e..f575276 100644
 --- a/index.html
 +++ b/index.html
-@@ -22,6 +22,19 @@
+@@ -22,6 +22,24 @@
        padding: 0;
      }
  
@@ -24,6 +24,11 @@ index 5db718e..f575276 100644
 +    :focus-visible {
 +      outline: 3px solid var(--accent);
 +      outline-offset: 3px;
++    }
++
++    .top-bar :focus-visible,
++    .hero :focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
      body {

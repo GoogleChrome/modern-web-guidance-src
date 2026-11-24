@@ -122,11 +122,16 @@ new file mode 100644
 index 0000000..da17461
 --- /dev/null
 +++ b/motion.css
-@@ -0,0 +1,134 @@
+@@ -0,0 +1,138 @@
 +/* Static styles are the default; spatial motion is opt-in below. */
 +:focus-visible {
 +  outline: 3px solid var(--accent);
 +  outline-offset: 5px;
++}
++
++nav :focus-visible,
++.hero :focus-visible {
++  outline-color: var(--accent-on-dark);
 +}
 +
 +nav a {

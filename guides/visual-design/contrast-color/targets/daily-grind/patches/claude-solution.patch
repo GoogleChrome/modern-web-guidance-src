@@ -33,7 +33,7 @@ index 5db718e..10b6fd6 100644
        font-size: 0.9rem;
 -      transition: color 0.3s;
 +      text-underline-offset: 4px;
-+      text-decoration-color: var(--accent);
++      text-decoration-color: var(--accent-on-dark);
 +      text-decoration-thickness: 2px;
      }
  

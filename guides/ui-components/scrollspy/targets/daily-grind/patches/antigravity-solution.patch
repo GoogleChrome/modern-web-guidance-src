@@ -33,14 +33,14 @@ index 5db718e..1f22c08 100644
      }
  
 +    nav a:target-current {
-+      color: var(--accent, #007bff);
-+      border-bottom-color: var(--accent, #007bff);
++      color: var(--accent-on-dark, #ffab40);
++      border-bottom-color: var(--accent-on-dark, #ffab40);
 +      font-weight: bold;
 +    }
 +
 +    nav a:is(:target-current, .target-current) {
-+      color: var(--accent, #007bff);
-+      border-bottom-color: var(--accent, #007bff);
++      color: var(--accent-on-dark, #ffab40);
++      border-bottom-color: var(--accent-on-dark, #ffab40);
 +      font-weight: bold;
 +    }
 +

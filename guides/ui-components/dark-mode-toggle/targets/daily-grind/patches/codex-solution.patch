@@ -68,14 +68,14 @@ index 5db718e..7c3b982 100644
      }
  
      nav a {
-@@ -74,6 +100,62 @@
+@@ -74,6 +100,67 @@
        border-radius: 4px;
      }
  
 +    .theme-toggle {
 +      background: transparent;
 +      color: white;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      border-radius: 4px;
 +      padding: 8px;
 +      min-width: 44px;
@@ -86,12 +86,17 @@ index 5db718e..7c3b982 100644
 +
 +    .theme-toggle:hover {
 +      background: #3e2723;
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    :focus-visible {
-+      outline: 3px solid var(--accent);
++      outline: 3px solid light-dark(var(--accent), var(--accent-on-dark));
 +      outline-offset: 4px;
++    }
++
++    nav :focus-visible,
++    .hero :focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
 +    .visually-hidden {

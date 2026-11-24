@@ -2,7 +2,7 @@ diff --git a/index.html b/index.html
 index 5db718e..662b905 100644
 --- a/index.html
 +++ b/index.html
-@@ -29,17 +29,52 @@
+@@ -29,17 +29,58 @@
        background-color: var(--light);
      }
  
@@ -30,12 +30,18 @@ index 5db718e..662b905 100644
 +      border-radius: 4px;
 +      text-decoration: none;
 +      font-weight: bold;
-+      border: 2px solid var(--accent);
++      border: 2px solid var(--accent-on-dark);
 +    }
 +
 +    :where(a:any-link, button):focus-visible {
 +      outline: 3px solid var(--accent);
 +      outline-offset: 3px;
++    }
++
++    header > nav :where(a:any-link, button):focus-visible,
++    .hero :where(a:any-link, button):focus-visible,
++    .skip-link:focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
      /* Navigation */

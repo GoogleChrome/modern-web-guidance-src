@@ -73,7 +73,7 @@ index 5db718e..886fa58 100644
  
 +    .theme-toggle {
 +      background: transparent;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      color: white;
 +      padding: 5px 10px;
 +      border-radius: 4px;
@@ -87,7 +87,7 @@ index 5db718e..886fa58 100644
 +    }
 +
 +    .theme-toggle:hover {
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    .theme-toggle svg {

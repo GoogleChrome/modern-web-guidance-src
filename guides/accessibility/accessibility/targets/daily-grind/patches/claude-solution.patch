@@ -11,7 +11,7 @@ index 5db718e..4457353 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -48,26 +48,79 @@
+@@ -48,26 +48,80 @@
        letter-spacing: 1px;
      }
  
@@ -78,8 +78,9 @@ index 5db718e..4457353 100644
 +      outline-color: var(--primary);
 +    }
 +
-+    .hero a.btn:focus-visible {
-+      outline-color: var(--accent);
++    .hero a.btn:focus-visible,
++    header nav :where(a:any-link, button):focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
 +    .hero h1:focus {

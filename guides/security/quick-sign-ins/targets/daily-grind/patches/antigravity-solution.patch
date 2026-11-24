@@ -39,7 +39,7 @@ index 5db718e..2c0c027 100644
  
 +    .user-greeting {
 +      font-size: 0.9rem;
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +      font-weight: 600;
 +    }
 +
@@ -117,7 +117,7 @@ index 5db718e..2c0c027 100644
 +    .favorite-btn[aria-pressed="true"] {
 +      background: var(--accent);
 +      border-color: var(--accent);
-+      color: var(--text);
++      color: white;
 +      font-weight: 600;
 +    }
 +
