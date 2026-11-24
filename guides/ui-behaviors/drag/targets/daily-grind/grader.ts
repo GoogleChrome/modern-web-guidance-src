@@ -888,6 +888,7 @@ test.describe('drag Target Grader', () => {
 
       let controlCount = await tagMoveControls();
       let openedMenu = false;
+      let menuOpenerSelector: string | null = null;
 
       if (controlCount === 0 || !(await hasVisibleMoveControl())) {
         const discCount = await page.evaluate(() => {
@@ -907,6 +908,7 @@ test.describe('drag Target Grader', () => {
           if (await d.isVisible().catch(() => false)) {
             await d.click();
             openedMenu = true;
+            menuOpenerSelector = `[data-grader-disc-idx="${i}"]`;
             controlCount = await tagMoveControls();
             if (controlCount > 0 && (await hasVisibleMoveControl())) break;
           }
@@ -916,6 +918,7 @@ test.describe('drag Target Grader', () => {
       if (controlCount === 0) {
         await page.locator('[data-grader-handle="true"]').click();
         openedMenu = true;
+        menuOpenerSelector = '[data-grader-handle="true"]';
         controlCount = await tagMoveControls();
       }
 
@@ -924,8 +927,8 @@ test.describe('drag Target Grader', () => {
       let moved = false;
       for (let i = 0; i < controlCount; i++) {
         let ctrl = page.locator(`[data-grader-move-idx="${i}"]`);
-        if (openedMenu && !(await ctrl.isVisible().catch(() => false))) {
-          await page.locator('[data-grader-handle="true"]').click();
+        if (openedMenu && menuOpenerSelector && !(await ctrl.isVisible().catch(() => false))) {
+          await page.locator(menuOpenerSelector).click();
           await tagMoveControls();
           ctrl = page.locator(`[data-grader-move-idx="${i}"]`);
         }
