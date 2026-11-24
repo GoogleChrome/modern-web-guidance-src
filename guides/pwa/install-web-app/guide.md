@@ -179,11 +179,14 @@ and use the `event.result` property to determine the outcome:
 Use `navigator.install()` in a secure context (HTTPS) when custom page UI is
 necessary. Keep the button hidden until a supported installation mechanism is
 available. Call `navigator.install()` directly from the click handler so the
-call retains the required transient user activation.
+call retains the required transient user activation. If you hide the button after
+a successful installation, move focus to the status message first (give it
+`tabindex="-1"`); hiding the focused button otherwise drops focus to the start of
+the page (WCAG 2.4.3 Focus Order).
 
 ```html
 <button id="install-app" type="button" hidden>Install app</button>
-<p id="install-status" role="status"></p>
+<p id="install-status" role="status" tabindex="-1"></p>
 
 <script type="module">
   const installButton = document.querySelector("#install-app");
@@ -206,6 +209,8 @@ call retains the required transient user activation.
       // MANDATORY: Call during the click handler; delayed calls lose user activation.
       await navigator.install();
       installStatus.textContent = "The app was installed or opened.";
+      // Move focus off the button before hiding it, so focus isn't lost.
+      installStatus.focus();
       installButton.hidden = true;
     } catch (error) {
       if (error.name === "AbortError") {
@@ -335,7 +340,8 @@ Capture the event, prevent its automatic prompt, and reveal the custom install
 button only after the browser confirms that prompting is possible. Use one click
 handler that selects `navigator.install()` when available and otherwise uses the
 captured event. The event is single-use, so discard it before awaiting the
-user's choice and hide the button unless a new `beforeinstallprompt` event fires.
+user's choice and hide the button unless a new `beforeinstallprompt` event fires,
+moving focus to the status message before hiding it.
 
 ```js
 const installButton = document.querySelector("#install-app");
@@ -370,6 +376,7 @@ installButton.addEventListener("click", async () => {
       // Call directly from this handler to preserve transient user activation.
       await navigator.install();
       installStatus.textContent = "The app was installed or opened.";
+      installStatus.focus();
       installButton.hidden = true;
     } else if (deferredInstallPrompt) {
       // Save and clear the single-use event before awaiting the user's choice.
@@ -383,6 +390,7 @@ installButton.addEventListener("click", async () => {
           ? "The app was installed."
           : "Installation canceled.";
       if (!deferredInstallPrompt) {
+        installStatus.focus();
         installButton.hidden = true;
       }
     }
