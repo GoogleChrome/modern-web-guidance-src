@@ -1662,8 +1662,10 @@ void test('scanFiles: lazy SourceFile proxy skips AST creation on early ctx.file
   assert.equal(sawPrototype, true);
 });
 
-void test('parse error isolation & deduplicated parseErrorCount across CSS, package.json, and multi-block SFCs (#3587)', async (t) => {
-  const brokenCss = '.hit {\n' + '{\n'.repeat(3000);
+void test('parse error & unrecoverable exception isolation with deduplicated parseErrorCount (#3587)', async (t) => {
+  // cssomnom is CSS-spec error-recovering for ordinary syntax glitches; deep brace nesting
+  // triggers an unrecoverable RangeError to exercise per-block CSS parser exception isolation.
+  const unrecoverableCss = '.hit {\n' + '{\n'.repeat(3000);
   const cssRule: ScanRule & { readonly matcher: CssRuleMatcher } = {
     id: 'test/parse-css',
     guideId: 'css-guide',
@@ -1718,9 +1720,9 @@ void test('parse error isolation & deduplicated parseErrorCount across CSS, pack
     },
   };
 
-  await t.test('direct helper exports remain backward-compatible and return [] on malformed input', () => {
-    assert.deepEqual(scanCss('broken.css', brokenCss, [cssRule.matcher]), []);
-    assert.deepEqual(scanCssRules('broken.css', brokenCss, [cssRule]), []);
+  await t.test('direct helper exports remain backward-compatible and return [] on malformed package.json or unrecoverable CSS exceptions', () => {
+    assert.deepEqual(scanCss('broken.css', unrecoverableCss, [cssRule.matcher]), []);
+    assert.deepEqual(scanCssRules('broken.css', unrecoverableCss, [cssRule]), []);
     assert.deepEqual(
       scanPackageJson('package.json', '{ "dependencies": {', [depRule.matcher]),
       [],
@@ -1728,12 +1730,12 @@ void test('parse error isolation & deduplicated parseErrorCount across CSS, pack
     assert.deepEqual(scanPackageJsonRules('package.json', '{ "dependencies": {', [depRule]), []);
   });
 
-  await t.test('counts malformed .css and package.json once per file without aborting remaining files', () => {
+  await t.test('counts malformed package.json and unrecoverable .css exceptions once per file without aborting remaining files', () => {
     const stats: RepoScanStats = {};
     const findings = scanFiles(
       new Map([
-        ['src/broken.css', brokenCss],
         ['package.json', '{ "dependencies": {'],
+        ['src/broken.css', unrecoverableCss],
         ['src/good.css', '.hit { color: red; }'],
         ['apps/web/package.json', '{"dependencies":{"react":"^18.0.0","legacy-pkg":"^1.0.0"}}'],
       ]),
@@ -1757,12 +1759,12 @@ void test('parse error isolation & deduplicated parseErrorCount across CSS, pack
       '<script>',
       '  legacyCall();',
       '</script>',
-      `<style>\n${brokenCss}\n</style>`,
-      `<style>\n${brokenCss}\n</style>`,
+      `<style>\n${unrecoverableCss}\n</style>`,
+      `<style>\n${unrecoverableCss}\n</style>`,
     ].join('\n');
 
     const htmlWithOneBrokenOneValidStyle = [
-      `<style>\n${brokenCss}\n</style>`,
+      `<style>\n${unrecoverableCss}\n</style>`,
       '<style>\n.hit { color: blue; }\n</style>',
     ].join('\n');
 
@@ -1844,7 +1846,7 @@ void test('parse error isolation & deduplicated parseErrorCount across CSS, pack
     const tempDir = await mkdtemp(join(tmpdir(), 'parse-err-repo-'));
     try {
       await mkdir(join(tempDir, 'src'), { recursive: true });
-      await writeFile(join(tempDir, 'src', 'broken.css'), brokenCss);
+      await writeFile(join(tempDir, 'src', 'broken.css'), unrecoverableCss);
       await writeFile(join(tempDir, 'package.json'), '{ invalid json');
       await writeFile(join(tempDir, 'src', 'valid.css'), '.hit { color: green; }');
 

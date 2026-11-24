@@ -1074,10 +1074,10 @@ describe('runLegacyScanCli', () => {
         );
       });
 
-      // 3. Parse errors in malformed .css and package.json alongside valid finding and truncation
+      // 3. Malformed package.json SyntaxError + unrecoverable CSS exception alongside valid findings and truncation
       await withTempDir(async (parseDir) => {
-        const brokenCss = '.accordion-panel { max-height: 0; transition: max-height 0.3s;\n' + '{\n'.repeat(3000);
-        await writeFile(join(parseDir, 'broken.css'), brokenCss, 'utf8');
+        const unrecoverableCss = '.accordion-panel { max-height: 0; transition: max-height 0.3s;\n' + '{\n'.repeat(3000);
+        await writeFile(join(parseDir, 'broken.css'), unrecoverableCss, 'utf8');
         await writeFile(join(parseDir, 'package.json'), '{ "dependencies": {', 'utf8');
         await writeFile(join(parseDir, 'view.phtml'), '<p>template</p>\n', 'utf8');
         await writeFile(
@@ -1116,10 +1116,9 @@ describe('runLegacyScanCli', () => {
         assert.match(truncJson.data?.note ?? '', /Skipped 2 files due to parse errors\./);
       });
 
-      // 4. Parse error only (0 findings) must never claim "No legacy patterns found"
+      // 4. Malformed package.json only (0 findings) must never claim "No legacy patterns found"
       await withTempDir(async (onlyParseErrDir) => {
-        const brokenCss = '.accordion-panel { max-height: 0; transition: max-height 0.3s;\n' + '{\n'.repeat(3000);
-        await writeFile(join(onlyParseErrDir, 'broken.css'), brokenCss, 'utf8');
+        await writeFile(join(onlyParseErrDir, 'package.json'), '{ "dependencies": {', 'utf8');
 
         const resJson = await runLegacyScanCli([onlyParseErrDir, '--json']);
         assert.equal(resJson.exitCode, 0);
@@ -1133,6 +1132,19 @@ describe('runLegacyScanCli', () => {
         assert.match(resHuman.output, /0 findings in scanned subset across \d+ qualified guides\./);
         assert.match(resHuman.output, /Skipped 1 file due to parse errors\./);
       });
+
+      // 5. Large unsupported-file total uses comma formatting consistent with per-extension counts
+      const largeUnsupportedHuman = formatHumanReadable('/big-repo', 0, [], undefined, {
+        activeGuideCount: 38,
+        isDefaultQualifiedMode: true,
+        color: false,
+        scannedFileCount: 0,
+        skippedUnsupportedFiles: { '.phtml': 1200 },
+      });
+      assert.match(
+        largeUnsupportedHuman,
+        /Skipped 1,200 unsupported files \(\.phtml: 1,200\)\./,
+      );
     });
   });
 });

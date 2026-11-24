@@ -88,7 +88,7 @@ export interface FormatHumanReadableOptions {
 export type TextStyle = Parameters<typeof styleText>[0];
 
 function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
+  return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
 }
 
 function formatCount(count: number): string {

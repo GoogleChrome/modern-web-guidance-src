@@ -52,8 +52,19 @@ import {
 
 export * from './ast-helpers.ts';
 export * from './context-slicer.ts';
-export * from './css-scanner.ts';
-export * from './dependency-scanner.ts';
+export {
+  normalizeCssDeclValue,
+  scanCss,
+  scanCssRules,
+} from './css-scanner.ts';
+export {
+  createDependencyMatcher,
+  isPureNodeBackendOrCliPackage,
+  scanPackageJson,
+  scanPackageJsonRules,
+  scanVendoredLibraryFile,
+  scanVendoredLibraryRules,
+} from './dependency-scanner.ts';
 export * from './dom-scanner.ts';
 export * from './file-filter.ts';
 export * from './js-scanner.ts';

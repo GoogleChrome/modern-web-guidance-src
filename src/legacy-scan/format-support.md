@@ -21,7 +21,7 @@ This doc covers what `supported` guarantees, the bar for adding a format, and wh
 | `expected-skip` | Deliberately doesn't scan it: either our rules can't apply (no stylesheet syntax to match), or we measured it on real code and our rules found nothing worth the cost. |
 | `unsupported` | Doesn't scan it. |
 
-For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": skip reporting counts skipped unsupported files by extension (`skippedUnsupportedFiles`) and parse errors (`parseErrorCount`) in the scan output. (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
+For the web source files listed in the table below, `0 findings` shouldn't quietly mean "we didn't look at those files": skip reporting counts skipped unsupported files by extension (`skippedUnsupportedFiles`), and `parseErrorCount` surfaces malformed `package.json` JSON errors and unrecoverable per-block/per-file parser or scanner exceptions (HTML, CSS, and JS/TS parsers are error-recovering and tolerate minor syntax glitches). (Embedded shapes like MUI `sx` objects inside a `.tsx` file are documented here, not counted.)
 
 ## The bar for adding a format
 
