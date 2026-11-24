@@ -1,5 +1,5 @@
 diff --git a/index.html b/index.html
-index 5db718e..2617b9c 100644
+index 5db718e..ec131d7 100644
 --- a/index.html
 +++ b/index.html
 @@ -8,12 +8,15 @@
@@ -31,7 +31,7 @@ index 5db718e..2617b9c 100644
 +      left: 0;
 +      width: 100%;
 +      height: 3px;
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      transform-origin: 0 50%;
 +      scale: 0 1;
 +      opacity: 0;
@@ -61,7 +61,7 @@ index 5db718e..2617b9c 100644
      }
  
      nav ul li {
-@@ -61,23 +93,40 @@
+@@ -61,23 +93,49 @@
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
@@ -82,10 +82,19 @@ index 5db718e..2617b9c 100644
 +        color: var(--accent-on-dark);
 +      }
 +
-+      --accent: #b45309;
-+      --accent-on-dark: #ffab40;
-+      --border: #795548;
-+      --accent-soft: #ffe0b2;
++      @media (prefers-reduced-motion: no-preference) {
++        transition:
++          color 0.25s ease,
++          background-color 0.25s ease,
++          border-color 0.25s ease,
++          translate 0.25s cubic-bezier(0.22, 1, 0.36, 1),
++          scale 0.25s cubic-bezier(0.22, 1, 0.36, 1);
++
++        &:hover,
++        &:focus-visible {
++          translate: 0 -2px;
++        }
++      }
      }
  
      .logout-link {
@@ -108,7 +117,7 @@ index 5db718e..2617b9c 100644
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
        background-position: center;
-@@ -87,12 +136,123 @@
+@@ -87,12 +145,123 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -179,7 +188,7 @@ index 5db718e..2617b9c 100644
 +    }
 +
 +    .banner-control-btn {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary-dark);
 +      border: none;
 +      border-radius: 999px;
@@ -234,7 +243,7 @@ index 5db718e..2617b9c 100644
      }
  
      /* Content Sections */
-@@ -110,11 +270,37 @@
+@@ -110,11 +279,37 @@
      }
  
      .card {
@@ -274,7 +283,7 @@ index 5db718e..2617b9c 100644
      }
  
      .card h3 {
-@@ -128,13 +314,170 @@
+@@ -128,13 +323,170 @@
        color: white;
        padding: 10px 20px;
        text-decoration: none;
@@ -313,7 +322,7 @@ index 5db718e..2617b9c 100644
 -    .btn:hover {
 -      background: #3e2723;
 +    .hero-cta {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary-dark);
 +      font-weight: 700;
 +
@@ -448,7 +457,7 @@ index 5db718e..2617b9c 100644
      }
  
      footer {
-@@ -153,11 +496,17 @@
+@@ -153,11 +505,17 @@
        color: var(--text);
        text-decoration: none;
        font-size: 0.85rem;
@@ -467,7 +476,7 @@ index 5db718e..2617b9c 100644
  
    <nav>
      <div class="logo">THE DAILY GRIND</div>
-@@ -168,37 +517,72 @@
+@@ -168,37 +526,72 @@
        <li><a href="/account">My Account</a></li>
        <li><a href="/logout" class="logout-link">Logout</a></li>
      </ul>
@@ -547,7 +556,7 @@ index 5db718e..2617b9c 100644
    <footer>
      <div class="footer-links">
        <a href="/about">Our Story</a> |
-@@ -209,6 +593,234 @@
+@@ -209,6 +602,234 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
