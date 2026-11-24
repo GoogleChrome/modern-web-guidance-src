@@ -142,7 +142,6 @@ export interface RunPlaywrightOptions {
   zeroPassrateFile?: string;
   testResultsDir?: string;
   baselineTarget?: string;
-  stage?: 'patch' | 'starting-app';
 }
 
 function graderUsesTargetServer(graderPath: string): boolean {
@@ -181,7 +180,7 @@ export async function runPlaywright(
   let effectiveTargetPath = targetPathAbs;
   let cleanupGradingDir: (() => void) | null = null;
 
-  if (patchFile || options.stage === 'starting-app') {
+  if (patchFile) {
     const baseApp = path.basename(path.dirname(graderPath));
     const { workDir: tempGradingDir, cleanup } = await stageGradingWorkspace(baseApp, patchFile, zeroPassrateFile);
     cleanupGradingDir = cleanup;
@@ -304,7 +303,7 @@ export async function runPlaywright(
 async function runPlaywrightCalibration(
   targetPathAbs: string,
   graderPath: string,
-  patchFile: string | undefined,
+  patchFile: string,
   result: CalibrationResult,
   zeroPassrateFile?: string,
   testResultsDir?: string
@@ -315,11 +314,9 @@ async function runPlaywrightCalibration(
     zeroPassrateFile,
     testResultsDir,
     baselineTarget: 'widely',
-    stage: patchFile ? 'patch' : 'starting-app',
   })
     .catch(err => {
-      const label = patchFile ? path.basename(patchFile) : 'the untouched starting app';
-      result.errorDetails = `Dev server crashed or failed to run against ${label}: ${err.message}`;
+      result.errorDetails = `Dev server crashed or failed to run against ${path.basename(patchFile)}: ${err.message}`;
       return null;
     });
 
@@ -590,7 +587,7 @@ export async function testTargetGrader(guideDirAbs: string, baseApp: string): Pr
     const zeroPassrateResults = await runPlaywrightCalibration(
       targetDir,
       graderPath,
-      hasNonEmptyZeroPatch ? zeroPassratePatch : undefined,
+      zeroPassratePatch,
       result,
       undefined,
       zeroPassrateTestResultsDir

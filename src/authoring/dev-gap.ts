@@ -52,6 +52,7 @@ export interface PrReviewContext {
   comments?: string;
   rerunMode?: DevPrRerunLabel;
   threadIds?: string[];
+  previousReport?: string;
 }
 
 export interface FixEvalGapsOptions {
@@ -193,6 +194,7 @@ mutation($threadId: ID!, $body: String!) {
     let branchCommits = '';
     let branchDiff = '';
     let comments = '';
+    let previousReport: string | undefined;
     const threadIds: string[] = [];
 
     try {
@@ -206,9 +208,13 @@ mutation($threadId: ID!, $body: String!) {
     try {
       const viewJson = JSON.parse(child_process.execFileSync(
         'gh',
-        ['pr', 'view', String(prNumber), '--json', 'comments,reviews'],
+        ['pr', 'view', String(prNumber), '--json', 'body,comments,reviews'],
         { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }
       ));
+
+      if (typeof viewJson.body === 'string' && viewJson.body.trim()) {
+        previousReport = viewJson.body;
+      }
 
       const commentLines: string[] = [];
       if (Array.isArray(viewJson.comments)) {
@@ -304,6 +310,7 @@ query($owner: String!, $repo: String!, $pr: Int!) {
       branchDiff,
       comments,
       threadIds: threadIds.length > 0 ? threadIds : undefined,
+      previousReport,
     };
   },
   runDevGuide: async (inv: GuideInventory, options: FixEvalGapsOptions): Promise<boolean> => {

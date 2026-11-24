@@ -164,13 +164,6 @@ export async function generateTargetGrader(
       fs.mkdirSync(path.dirname(destGrader), { recursive: true });
       fs.copyFileSync(generatedGrader, destGrader);
     }
-
-    const generatedZeroPassrate = path.join(workDir, ZERO_PASSRATE_PATCH_FILE);
-    if (fs.existsSync(generatedZeroPassrate)) {
-      const destZeroPassrate = path.join(guideDirAbs, TARGETS_DIR, baseApp, ZERO_PASSRATE_PATCH_FILE);
-      fs.mkdirSync(path.dirname(destZeroPassrate), { recursive: true });
-      fs.copyFileSync(generatedZeroPassrate, destZeroPassrate);
-    }
   } finally {
     try {
       fs.rmSync(tempHome, { recursive: true, force: true, maxRetries: 3, retryDelay: 500 });

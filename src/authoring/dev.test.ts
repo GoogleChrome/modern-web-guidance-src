@@ -615,16 +615,15 @@ test('calibrateTargetWithRetries retries once on shared golden failures and clas
       },
       rewriteGrader: async () => { rewriteCalls1++; graderContent1 = 'v2'; },
       regenerateGolden: async () => {},
-      runSelectorProbe: async () => ({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+      checkSelectorCoupling: () => null,
       readGrader: () => graderContent1,
       writeGrader: (c) => { graderContent1 = c; },
     }
   );
   assert.strictEqual(passOutcome.success, true);
-  assert.strictEqual(passOutcome.attempts, 2);
   assert.strictEqual(rewriteCalls1, 1);
 
-  // Case 2: All 3 goldens still fail the same check after 1-shot retry -> abort with guide_gap (2 attempts, not 5)
+  // Case 2: All 3 goldens still fail the same check after 1-shot retry -> abort with [guide_gap]
   let rewriteCalls2 = 0;
   let graderContent2 = 'v1';
   const gapOutcome = await calibrateTargetWithRetries(
@@ -633,24 +632,23 @@ test('calibrateTargetWithRetries retries once on shared golden failures and clas
       testGrader: async () => sharedFailRes,
       rewriteGrader: async () => { rewriteCalls2++; graderContent2 = 'v2'; },
       regenerateGolden: async () => {},
-      runSelectorProbe: async () => ({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+      checkSelectorCoupling: () => null,
       readGrader: () => graderContent2,
       writeGrader: (c) => { graderContent2 = c; },
     }
   );
   assert.strictEqual(gapOutcome.success, false);
-  assert.strictEqual(gapOutcome.attempts, 2);
   assert.strictEqual(rewriteCalls2, 1);
-  assert.strictEqual(gapOutcome.classification, 'guide_gap');
+  assert.ok(gapOutcome.errorDetails?.startsWith('[guide_gap]'));
 });
 
-test('calibrateTargetWithRetries blocks and reverts grader rewrites that loosen previously failing baseline checks (LOOSENING_BLOCKED)', async () => {
+test('calibrateTargetWithRetries blocks loosening on baseline and does not false-trigger LOOSENING_BLOCKED when baseline errored with 0 tests', async () => {
   const { calibrateTargetWithRetries } = await import('./dev.ts');
   const { Agents } = await import('../harness/config.ts');
 
   let graderSource = '// strict grader v1';
   let call = 0;
-  const outcome = await calibrateTargetWithRetries(
+  const blockedOutcome = await calibrateTargetWithRetries(
     { baseApp: 'daily-grind', maxRetries: 3 },
     {
       testGrader: async () => {
@@ -679,16 +677,55 @@ test('calibrateTargetWithRetries blocks and reverts grader rewrites that loosen 
       },
       rewriteGrader: async () => { graderSource = '// loosened grader v2'; },
       regenerateGolden: async () => {},
-      runSelectorProbe: async () => ({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+      checkSelectorCoupling: () => null,
       readGrader: () => graderSource,
       writeGrader: (c) => { graderSource = c; },
     }
   );
 
-  assert.strictEqual(outcome.success, false);
-  assert.ok(outcome.errorDetails?.includes('LOOSENING_BLOCKED'));
-  assert.ok(outcome.errorDetails?.includes('Test B'));
+  assert.strictEqual(blockedOutcome.success, false);
+  assert.ok(blockedOutcome.errorDetails?.includes('LOOSENING_BLOCKED'));
+  assert.ok(blockedOutcome.errorDetails?.includes('Test B'));
   assert.strictEqual(graderSource, '// strict grader v1', 'Loosened grader must be reverted');
+
+  // Compile/load error on baseline (passed: 0, failed: 0) must NOT falsely trigger LOOSENING_BLOCKED
+  let errCall = 0;
+  let errGrader = 'v1';
+  const compileRecoverOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 3 },
+    {
+      testGrader: async () => {
+        errCall++;
+        if (errCall === 1) {
+          return {
+            success: false,
+            errorDetails: 'Claude failed Test B',
+            solutions: { [Agents.CLAUDE_CODE]: { passed: 0, failed: 1, failingTests: ['Test B'] } },
+            zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+          };
+        }
+        if (errCall === 2) {
+          return {
+            success: false,
+            errorDetails: 'Playwright syntax error',
+            solutions: { [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] } },
+            zeroPassrate: { passed: 0, failed: 0, passingTests: [], failingTests: [] },
+          };
+        }
+        return {
+          success: true,
+          solutions: { [Agents.CLAUDE_CODE]: { passed: 2, failed: 0, failingTests: [] } },
+          zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+        };
+      },
+      rewriteGrader: async () => { errGrader = `v${errCall + 1}`; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => errGrader,
+      writeGrader: (c) => { errGrader = c; },
+    }
+  );
+  assert.strictEqual(compileRecoverOutcome.success, true);
 });
 
 test('calibrateTargetWithRetries regenerates broken-pageLoad golden once and gates on persistent broken pageLoad', async () => {
@@ -725,7 +762,7 @@ test('calibrateTargetWithRetries regenerates broken-pageLoad golden once and gat
       },
       rewriteGrader: async () => { throw new Error('Should not rewrite grader for broken golden pageLoad'); },
       regenerateGolden: async (agent) => { regenerated.push(agent); },
-      runSelectorProbe: async () => ({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+      checkSelectorCoupling: () => null,
       readGrader: () => '// grader',
       writeGrader: () => {},
     }
@@ -733,23 +770,23 @@ test('calibrateTargetWithRetries regenerates broken-pageLoad golden once and gat
   assert.strictEqual(fixedOutcome.success, true);
   assert.deepStrictEqual(regenerated, [Agents.CLAUDE_CODE]);
 
-  // Persistent broken pageLoad -> golden_missed_requirement
+  // Persistent broken pageLoad -> [golden_missed_requirement]
   const failOutcome = await calibrateTargetWithRetries(
     { baseApp: 'daily-grind', maxRetries: 2 },
     {
       testGrader: async () => brokenRes,
       rewriteGrader: async () => {},
       regenerateGolden: async () => {},
-      runSelectorProbe: async () => ({ passed: true, renamedClasses: new Map(), failingTests: [] }),
+      checkSelectorCoupling: () => null,
       readGrader: () => '// grader',
       writeGrader: () => {},
     }
   );
   assert.strictEqual(failOutcome.success, false);
-  assert.strictEqual(failOutcome.classification, 'golden_missed_requirement');
+  assert.ok(failOutcome.errorDetails?.startsWith('[golden_missed_requirement]'));
 });
 
-test('calibrateTargetWithRetries retries grader when selector-gating probe fails', async () => {
+test('calibrateTargetWithRetries retries grader when selector-coupling check fails', async () => {
   const { calibrateTargetWithRetries } = await import('./dev.ts');
   const { Agents } = await import('../harness/config.ts');
 
@@ -766,17 +803,12 @@ test('calibrateTargetWithRetries retries grader when selector-gating probe fails
       }),
       rewriteGrader: async (ctx) => { rewroteWith = ctx; graderSource = 'v2'; },
       regenerateGolden: async () => {},
-      runSelectorProbe: async () => {
+      checkSelectorCoupling: () => {
         probeCalls++;
         if (probeCalls === 1) {
-          return {
-            passed: false,
-            renamedClasses: new Map([['custom-card', 'mwg-probe-0']]),
-            failingTests: ['Test A'],
-            diagnostic: 'Grader appears coupled to non-contract class names: custom-card -> mwg-probe-0',
-          };
+          return 'Grader appears coupled to non-contract class/id names from golden patches: .custom-card (L3)';
         }
-        return { passed: true, renamedClasses: new Map(), failingTests: [] };
+        return null;
       },
       readGrader: () => graderSource,
       writeGrader: (c) => { graderSource = c; },
@@ -784,8 +816,7 @@ test('calibrateTargetWithRetries retries grader when selector-gating probe fails
   );
 
   assert.strictEqual(outcome.success, true);
-  assert.strictEqual(outcome.attempts, 2);
-  assert.ok(rewroteWith.includes('Grader appears coupled to non-contract class names'));
+  assert.ok(rewroteWith.includes('Grader appears coupled to non-contract class/id names'));
 });
 
 test('classifyCalibrationFailure distinguishes grader_bug, golden_missed_requirement, and guide_gap', async () => {

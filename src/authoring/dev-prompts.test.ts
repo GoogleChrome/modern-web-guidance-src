@@ -265,7 +265,7 @@ test('buildTargetTaskPrompt creates clean developer prompt instructions without 
   assert.ok(!disciplinePrompt.includes('understand the use case'));
 });
 
-test('buildDevReportPrompt creates Red-Line aligned diagnostic prompt without 90% threshold or disk mutation', () => {
+test('buildDevReportPrompt creates diagnostic prompt without 90% threshold or disk mutation', () => {
   const prompt = buildDevReportPrompt({
     guideName: 'size-aware-styling',
     targets: [

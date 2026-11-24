@@ -6,7 +6,6 @@ import { SUPPORTED_BASE_APPS, getDefaultSolutionAgent, GUIDE_FILE, EXPECTATIONS_
 import { resolveGuideResultsDir, rootDir, type GuideResultsInventory } from '../core/paths.ts';
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
-import { extractTestTitles } from '../core/grader-coverage.ts';
 
 /** Pass-rate threshold above which an unguided run requires a fix or explanation before merge. */
 export const HIGH_UNGUIDED_PASS_RATE_THRESHOLD = 80;
@@ -335,34 +334,6 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 }
 
 /**
- * Checks whether a suggested `grader.ts` edit drops active `test()` blocks without changing `expectations.md`.
- */
-export function getGraderSuggestionCoverageLoss(input: {
-  expectationsChanged: boolean;
-  beforeTestCount: number;
-  afterTestCount: number;
-}): string | null {
-  if (input.expectationsChanged) return null;
-  if (input.afterTestCount < input.beforeTestCount) {
-    return `reduces the number of \`test()\` blocks from ${input.beforeTestCount} to ${input.afterTestCount}`;
-  }
-  return null;
-}
-
-/** Unified diff of one changed file, prefixed by `pathPrefix` (the guide's repo-relative directory). */
-export function formatGuideFileDiff(change: GuideFileChange, pathPrefix: string): string {
-  return createTwoFilesPatch(
-    change.before === null ? '/dev/null' : `a/${pathPrefix}${change.file}`,
-    change.after === null ? '/dev/null' : `b/${pathPrefix}${change.file}`,
-    change.before ?? '',
-    change.after ?? '',
-    undefined,
-    undefined,
-    { headerOptions: FILE_HEADERS_ONLY }
-  );
-}
-
-/**
  * Builds the `## Suggested Edits` section appended to `report.md`.
  */
 export function buildSuggestedEditsSection(
@@ -401,20 +372,25 @@ export function extractSuggestedEditsSection(report: string): string | undefined
   return start === -1 ? undefined : report.slice(start).trim();
 }
 
-function findGraderCoverageWarnings(changes: readonly GuideFileChange[], originalRoot: string, editedRoot: string): string[] {
+function countActiveTests(source: string): number {
+  return source.match(/(?:^|\s)test(?:\.only)?\s*\(\s*(['"`])/g)?.length ?? 0;
+}
+
+export function findGraderCoverageWarnings(changes: readonly GuideFileChange[]): string[] {
   const expectationsChanged = changes.some(c => c.file === EXPECTATIONS_FILE);
+  if (expectationsChanged) return [];
+
   const warnings: string[] = [];
   for (const change of changes) {
-    if (!change.file.endsWith(`/${GRADER_FILE}`) || change.before === null || change.after === null) continue;
-    const before = path.join(originalRoot, change.file);
-    const after = path.join(editedRoot, change.file);
-    const loss = getGraderSuggestionCoverageLoss({
-      expectationsChanged,
-      beforeTestCount: extractTestTitles(before).length,
-      afterTestCount: extractTestTitles(after).length,
-    });
-    if (loss) {
-      warnings.push(`**Coverage loss**: the suggested edit to \`${change.file}\` ${loss} without changing \`${EXPECTATIONS_FILE}\`. Don't accept it as is; fix \`${EXPECTATIONS_FILE}\` or \`task.md\` instead.`);
+    if (!change.file.endsWith(`/${GRADER_FILE}`) || change.before === null) continue;
+    if (change.after === null) {
+      warnings.push(`**Coverage loss**: the suggested edit deletes \`${change.file}\` without changing \`${EXPECTATIONS_FILE}\`. Don't accept it as is; fix \`${EXPECTATIONS_FILE}\` or \`task.md\` instead.`);
+      continue;
+    }
+    const beforeCount = countActiveTests(change.before);
+    const afterCount = countActiveTests(change.after);
+    if (afterCount < beforeCount) {
+      warnings.push(`**Coverage loss**: the suggested edit to \`${change.file}\` reduces the number of active \`test()\` blocks from ${beforeCount} to ${afterCount} without changing \`${EXPECTATIONS_FILE}\`. Don't accept it as is; fix \`${EXPECTATIONS_FILE}\` or \`task.md\` instead.`);
     }
   }
   return warnings;
@@ -497,11 +473,22 @@ export async function runDevReport(
     fs.mkdirSync(guideResultsDir, { recursive: true });
     if (changes.length > 0) {
       const pathPrefix = `${path.relative(rootDir, targetDir).split(path.sep).join('/')}/`;
-      const diffs = changes.map(change => ({ file: `${pathPrefix}${change.file}`, diff: formatGuideFileDiff(change, pathPrefix) }));
+      const diffs = changes.map(change => ({
+        file: `${pathPrefix}${change.file}`,
+        diff: createTwoFilesPatch(
+          change.before === null ? '/dev/null' : `a/${pathPrefix}${change.file}`,
+          change.after === null ? '/dev/null' : `b/${pathPrefix}${change.file}`,
+          change.before ?? '',
+          change.after ?? '',
+          undefined,
+          undefined,
+          { headerOptions: FILE_HEADERS_ONLY }
+        ),
+      }));
       fs.writeFileSync(suggestionsPath, diffs.map(d => d.diff).join(''));
       report += buildSuggestedEditsSection(
         diffs,
-        findGraderCoverageWarnings(changes, targetDir, workDir),
+        findGraderCoverageWarnings(changes),
         path.relative(rootDir, suggestionsPath).split(path.sep).join('/')
       );
     } else {

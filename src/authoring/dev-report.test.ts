@@ -9,9 +9,8 @@ import {
   buildInitialDevReport,
   findChangedGuideFiles,
   copyChangedGuideFiles,
-  formatGuideFileDiff,
   buildSuggestedEditsSection,
-  getGraderSuggestionCoverageLoss,
+  findGraderCoverageWarnings,
   extractSuggestedEditsSection,
   HIGH_UNGUIDED_PASS_RATE_THRESHOLD,
   type TargetEvalSummary,
@@ -393,14 +392,34 @@ test('findChangedGuideFiles, copyChangedGuideFiles, and buildSuggestedEditsSecti
   const changes = findChangedGuideFiles(orig, edited, { includePatches: false });
   assert.deepStrictEqual(changes.map(c => c.file), ['guide.md']);
 
-  const diffs = changes.map(c => ({ file: `guides/css/x/${c.file}`, diff: formatGuideFileDiff(c, 'guides/css/x/') }));
+  const diffs = changes.map(c => ({ file: `guides/css/x/${c.file}`, diff: `--- a/${c.file}\n+++ b/${c.file}\n` }));
   const section = buildSuggestedEditsSection(diffs, [], 'results/guides/css/x/suggestions.patch');
   assert.ok(section.includes('## Suggested Edits'));
-  assert.ok(section.includes('+Updated'));
   assert.ok(extractSuggestedEditsSection(`# Report\n${section}`)?.startsWith('## Suggested Edits'));
 
-  assert.strictEqual(getGraderSuggestionCoverageLoss({ expectationsChanged: false, beforeTestCount: 3, afterTestCount: 2 }), 'reduces the number of `test()` blocks from 3 to 2');
-  assert.strictEqual(getGraderSuggestionCoverageLoss({ expectationsChanged: true, beforeTestCount: 3, afterTestCount: 2 }), null);
+  const skipWarnings = findGraderCoverageWarnings([
+    {
+      file: 'targets/daily-grind/grader.ts',
+      before: "test('a', () => {});\ntest('b', () => {});\n",
+      after: "test('a', () => {});\ntest.skip('b', () => {});\n",
+    },
+  ]);
+  assert.strictEqual(skipWarnings.length, 1);
+  assert.ok(skipWarnings[0]!.includes('from 2 to 1'));
+
+  const deleteWarnings = findGraderCoverageWarnings([
+    { file: 'targets/daily-grind/grader.ts', before: "test('a', () => {});", after: null },
+  ]);
+  assert.strictEqual(deleteWarnings.length, 1);
+  assert.ok(deleteWarnings[0]!.includes('deletes'));
+
+  assert.deepStrictEqual(
+    findGraderCoverageWarnings([
+      { file: 'expectations.md', before: '- a\n- b', after: '- a' },
+      { file: 'targets/daily-grind/grader.ts', before: "test('a', () => {});\ntest('b', () => {});", after: "test('a', () => {});" },
+    ]),
+    []
+  );
 
   // copyChangedGuideFiles only rewrites changed files
   const past = new Date(Date.now() - 60_000);
