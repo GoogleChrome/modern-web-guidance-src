@@ -211,9 +211,13 @@ test.describe('Translator Target Grader', () => {
             const target = opts?.targetLanguage ?? 'es';
             return {
               translate: async (text: string) => `[${target}] ${text}`,
-              translateStreaming: async function* (text: string) {
-                yield `[${target}] ${text}`;
-              },
+              translateStreaming: (text: string) =>
+                new ReadableStream({
+                  start(c) {
+                    c.enqueue(`[${target}] ${text}`);
+                    c.close();
+                  },
+                }),
             };
           },
         };
@@ -240,7 +244,7 @@ test.describe('Translator Target Grader', () => {
 
       expect(selectedLang).toBeTruthy();
 
-      const translateBtn = page.locator('button:not([disabled])', { hasText: /translate/i }).first();
+      const translateBtn = page.locator('button', { hasText: /translate/i }).first();
       if ((await translateBtn.count()) > 0) {
         await expect(translateBtn).toBeEnabled();
         await translateBtn.click();

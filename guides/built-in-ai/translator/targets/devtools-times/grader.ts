@@ -136,6 +136,7 @@ test.describe('devtools-times Translator Target Grader', () => {
       page,
       TARGET_URL,
     }) => {
+      test.setTimeout(15_000);
       await page.addInitScript(() => {
         (window as any).Translator = {
           availability: async () => 'available',
@@ -143,9 +144,13 @@ test.describe('devtools-times Translator Target Grader', () => {
             const target = opts?.targetLanguage ?? 'es';
             return {
               translate: async (text: string) => `[${target}] ${text}`,
-              translateStreaming: async function* (text: string) {
-                yield `[${target}] ${text}`;
-              },
+              translateStreaming: (text: string) =>
+                new ReadableStream({
+                  start(c) {
+                    c.enqueue(`[${target}] ${text}`);
+                    c.close();
+                  },
+                }),
             };
           },
         };
@@ -215,7 +220,9 @@ test.describe('devtools-times Translator Target Grader', () => {
         await page.waitForURL(/\/articles\//);
         const anyLangSelect = page
           .locator('select')
-          .filter({ has: page.locator('option[value="es"], option[value="fr"], option[value="de"]') })
+          .filter({
+            has: page.locator('option[value="es" i], option[value="fr" i], option[value="de" i]'),
+          })
           .first();
         if ((await anyLangSelect.count()) > 0) {
           await anyLangSelect.scrollIntoViewIfNeeded().catch(() => {});
@@ -226,12 +233,21 @@ test.describe('devtools-times Translator Target Grader', () => {
       const targetSelect = page.locator('select[data-grader-target-select="true"]').first();
       await expect(targetSelect).toBeVisible({ timeout: 5000 });
 
-      const hasEs = (await targetSelect.locator('option[value="es"]:not([disabled])').count()) > 0;
-      const chosenLang = hasEs ? 'es' : 'fr';
+      const chosenLang = await targetSelect.evaluate((sel: HTMLSelectElement) => {
+        const enabledOpts = Array.from(sel.options).filter((o) => !o.disabled);
+        const matched =
+          enabledOpts.find((o) => o.value.toLowerCase() === 'es') ??
+          enabledOpts.find((o) => /^(es|fr|de)$/i.test(o.value));
+        return matched?.value ?? null;
+      });
+      expect(chosenLang).toBeTruthy();
+      if (!chosenLang) throw new Error('Expected a target language option');
       await targetSelect.selectOption(chosenLang);
 
       const scopedBtn = targetSelect
-        .locator('xpath=ancestor::*[.//button][1]')
+        .locator(
+          'xpath=ancestor::*[.//button[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "translate")]][1]',
+        )
         .locator('button', { hasText: /translate/i })
         .first();
       const translateBtn =
