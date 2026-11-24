@@ -326,3 +326,186 @@ test('The highlight visually changes the appearance of matched text', async ({ p
   });
   expect(hasVisualHighlightStyles).toBe(true);
 });
+
+const contrastHelperScript = `
+  function parseColorToRgba(colorStr, referenceEl) {
+    if (!colorStr || colorStr === 'transparent') return [0, 0, 0, 0];
+    const probe = document.createElement('span');
+    probe.style.color = colorStr;
+    probe.style.display = 'none';
+    (referenceEl || document.body).appendChild(probe);
+    const computed = getComputedStyle(probe).color;
+    probe.remove();
+    const rgbMatch = computed.match(/^rgba?\\((\\d+(?:\\.\\d+)?),\\s*(\\d+(?:\\.\\d+)?),\\s*(\\d+(?:\\.\\d+)?)(?:,\\s*(\\d+(?:\\.\\d+)?))?\\)/);
+    if (rgbMatch) {
+      return [
+        Number(rgbMatch[1]) / 255,
+        Number(rgbMatch[2]) / 255,
+        Number(rgbMatch[3]) / 255,
+        rgbMatch[4] !== undefined ? Number(rgbMatch[4]) : 1,
+      ];
+    }
+    const srgbMatch = computed.match(/^color\\(srgb\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)(?:\\s*\\/\\s*(\\d+(?:\\.\\d+)?))?\\)/);
+    if (srgbMatch) {
+      return [
+        Number(srgbMatch[1]),
+        Number(srgbMatch[2]),
+        Number(srgbMatch[3]),
+        srgbMatch[4] !== undefined ? Number(srgbMatch[4]) : 1,
+      ];
+    }
+    return null;
+  }
+  function blendOver(fg, bg) {
+    const a = fg[3];
+    return [
+      fg[0] * a + bg[0] * (1 - a),
+      fg[1] * a + bg[1] * (1 - a),
+      fg[2] * a + bg[2] * (1 - a),
+      1,
+    ];
+  }
+  function luminance(rgba) {
+    const lin = rgba.slice(0, 3).map((c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)));
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+  function contrastRatio(c1, c2) {
+    const l1 = luminance(c1);
+    const l2 = luminance(c2);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+  function getEffectiveBackground(el) {
+    let bg = [1, 1, 1, 1];
+    const chain = [];
+    let cur = el;
+    while (cur && cur.nodeType === 1) {
+      chain.unshift(cur);
+      cur = cur.parentElement;
+    }
+    for (const node of chain) {
+      const parsed = parseColorToRgba(getComputedStyle(node).backgroundColor, node);
+      if (parsed && parsed[3] > 0) {
+        bg = blendOver(parsed, bg);
+      }
+    }
+    return bg;
+  }
+  function getHighlightRules() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules) {
+          if (rule instanceof CSSStyleRule && rule.selectorText && rule.selectorText.includes('::highlight(')) {
+            rules.push(rule);
+          }
+        }
+      } catch {}
+    }
+    return rules;
+  }
+`;
+
+test('There is sufficient contrast (4.5:1 or 3:1 for large text) between matched text and highlight color', async ({ page }) => {
+  await page.goto(targetUrl);
+  const analysis = await page.evaluate((helperSrc) => {
+    const fn = new Function(helperSrc + `
+      const rules = getHighlightRules();
+      const targetEl = document.querySelector('article p, article, main p, main, p') || document.body;
+      const targetStyle = getComputedStyle(targetEl);
+      const fontSizePx = parseFloat(targetStyle.fontSize) || 16;
+      const fontWeight = parseInt(targetStyle.fontWeight, 10) || 400;
+      const isLargeText = fontSizePx >= 24 || (fontSizePx >= 18.66 && fontWeight >= 700);
+      const requiredRatio = isLargeText ? 3.0 : 4.5;
+      const pageBg = getEffectiveBackground(targetEl);
+      const defaultFg = parseColorToRgba(targetStyle.color, targetEl) || [0, 0, 0, 1];
+
+      const results = rules.map((rule) => {
+        const bgRaw = rule.style.getPropertyValue('background-color') || rule.style.getPropertyValue('background');
+        const fgRaw = rule.style.getPropertyValue('color');
+        const bgParsed = bgRaw ? parseColorToRgba(bgRaw, targetEl) : null;
+        const effectiveHighlightBg = bgParsed && bgParsed[3] > 0 ? blendOver(bgParsed, pageBg) : pageBg;
+        const fgParsed = fgRaw ? parseColorToRgba(fgRaw, targetEl) : defaultFg;
+        const effectiveFg = fgParsed ? blendOver(fgParsed, effectiveHighlightBg) : defaultFg;
+        const ratio = contrastRatio(effectiveFg, effectiveHighlightBg);
+        return { selector: rule.selectorText, ratio, requiredRatio };
+      });
+      return { ruleCount: rules.length, results };
+    `);
+    return fn();
+  }, contrastHelperScript);
+
+  expect(analysis.ruleCount).toBeGreaterThan(0);
+  expect(analysis.results.every((r: any) => r.ratio >= r.requiredRatio)).toBe(true);
+});
+
+test('There is at least 3:1 contrast between highlight color and adjacent colors OR non-color styling is applied', async ({ page }) => {
+  await page.goto(targetUrl);
+  const analysis = await page.evaluate((helperSrc) => {
+    const fn = new Function(helperSrc + `
+      const rules = getHighlightRules();
+      const targetEl = document.querySelector('article p, article, main p, main, p') || document.body;
+      const pageBg = getEffectiveBackground(targetEl);
+
+      const results = rules.map((rule) => {
+        const bgRaw = rule.style.getPropertyValue('background-color') || rule.style.getPropertyValue('background');
+        const bgParsed = bgRaw ? parseColorToRgba(bgRaw, targetEl) : null;
+        const effectiveHighlightBg = bgParsed && bgParsed[3] > 0 ? blendOver(bgParsed, pageBg) : pageBg;
+        const adjacentContrast = contrastRatio(effectiveHighlightBg, pageBg);
+        const textDec = rule.style.getPropertyValue('text-decoration') || rule.style.getPropertyValue('text-decoration-line');
+        const textShadow = rule.style.getPropertyValue('text-shadow');
+        const strokeWidth = rule.style.getPropertyValue('-webkit-text-stroke-width');
+        const hasNonColorStyling =
+          (textDec && textDec !== 'none') ||
+          (textShadow && textShadow !== 'none') ||
+          (strokeWidth && parseFloat(strokeWidth) > 0);
+        return {
+          selector: rule.selectorText,
+          adjacentContrast,
+          hasNonColorStyling: Boolean(hasNonColorStyling),
+        };
+      });
+      return { ruleCount: rules.length, results };
+    `);
+    return fn();
+  }, contrastHelperScript);
+
+  expect(analysis.ruleCount).toBeGreaterThan(0);
+  expect(analysis.results.every((r: any) => r.adjacentContrast >= 3.0 || r.hasNonColorStyling)).toBe(true);
+});
+
+test('Highlights do not rely on color alone to convey meaning', async ({ page }) => {
+  await page.goto(targetUrl);
+  const analysis = await page.evaluate((helperSrc) => {
+    const fn = new Function(helperSrc + `
+      const rules = getHighlightRules();
+      const targetEl = document.querySelector('article p, article, main p, main, p') || document.body;
+      const pageBg = getEffectiveBackground(targetEl);
+
+      const results = rules.map((rule) => {
+        const selector = rule.selectorText || '';
+        const isSemanticMeaning = /error|spell|grammar|warn|invalid|diff|added|removed/i.test(selector);
+        const bgRaw = rule.style.getPropertyValue('background-color') || rule.style.getPropertyValue('background');
+        const bgParsed = bgRaw ? parseColorToRgba(bgRaw, targetEl) : null;
+        const effectiveHighlightBg = bgParsed && bgParsed[3] > 0 ? blendOver(bgParsed, pageBg) : pageBg;
+        const adjacentContrast = contrastRatio(effectiveHighlightBg, pageBg);
+        const textDec = rule.style.getPropertyValue('text-decoration') || rule.style.getPropertyValue('text-decoration-line');
+        const textShadow = rule.style.getPropertyValue('text-shadow');
+        const strokeWidth = rule.style.getPropertyValue('-webkit-text-stroke-width');
+        const hasNonColorStyling = Boolean(
+          (textDec && textDec !== 'none') ||
+          (textShadow && textShadow !== 'none') ||
+          (strokeWidth && parseFloat(strokeWidth) > 0)
+        );
+        const passes = isSemanticMeaning || rules.length > 1
+          ? hasNonColorStyling
+          : (hasNonColorStyling || adjacentContrast >= 3.0);
+        return { selector, passes, adjacentContrast, hasNonColorStyling };
+      });
+      return { ruleCount: rules.length, results };
+    `);
+    return fn();
+  }, contrastHelperScript);
+
+  expect(analysis.ruleCount).toBeGreaterThan(0);
+  expect(analysis.results.every((r: any) => r.passes)).toBe(true);
+});
