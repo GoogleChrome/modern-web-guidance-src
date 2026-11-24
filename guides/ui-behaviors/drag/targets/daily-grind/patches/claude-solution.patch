@@ -1,366 +1,488 @@
 diff --git a/index.html b/index.html
-index 66c9173..8d9ba2c 100644
+index 66c9173..34f8630 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,184 @@
+@@ -152,6 +152,192 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
-+
-+    /* ── Floating Quick Order Panel ── */
-+    .quick-order-panel {
-+      position: fixed;
-+      bottom: 30px;
-+      right: 30px;
-+      width: 300px;
-+      background: white;
-+      border-radius: 12px;
-+      box-shadow: 0 8px 32px rgba(78, 52, 46, 0.28);
-+      z-index: 1100;
-+      border: 1px solid var(--secondary);
++    /* Visually hidden (screen-reader only) */
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      margin: -1px;
++      padding: 0;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      clip-path: inset(50%);
++      white-space: nowrap;
++      border: 0;
 +    }
 +
-+    /* Handle: drag affordances are attached by JS via .drag-enabled */
-+    .panel-handle {
-+      background: var(--primary);
-+      color: white;
-+      padding: 12px 16px;
++    /* Floating quick-order panel */
++    .quick-order {
++      position: fixed;
++      right: 1rem;
++      bottom: 1rem;
++      z-index: 1100;
++      width: min(320px, calc(100vw - 2rem));
++      max-height: calc(100vh - 2rem);
++      overflow: auto;
++      background: white;
++      border-radius: 10px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++      font-size: 0.9rem;
++    }
++
++    .quick-order-header {
 +      display: flex;
 +      align-items: center;
-+      gap: 8px;
-+      border-radius: 12px 12px 0 0;
++      gap: 6px;
++      background: var(--primary);
++      color: white;
++      padding: 6px 8px;
++      border-radius: 10px 10px 0 0;
 +    }
 +
-+    .panel-handle:focus-visible {
++    .quick-order-header h2 {
++      flex: 1;
++      font-size: 1rem;
++      margin: 0;
++    }
++
++    .drag-tools {
++      display: flex;
++      gap: 4px;
++    }
++
++    .drag-tools[hidden] {
++      display: none;
++    }
++
++    .panel-icon-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid rgba(255, 255, 255, 0.4);
++      border-radius: 4px;
++      min-width: 32px;
++      height: 32px;
++      font: inherit;
++      font-size: 0.85rem;
++      line-height: 1;
++      cursor: pointer;
++    }
++
++    .panel-icon-btn:hover,
++    .panel-icon-btn[aria-expanded="true"] {
++      background: rgba(255, 255, 255, 0.15);
++    }
++
++    .panel-icon-btn:focus-visible,
++    .quick-order button:focus-visible,
++    .quick-order select:focus-visible,
++    .quick-order input:focus-visible {
 +      outline: 3px solid var(--accent);
-+      outline-offset: -3px;
++      outline-offset: 2px;
 +    }
 +
-+    .panel-handle.drag-enabled {
++    .drag-handle {
 +      cursor: grab;
 +      touch-action: none;
 +      -webkit-user-select: none;
 +      user-select: none;
++      font-size: 1.1rem;
++      letter-spacing: -2px;
 +    }
 +
-+    .panel-handle.drag-enabled.dragging {
++    .drag-handle.dragging {
 +      cursor: grabbing;
 +    }
 +
-+    .handle-grip {
-+      font-size: 1rem;
-+      opacity: 0.55;
-+      line-height: 1;
-+      /* Hidden until JS enables dragging */
++    .quick-order-help,
++    .quick-order-move {
++      background: var(--secondary);
++      padding: 10px 12px;
++    }
++
++    .quick-order-help ul {
++      margin-left: 1.2rem;
++    }
++
++    .quick-order-move {
++      display: grid;
++      grid-template-columns: repeat(2, 1fr);
++      gap: 6px;
++    }
++
++    .quick-order-move[hidden],
++    .quick-order-help[hidden] {
 +      display: none;
 +    }
 +
-+    .panel-handle.drag-enabled .handle-grip {
-+      display: inline;
-+    }
-+
-+    .panel-title {
-+      flex: 1;
-+      font-weight: bold;
-+      font-size: 0.95rem;
-+      letter-spacing: 0.5px;
-+    }
-+
-+    .cart-badge {
-+      background: var(--accent);
++    .quick-order-move button {
++      background: white;
 +      color: var(--text);
-+      font-size: 0.75rem;
-+      font-weight: bold;
-+      padding: 2px 8px;
-+      border-radius: 10px;
-+      white-space: nowrap;
-+    }
-+
-+    .panel-body {
-+      padding: 16px;
-+    }
-+
-+    .order-list {
-+      list-style: none;
-+      margin-bottom: 12px;
-+    }
-+
-+    .order-item {
-+      display: flex;
-+      align-items: center;
-+      gap: 8px;
-+      padding: 8px 0;
-+      border-bottom: 1px solid var(--secondary);
-+    }
-+
-+    .order-item:last-child {
-+      border-bottom: none;
-+    }
-+
-+    .item-name {
-+      flex: 1;
-+      font-size: 0.85rem;
-+    }
-+
-+    .qty-controls {
-+      display: flex;
-+      align-items: center;
-+      gap: 4px;
-+    }
-+
-+    .qty-btn {
-+      background: var(--secondary);
-+      border: none;
-+      width: 24px;
-+      height: 24px;
-+      border-radius: 50%;
-+      cursor: pointer;
-+      font-size: 1rem;
-+      font-weight: bold;
-+      color: var(--primary);
-+      display: flex;
-+      align-items: center;
-+      justify-content: center;
-+      transition: background 0.2s, color 0.2s;
-+      padding: 0;
-+      line-height: 1;
-+    }
-+
-+    .qty-btn:hover {
-+      background: var(--primary);
-+      color: white;
-+    }
-+
-+    .qty-value {
-+      min-width: 20px;
-+      text-align: center;
-+      font-weight: bold;
-+      font-size: 0.9rem;
-+    }
-+
-+    .item-price {
++      border: 1px solid var(--primary);
++      border-radius: 4px;
++      padding: 4px 6px;
++      font: inherit;
 +      font-size: 0.8rem;
-+      color: var(--primary);
-+      font-weight: 600;
-+      min-width: 38px;
-+      text-align: right;
-+    }
-+
-+    .panel-total-row {
-+      display: flex;
-+      align-items: center;
-+      gap: 8px;
-+      padding-top: 12px;
-+      border-top: 2px solid var(--secondary);
-+      margin-top: 4px;
-+    }
-+
-+    .total-label {
-+      font-weight: bold;
-+      font-size: 0.9rem;
-+    }
-+
-+    .total-amount {
-+      flex: 1;
-+      font-weight: bold;
-+      font-size: 1rem;
-+      color: var(--primary);
-+    }
-+
-+    .place-order-btn {
-+      border: none;
 +      cursor: pointer;
-+      padding: 8px 14px;
-+      font-size: 0.85rem;
-+      margin-top: 0;
-+      background: var(--accent);
-+      color: var(--text);
-+      border-radius: 5px;
-+      font-weight: bold;
-+      transition: background 0.2s, color 0.2s;
 +    }
 +
-+    .place-order-btn:hover {
-+      background: var(--primary);
-+      color: white;
++    .quick-order-body {
++      padding: 12px;
++      display: grid;
++      gap: 8px;
++    }
++
++    .quick-order-body label {
++      display: grid;
++      gap: 2px;
++      font-weight: 600;
++      font-size: 0.8rem;
++    }
++
++    .quick-order-body select,
++    .quick-order-body input {
++      font: inherit;
++      padding: 6px;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++    }
++
++    .quick-order-row {
++      display: grid;
++      grid-template-columns: 1fr 1fr;
++      gap: 8px;
++    }
++
++    .quick-order-body .btn {
++      border: 0;
++      margin-top: 4px;
++      font: inherit;
++      cursor: pointer;
++    }
++
++    .cart-list {
++      list-style: none;
++      border-top: 1px solid var(--secondary);
++      padding-top: 6px;
++    }
++
++    .cart-list li {
++      display: flex;
++      justify-content: space-between;
++      align-items: center;
++      gap: 6px;
++      padding: 2px 0;
++    }
++
++    .cart-list li button {
++      background: none;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      padding: 0 6px;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    .cart-total {
++      font-weight: bold;
++      text-align: right;
 +    }
    </style>
  </head>
  
-@@ -207,6 +385,180 @@
+@@ -207,6 +393,294 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <!-- Floating Quick Order Panel -->
-+  <div id="quick-order-panel" class="quick-order-panel" role="region" aria-label="Quick Order">
-+    <div
-+      id="panel-handle"
-+      class="panel-handle"
-+      tabindex="0"
-+      aria-label="Quick order panel – use arrow keys to move"
-+    >
-+      <span class="handle-grip" aria-hidden="true">&#8942;&#8942;</span>
-+      <span class="panel-title">Quick Order</span>
-+      <span class="cart-badge" id="cart-badge" aria-live="polite">0 items</span>
-+    </div>
-+    <div class="panel-body">
-+      <ul class="order-list" aria-label="Menu items">
-+        <li class="order-item">
-+          <span class="item-name">Maple Oat Latte</span>
-+          <div class="qty-controls">
-+            <button class="qty-btn qty-dec" aria-label="Decrease Maple Oat Latte quantity">&#8722;</button>
-+            <span class="qty-value" aria-live="polite">0</span>
-+            <button class="qty-btn qty-inc" aria-label="Increase Maple Oat Latte quantity">+</button>
-+          </div>
-+          <span class="item-price">$5.50</span>
-+        </li>
-+        <li class="order-item">
-+          <span class="item-name">Dark Roast Espresso</span>
-+          <div class="qty-controls">
-+            <button class="qty-btn qty-dec" aria-label="Decrease Dark Roast Espresso quantity">&#8722;</button>
-+            <span class="qty-value" aria-live="polite">0</span>
-+            <button class="qty-btn qty-inc" aria-label="Increase Dark Roast Espresso quantity">+</button>
-+          </div>
-+          <span class="item-price">$4.00</span>
-+        </li>
-+        <li class="order-item">
-+          <span class="item-name">Cold Brew</span>
-+          <div class="qty-controls">
-+            <button class="qty-btn qty-dec" aria-label="Decrease Cold Brew quantity">&#8722;</button>
-+            <span class="qty-value" aria-live="polite">0</span>
-+            <button class="qty-btn qty-inc" aria-label="Increase Cold Brew quantity">+</button>
-+          </div>
-+          <span class="item-price">$4.75</span>
-+        </li>
-+      </ul>
-+      <div class="panel-total-row">
-+        <span class="total-label">Total:</span>
-+        <span class="total-amount" id="order-total" aria-live="polite">$0.00</span>
-+        <button class="place-order-btn" id="place-order-btn">Place Order</button>
++  <aside class="quick-order" id="quick-order" data-draggable aria-labelledby="quick-order-title">
++    <div class="quick-order-header">
++      <h2 id="quick-order-title">Quick Order</h2>
++      <div class="drag-tools" hidden>
++        <button type="button" class="panel-icon-btn" id="quick-order-help-toggle" aria-expanded="false"
++          aria-controls="quick-order-help" aria-label="Show how to move the quick order panel">?</button>
++        <button type="button" class="panel-icon-btn" id="quick-order-move-toggle" aria-expanded="false"
++          aria-controls="quick-order-move" aria-label="Move quick order panel options">Move</button>
++        <button type="button" class="panel-icon-btn drag-handle" data-drag-handle
++          aria-label="Quick order panel handle. Use arrow keys to move.">&#8942;&#8942;</button>
 +      </div>
 +    </div>
-+  </div>
++
++    <div class="quick-order-help" id="quick-order-help" hidden>
++      <p><strong>Moving this panel</strong></p>
++      <ul>
++        <li>Drag the &#8942;&#8942; handle with a mouse, pen, or finger.</li>
++        <li>Or focus the handle and press the arrow keys to nudge it.</li>
++        <li>Or use the <em>Move</em> button to pick a position.</li>
++      </ul>
++    </div>
++
++    <div class="quick-order-move" id="quick-order-move" role="group" aria-label="Move quick order panel" hidden>
++      <button type="button" data-move="dock-top-left">Dock top left</button>
++      <button type="button" data-move="dock-top-right">Dock top right</button>
++      <button type="button" data-move="dock-bottom-left">Dock bottom left</button>
++      <button type="button" data-move="dock-bottom-right">Dock bottom right</button>
++      <button type="button" data-move="left">Move left</button>
++      <button type="button" data-move="right">Move right</button>
++      <button type="button" data-move="up">Move up</button>
++      <button type="button" data-move="down">Move down</button>
++    </div>
++
++    <form class="quick-order-body" id="quick-order-form" action="/order-online" method="get">
++      <label>Drink
++        <select name="drink" id="qo-drink">
++          <option value="maple-oat-latte" data-price="5.25">Maple Oat Latte &ndash; $5.25</option>
++          <option value="dark-roast-espresso" data-price="3.50">Dark Roast Espresso &ndash; $3.50</option>
++          <option value="cold-brew" data-price="4.75">Cold Brew &ndash; $4.75</option>
++        </select>
++      </label>
++      <div class="quick-order-row">
++        <label>Size
++          <select name="size" id="qo-size">
++            <option value="small" data-extra="0">Small</option>
++            <option value="medium" data-extra="0.50" selected>Medium (+$0.50)</option>
++            <option value="large" data-extra="1.00">Large (+$1.00)</option>
++          </select>
++        </label>
++        <label>Quantity
++          <input type="number" name="qty" id="qo-qty" min="1" max="20" value="1" inputmode="numeric">
++        </label>
++      </div>
++      <button type="submit" class="btn" id="qo-add">Order this drink</button>
++      <ul class="cart-list" id="qo-cart" aria-label="Your cart" hidden></ul>
++      <p class="cart-total" id="qo-total" hidden></p>
++      <button type="button" class="btn" id="qo-checkout" hidden>Checkout</button>
++    </form>
++  </aside>
++
++  <div class="visually-hidden" aria-live="polite" id="quick-order-status"></div>
 +
 +  <script>
 +    (function () {
-+      'use strict';
++      const panel = document.querySelector('[data-draggable]');
++      if (!(panel instanceof HTMLElement)) return;
++      const handle = panel.querySelector('[data-drag-handle]');
++      const tools = panel.querySelector('.drag-tools');
++      const status = document.getElementById('quick-order-status');
++      const helpToggle = document.getElementById('quick-order-help-toggle');
++      const help = document.getElementById('quick-order-help');
++      const moveToggle = document.getElementById('quick-order-move-toggle');
++      const moveMenu = document.getElementById('quick-order-move');
++      if (!(handle instanceof HTMLElement) || !tools || !status || !helpToggle || !help || !moveToggle || !moveMenu) return;
 +
-+      var panel = document.getElementById('quick-order-panel');
-+      var handle = document.getElementById('panel-handle');
++      const STEP = 15;
++      const DRAG_THRESHOLD = 4;
++      const MARGIN = 16;
++      const NAME = 'Quick order panel';
 +
-+      // Convert from CSS bottom/right to JS-controlled left/top so moveTo() works.
-+      // margin: 0 clears any UA default margin that would shift getBoundingClientRect.
-+      panel.style.margin = '0';
-+      var initRect = panel.getBoundingClientRect();
-+      panel.style.left = initRect.left + 'px';
-+      panel.style.top = initRect.top + 'px';
-+      panel.style.bottom = '';
-+      panel.style.right = '';
++      tools.hidden = false;
 +
-+      // Reveal drag affordances now that JS is active.
-+      handle.classList.add('drag-enabled');
++      /* ---------- Live announcements ---------- */
++      let statusTimer = 0;
++      function announce(message) {
++        status.textContent = message;
++        clearTimeout(statusTimer);
++        statusTimer = window.setTimeout(() => { status.textContent = ''; }, 1000);
++      }
 +
-+      var offsetX = 0;
-+      var offsetY = 0;
++      function describePosition() {
++        const rect = panel.getBoundingClientRect();
++        const cx = rect.left + rect.width / 2;
++        const cy = rect.top + rect.height / 2;
++        const v = cy < window.innerHeight / 3 ? 'top' : cy > (window.innerHeight * 2) / 3 ? 'bottom' : 'middle';
++        const h = cx < window.innerWidth / 3 ? 'left' : cx > (window.innerWidth * 2) / 3 ? 'right' : 'center';
++        if (v === 'middle' && h === 'center') return 'to the center of the screen';
++        if (v === 'middle') return 'to the ' + h + ' side of the screen';
++        if (h === 'center') return 'to the ' + v + ' of the screen';
++        return 'to the ' + v + ' ' + h + ' of the screen';
++      }
 +
++      /* ---------- Positioning ---------- */
 +      function moveTo(left, top) {
-+        var maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
-+        var maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
++        panel.style.right = 'auto';
++        panel.style.bottom = 'auto';
 +        panel.style.left = Math.max(0, Math.min(left, maxLeft)) + 'px';
 +        panel.style.top = Math.max(0, Math.min(top, maxTop)) + 'px';
 +      }
 +
-+      handle.addEventListener('pointerdown', function (event) {
-+        if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
-+        var rect = panel.getBoundingClientRect();
++      function currentPosition() {
++        const rect = panel.getBoundingClientRect();
++        return { left: rect.left, top: rect.top };
++      }
++
++      function moveBy(dx, dy) {
++        const pos = currentPosition();
++        moveTo(pos.left + dx, pos.top + dy);
++      }
++
++      function reclamp() {
++        // Only re-clamp once the panel has been given explicit coordinates.
++        if (!panel.style.left) return;
++        const pos = currentPosition();
++        moveTo(pos.left, pos.top);
++      }
++
++      window.addEventListener('resize', reclamp);
++      if ('ResizeObserver' in window) {
++        new ResizeObserver(reclamp).observe(panel);
++      }
++
++      /* ---------- Pointer dragging ---------- */
++      let offsetX = 0;
++      let offsetY = 0;
++      let startX = 0;
++      let startY = 0;
++      let dragging = false;
++
++      handle.addEventListener('pointerdown', (event) => {
++        if (event.button !== 0) return;
++        const rect = panel.getBoundingClientRect();
 +        offsetX = event.clientX - rect.left;
 +        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        dragging = false;
 +        handle.setPointerCapture(event.pointerId);
 +      });
 +
-+      handle.addEventListener('pointermove', function (event) {
++      handle.addEventListener('pointermove', (event) => {
 +        if (!handle.hasPointerCapture(event.pointerId)) return;
-+        handle.classList.add('dragging');
++        if (!dragging) {
++          if (Math.hypot(event.clientX - startX, event.clientY - startY) < DRAG_THRESHOLD) return;
++          dragging = true;
++          handle.classList.add('dragging');
++        }
 +        moveTo(event.clientX - offsetX, event.clientY - offsetY);
 +      });
 +
-+      handle.addEventListener('lostpointercapture', function () {
++      handle.addEventListener('lostpointercapture', () => {
 +        handle.classList.remove('dragging');
-+      });
-+
-+      handle.addEventListener('keydown', function (event) {
-+        var step = 15;
-+        var rect = panel.getBoundingClientRect();
-+        var left = rect.left;
-+        var top = rect.top;
-+
-+        switch (event.key) {
-+          case 'ArrowLeft':  left -= step; break;
-+          case 'ArrowRight': left += step; break;
-+          case 'ArrowUp':    top  -= step; break;
-+          case 'ArrowDown':  top  += step; break;
-+          default: return;
++        if (dragging) {
++          dragging = false;
++          announce(NAME + ' moved ' + describePosition());
 +        }
++      });
++
++      /* ---------- Keyboard movement ---------- */
++      const KEY_MOVES = {
++        ArrowLeft: [-STEP, 0, 'left'],
++        ArrowRight: [STEP, 0, 'right'],
++        ArrowUp: [0, -STEP, 'up'],
++        ArrowDown: [0, STEP, 'down'],
++      };
++
++      handle.addEventListener('keydown', (event) => {
++        const move = KEY_MOVES[event.key];
++        if (!move) return;
 +        event.preventDefault();
-+        moveTo(left, top);
++        moveBy(move[0], move[1]);
++        announce(NAME + ' moved ' + move[2]);
 +      });
 +
-+      window.addEventListener('resize', function () {
-+        var rect = panel.getBoundingClientRect();
-+        moveTo(rect.left, rect.top);
-+      });
-+
-+      // ── Cart state ──
-+      var ITEMS = [
-+        { price: 5.50 },
-+        { price: 4.00 },
-+        { price: 4.75 }
-+      ];
-+      var quantities = [0, 0, 0];
-+      var qtyEls = document.querySelectorAll('.qty-value');
-+      var totalEl = document.getElementById('order-total');
-+      var badgeEl = document.getElementById('cart-badge');
-+
-+      function updateCart() {
-+        var total = 0;
-+        var count = 0;
-+        quantities.forEach(function (q, i) {
-+          total += q * ITEMS[i].price;
-+          count += q;
-+        });
-+        totalEl.textContent = '$' + total.toFixed(2);
-+        badgeEl.textContent = count === 1 ? '1 item' : count + ' items';
++      /* ---------- Single-pointer alternatives (Move menu) ---------- */
++      function setExpanded(toggle, region, open) {
++        toggle.setAttribute('aria-expanded', String(open));
++        region.hidden = !open;
 +      }
 +
-+      document.querySelectorAll('.order-item').forEach(function (row, i) {
-+        var decBtn = row.querySelector('.qty-dec');
-+        var incBtn = row.querySelector('.qty-inc');
-+
-+        decBtn.addEventListener('click', function () {
-+          if (quantities[i] > 0) {
-+            quantities[i]--;
-+            qtyEls[i].textContent = quantities[i];
-+            updateCart();
-+          }
-+        });
-+
-+        incBtn.addEventListener('click', function () {
-+          quantities[i]++;
-+          qtyEls[i].textContent = quantities[i];
-+          updateCart();
-+        });
++      helpToggle.addEventListener('click', () => {
++        setExpanded(helpToggle, help, help.hidden);
 +      });
 +
-+      document.getElementById('place-order-btn').addEventListener('click', function () {
-+        var count = quantities.reduce(function (s, q) { return s + q; }, 0);
-+        if (count === 0) {
-+          alert('Please add at least one item before placing your order.');
-+          return;
++      moveToggle.addEventListener('click', () => {
++        setExpanded(moveToggle, moveMenu, moveMenu.hidden);
++      });
++
++      moveMenu.addEventListener('click', (event) => {
++        const target = event.target;
++        if (!(target instanceof Element)) return;
++        const button = target.closest('button[data-move]');
++        if (!button) return;
++        const action = button.getAttribute('data-move');
++        const farLeft = window.innerWidth;
++        const farTop = window.innerHeight;
++        const pos = currentPosition();
++        let message = '';
++        switch (action) {
++          case 'dock-top-left': moveTo(MARGIN, MARGIN); message = 'docked top left'; break;
++          case 'dock-top-right': moveTo(farLeft - panel.offsetWidth - MARGIN, MARGIN); message = 'docked top right'; break;
++          case 'dock-bottom-left': moveTo(MARGIN, farTop - panel.offsetHeight - MARGIN); message = 'docked bottom left'; break;
++          case 'dock-bottom-right': moveTo(farLeft - panel.offsetWidth - MARGIN, farTop - panel.offsetHeight - MARGIN); message = 'docked bottom right'; break;
++          case 'left': moveTo(pos.left - STEP * 4, pos.top); message = 'moved left'; break;
++          case 'right': moveTo(pos.left + STEP * 4, pos.top); message = 'moved right'; break;
++          case 'up': moveTo(pos.left, pos.top - STEP * 4); message = 'moved up'; break;
++          case 'down': moveTo(pos.left, pos.top + STEP * 4); message = 'moved down'; break;
++          default: return;
 +        }
-+        alert('Order placed! Thank you for choosing The Daily Grind.');
-+        quantities.fill(0);
-+        qtyEls.forEach(function (el) { el.textContent = '0'; });
-+        updateCart();
++        announce(NAME + ' ' + message);
++      });
++
++      /* ---------- Cart (progressive enhancement of the order form) ---------- */
++      const form = document.getElementById('quick-order-form');
++      const drink = document.getElementById('qo-drink');
++      const size = document.getElementById('qo-size');
++      const qty = document.getElementById('qo-qty');
++      const addBtn = document.getElementById('qo-add');
++      const cartList = document.getElementById('qo-cart');
++      const total = document.getElementById('qo-total');
++      const checkout = document.getElementById('qo-checkout');
++      if (!(form instanceof HTMLFormElement) || !(drink instanceof HTMLSelectElement) ||
++          !(size instanceof HTMLSelectElement) || !(qty instanceof HTMLInputElement) ||
++          !addBtn || !cartList || !total || !checkout) return;
++
++      addBtn.textContent = 'Add to cart';
++      const cart = [];
++      const money = (n) => '$' + n.toFixed(2);
++
++      function renderCart() {
++        cartList.replaceChildren();
++        let sum = 0;
++        cart.forEach((item, index) => {
++          sum += item.price * item.qty;
++          const li = document.createElement('li');
++          const label = document.createElement('span');
++          label.textContent = item.qty + ' × ' + item.size + ' ' + item.name + ' – ' + money(item.price * item.qty);
++          const remove = document.createElement('button');
++          remove.type = 'button';
++          remove.textContent = '×';
++          remove.setAttribute('aria-label', 'Remove ' + item.size + ' ' + item.name);
++          remove.addEventListener('click', () => {
++            cart.splice(index, 1);
++            renderCart();
++            announce('Removed ' + item.name + ' from cart');
++            drink.focus();
++          });
++          li.append(label, remove);
++          cartList.append(li);
++        });
++        const empty = cart.length === 0;
++        cartList.hidden = empty;
++        total.hidden = empty;
++        checkout.hidden = empty;
++        total.textContent = 'Total: ' + money(sum);
++      }
++
++      form.addEventListener('submit', (event) => {
++        event.preventDefault();
++        if (!form.reportValidity()) return;
++        const drinkOpt = drink.selectedOptions[0];
++        const sizeOpt = size.selectedOptions[0];
++        const count = Math.max(1, Math.min(20, Math.round(Number(qty.value) || 1)));
++        const name = drinkOpt.textContent.split('–')[0].trim();
++        const price = Number(drinkOpt.dataset.price || 0) + Number(sizeOpt.dataset.extra || 0);
++        cart.push({ name: name, size: sizeOpt.value, qty: count, price: price });
++        renderCart();
++        announce('Added ' + count + ' ' + sizeOpt.value + ' ' + name + ' to cart');
++      });
++
++      checkout.addEventListener('click', () => {
++        window.location.href = '/order-online';
 +      });
 +    })();
 +  </script>

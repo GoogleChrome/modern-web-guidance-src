@@ -1,188 +1,358 @@
-diff --git a/.gitignore b/.gitignore
-new file mode 100644
-index 0000000..849ddff
---- /dev/null
-+++ b/.gitignore
-@@ -0,0 +1 @@
-+dist/
 diff --git a/index.html b/index.html
-index 66c9173..5638df8 100644
+index 66c9173..6657dc0 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,53 @@
+@@ -152,6 +152,133 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
 +    .quick-order {
-+      position: fixed;
-+      right: 20px;
-+      bottom: 20px;
-+      z-index: 1100;
-+      width: 320px;
-+      max-width: 100vw;
-+      max-height: 100dvh;
-+      overflow: auto;
-+      background: white;
++      width: min(19rem, calc(100% - 2rem));
++      margin: 1rem auto;
 +      border: 1px solid var(--secondary);
 +      border-radius: 12px;
-+      box-shadow: 0 8px 32px #3e272333;
++      background: var(--light);
++      box-shadow: 0 8px 26px rgb(62 39 35 / 22%);
++      overflow: hidden;
 +    }
 +
-+    .order-header {
-+      padding: 14px 20px;
++    .quick-order.is-floating {
++      position: fixed;
++      right: 1rem;
++      bottom: 1rem;
++      z-index: 1001;
++      display: flex;
++      flex-direction: column;
++      max-height: 100vh;
++      max-height: 100dvh;
++      margin: 0;
++    }
++
++    .quick-order-header {
++      display: flex;
++      flex: none;
++      align-items: center;
++      justify-content: space-between;
++      gap: .5rem;
++      padding: .5rem .75rem;
 +      background: var(--primary);
 +      color: white;
 +    }
 +
-+    .order-header h2 { font-size: 1.15rem; }
-+    .drag-hint { display: none; font-size: 0.75rem; }
-+    .drag-ready .drag-hint { display: block; }
-+    .order-header.drag-ready {
++    .quick-order-header h2 {
++      font-size: 1.05rem;
++    }
++
++    .quick-order button,
++    .quick-order select,
++    .quick-order input {
++      font: inherit;
++    }
++
++    .quick-order button {
++      border: 1px solid var(--secondary);
++      border-radius: 5px;
++      padding: .25rem .5rem;
++      background: white;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .quick-order [data-drag-handle] {
 +      cursor: grab;
 +      touch-action: none;
 +      -webkit-user-select: none;
 +      user-select: none;
 +    }
-+    .order-header.dragging { cursor: grabbing; }
-+    .order-header:focus-visible { outline: 3px solid var(--accent); outline-offset: -4px; }
-+    .order-form { padding: 16px 20px; display: grid; gap: 10px; }
-+    .order-form label { font-weight: 600; }
-+    .order-form select, .order-form input {
-+      width: 100%;
-+      padding: 8px;
-+      border: 1px solid #8d6e63;
-+      border-radius: 4px;
-+      font: inherit;
-+      color: var(--text);
-+      background: white;
++
++    .quick-order [data-drag-handle].dragging {
++      cursor: grabbing;
 +    }
-+    .order-form .btn { margin-top: 0; border: 0; font: inherit; cursor: pointer; }
-+    .order-total { display: flex; justify-content: space-between; }
-+    .order-total[hidden] { display: none; }
++
++    .quick-order :focus-visible {
++      outline: 2px solid #945000;
++      outline-offset: 2px;
++    }
++
++    .quick-order-header :focus-visible {
++      outline-color: var(--accent);
++    }
++
++    .quick-order-body {
++      overflow: auto;
++      padding: .75rem;
++    }
++
++    .quick-order form {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) 4.5rem;
++      gap: .5rem;
++    }
++
++    .quick-order label {
++      display: grid;
++      font-size: .9rem;
++    }
++
++    .quick-order select,
++    .quick-order input {
++      min-width: 0;
++      padding: .25rem;
++    }
++
++    .quick-order .order-submit {
++      grid-column: 1 / -1;
++      background: var(--primary);
++      color: white;
++    }
++
++    .quick-order details {
++      margin-top: .5rem;
++      font-size: .85rem;
++    }
++
++    .quick-order summary {
++      cursor: pointer;
++    }
++
++    .quick-order-position {
++      display: flex;
++      flex-wrap: wrap;
++      gap: .25rem;
++      margin-top: .5rem;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip-path: inset(50%);
++      white-space: nowrap;
++    }
    </style>
  </head>
  
-@@ -197,6 +244,25 @@
+@@ -197,6 +324,43 @@
      </section>
    </main>
  
-+  <aside class="quick-order" aria-labelledby="order-title">
-+    <header class="order-header" id="order-handle">
-+      <h2 id="order-title">Your coffee break</h2>
-+      <span class="drag-hint" aria-hidden="true">⠿ Drag to move · or use arrow keys</span>
++  <aside class="quick-order" data-draggable aria-labelledby="quick-order-title">
++    <header class="quick-order-header">
++      <h2 id="quick-order-title">Quick order</h2>
++      <button type="button" data-drag-handle hidden aria-label="Move quick order panel. Use arrow keys to move.">
++        <span aria-hidden="true">✥</span> Move
++      </button>
 +    </header>
-+    <form class="order-form" action="/order-online" method="get">
-+      <label for="coffee">Choose your coffee</label>
-+      <select id="coffee" name="coffee">
-+        <option value="maple-oat-latte" data-price="575">Maple Oat Latte — $5.75</option>
-+        <option value="dark-roast-espresso" data-price="350">Dark Roast Espresso — $3.50</option>
-+        <option value="cold-brew" data-price="450">Cold Brew — $4.50</option>
-+      </select>
-+      <label for="quantity">Quantity</label>
-+      <input id="quantity" name="quantity" type="number" min="1" max="20" value="1" required>
-+      <p class="order-total" id="order-total" hidden>Total <output id="coffee-total" aria-live="polite" aria-atomic="true">$5.75</output></p>
-+      <button class="btn" type="submit">Continue to order</button>
-+    </form>
++    <div class="quick-order-body">
++      <form action="/order-online" method="get">
++        <label>
++          Drink
++          <select name="drink">
++            <option value="maple-oat-latte">Maple Oat Latte</option>
++            <option value="dark-roast-espresso">Dark Roast Espresso</option>
++            <option value="cold-brew">Cold Brew</option>
++          </select>
++        </label>
++        <label>
++          Quantity
++          <input name="quantity" type="number" min="1" value="1" required>
++        </label>
++        <button class="order-submit" type="submit">Continue to order</button>
++      </form>
++      <details data-move-help hidden>
++        <summary>Moving help</summary>
++        <p>Drag the Move button, or focus it and press the arrow keys. You can also tap a direction below.</p>
++        <div class="quick-order-position" role="group" aria-label="Move quick order panel">
++          <button type="button" data-move="ArrowLeft" aria-label="Move left">←</button>
++          <button type="button" data-move="ArrowUp" aria-label="Move up">↑</button>
++          <button type="button" data-move="ArrowDown" aria-label="Move down">↓</button>
++          <button type="button" data-move="ArrowRight" aria-label="Move right">→</button>
++        </div>
++      </details>
++    </div>
 +  </aside>
++  <div class="visually-hidden" data-move-status aria-live="polite" aria-atomic="true"></div>
 +
    <footer>
      <div class="footer-links">
        <a href="/about">Our Story</a> |
-@@ -207,6 +273,84 @@
+@@ -207,6 +371,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+  <script>
-+    // @ts-check
-+    const panel = document.querySelector('.quick-order');
-+    const handle = document.getElementById('order-handle');
-+    const coffee = document.getElementById('coffee');
-+    const quantity = document.getElementById('quantity');
-+    const total = document.getElementById('coffee-total');
-+    const totalRow = document.getElementById('order-total');
-+
-+    if (coffee instanceof HTMLSelectElement && quantity instanceof HTMLInputElement && total && totalRow) {
-+      const updateTotal = () => {
-+        const price = Number(coffee.selectedOptions[0]?.dataset.price);
-+        total.textContent = quantity.validity.valid
-+          ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price * quantity.valueAsNumber / 100)
-+          : 'Choose 1–20';
-+      };
-+      coffee.addEventListener('change', updateTotal);
-+      quantity.addEventListener('input', updateTotal);
-+      totalRow.hidden = false;
-+      updateTotal();
-+    }
-+
-+    if (panel instanceof HTMLElement && handle instanceof HTMLElement) {
-+      /** @type {{ id: number, offsetX: number, offsetY: number } | null} */
-+      let drag = null;
-+      const moveTo = (/** @type {number} */ left, /** @type {number} */ top) => {
-+        panel.style.left = `${Math.max(0, Math.min(left, window.innerWidth - panel.offsetWidth))}px`;
-+        panel.style.top = `${Math.max(0, Math.min(top, window.innerHeight - panel.offsetHeight))}px`;
-+        panel.style.right = 'auto';
-+        panel.style.bottom = 'auto';
-+      };
-+      const reclamp = () => {
-+        const rect = panel.getBoundingClientRect();
-+        moveTo(rect.left, rect.top);
-+      };
-+      handle.tabIndex = 0;
-+      handle.setAttribute('aria-label', 'Move coffee order panel with arrow keys');
-+      handle.classList.add('drag-ready');
-+      handle.addEventListener('pointerdown', (event) => {
-+        if (event.button !== 0 || !event.isPrimary || drag) return;
-+        const rect = panel.getBoundingClientRect();
-+        handle.setPointerCapture(event.pointerId);
-+        drag = { id: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
-+        handle.classList.add('dragging');
-+        handle.focus({ preventScroll: true });
-+      });
-+      handle.addEventListener('pointermove', (event) => {
-+        if (drag?.id !== event.pointerId) return;
-+        moveTo(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
-+      });
-+      const stopDrag = (/** @type {PointerEvent} */ event) => {
-+        if (drag?.id !== event.pointerId) return;
-+        drag = null;
-+        handle.classList.remove('dragging');
-+        if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
-+      };
-+      handle.addEventListener('pointerup', stopDrag);
-+      handle.addEventListener('pointercancel', stopDrag);
-+      handle.addEventListener('lostpointercapture', stopDrag);
-+      handle.addEventListener('keydown', (event) => {
-+        let dx = 0;
-+        let dy = 0;
-+        switch (event.key) {
-+          case 'ArrowLeft': dx = -15; break;
-+          case 'ArrowRight': dx = 15; break;
-+          case 'ArrowUp': dy = -15; break;
-+          case 'ArrowDown': dy = 15; break;
-+          default: return;
-+        }
-+        event.preventDefault();
-+        const rect = panel.getBoundingClientRect();
-+        moveTo(rect.left + dx, rect.top + dy);
-+      });
-+      window.addEventListener('resize', reclamp);
-+      new ResizeObserver(reclamp).observe(panel);
-+      reclamp();
-+    }
-+  </script>
++  <script type="module" src="./quick-order.js"></script>
  </body>
  
  </html>
 diff --git a/package.json b/package.json
-index 2bd4d77..587c05a 100644
+index 2bd4d77..dba361b 100644
 --- a/package.json
 +++ b/package.json
-@@ -2,6 +2,7 @@
+@@ -2,8 +2,12 @@
    "name": "daily-grind",
    "version": "1.0.0",
    "scripts": {
-+    "build": "node -e \"require('node:fs').mkdirSync('dist', { recursive: true }); require('node:fs').copyFileSync('index.html', 'dist/index.html');\"",
++    "build": "tsc -p tsconfig.json",
      "start": "pnpm dlx statikk --port ${PORT:-11222}"
    },
++  "devDependencies": {
++    "typescript": "5.9.3"
++  },
    "pnpm": {
+     "onlyBuiltDependencies": []
+   }
+diff --git a/quick-order.js b/quick-order.js
+new file mode 100644
+index 0000000..730a5ec
+--- /dev/null
++++ b/quick-order.js
+@@ -0,0 +1,127 @@
++// @ts-check
++
++const panel = document.querySelector('[data-draggable]');
++const handle = panel?.querySelector('[data-drag-handle]');
++const help = panel?.querySelector('[data-move-help]');
++const status = document.querySelector('[data-move-status]');
++
++if (
++  panel instanceof HTMLElement &&
++  handle instanceof HTMLButtonElement &&
++  help instanceof HTMLDetailsElement &&
++  status instanceof HTMLElement
++) {
++  initializeMovement(panel, handle, help, status);
++}
++
++/**
++ * @param {HTMLElement} panel
++ * @param {HTMLButtonElement} handle
++ * @param {HTMLDetailsElement} help
++ * @param {HTMLElement} status
++ */
++function initializeMovement(panel, handle, help, status) {
++  const steps = new Map([
++    ['ArrowLeft', { x: -15, y: 0, direction: 'left' }],
++    ['ArrowUp', { x: 0, y: -15, direction: 'up' }],
++    ['ArrowDown', { x: 0, y: 15, direction: 'down' }],
++    ['ArrowRight', { x: 15, y: 0, direction: 'right' }],
++  ]);
++
++  /** @type {{ id: number, offsetX: number, offsetY: number, moved: boolean } | null} */
++  let drag = null;
++  let announcementTimer = 0;
++
++  /**
++   * @param {number} left
++   * @param {number} top
++   */
++  function moveTo(left, top) {
++    const { width, height, x, y } = panel.getBoundingClientRect();
++    const viewport = document.documentElement;
++    const nextLeft = Math.max(0, Math.min(left, viewport.clientWidth - width));
++    const nextTop = Math.max(0, Math.min(top, viewport.clientHeight - height));
++
++    if (nextLeft === x && nextTop === y) return false;
++
++    panel.style.right = 'auto';
++    panel.style.bottom = 'auto';
++    panel.style.left = `${nextLeft}px`;
++    panel.style.top = `${nextTop}px`;
++    return true;
++  }
++
++  /** @param {string} message */
++  function announce(message) {
++    window.clearTimeout(announcementTimer);
++    status.textContent = message;
++    announcementTimer = window.setTimeout(() => {
++      status.textContent = '';
++    }, 1000);
++  }
++
++  /** @param {{ x: number, y: number, direction: string }} step */
++  function moveByStep(step) {
++    const { left, top } = panel.getBoundingClientRect();
++    if (moveTo(left + step.x, top + step.y)) {
++      announce(`Quick order panel moved ${step.direction}.`);
++    }
++  }
++
++  handle.addEventListener('pointerdown', (event) => {
++    if (event.button !== 0 || drag) return;
++
++    const { left, top } = panel.getBoundingClientRect();
++    handle.setPointerCapture(event.pointerId);
++    drag = {
++      id: event.pointerId,
++      offsetX: event.clientX - left,
++      offsetY: event.clientY - top,
++      moved: false,
++    };
++  });
++
++  handle.addEventListener('pointermove', (event) => {
++    if (!drag || drag.id !== event.pointerId || !handle.hasPointerCapture(event.pointerId)) return;
++
++    const moved = moveTo(event.clientX - drag.offsetX, event.clientY - drag.offsetY);
++    if (moved) {
++      drag.moved = true;
++      handle.classList.add('dragging');
++    }
++  });
++
++  handle.addEventListener('lostpointercapture', (event) => {
++    if (!drag || drag.id !== event.pointerId) return;
++
++    if (drag.moved) announce('Quick order panel moved.');
++    drag = null;
++    handle.classList.remove('dragging');
++  });
++
++  handle.addEventListener('keydown', (event) => {
++    const step = steps.get(event.key);
++    if (!step) return;
++
++    event.preventDefault();
++    moveByStep(step);
++  });
++
++  for (const button of help.querySelectorAll('button[data-move]')) {
++    const step = steps.get(button.getAttribute('data-move') ?? '');
++    if (step) button.addEventListener('click', () => moveByStep(step));
++  }
++
++  function keepInViewport() {
++    const { left, top } = panel.getBoundingClientRect();
++    moveTo(left, top);
++  }
++
++  panel.classList.add('is-floating');
++  handle.hidden = false;
++  help.hidden = false;
++  keepInViewport();
++
++  window.addEventListener('resize', keepInViewport);
++  new ResizeObserver(keepInViewport).observe(panel);
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..b6745fb
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "strict": true,
++    "noEmit": true,
++    "target": "ES2020",
++    "moduleDetection": "force",
++    "types": []
++  },
++  "files": ["quick-order.js"]
++}
