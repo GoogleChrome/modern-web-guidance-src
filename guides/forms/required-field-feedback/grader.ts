@@ -220,8 +220,23 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
         );
       };
 
-      const errId = el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
-      if (errId && isVisible(document.getElementById(errId))) return true;
+      const explicitErrId = el.getAttribute('aria-errormessage');
+      if (explicitErrId && explicitErrId.split(/\s+/).filter(Boolean).some((id) => isVisible(document.getElementById(id)))) {
+        return true;
+      }
+
+      const describedBy = el.getAttribute('aria-describedby');
+      if (describedBy) {
+        const hasErrorCandidate = describedBy.split(/\s+/).filter(Boolean).some((id) => {
+          const candidate = document.getElementById(id);
+          return Boolean(
+            candidate &&
+            (candidate.className.includes('error') || id.includes('error') || candidate.getAttribute('role') === 'alert') &&
+            isVisible(candidate)
+          );
+        });
+        if (hasErrorCandidate) return true;
+      }
 
       const next = el.nextElementSibling;
       if (next && next.matches('.error-msg, .error-message, [role="alert"], [id*="error"]')) {
@@ -265,11 +280,13 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     await expect(input).toHaveAttribute('aria-invalid', 'true');
 
     const errorText = await input.evaluate((el: HTMLInputElement) => {
-      const errId = el.dataset.error || el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
-      let errEl = errId ? document.getElementById(errId.split(/\s+/)[0]) : null;
-      if (!errEl && el.parentElement) {
-        errEl = el.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
-      }
+      const explicitErr = (el.dataset.error || el.getAttribute('aria-errormessage') || '')
+        .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)).find(Boolean) ?? null;
+      const describedErr = (el.getAttribute('aria-describedby') || '')
+        .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
+        .find((node) => node && (node.className.includes('error') || node.id.includes('error') || node.getAttribute('role') === 'alert')) ?? null;
+      const errEl = explicitErr ?? describedErr ??
+        (el.parentElement?.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]') as HTMLElement | null) ?? null;
       if (!errEl) return '';
       const s = window.getComputedStyle(errEl);
       if (s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0') return '';
@@ -289,14 +306,13 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
     const count = await inputs.count();
     expect(count).toBeGreaterThan(0);
 
-    const preLoad = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll<HTMLElement>('form input[required], form select[required], form textarea[required]'));
+    const preLoad = await inputs.evaluateAll((els) => {
       return els.map((el, idx) => {
-        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea)[required]:nth-of-type(${idx + 1})`;
-        const errId = el.dataset.error || el.getAttribute('aria-errormessage');
+        const htmlEl = el as HTMLElement;
+        const errId = htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage');
         let errEl = errId ? document.getElementById(errId) : null;
-        if (!errEl && el.parentElement) {
-          errEl = el.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
+        if (!errEl && htmlEl.parentElement) {
+          errEl = htmlEl.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
         }
         let staticErrorText = '';
         if (errEl) {
@@ -304,36 +320,37 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
           clone.querySelectorAll('[aria-hidden="true"], [role="img"]').forEach((n) => n.remove());
           staticErrorText = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
         }
-        const describedIds = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        const describedIds = (htmlEl.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
         const describedText = describedIds
           .map((id) => document.getElementById(id)?.textContent ?? '')
           .join(' ')
           .replace(/\s+/g, ' ')
           .trim();
-        return { selector, staticErrorText, describedText };
+        return { idx, staticErrorText, describedText };
       });
     });
 
     expect(preLoad.length).toBeGreaterThan(0);
-    for (const { selector, staticErrorText } of preLoad) {
+    for (const { idx, staticErrorText } of preLoad) {
       if (!staticErrorText) continue;
       const escaped = staticErrorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(page.locator(selector).first()).not.toHaveAccessibleDescription(new RegExp(escaped));
+      await expect(inputs.nth(idx)).not.toHaveAccessibleDescription(new RegExp(escaped));
     }
 
     // Pair with invalidation check: submitting empty required fields must surface visible error text and wire accessible description
     const submitBtn = page.locator('form button[type="submit"], form input[type="submit"], form button:not([type])').first();
     await submitBtn.click();
 
-    const postInvalid = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll<HTMLElement>('form input[required], form select[required], form textarea[required]'));
+    const postInvalid = await inputs.evaluateAll((els) => {
       return els.map((el, idx) => {
-        const selector = el.id ? `#${CSS.escape(el.id)}` : `form :is(input,select,textarea)[required]:nth-of-type(${idx + 1})`;
-        const errId = el.dataset.error || el.getAttribute('aria-errormessage') || el.getAttribute('aria-describedby');
-        let errEl = errId ? document.getElementById(errId.split(/\s+/)[0]) : null;
-        if (!errEl && el.parentElement) {
-          errEl = el.parentElement.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]');
-        }
+        const htmlEl = el as HTMLElement;
+        const explicitErr = (htmlEl.dataset.error || htmlEl.getAttribute('aria-errormessage') || '')
+          .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)).find(Boolean) ?? null;
+        const describedErr = (htmlEl.getAttribute('aria-describedby') || '')
+          .split(/\s+/).filter(Boolean).map((id) => document.getElementById(id))
+          .find((node) => node && (node.className.includes('error') || node.id.includes('error') || node.getAttribute('role') === 'alert')) ?? null;
+        const errEl = explicitErr ?? describedErr ??
+          (htmlEl.parentElement?.querySelector('.error-msg, .error-message, [role="alert"], [class*="error"]') as HTMLElement | null) ?? null;
         let errorText = '';
         if (errEl) {
           const s = window.getComputedStyle(errEl);
@@ -344,19 +361,19 @@ test.describe(`Required Field Feedback Expectations: ${demoName}`, () => {
           }
         }
         return {
-          selector,
-          isInvalid: el.getAttribute('aria-invalid') === 'true',
+          idx,
+          isInvalid: htmlEl.getAttribute('aria-invalid') === 'true',
           errorText,
         };
       }).filter((item) => item.isInvalid && item.errorText.length > 0);
     });
 
     expect(postInvalid.length).toBeGreaterThan(0);
-    const preLoadBySelector = new Map(preLoad.map((p) => [p.selector, p.describedText]));
-    for (const { selector, errorText } of postInvalid) {
-      expect(preLoadBySelector.get(selector) ?? '').not.toContain(errorText);
+    const preLoadByIdx = new Map(preLoad.map((p) => [p.idx, p.describedText]));
+    for (const { idx, errorText } of postInvalid) {
+      expect(preLoadByIdx.get(idx) ?? '').not.toContain(errorText);
       const escaped = errorText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      await expect(page.locator(selector).first()).toHaveAccessibleDescription(new RegExp(escaped));
+      await expect(inputs.nth(idx)).toHaveAccessibleDescription(new RegExp(escaped));
     }
   });
 });
