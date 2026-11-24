@@ -11,11 +11,11 @@ The CSS Custom Highlight API lets you style arbitrary text ranges on a page with
 
 ## Core implementation
 
-To highlight text ranges, you must collect the target text nodes, create `Range` and `Highlight` objects, register them in the `HighlightRegistry`, and then style them with the `::highlight()` pseudo-element.
+To highlight text ranges, collect the target text nodes, create `StaticRange` and `Highlight` objects, register them in the `HighlightRegistry`, and then style them with the `::highlight()` pseudo-element.
 
 ### 1. Collect text nodes and create ranges
 
-Use a `TreeWalker` to collect all text nodes in the target element, then create `Range` objects pointing at the character offsets you want to highlight.
+Use a `TreeWalker` to collect all text nodes in the target element, then create `StaticRange` objects pointing at the character offsets you want to highlight.
 
 ```javascript
 const article = document.querySelector("article");
@@ -30,16 +30,21 @@ while (currentNode) {
 }
 
 // MANDATORY: Set range start/end on text nodes, not element nodes.
-const range = new Range();
-range.setStart(textNode, matchStartIndex);
-range.setEnd(textNode, matchEndIndex);
+const range = new StaticRange({
+  startContainer: textNode,
+  startOffset: matchStartIndex,
+  endContainer: textNode,
+  endOffset: matchEndIndex,
+});
 ```
 
 Cache the text-node list and only rebuild it when the DOM content actually changes, since walking the tree is expensive.
 
+Use `StaticRange` when the highlighted text does not change while the highlight is active. Unlike a live `Range`, a `StaticRange` does not adjust its endpoints when the DOM changes. Clear and recreate the highlights after changing the text; use `Range` when you need its endpoints to track DOM mutations without recreating it.
+
 ### 2. Create a Highlight from the ranges
 
-Group one or more `Range` objects into a `Highlight`. Multiple ranges that share the same style belong in a single highlight.
+Group one or more `StaticRange` objects into a `Highlight`. Multiple ranges that share the same style belong in a single highlight.
 
 ```javascript
 const searchHighlight = new Highlight(...matchingRanges);
