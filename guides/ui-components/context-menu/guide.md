@@ -211,8 +211,8 @@ const openContextMenu = (event) => {
   if(CSS.supports("anchor-name: --a") ){
     anchor.style.left = `${x}px`;
     anchor.style.top = `${y}px`;
-    if(!'source' in ToggleEvent.prototype){
-      popover.style.setAttribute('position-area', 'block-end span-inline-end')
+    if(!('source' in ToggleEvent.prototype)){
+      popover.style.setProperty('position-area', 'block-end span-inline-end')
     }
   } 
   // ...
@@ -221,8 +221,8 @@ const openContextMenu = (event) => {
 buttonTrigger.addEventListener("click", (event) => {
   const menu = menuFor(buttonTrigger);
   if (!menu) return;
-  if(!'source' in ToggleEvent.prototype){
-    menu.style.setAttribute('position-area', 'block-end span-inline-start')
+  if(!('source' in ToggleEvent.prototype)){
+    menu.style.setProperty('position-area', 'block-end span-inline-start')
   }
   // ...
 });
