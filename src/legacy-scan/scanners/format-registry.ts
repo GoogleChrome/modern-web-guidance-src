@@ -338,16 +338,19 @@ export function getEnginesForSourceExtension(ext: string): ReadonlySet<FormatEng
   return ENGINES_BY_EXTENSION.get(ext.toLowerCase());
 }
 
+function normalizedExtname(relPath: string): string {
+  return posix.extname(relPath.replace(/\\/g, '/').toLowerCase());
+}
+
 /**
  * Returns the supported scanner engines for a file path (`package.json` or supported
  * source extension via `posix.extname`), or `undefined` if unsupported.
  */
 export function getEnginesForPath(relPath: string): ReadonlySet<FormatEngine> | undefined {
-  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  if (isPackageJsonPath(normalized)) {
+  if (isPackageJsonPath(relPath)) {
     return PACKAGE_JSON_ENGINES;
   }
-  return ENGINES_BY_EXTENSION.get(posix.extname(normalized));
+  return ENGINES_BY_EXTENSION.get(normalizedExtname(relPath));
 }
 
 /**
@@ -355,7 +358,6 @@ export function getEnginesForPath(relPath: string): ReadonlySet<FormatEngine> | 
  * if `relPath` matches an `unsupported` entry in `FORMAT_REGISTRY`, or `undefined`.
  */
 export function getUnsupportedFormatExtension(relPath: string): string | undefined {
-  const normalized = relPath.replace(/\\/g, '/').toLowerCase();
-  const ext = posix.extname(normalized);
+  const ext = normalizedExtname(relPath);
   return UNSUPPORTED_SOURCE_EXTENSIONS.has(ext) ? ext : undefined;
 }

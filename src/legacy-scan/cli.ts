@@ -78,10 +78,8 @@ export interface FormatHumanReadableOptions {
   readonly activeGuideCount?: number;
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
-  readonly scannedFileCount?: number;
+  readonly stats?: RepoScanStats;
   readonly skippedDocsAndTestsCount?: number;
-  readonly skippedUnsupportedFiles?: Readonly<Record<string, number>>;
-  readonly parseErrorCount?: number;
   readonly truncation?: TruncationInfo;
 }
 
@@ -119,10 +117,43 @@ function formatUnsupportedFilesNotice(
   return `Skipped ${plural(total, 'unsupported file')} (${breakdown}).`;
 }
 
-function formatParseErrorNotice(parseErrorCount: number): string | undefined {
-  return parseErrorCount > 0
-    ? `Skipped ${plural(parseErrorCount, 'file')} due to parse errors.`
+interface DiagnosticNotices {
+  readonly truncationNotice?: string;
+  readonly unsupportedNotice?: string;
+  readonly parseErrorNotice?: string;
+  readonly all: readonly string[];
+  readonly isIncomplete: boolean;
+}
+
+function buildDiagnosticNotices(
+  stats?: RepoScanStats,
+  truncationOverride?: TruncationInfo,
+): DiagnosticNotices {
+  const truncation = stats?.truncatedByMaxFiles
+    ? {
+        scannedFileCount: stats.scannedFileCount ?? 0,
+        eligibleFileCount: stats.eligibleFileCount ?? stats.scannedFileCount ?? 0,
+      }
+    : truncationOverride;
+  const truncationNotice = truncation
+    ? formatTruncationNotice(truncation.scannedFileCount, truncation.eligibleFileCount)
     : undefined;
+  const unsupportedNotice = formatUnsupportedFilesNotice(stats?.skippedUnsupportedFiles);
+  const parseErrorCount = stats?.parseErrorCount ?? 0;
+  const parseErrorNotice =
+    parseErrorCount > 0
+      ? `Encountered parse errors in ${plural(parseErrorCount, 'file')} (affected blocks skipped).`
+      : undefined;
+  const all = [truncationNotice, unsupportedNotice, parseErrorNotice].filter(
+    (n): n is string => n !== undefined,
+  );
+  return {
+    truncationNotice,
+    unsupportedNotice,
+    parseErrorNotice,
+    all,
+    isIncomplete: all.length > 0,
+  };
 }
 
 const MAX_FILES_CLI_RE = /^(?:0|[1-9]\d*)$/;
@@ -247,21 +278,18 @@ export function formatHumanReadable(
 ): string {
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
-  const scannedFileCount = formatOptions?.scannedFileCount;
-  const skippedDocsAndTestsCount = formatOptions?.skippedDocsAndTestsCount ?? 0;
-  const truncation = formatOptions?.truncation;
+  const stats = formatOptions?.stats;
+  const scannedFileCount = stats?.scannedFileCount;
+  const skippedDocsAndTestsCount =
+    stats?.skippedDocsAndTestsCount ?? formatOptions?.skippedDocsAndTestsCount ?? 0;
   const colorEnabled = shouldEnableColor(formatOptions?.color);
 
   const fmt = (style: TextStyle, text: string): string =>
     colorEnabled ? styleText(style, text, { validateStream: false }) : text;
 
-  const truncationNotice = truncation
-    ? fmt('yellow', formatTruncationNotice(truncation.scannedFileCount, truncation.eligibleFileCount))
-    : undefined;
-  const unsupportedRaw = formatUnsupportedFilesNotice(formatOptions?.skippedUnsupportedFiles);
-  const parseErrorRaw = formatParseErrorNotice(formatOptions?.parseErrorCount ?? 0);
-  const unsupportedNotice = unsupportedRaw ? fmt('yellow', unsupportedRaw) : undefined;
-  const parseErrorNotice = parseErrorRaw ? fmt('yellow', parseErrorRaw) : undefined;
+  const notices = buildDiagnosticNotices(stats, formatOptions?.truncation);
+  const diagnosticNotices = notices.all.map((text) => fmt('yellow', text));
+  const isPartialOrIncomplete = notices.isIncomplete;
   const skippedNotice =
     skippedDocsAndTestsCount > 0
       ? fmt(
@@ -270,15 +298,8 @@ export function formatHumanReadable(
         )
       : undefined;
 
-  const diagnosticNotices = [
-    ...(truncationNotice ? [truncationNotice] : []),
-    ...(unsupportedNotice ? [unsupportedNotice] : []),
-    ...(parseErrorNotice ? [parseErrorNotice] : []),
-  ];
-  const isPartialOrIncomplete = diagnosticNotices.length > 0;
-
   if (totalFindings === 0) {
-    const noScannableFiles = scannedFileCount === 0 && !truncation;
+    const noScannableFiles = scannedFileCount === 0 && !notices.truncationNotice;
     if (isDefaultMode) {
       const headline = noScannableFiles
         ? `0 scannable files found in ${targetDir}.`
@@ -500,8 +521,6 @@ export async function runLegacyScanCli(
 
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
   const skippedUnsupportedFiles = scanStats.skippedUnsupportedFiles;
-  const hasUnsupportedFiles =
-    skippedUnsupportedFiles !== undefined && Object.keys(skippedUnsupportedFiles).length > 0;
   const parseErrorCount = scanStats.parseErrorCount ?? 0;
   const scannedFileCount = scanStats.scannedFileCount ?? 0;
   const eligibleFileCount = scanStats.eligibleFileCount ?? scannedFileCount;
@@ -510,10 +529,9 @@ export async function runLegacyScanCli(
   const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
 
-  const unsupportedNotice = formatUnsupportedFilesNotice(skippedUnsupportedFiles);
-  const parseErrorNotice = formatParseErrorNotice(parseErrorCount);
-  const truncationHint = truncatedByMaxFiles
-    ? `Partial scan only: ${formatTruncationNotice(scannedFileCount, eligibleFileCount).replace(/^Scanned/, 'scanned')}`
+  const notices = buildDiagnosticNotices(scanStats);
+  const noteTruncation = notices.truncationNotice
+    ? `Partial scan only: ${notices.truncationNotice.replace(/^Scanned/, 'scanned')}`
     : undefined;
 
   let corpusHint: string | undefined;
@@ -522,13 +540,13 @@ export async function runLegacyScanCli(
     if (totalFindings === 0) {
       if (scannedFileCount === 0 && !truncatedByMaxFiles) {
         corpusHint = `0 scannable files found; checked 0 of ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
-      } else if (truncatedByMaxFiles || unsupportedNotice || parseErrorNotice) {
+      } else if (notices.isIncomplete) {
         corpusHint = `Found 0 legacy patterns in the scanned subset across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`;
       } else {
         corpusHint = `No legacy patterns found across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
       }
     } else {
-      corpusHint = truncatedByMaxFiles
+      corpusHint = notices.isIncomplete
         ? `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${plural(totalFindings, 'item')} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
         : `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${plural(totalFindings, 'item')} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
     }
@@ -536,8 +554,9 @@ export async function runLegacyScanCli(
     corpusHint = '0 scannable files found.';
   }
   const note =
-    [truncationHint, unsupportedNotice, parseErrorNotice, corpusHint].filter(Boolean).join(' ') ||
-    undefined;
+    [noteTruncation, notices.unsupportedNotice, notices.parseErrorNotice, corpusHint]
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   const data: ScanJsonOutput = {
     targetDir,
@@ -554,7 +573,7 @@ export async function runLegacyScanCli(
       : {}),
     ...(note ? { note } : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
-    ...(hasUnsupportedFiles ? { skippedUnsupportedFiles } : {}),
+    ...(notices.unsupportedNotice ? { skippedUnsupportedFiles } : {}),
     ...(parseErrorCount > 0 ? { parseErrorCount } : {}),
   };
 
@@ -566,13 +585,7 @@ export async function runLegacyScanCli(
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
     activeGuideCount,
     isDefaultQualifiedMode,
-    scannedFileCount,
-    skippedDocsAndTestsCount,
-    ...(hasUnsupportedFiles ? { skippedUnsupportedFiles } : {}),
-    ...(parseErrorCount > 0 ? { parseErrorCount } : {}),
-    ...(truncatedByMaxFiles
-      ? { truncation: { scannedFileCount, eligibleFileCount } }
-      : {}),
+    stats: scanStats,
   });
   return { exitCode: 0, output, stdout: output, stderr: '', data };
 }
