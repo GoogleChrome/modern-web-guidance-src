@@ -1,4 +1,5 @@
 - Each sortable column header is a `<th scope="col">` containing a `<button type="button">` whose text is the column name.
+- Each sortable column header button has an `aria-description="Sortable"` attribute.
 - Activating a sortable header's button sets `aria-sort="ascending"` on its `<th>`, and activating it again sets `aria-sort="descending"`.
 - At most one `<th>` has an `aria-sort` attribute at any time, and no `<button>` has `aria-sort`.
 - After sorting, a reference to a `<tr>` element taken before sorting is still attached to the `<tbody>`, and the `<tbody>` is the same node.
