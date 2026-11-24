@@ -1,7 +1,11 @@
 // Expectation 1: TESTED - The base app uses box-shadow (.card) and background-image (.hero) to convey component boundaries/surfaces, so @media (forced-colors: active) high-contrast fallbacks (system colors or visible borders/outlines) are required.
-// Expectation 2: TESTED - Measured in the browser in BOTH light and dark color schemes: rendered text must meet 4.5:1 (3:1 for large text) against its effective background, and interactive controls must have a 3:1 boundary (background or border) against the adjacent background. The dark-scheme measurement is only meaningful if a dark scheme actually renders, which task.md explicitly requests.
-// Expectation 3: TESTED - task.md asks for "New" and "Sold out" status badges on the Seasonal Favorites cards; each status must be conveyed by visible text (or an icon with an accessible name), not by color alone.
-// Expectation 4: TESTED - Applicable to any web application; the base app lacks color-scheme and @media (prefers-color-scheme: dark) or light-dark() support.
+// Expectation 2: TESTED - Text smaller than 24px (other than bold >= 18.66px) meets 4.5:1 contrast in both light and dark color schemes.
+// Expectation 3: TESTED - Text >= 24px or bold >= 18.66px meets 3:1 contrast in both light and dark color schemes.
+// Expectation 4 (form field boundary contrast): OMITTED - daily-grind/index.html and task.md contain no form fields (<input>, <select>, <textarea>).
+// Expectation 5: TESTED - Custom :focus-visible indicators on links and buttons meet 3:1 contrast against adjacent colors in both light and dark color schemes (alongside interactive control boundaries).
+// Expectation 6 (self-drawn checkbox/switch indicator contrast): OMITTED - daily-grind/index.html and task.md contain no checkboxes or switches.
+// Expectation 7: TESTED - task.md asks for "New" and "Sold out" status badges on the Seasonal Favorites cards; each status must be conveyed by visible text (or an icon with an accessible name), not by color alone.
+// Expectation 8: TESTED - Applicable to any web application; the base app lacks color-scheme and @media (prefers-color-scheme: dark) or light-dark() support.
 
 import {
   test,
@@ -68,10 +72,13 @@ function declaresVisibleBoundary(style: DeclarationBlock): boolean {
 type ContrastFailure = { scheme: string; kind: string; element: string; fg: string; bg: string; ratio: number; required: number };
 type ColorAudit = {
   pageBackgroundLuminance: number;
-  textChecked: number;
+  normalTextChecked: number;
+  largeTextChecked: number;
   controlsChecked: number;
-  textFailures: ContrastFailure[];
+  normalTextFailures: ContrastFailure[];
+  largeTextFailures: ContrastFailure[];
   controlFailures: ContrastFailure[];
+  focusFailures: ContrastFailure[];
 };
 
 /**
@@ -150,9 +157,12 @@ function auditColors(scheme: string): ColorAudit {
   const isInactive = (el: Element) => Boolean(el.closest(':disabled, [aria-disabled="true"]'));
 
   const TOLERANCE = 0.02; // absorbs 8-bit canvas quantization only
-  const textFailures: ContrastFailure[] = [];
+  const normalTextFailures: ContrastFailure[] = [];
+  const largeTextFailures: ContrastFailure[] = [];
   const controlFailures: ContrastFailure[] = [];
-  let textChecked = 0;
+  const focusFailures: ContrastFailure[] = [];
+  let normalTextChecked = 0;
+  let largeTextChecked = 0;
   let controlsChecked = 0;
 
   for (const el of Array.from(document.body.querySelectorAll('*'))) {
@@ -167,11 +177,14 @@ function auditColors(scheme: string): ColorAudit {
     const fg = over(toRgba(cs.color), bg);
     const size = parseFloat(cs.fontSize);
     const bold = parseInt(cs.fontWeight, 10) >= 700;
-    const required = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5;
+    const isLarge = size >= 24 || (bold && size >= 18.66);
+    const required = isLarge ? 3 : 4.5;
     const r = ratio(fg, bg);
-    textChecked++;
+    if (isLarge) largeTextChecked++;
+    else normalTextChecked++;
     if (r + TOLERANCE < required) {
-      textFailures.push({ scheme, kind: 'text', element: describe(el), fg: fmt(fg), bg: fmt(bg), ratio: +r.toFixed(2), required });
+      const target = isLarge ? largeTextFailures : normalTextFailures;
+      target.push({ scheme, kind: isLarge ? 'large-text' : 'normal-text', element: describe(el), fg: fmt(fg), bg: fmt(bg), ratio: +r.toFixed(2), required });
     }
   }
 
@@ -210,8 +223,47 @@ function auditColors(scheme: string): ColorAudit {
     }
   }
 
+  for (const el of controls) {
+    if (!(el instanceof HTMLElement)) continue;
+    const adjacent = effectiveBackground(el.parentElement);
+    if (!adjacent) continue;
+    el.focus({ preventScroll: true });
+    if (document.activeElement === el && el.matches(':focus-visible')) {
+      const fcs = getComputedStyle(el);
+      const isCustomOutline =
+        fcs.outlineStyle !== 'none' &&
+        fcs.outlineStyle !== 'auto' &&
+        parseFloat(fcs.outlineWidth) > 0;
+      if (isCustomOutline) {
+        const outlineColor = over(toRgba(fcs.outlineColor), adjacent);
+        const outlineRatio = ratio(outlineColor, adjacent);
+        if (outlineRatio + TOLERANCE < 3) {
+          focusFailures.push({
+            scheme,
+            kind: 'focus-visible',
+            element: describe(el),
+            fg: fmt(outlineColor),
+            bg: fmt(adjacent),
+            ratio: +outlineRatio.toFixed(2),
+            required: 3,
+          });
+        }
+      }
+    }
+    el.blur();
+  }
+
   const pageBg = effectiveBackground(document.body) ?? canvasBase;
-  return { pageBackgroundLuminance: luminance(pageBg), textChecked, controlsChecked, textFailures, controlFailures };
+  return {
+    pageBackgroundLuminance: luminance(pageBg),
+    normalTextChecked,
+    largeTextChecked,
+    controlsChecked,
+    normalTextFailures,
+    largeTextFailures,
+    controlFailures,
+    focusFailures,
+  };
 }
 
 async function auditScheme(page: Page, url: string, scheme: 'light' | 'dark'): Promise<ColorAudit> {
@@ -236,23 +288,38 @@ test.describe('color Target Grader', () => {
     expect(hasValidForcedColorsFallback).toBe(true);
   });
 
-  test('Expectation 2: Rendered text meets 4.5:1 (3:1 large) contrast in both light and dark color schemes', async ({ page, TARGET_URL }) => {
+  test('Expectation 2: Normal text (<24px, or <18.66px bold) meets 4.5:1 contrast in both light and dark color schemes', async ({ page, TARGET_URL }) => {
     const light = await auditScheme(page, TARGET_URL, 'light');
     const dark = await auditScheme(page, TARGET_URL, 'dark');
     expect({
       darkSchemeRendered: dark.pageBackgroundLuminance < light.pageBackgroundLuminance,
-      textMeasuredInBothSchemes: light.textChecked > 0 && dark.textChecked > 0,
-      failures: [...light.textFailures, ...dark.textFailures],
+      textMeasuredInBothSchemes: light.normalTextChecked > 0 && dark.normalTextChecked > 0,
+      failures: [...light.normalTextFailures, ...dark.normalTextFailures],
     }).toEqual({ darkSchemeRendered: true, textMeasuredInBothSchemes: true, failures: [] });
   });
 
-  test('Expectation 2: Interactive controls keep a 3:1 boundary against adjacent backgrounds in both light and dark color schemes', async ({ page, TARGET_URL }) => {
+  test('Expectation 3: Large text (>=24px, or bold >=18.66px) meets 3:1 contrast in both light and dark color schemes', async ({ page, TARGET_URL }) => {
+    const light = await auditScheme(page, TARGET_URL, 'light');
+    const dark = await auditScheme(page, TARGET_URL, 'dark');
+    expect({
+      darkSchemeRendered: dark.pageBackgroundLuminance < light.pageBackgroundLuminance,
+      largeTextMeasuredInBothSchemes: light.largeTextChecked > 0 && dark.largeTextChecked > 0,
+      failures: [...light.largeTextFailures, ...dark.largeTextFailures],
+    }).toEqual({ darkSchemeRendered: true, largeTextMeasuredInBothSchemes: true, failures: [] });
+  });
+
+  test('Expectation 5: Interactive control boundaries and custom :focus-visible indicators meet 3:1 contrast in both light and dark color schemes', async ({ page, TARGET_URL }) => {
     const light = await auditScheme(page, TARGET_URL, 'light');
     const dark = await auditScheme(page, TARGET_URL, 'dark');
     expect({
       darkSchemeRendered: dark.pageBackgroundLuminance < light.pageBackgroundLuminance,
       controlsMeasuredInBothSchemes: light.controlsChecked > 0 && dark.controlsChecked > 0,
-      failures: [...light.controlFailures, ...dark.controlFailures],
+      failures: [
+        ...light.controlFailures,
+        ...dark.controlFailures,
+        ...light.focusFailures,
+        ...dark.focusFailures,
+      ],
     }).toEqual({ darkSchemeRendered: true, controlsMeasuredInBothSchemes: true, failures: [] });
   });
 
