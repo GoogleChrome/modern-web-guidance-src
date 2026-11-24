@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..8422361 100644
+index 5db718e..bde4b7d 100644
 --- a/index.html
 +++ b/index.html
-@@ -56,20 +56,47 @@
+@@ -58,20 +58,47 @@
      }
  
      nav a {
@@ -19,7 +19,7 @@ index 66c9173..8422361 100644
      }
  
      nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
 +      text-decoration-color: currentColor;
 +    }
 +
@@ -28,14 +28,14 @@ index 66c9173..8422361 100644
      }
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
        border-radius: 4px;
 +      transition: color 150ms ease-out, background-color 150ms ease-out, scale 150ms ease-out;
 +    }
 +
 +    nav a.logout-link:hover {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--primary);
 +      text-decoration-color: transparent;
 +    }
@@ -52,7 +52,7 @@ index 66c9173..8422361 100644
      }
  
      /* Hero Section */
-@@ -100,11 +127,22 @@
+@@ -102,11 +129,22 @@
        padding: 0 20px;
      }
  
@@ -78,7 +78,7 @@ index 66c9173..8422361 100644
      }
  
      .card {
-@@ -113,6 +151,12 @@
+@@ -115,6 +153,12 @@
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
@@ -91,7 +91,7 @@ index 66c9173..8422361 100644
      }
  
      .card h3 {
-@@ -125,14 +169,113 @@
+@@ -127,14 +171,113 @@
        background: var(--primary);
        color: white;
        padding: 10px 20px;
@@ -116,7 +116,7 @@ index 66c9173..8422361 100644
 +    }
 +
 +    .hero .btn {
-+      background: var(--accent);
++      background: var(--accent-on-dark);
 +      color: var(--text);
 +    }
 +
@@ -206,7 +206,7 @@ index 66c9173..8422361 100644
      }
  
      footer {
-@@ -147,10 +290,24 @@
+@@ -149,10 +292,24 @@
      }
  
      .footer-links a {
@@ -232,7 +232,7 @@ index 66c9173..8422361 100644
      }
    </style>
  </head>
-@@ -176,24 +333,48 @@
+@@ -178,24 +335,48 @@
  
    <main class="container">
      <section>
@@ -293,7 +293,7 @@ index 66c9173..8422361 100644
      </section>
    </main>
  
-@@ -207,6 +388,76 @@
+@@ -209,6 +390,76 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

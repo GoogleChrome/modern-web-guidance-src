@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..cda3c67 100644
+index 5db718e..72eb7db 100644
 --- a/index.html
 +++ b/index.html
-@@ -28,7 +28,7 @@
+@@ -30,7 +30,7 @@
      }
  
      /* Navigation */
@@ -11,7 +11,7 @@ index 66c9173..cda3c67 100644
        background: var(--primary);
        color: white;
        padding: 1rem 5%;
-@@ -46,26 +46,137 @@
+@@ -48,26 +48,137 @@
        letter-spacing: 1px;
      }
  
@@ -36,7 +36,7 @@ index 66c9173..cda3c67 100644
  
 -    nav a:hover {
 +    .site-nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
 +    /* Breadcrumbs */
@@ -100,7 +100,7 @@ index 66c9173..cda3c67 100644
 +    .breadcrumb > ol > li > a:focus-visible {
 +      position: relative;
 +      z-index: 1;
-+      outline: 3px solid var(--accent);
++      outline: 3px solid var(--accent-on-dark);
 +      outline-offset: -3px;
 +      background-color: #271815;
 +      color: #ffffff;
@@ -151,9 +151,9 @@ index 66c9173..cda3c67 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -157,10 +268,10 @@
+@@ -159,10 +270,10 @@
  
  <body>
  
@@ -166,7 +166,7 @@ index 66c9173..cda3c67 100644
        <li><a href="/locations">Locations</a></li>
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
-@@ -174,24 +285,32 @@
+@@ -176,24 +287,32 @@
      <a href="/order-online" class="btn">Order Now</a>
    </header>
  
@@ -208,7 +208,7 @@ index 66c9173..cda3c67 100644
          </div>
        </div>
      </section>
-@@ -207,6 +326,91 @@
+@@ -209,6 +328,91 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

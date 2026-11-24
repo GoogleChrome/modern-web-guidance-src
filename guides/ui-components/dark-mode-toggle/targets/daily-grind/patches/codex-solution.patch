@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..9685e9d 100644
+index 5db718e..7c3b982 100644
 --- a/index.html
 +++ b/index.html
-@@ -4,14 +4,35 @@
+@@ -4,16 +4,37 @@
  <head>
    <meta charset="UTF-8">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,7 +22,9 @@ index 66c9173..9685e9d 100644
        --primary: #4e342e;
 -      --secondary: #d7ccc8;
 +      --secondary: light-dark(#d7ccc8, #302622);
-       --accent: #ffab40;
+       --accent: #b45309;
+       --accent-on-dark: #ffab40;
+       --border: #795548;
 -      --text: #3e2723;
 -      --light: #fafafa;
 +      --text: light-dark(#3e2723, #f1e5df);
@@ -41,7 +43,7 @@ index 66c9173..9685e9d 100644
      }
  
      * {
-@@ -35,6 +56,8 @@
+@@ -37,6 +58,8 @@
        display: flex;
        justify-content: space-between;
        align-items: center;
@@ -50,7 +52,7 @@ index 66c9173..9685e9d 100644
        position: sticky;
        top: 0;
        z-index: 1000;
-@@ -48,11 +71,14 @@
+@@ -50,11 +73,14 @@
  
      nav ul {
        display: flex;
@@ -66,14 +68,14 @@ index 66c9173..9685e9d 100644
      }
  
      nav a {
-@@ -72,6 +98,62 @@
+@@ -74,6 +100,67 @@
        border-radius: 4px;
      }
  
 +    .theme-toggle {
 +      background: transparent;
 +      color: white;
-+      border: 1px solid var(--accent);
++      border: 1px solid var(--accent-on-dark);
 +      border-radius: 4px;
 +      padding: 8px;
 +      min-width: 44px;
@@ -84,12 +86,17 @@ index 66c9173..9685e9d 100644
 +
 +    .theme-toggle:hover {
 +      background: #3e2723;
-+      color: var(--accent);
++      color: var(--accent-on-dark);
 +    }
 +
 +    :focus-visible {
-+      outline: 3px solid var(--accent);
++      outline: 3px solid light-dark(var(--accent), var(--accent-on-dark));
 +      outline-offset: 4px;
++    }
++
++    nav :focus-visible,
++    .hero :focus-visible {
++      outline-color: var(--accent-on-dark);
 +    }
 +
 +    .visually-hidden {
@@ -129,7 +136,7 @@ index 66c9173..9685e9d 100644
      /* Hero Section */
      .hero {
        height: 60vh;
-@@ -108,16 +190,16 @@
+@@ -110,16 +192,16 @@
      }
  
      .card {
@@ -149,7 +156,7 @@ index 66c9173..9685e9d 100644
      }
  
      .btn {
-@@ -165,6 +247,12 @@
+@@ -167,6 +249,12 @@
        <li><a href="/rewards">Rewards</a></li>
        <li><a href="/account">My Account</a></li>
        <li><a href="/logout" class="logout-link">Logout</a></li>
@@ -162,7 +169,7 @@ index 66c9173..9685e9d 100644
      </ul>
    </nav>
  
-@@ -207,6 +295,44 @@
+@@ -209,6 +297,44 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

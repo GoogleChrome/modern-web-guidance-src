@@ -1,5 +1,5 @@
 diff --git a/index.html b/index.html
-index 66c9173..a400084 100644
+index 5db718e..521c165 100644
 --- a/index.html
 +++ b/index.html
 @@ -4,6 +4,7 @@
@@ -10,7 +10,7 @@ index 66c9173..a400084 100644
    <title>The Daily Grind | Artisanal Coffee</title>
    <style>
      :root {
-@@ -25,6 +26,7 @@
+@@ -27,6 +28,7 @@
        line-height: 1.6;
        color: var(--text);
        background-color: var(--light);
@@ -18,7 +18,7 @@ index 66c9173..a400084 100644
      }
  
      /* Navigation */
-@@ -33,29 +35,34 @@
+@@ -35,29 +37,34 @@
        color: white;
        padding: 1rem 5%;
        display: flex;
@@ -58,10 +58,10 @@ index 66c9173..a400084 100644
        color: white;
        text-decoration: none;
        font-size: 0.9rem;
-@@ -68,13 +75,13 @@
+@@ -70,13 +77,13 @@
  
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 +      padding: 0.3125rem 0.75rem;
        border-radius: 4px;
@@ -74,7 +74,7 @@ index 66c9173..a400084 100644
        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
-@@ -85,38 +92,40 @@
+@@ -87,38 +94,40 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -124,7 +124,7 @@ index 66c9173..a400084 100644
        color: var(--primary);
      }
  
-@@ -124,10 +133,11 @@
+@@ -126,10 +135,11 @@
        display: inline-block;
        background: var(--primary);
        color: white;
@@ -138,7 +138,7 @@ index 66c9173..a400084 100644
        transition: background 0.3s;
      }
  
-@@ -138,16 +148,17 @@
+@@ -140,16 +150,17 @@
      footer {
        background: var(--secondary);
        text-align: center;

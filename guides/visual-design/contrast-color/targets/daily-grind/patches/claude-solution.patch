@@ -1,9 +1,9 @@
 diff --git a/index.html b/index.html
-index 66c9173..0ff6634 100644
+index 5db718e..10b6fd6 100644
 --- a/index.html
 +++ b/index.html
-@@ -12,6 +12,8 @@
-       --accent: #ffab40;
+@@ -14,6 +14,8 @@
+       --border: #795548;
        --text: #3e2723;
        --light: #fafafa;
 +      /* Highest lightness threshold that passes WCAG for the RCS fallback */
@@ -11,7 +11,7 @@ index 66c9173..0ff6634 100644
      }
  
      * {
-@@ -29,7 +31,9 @@
+@@ -31,7 +33,9 @@
  
      /* Navigation */
      nav {
@@ -22,7 +22,7 @@ index 66c9173..0ff6634 100644
        color: white;
        padding: 1rem 5%;
        display: flex;
-@@ -56,14 +60,18 @@
+@@ -58,14 +62,18 @@
      }
  
      nav a {
@@ -33,19 +33,19 @@ index 66c9173..0ff6634 100644
        font-size: 0.9rem;
 -      transition: color 0.3s;
 +      text-underline-offset: 4px;
-+      text-decoration-color: var(--accent);
++      text-decoration-color: var(--accent-on-dark);
 +      text-decoration-thickness: 2px;
      }
  
 -    nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 +    nav a:hover,
 +    nav a:focus-visible {
 +      text-decoration-line: underline;
      }
  
      .logout-link {
-@@ -121,8 +129,10 @@
+@@ -123,8 +131,10 @@
      }
  
      .btn {
@@ -57,7 +57,7 @@ index 66c9173..0ff6634 100644
        color: white;
        padding: 10px 20px;
        text-decoration: none;
-@@ -131,12 +141,17 @@
+@@ -133,12 +143,17 @@
        transition: background 0.3s;
      }
  
@@ -78,7 +78,7 @@ index 66c9173..0ff6634 100644
        text-align: center;
        padding: 40px 20px;
        margin-top: 40px;
-@@ -148,10 +163,43 @@
+@@ -150,10 +165,43 @@
  
      .footer-links a {
        margin: 0 10px;

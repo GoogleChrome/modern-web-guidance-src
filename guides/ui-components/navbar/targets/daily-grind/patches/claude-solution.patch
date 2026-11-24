@@ -1,27 +1,27 @@
 diff --git a/index.html b/index.html
-index 66c9173..1f6aba6 100644
+index 5db718e..e9c0fef 100644
 --- a/index.html
 +++ b/index.html
-@@ -27,49 +27,331 @@
+@@ -29,49 +29,331 @@
        background-color: var(--light);
      }
  
 -    /* Navigation */
 -    nav {
--      background: var(--primary);
--      color: white;
++    /* Site header & navigation */
++    .site-header {
++      position: sticky;
++      inset-block-start: 0;
++      z-index: 1000;
+       background: var(--primary);
+       color: white;
 -      padding: 1rem 5%;
 -      display: flex;
 -      justify-content: space-between;
 -      align-items: center;
-+    /* Site header & navigation */
-+    .site-header {
-       position: sticky;
+-      position: sticky;
 -      top: 0;
-+      inset-block-start: 0;
-       z-index: 1000;
-+      background: var(--primary);
-+      color: white;
+-      z-index: 1000;
 +
 +      .header-inner {
 +        display: flex;
@@ -78,7 +78,7 @@ index 66c9173..1f6aba6 100644
 +        gap: 0.5rem;
 +        padding-block: 0.4rem;
 +        padding-inline: 0.85rem;
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        border-radius: 4px;
 +        background: transparent;
 +        font-size: 0.95rem;
@@ -136,7 +136,7 @@ index 66c9173..1f6aba6 100644
 +
 +      .site-menu a:hover,
 +      .dropdown-trigger:hover {
-+        color: var(--accent);
++        color: var(--accent-on-dark);
 +        background: rgb(255 255 255 / 0.06);
 +      }
 +
@@ -153,17 +153,17 @@ index 66c9173..1f6aba6 100644
 +      }
 +
 +      .site-menu .logout-link {
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        justify-content: center;
 +      }
 +
 +      /* Current page: weight + thick underline, not color alone */
 +      [aria-current="page"],
 +      .dropdown-trigger.has-current {
-+        color: var(--accent);
++        color: var(--accent-on-dark);
 +        font-weight: 700;
 +        text-decoration: underline;
-+        text-decoration-color: var(--accent);
++        text-decoration-color: var(--accent-on-dark);
 +        text-decoration-thickness: 3px;
 +        text-underline-offset: 0.35em;
 +      }
@@ -175,7 +175,7 @@ index 66c9173..1f6aba6 100644
 +
 +      a:focus-visible,
 +      button:focus-visible {
-+        outline: 3px solid var(--accent);
++        outline: 3px solid var(--accent-on-dark);
 +        outline-offset: 2px;
 +      }
      }
@@ -316,7 +316,7 @@ index 66c9173..1f6aba6 100644
      }
  
 -    nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 +    /* Optional narrow submenu slide-down */
 +    @supports (interpolate-size: allow-keywords) {
 +      @media (prefers-reduced-motion: no-preference) {
@@ -338,7 +338,7 @@ index 66c9173..1f6aba6 100644
      }
  
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 -      border-radius: 4px;
 +    @media (forced-colors: active) {
@@ -363,7 +363,7 @@ index 66c9173..1f6aba6 100644
      }
  
      /* Hero Section */
-@@ -157,22 +439,47 @@
+@@ -159,22 +441,47 @@
  
  <body>
  
@@ -377,12 +377,11 @@ index 66c9173..1f6aba6 100644
 -      <li><a href="/logout" class="logout-link">Logout</a></li>
 -    </ul>
 -  </nav>
--
--  <header class="hero">
 +  <header class="site-header">
 +    <div class="header-inner">
 +      <a class="site-logo" href="/" aria-current="page">THE DAILY GRIND</a>
-+
+ 
+-  <header class="hero">
 +      <nav class="site-nav" aria-label="Primary">
 +        <button class="menu-button" type="button" popovertarget="site-menu" popovertargetaction="toggle"
 +          aria-controls="site-menu">
@@ -424,7 +423,7 @@ index 66c9173..1f6aba6 100644
  
    <main class="container">
      <section>
-@@ -207,6 +514,151 @@
+@@ -209,6 +516,151 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..8f08922 100644
+index 5db718e..4298480 100644
 --- a/index.html
 +++ b/index.html
-@@ -27,49 +27,364 @@
+@@ -29,49 +29,364 @@
        background-color: var(--light);
      }
  
@@ -65,7 +65,7 @@ index 66c9173..8f08922 100644
 +        padding-inline: 0.85rem;
 +        background: transparent;
 +        color: white;
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        border-radius: 4px;
 +        font: inherit;
 +        font-size: 0.9rem;
@@ -74,8 +74,8 @@ index 66c9173..8f08922 100644
 +        transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 +
 +        &:hover {
-+          color: var(--accent);
-+          border-color: var(--accent);
++          color: var(--accent-on-dark);
++          border-color: var(--accent-on-dark);
 +        }
 +      }
 +
@@ -102,7 +102,7 @@ index 66c9173..8f08922 100644
 +        padding: 0.5rem;
 +        background: var(--primary);
 +        color: white;
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        border-radius: 8px;
 +        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
 +
@@ -140,13 +140,13 @@ index 66c9173..8f08922 100644
 +        transition: color 0.2s ease, background-color 0.2s ease;
 +
 +        &:hover {
-+          color: var(--accent);
++          color: var(--accent-on-dark);
 +          background-color: rgba(255, 255, 255, 0.08);
 +        }
 +      }
 +
 +      .site-menu a[aria-current="page"] {
-+        color: var(--accent);
++        color: var(--accent-on-dark);
 +        font-weight: 700;
 +        text-decoration: underline;
 +        text-underline-offset: 0.35rem;
@@ -154,7 +154,7 @@ index 66c9173..8f08922 100644
 +      }
 +
 +      .site-menu .logout-link {
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        padding-block: 0.35rem;
 +        padding-inline: 0.75rem;
 +        border-radius: 4px;
@@ -235,7 +235,7 @@ index 66c9173..8f08922 100644
 +        margin-block-start: 0.5rem;
 +        padding: 0.5rem;
 +        overflow: visible;
-+        border: 1px solid var(--accent);
++        border: 1px solid var(--accent-on-dark);
 +        border-radius: 6px;
 +        background: var(--primary);
 +        color: white;
@@ -283,12 +283,12 @@ index 66c9173..8f08922 100644
 -      font-size: 0.9rem;
 -      transition: color 0.3s;
 +    :where(.site-logo, .menu-button, .site-menu a, .dropdown-trigger):focus-visible {
-+      outline: 2px solid var(--accent);
++      outline: 2px solid var(--accent-on-dark);
 +      outline-offset: 3px;
      }
  
 -    nav a:hover {
--      color: var(--accent);
+-      color: var(--accent-on-dark);
 +    @media (forced-colors: active) {
 +      .site-header {
 +        border-block-end: 1px solid CanvasText;
@@ -320,7 +320,7 @@ index 66c9173..8f08922 100644
      }
  
 -    .logout-link {
--      border: 1px solid var(--accent);
+-      border: 1px solid var(--accent-on-dark);
 -      padding: 5px 12px;
 -      border-radius: 4px;
 +    @media (prefers-reduced-motion: no-preference) {
@@ -393,7 +393,7 @@ index 66c9173..8f08922 100644
      }
  
      /* Hero Section */
-@@ -157,22 +472,66 @@
+@@ -159,22 +474,66 @@
  
  <body>
  
@@ -407,12 +407,11 @@ index 66c9173..8f08922 100644
 -      <li><a href="/logout" class="logout-link">Logout</a></li>
 -    </ul>
 -  </nav>
--
--  <header class="hero">
 +  <header class="site-header">
 +    <div class="header-inner">
 +      <a class="site-logo logo" href="/">THE DAILY GRIND</a>
-+
+ 
+-  <header class="hero">
 +      <nav class="site-nav" aria-label="Primary">
 +        <button
 +          class="menu-button"
@@ -473,7 +472,7 @@ index 66c9173..8f08922 100644
  
    <main class="container">
      <section>
-@@ -207,6 +566,162 @@
+@@ -209,6 +568,162 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

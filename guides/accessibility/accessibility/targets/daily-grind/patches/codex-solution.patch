@@ -301,7 +301,7 @@ index 0000000..cb97883
 +
 +</html>
 diff --git a/index.html b/index.html
-index 66c9173..cb97883 100644
+index 5db718e..6762ec6 100644
 --- a/index.html
 +++ b/index.html
 @@ -4,7 +4,7 @@
@@ -313,7 +313,7 @@ index 66c9173..cb97883 100644
    <style>
      :root {
        --primary: #4e342e;
-@@ -25,19 +25,56 @@
+@@ -27,19 +27,56 @@
        line-height: 1.6;
        color: var(--text);
        background-color: var(--light);
@@ -374,7 +374,7 @@ index 66c9173..cb97883 100644
      }
  
      .logo {
-@@ -46,23 +83,24 @@
+@@ -48,23 +85,24 @@
        letter-spacing: 1px;
      }
  
@@ -403,10 +403,10 @@ index 66c9173..cb97883 100644
  
 -    nav a:hover {
 +    .primary-nav a:hover {
-       color: var(--accent);
+       color: var(--accent-on-dark);
      }
  
-@@ -74,8 +112,11 @@
+@@ -76,8 +114,11 @@
  
      /* Hero Section */
      .hero {
@@ -420,7 +420,7 @@ index 66c9173..cb97883 100644
          url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
        background-size: cover;
        background-position: center;
-@@ -85,7 +126,7 @@
+@@ -87,7 +128,7 @@
        align-items: center;
        color: white;
        text-align: center;
@@ -429,7 +429,7 @@ index 66c9173..cb97883 100644
      }
  
      .hero h1 {
-@@ -102,9 +143,14 @@
+@@ -104,9 +145,14 @@
  
      .grid {
        display: grid;
@@ -445,7 +445,7 @@ index 66c9173..cb97883 100644
      }
  
      .card {
-@@ -143,67 +189,105 @@
+@@ -145,67 +191,105 @@
      }
  
      .footer-links {
