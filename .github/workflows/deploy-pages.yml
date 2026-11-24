@@ -3,6 +3,8 @@ name: Deploy Pages
 on:
   workflow_dispatch:
   workflow_call:
+  repository_dispatch:
+    types: [deploy-pages]
 
 concurrency:
   group: pages

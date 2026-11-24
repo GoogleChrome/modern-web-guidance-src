@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { checkoutPublished, cloneDir, publishPublicEvals, remoteHead, repoFromRemoteUrl } from './publish.ts';
+import { rootDir } from '../../core/paths.ts';
+import { checkoutPublished, cloneDir, DEPLOY_EVENT, publishPublicEvals, remoteHead, repoFromRemoteUrl, requestPagesDeployment } from './publish.ts';
 
 const TEST_USER = { name: 'Example Publisher', email: 'publisher@example.invalid' };
 const cacheDirs: string[] = [];
@@ -145,6 +146,33 @@ describe('publishPublicEvals + checkoutPublished', () => {
       () => repoFromRemoteUrl('/tmp/local-repo'),
       /cannot determine GitHub \{owner\}\/\{repo\} from remote URL/,
     );
+  });
+
+  test('requestPagesDeployment sends the repository event that deploy-pages.yml listens for', () => {
+    // A stand-in `gh` on PATH that records its arguments and exits with the code in GH_EXIT.
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-gh-'));
+    const argsFile = path.join(bin, 'args');
+    fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\nprintf '%s\\n' "$@" > '${argsFile}'\nexit "\${GH_EXIT:-0}"\n`, { mode: 0o755 });
+    const originalPath = process.env['PATH'];
+    process.env['PATH'] = `${bin}${path.delimiter}${originalPath}`;
+    try {
+      requestPagesDeployment('example-owner/example-repo');
+      assert.deepEqual(fs.readFileSync(argsFile, 'utf8').trim().split('\n'), [
+        'api', '--method', 'POST', 'repos/example-owner/example-repo/dispatches', '-f', `event_type=${DEPLOY_EVENT}`,
+      ]);
+
+      process.env['GH_EXIT'] = '1';
+      assert.throws(() => requestPagesDeployment('example-owner/example-repo'), {
+        message: `failed to request a Pages deployment on example-owner/example-repo: gh exited with code 1 (retry with: gh api --method POST repos/example-owner/example-repo/dispatches -f event_type=${DEPLOY_EVENT})`,
+      });
+    } finally {
+      process.env['PATH'] = originalPath;
+      delete process.env['GH_EXIT'];
+      fs.rmSync(bin, { recursive: true, force: true });
+    }
+
+    const workflow = fs.readFileSync(path.join(rootDir, '.github/workflows/deploy-pages.yml'), 'utf8');
+    assert.match(workflow, new RegExp(`repository_dispatch:\\n\\s+types: \\[${DEPLOY_EVENT}\\]`));
   });
 
   test('refuses to publish without suites.gen.json or when expectedHead has moved', async () => {

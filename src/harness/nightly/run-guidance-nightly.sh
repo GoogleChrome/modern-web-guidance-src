@@ -131,7 +131,7 @@ if will_publish; then
     die "gh CLI is required to publish public evals after nightly runs, but is not installed or not in PATH."
   fi
   if ! gh auth status >/dev/null 2>&1; then
-    die "gh is not authenticated. Please run 'gh auth login' (with workflow scope) to allow dispatching the Pages deployment after nightly evals."
+    die "gh is not authenticated. Please run 'gh auth login' to allow requesting the Pages deployment after nightly evals."
   fi
 fi
 

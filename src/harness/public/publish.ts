@@ -18,6 +18,9 @@ import { PUBLIC_EVALS_DIR } from './builder.ts';
 const BRANCH = 'gh-pages';
 const REMOTE = 'origin';
 
+/** The repository event `.github/workflows/deploy-pages.yml` listens for. */
+export const DEPLOY_EVENT = 'deploy-pages';
+
 export interface PublishOptions {
   /** Commit message on the `gh-pages` branch. */
   message: string;
@@ -148,6 +151,25 @@ export function repoFromRemoteUrl(url: string): string {
     throw new Error(`cannot determine GitHub {owner}/{repo} from remote URL: ${url}`);
   }
   return `${match[1]}/${match[2]}`;
+}
+
+/**
+ * Asks GitHub to deploy `gh-pages` by sending `repo` the `DEPLOY_EVENT` repository event.
+ * Sent as a repository event rather than by starting the workflow (`gh workflow run`): the
+ * event needs only write access to repository contents, which whoever just pushed has, while
+ * starting a workflow needs a permission a GitHub App may not hold.
+ */
+export function requestPagesDeployment(repo: string): void {
+  const args = ['api', '--method', 'POST', `repos/${repo}/dispatches`, '-f', `event_type=${DEPLOY_EVENT}`];
+  const res = spawnSync('gh', args, { stdio: 'inherit', encoding: 'utf8' });
+  const manualHint = `gh ${args.join(' ')}`;
+  if (res.error) {
+    throw new Error(`failed to request a Pages deployment on ${repo}: ${res.error.message} (retry with: ${manualHint})`, { cause: res.error });
+  }
+  if (res.status !== 0) {
+    const reason = res.status !== null ? `code ${res.status}` : `signal ${res.signal}`;
+    throw new Error(`failed to request a Pages deployment on ${repo}: gh exited with ${reason} (retry with: ${manualHint})`);
+  }
 }
 
 /**
