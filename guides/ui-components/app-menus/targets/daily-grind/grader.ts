@@ -111,17 +111,14 @@ test.describe('Application Menu Bar Grader', () => {
           const visibleText = (el.textContent ?? '').replace(/\s+/g, ' ').trim();
           const ariaLabel = el.getAttribute('aria-label')?.trim();
           const ariaLabelledBy = el.getAttribute('aria-labelledby')?.trim();
-          let accName = visibleText;
-          if (ariaLabel) {
-            accName = ariaLabel;
-          } else if (ariaLabelledBy) {
-            const refText = ariaLabelledBy
-              .split(/\s+/)
-              .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
-              .filter(Boolean)
-              .join(' ');
-            if (refText) accName = refText;
-          }
+          const refText = ariaLabelledBy
+            ? ariaLabelledBy
+                .split(/\s+/)
+                .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+                .filter(Boolean)
+                .join(' ')
+            : '';
+          const accName = refText || ariaLabel || visibleText;
           return { role, visibleText, accName };
         }),
       );

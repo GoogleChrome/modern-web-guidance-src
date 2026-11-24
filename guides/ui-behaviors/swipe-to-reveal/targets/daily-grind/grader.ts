@@ -347,6 +347,7 @@ test.describe('swipe-to-reveal Target Grader', () => {
         });
         const first = containers[0];
         if (!first) return false;
+        first.setAttribute('data-grader-swipe-target', '0');
         const content = first.querySelector('.SwipeReveal-content') ?? first.firstElementChild;
         const btn = content?.querySelector('button');
         if (!btn) return false;
@@ -361,6 +362,20 @@ test.describe('swipe-to-reveal Target Grader', () => {
 
       await trigger.click();
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+      // Wait for smooth scroll / scroll-snap to advance and settle before toggling closed.
+      await page.waitForFunction(() => {
+        const c = document.querySelector<HTMLElement>('[data-grader-swipe-target="0"]');
+        if (!c || c.scrollLeft <= 0) return false;
+        const state = window as unknown as { __swipeLastLeft?: number; __swipeStableFrames?: number };
+        if (state.__swipeLastLeft === c.scrollLeft) {
+          state.__swipeStableFrames = (state.__swipeStableFrames ?? 0) + 1;
+        } else {
+          state.__swipeLastLeft = c.scrollLeft;
+          state.__swipeStableFrames = 0;
+        }
+        return (state.__swipeStableFrames ?? 0) >= 3;
+      });
 
       await trigger.click();
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');
