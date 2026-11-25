@@ -417,6 +417,11 @@ describe('modern-web CLI', () => {
 
       fs.writeFileSync(path.join(projectDir, '.mwgrc'), JSON.stringify({ telemetry: false }));
       assert.strictEqual(recordNpxCall(['uninstall']).disableTelemetry, '1', '.mwgrc opt-out reaches the skills runner');
+      assert.strictEqual(
+        recordNpxCall(['install', '--telemetry=true', '--agent', 'claude-code']).disableTelemetry,
+        '1',
+        '--telemetry=true must not undo .mwgrc opt-out'
+      );
     } finally {
       fs.rmSync(tempBinDir, { recursive: true, force: true });
     }
