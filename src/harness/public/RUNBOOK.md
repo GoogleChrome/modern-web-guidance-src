@@ -40,13 +40,13 @@ request. After it merges, the next `pnpm public:publish` run applies it.
 Run from the repo root on a checkout of `main`, with gcloud credentials for
 the bucket, a git identity (`user.name` / `user.email`, as the `gh-pages`
 commit needs an author; a CI runner will have to set one), and GitHub CLI (`gh`)
-authenticated (`gh auth login` with `workflow` scope) to dispatch the Actions
-Pages deployment:
+authenticated as an account that can push to the repo, to request the Pages
+deployment:
 
 ```bash
-pnpm public:publish               # build, push gh-pages, and dispatch deployment
+pnpm public:publish               # build, push gh-pages, and request deployment
 pnpm public:publish --dry-run     # build and report only
-pnpm public:publish --no-dispatch # push gh-pages without dispatching deploy
+pnpm public:publish --no-dispatch # push gh-pages without requesting deploy
 ```
 
 Keep that checkout up to date with `origin/main`. A checkout whose output
