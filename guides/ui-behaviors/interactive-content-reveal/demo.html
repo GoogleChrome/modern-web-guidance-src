@@ -38,6 +38,11 @@
         cursor: crosshair;
       }
 
+      .product-card:focus-visible {
+        outline: 3px solid #4ecdc4;
+        outline-offset: 4px;
+      }
+
       .product-image {
         width: 100%;
         height: 100%;
@@ -78,7 +83,8 @@
         }
       }
 
-      .product-card:hover {
+      .product-card:hover,
+      .product-card.revealed {
         --inner-size: 100px;
         --outer-size: 120px;
       }
@@ -86,18 +92,51 @@
   </head>
 
   <body>
-    <div class="product-card" id="card">
-      <div class="product-image">📦</div>
-      <div class="reveal-layer">✨</div>
+    <div
+      class="product-card"
+      id="card"
+      tabindex="0"
+      role="button"
+      aria-pressed="false"
+      aria-label="Interactive content reveal"
+    >
+      <div class="product-image" id="productImage" role="img" aria-label="package" aria-hidden="false">📦</div>
+      <div class="reveal-layer" id="revealLayer" role="img" aria-label="sparkles" aria-hidden="true">✨</div>
     </div>
 
     <script>
       const card = document.getElementById("card");
+      const productImage = document.getElementById("productImage");
+      const revealLayer = document.getElementById("revealLayer");
+
+      let isRevealed = false;
+      function setRevealed(revealed) {
+        isRevealed = revealed;
+        card.classList.toggle("revealed", isRevealed);
+        card.setAttribute("aria-pressed", isRevealed ? "true" : "false");
+        productImage.setAttribute("aria-hidden", isRevealed ? "true" : "false");
+        revealLayer.setAttribute("aria-hidden", isRevealed ? "false" : "true");
+      }
+
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setRevealed(!isRevealed);
+        }
+      });
+
+      card.addEventListener("blur", () => {
+        if (isRevealed) {
+          setRevealed(false);
+        }
+      });
+
       let rect = card.getBoundingClientRect();
-      const resizeObserver = new ResizeObserver(()=>{
+      const resizeObserver = new ResizeObserver(() => {
         rect = card.getBoundingClientRect();
-      })
+      });
       resizeObserver.observe(card);
+
       card.addEventListener("pointermove", (e) => {
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
