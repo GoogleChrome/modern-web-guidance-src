@@ -1171,6 +1171,14 @@ describe('runLegacyScanCli', () => {
         assert.equal(res.data?.eligibleFileCount, 4);
         assert.equal(res.data?.truncatedByMaxFiles, true);
         assert.deepEqual(findingFiles(res.data), ['a/one.html', 'b/one.html']);
+
+        await writeLegacyFiles(dir, ['c.html']);
+        const mixed = await runLegacyScanCli(['a', 'c.html', '--max-files', '1', ...JSON_ARGS], { cwd: dir });
+        assert.equal(mixed.exitCode, 0);
+        assert.equal(mixed.data?.scannedFileCount, 2);
+        assert.equal(mixed.data?.eligibleFileCount, 3);
+        assert.equal(mixed.data?.truncatedByMaxFiles, true);
+        assert.deepEqual(findingFiles(mixed.data), ['a/one.html', 'c.html']);
       });
     });
 
