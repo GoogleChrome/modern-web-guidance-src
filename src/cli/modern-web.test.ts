@@ -328,6 +328,23 @@ describe('modern-web CLI', () => {
     assert.ok(stdout.includes('--telemetry=false'));
   });
 
+  it('prints usage and exits 1 on an unknown option', () => {
+    for (const [args, option] of [
+      [['list', '--no-telemetry'], '--no-telemetry'],
+      [['search', '--telemtry=false', 'dialog'], '--telemtry'],
+      [['--bogus', 'retrieve', smallUngated], '--bogus'],
+      [['list', '-x'], '-x'],
+    ] as const) {
+      const res = runCLI([...args]);
+      assert.strictEqual(res.status, 1, args.join(' '));
+      assert.ok(res.stderr.includes(`Unknown option: ${option}`), `${args.join(' ')}: ${res.stderr}`);
+      assert.strictEqual(res.stdout.trim().split('\n')[0], 'Usage: modern-web-guidance <command> [args]');
+    }
+
+    assert.strictEqual(runCLI(['list', '--skill-version', '2026_01_01-test']).status, 0);
+    assert.strictEqual(runCLI(['search', '--', '--bogus']).status, 0);
+  });
+
   it('rejects --telemetry values other than true or false', () => {
     const { status, stderr } = runCLI(['list', '--telemetry=off']);
     assert.strictEqual(status, 1);
