@@ -124,6 +124,25 @@ describe('mwgrc configuration utility', () => {
     assert.strictEqual(isTelemetryDisabledByMwgrc(subDir, homeDir), true, 'project opt-out alone');
   });
 
+  test('isTelemetryDisabledByMwgrc uses the given home directory outside a git repo', () => {
+    const realHome = path.join(tempDir, 'real-home');
+    const givenHome = path.join(tempDir, 'given-home');
+    const outsideRepo = path.join(tempDir, 'outside');
+    for (const dir of [realHome, givenHome, outsideRepo]) fs.mkdirSync(dir);
+    fs.writeFileSync(path.join(realHome, '.mwgrc'), JSON.stringify({ telemetry: false }));
+    const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+    try {
+      process.env.HOME = realHome;
+      process.env.USERPROFILE = realHome;
+      assert.strictEqual(isTelemetryDisabledByMwgrc(outsideRepo, givenHome), false);
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
   test('isTelemetryDisabledByMwgrc fails closed on non-boolean values and unreadable configs', () => {
     const repoDir = path.join(tempDir, 'repo');
     const homeDir = path.join(tempDir, 'home');

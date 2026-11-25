@@ -36,7 +36,7 @@ const CONFIG_FILENAME = '.mwgrc';
  * (without merging ancestor configs), falling back to `~/.mwgrc` if one exists when invoked
  * outside any project (e.g. from `/tmp`), or `startDir/.mwgrc` otherwise.
  */
-export function resolveMwgrcPath(startDir = process.cwd()): string {
+export function resolveMwgrcPath(startDir = process.cwd(), homeDir?: string): string {
   let dir = path.resolve(startDir);
   while (true) {
     if (fs.existsSync(path.join(dir, CONFIG_FILENAME)) || fs.existsSync(path.join(dir, '.git'))) {
@@ -44,7 +44,7 @@ export function resolveMwgrcPath(startDir = process.cwd()): string {
     }
     const parent = path.dirname(dir);
     if (parent === dir) {
-      const homeConfig = path.join(os.homedir(), CONFIG_FILENAME);
+      const homeConfig = path.join(homeDir ?? os.homedir(), CONFIG_FILENAME);
       if (fs.existsSync(homeConfig)) return homeConfig;
       return path.join(path.resolve(startDir), CONFIG_FILENAME);
     }
@@ -82,7 +82,7 @@ function readMwgrcFile(filePath: string): MwgConfig {
 export function isTelemetryDisabledByMwgrc(startDir?: string, homeDir?: string): boolean {
   try {
     const candidates = new Set([
-      resolveMwgrcPath(startDir),
+      resolveMwgrcPath(startDir, homeDir),
       path.join(homeDir ?? os.homedir(), CONFIG_FILENAME),
     ]);
     for (const filePath of candidates) {
