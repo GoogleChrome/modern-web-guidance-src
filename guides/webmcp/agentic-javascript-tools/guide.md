@@ -44,6 +44,31 @@ controller.abort();
 
 Aborting the registration signal only unregisters the tool — it does not cancel executions that are already running. Tools that start long-running work must also honor the per-execution signal described below, or unregistering will leave orphaned requests and stale UI updates behind.
 
+### Signaling pending registration with `waitForToolsUntil()`
+
+Since Chrome 160, `document.modelContext.waitForToolsUntil(promise)` tells browser agents that the page is still registering its tools and that they should wait until `promise` settles before reading them. Without it, an agent that reads tools mid-update (e.g. right after an SPA route change or while a lazy-loaded module registers its tools) can see an empty or stale tool list.
+
+* **Use it whenever tools are registered asynchronously** after the page starts, such as swapping tools on SPA route changes or registering tools after data or code loads. Pass a promise that settles once all of those tools are registered.
+* **Call it as many times as needed.** The page's tools are considered ready once every promise passed to it has settled (fulfilled or rejected).
+* **It cannot block agents forever.** Agents stop waiting after a timeout (currently 10 seconds in Chrome), even if a promise never settles. Don't rely on it for work that takes longer.
+
+```javascript
+let controller;
+
+function onRouteChange(route) {
+  // Unregister the previous route's tools.
+  controller?.abort();
+  controller = new AbortController();
+
+  const toolsUpdated = Promise.all(route.tools.map((tool) =>
+    document.modelContext.registerTool(tool, { signal: controller.signal })
+  ));
+  // Agents wait for the new route's tools instead of reading a partial list.
+  // Optional chaining: earlier WebMCP versions support registerTool() but not waitForToolsUntil().
+  document.modelContext.waitForToolsUntil?.(toolsUpdated);
+}
+```
+
 ### Controlling cross-origin tool exposure with `exposedTo`
 
 By default, a registered tool is private to the registering document and same-origin frames. When your application is embedded in an `<iframe>` (or embeds third-party widgets) and you need ancestor or sibling frames to discover and invoke the tool, specify the allowed origins using `exposedTo`.
@@ -482,6 +507,7 @@ All the rules in this guide still apply when you use these integrations:
 *   **Registration Options**:
     *   **signal**: (Optional) An `AbortSignal` used to unregister the tool when it is no longer needed.
     *   **exposedTo**: (Optional) An array of secure origin strings controlling which documents in the document tree are allowed to discover and execute the tool across frame boundaries.
+*   **waitForToolsUntil(promise)**: (Optional, Chrome 160+) Tells browser agents to wait until `promise` settles before reading the page's tools.
 *   **Tool Discovery Options (`ModelContextGetToolOptions`)**:
     *   **fromOrigins**: (Optional) An array of secure origin strings to query in accessible frames. Calling `getTools()` without `fromOrigins` queries only same-origin documents.
 *   **outputSchema**: (Optional, Chrome 159+) A JSON Schema object describing the value `execute` returns. Add it selectively to multi-field read/search tools, mutating actions that return updated state, and tools returning IDs for chaining.
@@ -500,3 +526,5 @@ if ('modelContext' in document) {
   // Register tools
 }
 ```
+
+`'modelContext' in document` does not guarantee `waitForToolsUntil()` exists, so call it with optional chaining. Without it, tools still register, but agents may read them before registration finishes.
