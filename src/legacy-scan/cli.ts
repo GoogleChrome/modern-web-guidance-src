@@ -478,8 +478,15 @@ export async function runLegacyScanCli(
   for (const [resolved, { isFile }] of uniqueTargets) {
     const stats: RepoScanStats = {};
     const targetFindings = await scanTarget(resolved, isFile, stats);
-    findings.push(...targetFindings.filter((f) => !seenFindings.has(findingKey(f))));
-    for (const f of targetFindings) seenFindings.add(findingKey(f));
+    const newKeys: string[] = [];
+    for (const f of targetFindings) {
+      const key = findingKey(f);
+      if (!seenFindings.has(key)) {
+        findings.push(f);
+        newKeys.push(key);
+      }
+    }
+    for (const key of newKeys) seenFindings.add(key);
     skippedDocsAndTestsCount += stats.skippedDocsAndTestsCount ?? 0;
     scannedFileCount += stats.scannedFileCount ?? 0;
     eligibleFileCount += stats.eligibleFileCount ?? stats.scannedFileCount ?? 0;
