@@ -404,4 +404,14 @@ if ('LanguageModel' in self) {
 If the Prompt API is unsupported or availability checks return 'unavailable', you must gracefully fall back:
 
 * Remote API Fallback: Redirect the detection request to a server endpoint or a cloud API (such as the Vertex AI Gemini API).
-* Local API Fallback: Redirect the detection request to a local endpoint, for example, using Transformers.js. 
+* Local API Fallback: Redirect the detection request to a local endpoint, for example, using Transformers.js.
+
+## 7. Verifying the implementation
+
+If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+
+1. **Browser launch flags under automation:** Default automation setups (Puppeteer, `chrome-devtools-mcp`, Chrome for Testing) disable `OptimizationHints` and block on-device models, so `LanguageModel.availability()` reports `unavailable` regardless of your code. Launch Chrome with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`; with `chrome-devtools-mcp`, pass each flag via `--chrome-arg`. These flags can trigger a multi-GB model download.
+2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `LanguageModel.availability(options)`. Confirm that `downloadable` and `downloading` gate `LanguageModel.create()` behind a user gesture (preventing `NotAllowedError` on page load) and render clear status UI, and that `unavailable` disables or replaces the on-device prompt UI cleanly without unhandled console errors.
+3. **Download progress (`downloadprogress`):** Confirm `LanguageModel.create()` registers a `monitor(m)` listener for `downloadprogress`, updates visible progress UI (such as a `<progress>` indicator) from `e.loaded`, and politely announces completion to assistive technologies once the session is ready.
+4. **Missing-API fallback path:** Simulate an unsupported browser by running a pre-navigation initialization script that removes the global API (`delete self.LanguageModel`), reload the page, and verify the `'LanguageModel' in self` guard activates the fallback experience without throwing runtime exceptions.
+5. **Token and context budget handling:** Inspect `session.contextUsage`, `session.contextWindow`, and `session.measureContextUsage()` before and after prompts. Verify the UI handles `contextoverflow` or session pruning predictably, and confirm oversized inputs that reject with `QuotaExceededError` display an actionable user-facing message.

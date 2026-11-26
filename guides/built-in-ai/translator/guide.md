@@ -200,3 +200,13 @@ Recommended options:
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services.
 
 > **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud), though local processing is an option, too. Remote processing completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will often incur server-side API usage costs.
+
+## Verifying the implementation
+
+If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+
+1. **Browser launch flags under automation:** Default automation setups (Puppeteer, `chrome-devtools-mcp`, Chrome for Testing) can block on-device AI, so `Translator.availability()` may report `unavailable` regardless of your code. Launch Chrome with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`; with `chrome-devtools-mcp`, pass each flag via `--chrome-arg` (note that `Translator` downloads language packs through Chrome's component updater rather than `OptimizationGuide`).
+2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `Translator.availability({ sourceLanguage, targetLanguage })` with the same language pair passed to `Translator.create()`. Confirm `downloadable` and `downloading` gate `Translator.create()` behind a user gesture (avoiding `NotAllowedError`), and confirm unsupported language pairs returning `unavailable` switch cleanly to the fallback UI.
+3. **Download progress (`downloadprogress`):** Confirm `Translator.create()` provides a `monitor(m)` callback listening for `downloadprogress`, updates visible progress UI (such as a `<progress>` element) from `e.loaded`, and announces when the language pack is ready.
+4. **Missing-API fallback path:** Simulate an unsupported browser with a pre-navigation initialization script (`delete self.Translator`), reload the page, and confirm the `'Translator' in self` check activates the fallback path without referencing deprecated `window.ai.translator` or throwing unhandled errors.
+5. **Token and context budget handling:** Verify large passages are checked against `translator.inputQuota` with `translator.measureInputUsage()` (chunking or streaming long text with `translateStreaming()` when needed), `QuotaExceededError` rejections are handled gracefully, and the translated output container carries the target BCP 47 `lang` attribute.
