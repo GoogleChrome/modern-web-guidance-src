@@ -290,6 +290,135 @@ describe('browser-audit', () => {
     assert.equal(scoped[0].id, 'sticky-overflow-ancestor');
     assert.equal(scoped[0].culpritSelector, '#clip-wrap');
   });
+
+  it('preserves repeated instances sharing a framework source file:line and audits past 600 DOM nodes', () => {
+    const filler = Array.from({ length: 650 }, (_, i) => `<div class="spacer"><span>${i}</span></div>`).join('');
+    const { win, document } = createDom(`<!doctype html><html lang="en"><head>
+      <style>
+        .late-bar { position: sticky; top: 0; }
+      </style>
+    </head><body>
+      <ul>
+        <li><div class="dropdown" role="menu">Row 1</div></li>
+        <li><div class="dropdown" role="menu">Row 2</div></li>
+        <li><div class="dropdown" role="menu">Row 3</div></li>
+      </ul>
+      ${filler}
+      <div id="late-clip"><div id="late-bar" class="late-bar">Pinned late bar</div></div>
+    </body></html>`);
+
+    // Simulate three React component instances pointing at the same file:line.
+    for (const el of Array.from(document.querySelectorAll('.dropdown'))) {
+      Object.assign(el, {
+        __reactFiber$row: {
+          type: 'div',
+          _debugOwner: { type: { displayName: 'ActionMenu' } },
+          _debugSource: { fileName: '/repo/src/ActionMenu.tsx', lineNumber: 18, columnNumber: 6 },
+        },
+      });
+    }
+
+    const lateClip = document.getElementById('late-clip')!;
+    const lateBar = document.getElementById('late-bar')!;
+    (win as unknown as Record<string, unknown>).getComputedStyle = (el: Element) =>
+      ({
+        display: 'block',
+        visibility: 'visible',
+        opacity: '1',
+        position: el === lateBar ? 'sticky' : 'static',
+        overflowX: el === lateClip ? 'hidden' : 'visible',
+        overflowY: el === lateClip ? 'hidden' : 'visible',
+        getPropertyValue: () => '',
+      }) as unknown as CSSStyleDeclaration;
+
+    const result = runPageAudit(win);
+    const menus = result.findings.filter((f) => f.id === 'mwg-native-popover-menu');
+    assert.equal(
+      menus.length,
+      3,
+      `Expected all 3 framework-attributed instances to be preserved; got ${menus.length}`,
+    );
+    assert.equal(new Set(menus.map((m) => m.selector)).size, 3);
+    assert.ok(
+      menus.every((m) => m.file === 'src/ActionMenu.tsx' && m.line === 18),
+      'Each repeated finding should keep its resolved source attribution',
+    );
+
+    const lateSticky = result.findings.find(
+      (f) => f.id === 'sticky-overflow-ancestor' && f.selector === '#late-bar',
+    );
+    assert.ok(lateSticky, 'Should audit sticky elements appearing past 600 DOM wrapper nodes');
+    assert.equal(lateSticky.culpritSelector, '#late-clip');
+  });
+
+  it('audits elements inside open shadow DOM roots and climbs shadow boundaries for sticky and waivers', () => {
+    const { win, document } = createDom(`<!doctype html><html lang="en"><body>
+      <div id="shadow-clip"><div id="widget-host"></div></div>
+      <div id="waived-host" data-mwg-ignore="mwg-native-dialog"></div>
+    </body></html>`);
+
+    const host = document.getElementById('widget-host')!;
+    const shadowClip = document.getElementById('shadow-clip')!;
+    const waivedHost = document.getElementById('waived-host')!;
+
+    // Build synthetic open ShadowRoot stubs compatible with linkedom.
+    const makeShadowStub = (ownerHost: Element, innerHtml: string) => {
+      const innerDom = parseHTML(`<!doctype html><html><body>${innerHtml}</body></html>`);
+      const body = innerDom.document.body as unknown as Element;
+      const shadowRoot = {
+        nodeType: 11,
+        host: ownerHost,
+        children: body.children,
+        styleSheets: [],
+        querySelector: (s: string) => body.querySelector(s),
+        querySelectorAll: (s: string) => body.querySelectorAll(s),
+      };
+      for (const node of Array.from(body.querySelectorAll('*'))) {
+        Object.defineProperty(node, 'ownerDocument', { value: document, configurable: true });
+        Object.defineProperty(node, 'getRootNode', { value: () => shadowRoot, configurable: true });
+        if (node.parentElement === body) {
+          Object.defineProperty(node, 'parentElement', { value: null, configurable: true });
+          Object.defineProperty(node, 'parentNode', { value: shadowRoot, configurable: true });
+        }
+      }
+      Object.defineProperty(ownerHost, 'shadowRoot', { value: shadowRoot, configurable: true });
+      return shadowRoot;
+    };
+
+    const shadow = makeShadowStub(
+      host,
+      `<div id="shadow-sticky" style="position: sticky; top: 0">Sticky</div>
+       <div id="shadow-prog" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>`,
+    );
+    makeShadowStub(waivedHost, `<div role="dialog" aria-modal="true">Waived modal</div>`);
+
+    const shadowSticky = shadow.querySelector('#shadow-sticky')!;
+    (win as unknown as Record<string, unknown>).getComputedStyle = (el: Element) =>
+      ({
+        display: 'block',
+        visibility: 'visible',
+        opacity: '1',
+        position: el === shadowSticky ? 'sticky' : 'static',
+        overflowX: el === shadowClip ? 'hidden' : 'visible',
+        overflowY: el === shadowClip ? 'hidden' : 'visible',
+        getPropertyValue: () => '',
+      }) as unknown as CSSStyleDeclaration;
+
+    const result = runPageAudit(win);
+    const sticky = result.findings.find((f) => f.id === 'sticky-overflow-ancestor');
+    assert.ok(sticky, 'Should detect sticky element inside open shadow root blocked by light-DOM ancestor');
+    assert.equal(sticky.selector, '#widget-host >>> #shadow-sticky');
+    assert.equal(sticky.culpritSelector, '#shadow-clip');
+    assert.ok(
+      result.findings.some((f) => f.id === 'progress' && f.selector === '#widget-host >>> #shadow-prog'),
+      'Should run live DOM analyzer rules inside open shadow root',
+    );
+    assert.equal(
+      result.findings.some((f) => f.id === 'mwg-native-dialog'),
+      false,
+      'data-mwg-ignore on shadow host should waive rules inside shadow root',
+    );
+  });
 });
 
 describe('verify CLI, baseline filtering, and GitHub annotations', () => {

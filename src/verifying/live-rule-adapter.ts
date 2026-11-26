@@ -261,6 +261,7 @@ function parseStyleTextFallback(cssText: string): CssRuleView[] {
 interface PreparedLiveSheet {
   readonly styleRules: readonly CssRuleView[];
   readonly ctx: CssMatcherContext;
+  readonly queryRoot: Document | ShadowRoot;
 }
 
 function buildCssMatcherContext(
@@ -354,12 +355,54 @@ function collectCssomRules(
   }
 }
 
-function collectLiveStylesheets(doc: Document): PreparedLiveSheet[] {
-  const prepared: PreparedLiveSheet[] = [];
-  const hasBlockingRenderScript = Boolean(doc.querySelector('script[blocking~="render"]'));
-  const rawFileHint = hasBlockingRenderScript ? '<script async blocking="render"></script>' : undefined;
+function collectOpenShadowRoots(
+  root: Document | Element | ShadowRoot,
+  isExcluded?: (el: Element) => boolean,
+): ShadowRoot[] {
+  const roots: ShadowRoot[] = [];
+  const stack: Element[] = [];
+  const initialChildren =
+    'children' in root && root.children ? Array.from(root.children) : [];
+  for (let i = initialChildren.length - 1; i >= 0; i--) {
+    stack.push(initialChildren[i]);
+  }
+  while (stack.length > 0) {
+    const el = stack.pop()!;
+    if (isExcluded?.(el)) continue;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'template') {
+      continue;
+    }
+    const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+    if (shadow) {
+      roots.push(shadow);
+      const shadowChildren = Array.from(shadow.children ?? []);
+      for (let i = shadowChildren.length - 1; i >= 0; i--) {
+        stack.push(shadowChildren[i]);
+      }
+    }
+    if (tag === 'svg') continue;
+    const children = Array.from(el.children ?? []);
+    for (let i = children.length - 1; i >= 0; i--) {
+      stack.push(children[i]);
+    }
+  }
+  return roots;
+}
 
-  for (const sheet of Array.from(doc.styleSheets ?? [])) {
+function collectSheetsFromRoot(
+  root: Document | ShadowRoot,
+  rawFileHint: string | undefined,
+  prepared: PreparedLiveSheet[],
+): void {
+  const beforeCount = prepared.length;
+  const styleSheets = Array.from(
+    (root as Document & { styleSheets?: StyleSheetList }).styleSheets ?? [],
+  );
+  const adopted = Array.from(
+    (root as Document & { adoptedStyleSheets?: readonly CSSStyleSheet[] }).adoptedStyleSheets ?? [],
+  );
+  for (const sheet of [...styleSheets, ...adopted]) {
     let cssRules: CSSRuleList | null = null;
     try {
       cssRules = sheet.cssRules;
@@ -376,13 +419,14 @@ function collectLiveStylesheets(doc: Document): PreparedLiveSheet[] {
     prepared.push({
       styleRules,
       ctx: buildCssMatcherContext(filePath, cssTextChunks.join('\n'), styleRules, rawFileHint),
+      queryRoot: root,
     });
   }
 
   // Fallback for DOM environments without CSSOM parsing (e.g. linkedom unit tests).
-  if (prepared.length === 0) {
+  if (prepared.length === beforeCount) {
     let idx = 0;
-    for (const styleEl of Array.from(doc.querySelectorAll('style'))) {
+    for (const styleEl of Array.from(root.querySelectorAll('style'))) {
       const raw = styleEl.textContent ?? '';
       if (!raw.trim()) continue;
       const styleRules = parseStyleTextFallback(raw);
@@ -391,8 +435,23 @@ function collectLiveStylesheets(doc: Document): PreparedLiveSheet[] {
       prepared.push({
         styleRules,
         ctx: buildCssMatcherContext(`inline-style-${idx}.css`, raw, styleRules, rawFileHint),
+        queryRoot: root,
       });
     }
+  }
+}
+
+function collectLiveStylesheets(
+  doc: Document,
+  shadowRoots: readonly ShadowRoot[],
+): PreparedLiveSheet[] {
+  const prepared: PreparedLiveSheet[] = [];
+  const hasBlockingRenderScript = Boolean(doc.querySelector('script[blocking~="render"]'));
+  const rawFileHint = hasBlockingRenderScript ? '<script async blocking="render"></script>' : undefined;
+
+  collectSheetsFromRoot(doc, rawFileHint, prepared);
+  for (const shadowRoot of shadowRoots) {
+    collectSheetsFromRoot(shadowRoot, rawFileHint, prepared);
   }
 
   return prepared;
@@ -417,15 +476,27 @@ function toQueryableSelector(rawSelector: string): { selector: string; isGlobal:
 
 function resolveCssRuleTarget(
   doc: Document,
+  queryRoot: Document | ShadowRoot,
   selectorText: string,
   ruleId: string,
   scopeElement?: Element,
 ): Element | null {
+  const isShadowRoot = queryRoot !== doc && 'host' in queryRoot;
   for (const part of selectorText.split(',')) {
     const { selector, isGlobal } = toQueryableSelector(part);
     if (isGlobal) {
-      if (!scopeElement) return doc.documentElement ?? doc.body ?? null;
-      if (scopeElement === doc.documentElement || scopeElement === doc.body) return scopeElement;
+      if (!scopeElement) {
+        return isShadowRoot
+          ? ((queryRoot as ShadowRoot).host ?? doc.documentElement ?? doc.body ?? null)
+          : (doc.documentElement ?? doc.body ?? null);
+      }
+      if (
+        scopeElement === doc.documentElement ||
+        scopeElement === doc.body ||
+        (isShadowRoot && scopeElement === (queryRoot as ShadowRoot).host)
+      ) {
+        return scopeElement;
+      }
       continue;
     }
     try {
@@ -435,8 +506,12 @@ function resolveCssRuleTarget(
         }
         const descendant = scopeElement.querySelector(selector);
         if (descendant) return descendant;
+        if (isShadowRoot && (queryRoot as ShadowRoot).host === scopeElement) {
+          const shadowMatch = queryRoot.querySelector(selector);
+          if (shadowMatch) return shadowMatch;
+        }
       } else {
-        const matched = doc.querySelector(selector);
+        const matched = queryRoot.querySelector(selector);
         if (matched) return matched;
       }
     } catch {
@@ -445,7 +520,7 @@ function resolveCssRuleTarget(
   }
   // Anti-flicker classes (.async-hide / .ab-loading) are typically removed after
   // load even though the blocking stylesheet rule stays in <head>.
-  if (!scopeElement && ruleId === 'flicker-free-client-side-ab-testing') {
+  if (!scopeElement && !isShadowRoot && ruleId === 'flicker-free-client-side-ab-testing') {
     return doc.documentElement ?? doc.body ?? null;
   }
   return null;
@@ -480,18 +555,54 @@ export function runLiveAnalyzerRules(
 ): LiveRuleMatch[] {
   const matches: LiveRuleMatch[] = [];
   const { scopeElement, isExcluded } = options;
+  const shadowRoots = scopeElement
+    ? collectOpenShadowRoots(scopeElement, isExcluded)
+    : collectOpenShadowRoots(doc, isExcluded);
+  if (scopeElement) {
+    const ownShadow = (scopeElement as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+    if (ownShadow && !shadowRoots.includes(ownShadow)) {
+      shadowRoots.unshift(ownShadow);
+    }
+    const containingRoot =
+      typeof scopeElement.getRootNode === 'function' ? scopeElement.getRootNode() : null;
+    if (containingRoot && containingRoot !== doc && 'host' in containingRoot) {
+      const sr = containingRoot as ShadowRoot;
+      if (!shadowRoots.includes(sr)) shadowRoots.unshift(sr);
+    }
+  }
 
   // 1. Calibrated DOM rules from src/analyzing/rules/.
   for (const rule of LIVE_DOM_RULES) {
     const candidates: Element[] = [];
+    const seenCandidates = new Set<Element>();
+    const addCandidate = (el: Element): void => {
+      if (seenCandidates.has(el)) return;
+      seenCandidates.add(el);
+      candidates.push(el);
+    };
     try {
       if (scopeElement) {
         if (typeof scopeElement.matches === 'function' && scopeElement.matches(rule.matcher.selector)) {
-          candidates.push(scopeElement);
+          addCandidate(scopeElement);
         }
-        candidates.push(...Array.from(scopeElement.querySelectorAll(rule.matcher.selector)).slice(0, 40));
+        for (const el of Array.from(scopeElement.querySelectorAll(rule.matcher.selector)).slice(0, 40)) {
+          addCandidate(el);
+        }
+        for (const sr of shadowRoots) {
+          if (sr.host !== scopeElement && !scopeElement.contains(sr.host)) continue;
+          for (const el of Array.from(sr.querySelectorAll(rule.matcher.selector)).slice(0, 40)) {
+            addCandidate(el);
+          }
+        }
       } else {
-        candidates.push(...Array.from(doc.querySelectorAll(rule.matcher.selector)).slice(0, 200));
+        for (const el of Array.from(doc.querySelectorAll(rule.matcher.selector)).slice(0, 200)) {
+          addCandidate(el);
+        }
+        for (const sr of shadowRoots) {
+          for (const el of Array.from(sr.querySelectorAll(rule.matcher.selector)).slice(0, 50)) {
+            addCandidate(el);
+          }
+        }
       }
     } catch {
       continue;
@@ -507,7 +618,7 @@ export function runLiveAnalyzerRules(
   }
 
   // 2. Calibrated CSS rules from src/analyzing/rules/ against live stylesheets.
-  const sheets = collectLiveStylesheets(doc);
+  const sheets = collectLiveStylesheets(doc, shadowRoots);
   const docHasDarkColorScheme = documentDeclaresDarkColorScheme(doc, sheets);
   for (const sheet of sheets) {
     for (const rule of LIVE_CSS_RULES) {
@@ -518,7 +629,13 @@ export function runLiveAnalyzerRules(
       for (const styleRule of sheet.styleRules) {
         const hit = rule.matcher.matchRule(styleRule, sheet.ctx);
         if (!hit) continue;
-        const targetEl = resolveCssRuleTarget(doc, styleRule.selectorText, rule.id, scopeElement);
+        const targetEl = resolveCssRuleTarget(
+          doc,
+          sheet.queryRoot,
+          styleRule.selectorText,
+          rule.id,
+          scopeElement,
+        );
         if (!targetEl || isExcluded?.(targetEl)) continue;
         matches.push({ element: targetEl, rule, message: hit.message });
       }

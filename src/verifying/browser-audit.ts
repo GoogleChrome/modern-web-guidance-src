@@ -31,6 +31,7 @@ interface CwvSnapshot {
   lcpMs: number | null;
   lcpElement: Element | null;
   nodeCls?: WeakMap<Element, number>;
+  clsElements?: Set<Element>;
   observerInstalled?: boolean;
   lastResizeAt?: number | null;
   lastViewportWidth?: number;
@@ -81,26 +82,70 @@ const INTERACTIVE_ROLES = new Set([
   'treeitem',
 ]);
 
-/** Builds a compact, deterministic CSS selector for a DOM element. */
-export function buildCompactSelector(el: Element): string {
+const CANDIDATE_CLASS_OR_ID_RE =
+  /\b(?:dropdown|popover|context-menu|action-menu|flyout|modal|modal-backdrop|modal-overlay|custom-modal|accordion-item|accordion-panel|collapsible-card|toggle-switch|custom-switch)\b|sticky/i;
+
+const CANDIDATE_TAGS = new Set([
+  'table',
+  'img',
+  'textarea',
+  'dialog',
+  'header',
+  'nav',
+  'aside',
+  'thead',
+  'th',
+]);
+
+function isShadowRootNode(node: Node | null | undefined): node is ShadowRoot {
+  return Boolean(
+    node &&
+      node.nodeType === 11 &&
+      'host' in node &&
+      (node as ShadowRoot).host &&
+      (node as ShadowRoot).host.nodeType === 1,
+  );
+}
+
+function getParentElementCrossingShadow(el: Element): Element | null {
+  if (el.parentElement) return el.parentElement;
+  const parentNode = el.parentNode;
+  if (isShadowRootNode(parentNode)) {
+    return parentNode.host;
+  }
+  return null;
+}
+
+function isElementInSubtree(root: Element, node: Element): boolean {
+  let cursor: Element | null = node;
+  while (cursor) {
+    if (cursor === root) return true;
+    cursor = getParentElementCrossingShadow(cursor);
+  }
+  return false;
+}
+
+function buildScopedSelector(el: Element, root: Document | ShadowRoot): string {
   const doc = el.ownerDocument;
-  if (!doc || el === doc.body) return 'body';
-  if (el === doc.documentElement) return 'html';
+  if (root === doc) {
+    if (!doc || el === doc.body) return 'body';
+    if (el === doc.documentElement) return 'html';
+  }
 
   const testId = el.getAttribute('data-testid');
   if (testId) {
     const sel = `[data-testid="${escapeCss(testId)}"]`;
-    if (isUnique(doc, sel)) return sel;
+    if (isUnique(root, sel)) return sel;
   }
   const id = el.getAttribute('id');
   if (id && !/^\d/.test(id) && !/\s/.test(id)) {
     const sel = `#${escapeCss(id)}`;
-    if (isUnique(doc, sel)) return sel;
+    if (isUnique(root, sel)) return sel;
   }
 
   const segments: string[] = [];
   let cursor: Element | null = el;
-  for (let depth = 0; cursor && cursor !== doc.body && depth < 5; depth++) {
+  for (let depth = 0; cursor && cursor !== doc?.body && depth < 5; depth++) {
     const tag = cursor.tagName.toLowerCase();
     const cid = cursor.getAttribute('id');
     if (cid && !/^\d/.test(cid) && !/\s/.test(cid)) {
@@ -126,6 +171,18 @@ export function buildCompactSelector(el: Element): string {
   return segments.join(' > ') || el.tagName.toLowerCase();
 }
 
+/** Builds a compact, deterministic CSS selector for a DOM element (crossing open Shadow DOM with `>>>`). */
+export function buildCompactSelector(el: Element): string {
+  const doc = el.ownerDocument;
+  if (!doc || el === doc.body) return 'body';
+  if (el === doc.documentElement) return 'html';
+  const rootNode = typeof el.getRootNode === 'function' ? el.getRootNode() : doc;
+  if (isShadowRootNode(rootNode)) {
+    return `${buildCompactSelector(rootNode.host)} >>> ${buildScopedSelector(el, rootNode)}`;
+  }
+  return buildScopedSelector(el, doc);
+}
+
 /**
  * Checks whether `ruleId` is waived on `el` or an ancestor via
  * `data-mwg-ignore` (`""`, `"*"`, `"all"`, or rule/guide IDs).
@@ -142,7 +199,7 @@ export function isRuleIgnored(el: Element, ruleId: string): boolean {
         return true;
       }
     }
-    cursor = cursor.parentElement;
+    cursor = getParentElementCrossingShadow(cursor);
   }
   return false;
 }
@@ -170,6 +227,7 @@ export function ensureCwvObserver(win: Window = window): void {
       lcpMs: null,
       lcpElement: null,
       nodeCls: new WeakMap<Element, number>(),
+      clsElements: new Set<Element>(),
       observerInstalled: false,
       lastResizeAt: null,
       lastViewportWidth: viewport.width,
@@ -179,6 +237,9 @@ export function ensureCwvObserver(win: Window = window): void {
   }
   if (!state.nodeCls) {
     state.nodeCls = new WeakMap<Element, number>();
+  }
+  if (!state.clsElements) {
+    state.clsElements = new Set<Element>();
   }
   if (state.lastViewportWidth === undefined) {
     state.lastViewportWidth = viewport.width;
@@ -243,6 +304,9 @@ export function ensureCwvObserver(win: Window = window): void {
             cwvState.clsElement = el;
             const prev = cwvState.nodeCls?.get(el) ?? 0;
             cwvState.nodeCls?.set(el, prev + entry.value);
+            if (cwvState.clsElements && cwvState.clsElements.size < 64) {
+              cwvState.clsElements.add(el);
+            }
           }
         }
       }
@@ -316,7 +380,7 @@ function isExcludedNode(el: Element, excludeRoots: ReadonlySet<string>): boolean
     if (cursor.getAttribute('data-mwg-exclude') === 'true') {
       return true;
     }
-    cursor = cursor.parentElement;
+    cursor = getParentElementCrossingShadow(cursor);
   }
   return false;
 }
@@ -341,7 +405,7 @@ function createFindingPusher(
     if (isRuleIgnored(el, id)) return;
     const selector = buildCompactSelector(el);
     const src = resolveElementSource(el, win);
-    const key = `${id}::${src.file ? `${src.file}:${src.line}` : selector}`;
+    const key = `${id}::${selector}`;
     if (seen.has(key)) return;
     seen.add(key);
     const entry: BrowserAuditFinding = {
@@ -564,6 +628,167 @@ function auditSingleElement(
   }
 }
 
+function collectStickySelectorsFromRuleList(ruleList: CSSRuleList, out: string[]): void {
+  for (let i = 0; i < ruleList.length; i++) {
+    const rule = ruleList[i];
+    if (!rule) continue;
+    if ('selectorText' in rule && 'style' in rule) {
+      const styleRule = rule as CSSStyleRule;
+      const pos = (styleRule.style.position || styleRule.style.getPropertyValue('position') || '')
+        .trim()
+        .toLowerCase();
+      if (pos === 'sticky' && styleRule.selectorText) {
+        out.push(styleRule.selectorText);
+      }
+      continue;
+    }
+    if ('cssRules' in rule) {
+      collectStickySelectorsFromRuleList((rule as CSSGroupingRule).cssRules, out);
+    }
+  }
+}
+
+function collectStickyElementsFromRoot(
+  root: Document | ShadowRoot,
+  out: Set<Element>,
+): void {
+  const selectors: string[] = [];
+  const styleSheets = Array.from(
+    (root as Document & { styleSheets?: StyleSheetList }).styleSheets ?? [],
+  );
+  const adopted = Array.from(
+    (root as Document & { adoptedStyleSheets?: readonly CSSStyleSheet[] }).adoptedStyleSheets ?? [],
+  );
+  let readAnyCssomRule = false;
+  for (const sheet of [...styleSheets, ...adopted]) {
+    try {
+      const rules = sheet.cssRules;
+      if (!rules || rules.length === 0) continue;
+      readAnyCssomRule = true;
+      collectStickySelectorsFromRuleList(rules, selectors);
+    } catch {
+      // Cross-origin stylesheet; skip cleanly.
+    }
+  }
+  // Fallback for DOM environments without CSSOM parsing (e.g. linkedom unit tests).
+  if (!readAnyCssomRule) {
+    for (const styleEl of Array.from(root.querySelectorAll('style'))) {
+      const raw = (styleEl.textContent ?? '').replace(/\/\*[\s\S]*?\*\//g, '');
+      if (!/position\s*:\s*sticky/i.test(raw)) continue;
+      const re = /([^{}@;]+)\{([^{}]*)\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(raw)) !== null) {
+        if (/position\s*:\s*sticky\b/i.test(m[2])) {
+          selectors.push(m[1].trim());
+        }
+      }
+    }
+  }
+  for (const rawSel of selectors) {
+    for (const part of rawSel.split(',')) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      try {
+        for (const matched of Array.from(root.querySelectorAll(trimmed))) {
+          out.add(matched);
+        }
+      } catch {
+        // Ignore unqueryable selector (e.g. vendor pseudo-element).
+      }
+    }
+  }
+}
+
+function isRuntimeAuditCandidate(
+  el: Element,
+  stickySet: ReadonlySet<Element>,
+  includeInteractive: boolean,
+): boolean {
+  if (stickySet.has(el)) return true;
+  const tag = el.tagName.toLowerCase();
+  if (CANDIDATE_TAGS.has(tag)) return true;
+  if (includeInteractive && tag === 'button') return true;
+  if (
+    el.hasAttribute('role') ||
+    el.hasAttribute('aria-modal') ||
+    el.hasAttribute('aria-haspopup') ||
+    el.hasAttribute('popovertarget') ||
+    el.hasAttribute('commandfor')
+  ) {
+    return true;
+  }
+  const inlineStyle = el.getAttribute('style');
+  if (inlineStyle && inlineStyle.toLowerCase().includes('sticky')) return true;
+  const cls = `${typeof el.className === 'string' ? el.className : ''} ${el.id ?? ''}`;
+  return cls.trim().length > 0 && CANDIDATE_CLASS_OR_ID_RE.test(cls);
+}
+
+function collectAuditCandidates(
+  root: Element,
+  options: {
+    isExcluded?: (el: Element) => boolean;
+    includeSelf?: boolean;
+    includeInteractive?: boolean;
+  },
+): Element[] {
+  const { isExcluded, includeSelf = false, includeInteractive = false } = options;
+  const stickySet = new Set<Element>();
+  const doc = root.ownerDocument;
+  if (doc) {
+    collectStickyElementsFromRoot(doc, stickySet);
+  }
+  const containingRoot = typeof root.getRootNode === 'function' ? root.getRootNode() : null;
+  if (isShadowRootNode(containingRoot)) {
+    collectStickyElementsFromRoot(containingRoot, stickySet);
+  }
+
+  const candidates: Element[] = [];
+  const stack: Element[] = [];
+  if (includeSelf) {
+    stack.push(root);
+  } else {
+    const ownShadow = (root as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+    if (ownShadow) {
+      collectStickyElementsFromRoot(ownShadow, stickySet);
+      const shadowChildren = Array.from(ownShadow.children ?? []);
+      for (let i = shadowChildren.length - 1; i >= 0; i--) {
+        stack.push(shadowChildren[i]);
+      }
+    }
+    const children = Array.from(root.children ?? []);
+    for (let i = children.length - 1; i >= 0; i--) {
+      stack.push(children[i]);
+    }
+  }
+
+  while (stack.length > 0) {
+    const el = stack.pop()!;
+    if (el !== root && isExcluded?.(el)) continue;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'style' || tag === 'noscript' || tag === 'template') {
+      continue;
+    }
+    if ((el === root && includeSelf) || isRuntimeAuditCandidate(el, stickySet, includeInteractive)) {
+      candidates.push(el);
+    }
+    const shadow = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+    if (shadow) {
+      collectStickyElementsFromRoot(shadow, stickySet);
+      const shadowChildren = Array.from(shadow.children ?? []);
+      for (let i = shadowChildren.length - 1; i >= 0; i--) {
+        stack.push(shadowChildren[i]);
+      }
+    }
+    if (tag === 'svg') continue;
+    const children = Array.from(el.children ?? []);
+    for (let i = children.length - 1; i >= 0; i--) {
+      stack.push(children[i]);
+    }
+  }
+
+  return candidates;
+}
+
 /** Runs calibrated MWG DOM/CSS analyzer rules plus live layout and CWV checks scoped to `element`. */
 export function auditElement(
   element: Element,
@@ -591,17 +816,23 @@ export function auditElement(
     }
   }
 
-  const candidates = [element, ...Array.from(element.querySelectorAll('*'))].slice(0, 40);
+  const candidates = collectAuditCandidates(element, { includeSelf: true });
   for (const node of candidates) {
     auditSingleElement(node, win, cwv, push);
   }
 
   let subtreeCls = 0;
-  if (cwv.nodeCls) {
+  if (cwv.nodeCls && cwv.clsElements && cwv.clsElements.size > 0) {
+    for (const shifted of cwv.clsElements) {
+      if (isElementInSubtree(element, shifted)) {
+        subtreeCls += cwv.nodeCls.get(shifted) ?? 0;
+      }
+    }
+  } else if (cwv.nodeCls) {
     for (const node of candidates) {
       subtreeCls += cwv.nodeCls.get(node) ?? 0;
     }
-  } else if (cwv.cls >= 0.05 && cwv.clsElement && (cwv.clsElement === element || element.contains(cwv.clsElement))) {
+  } else if (cwv.cls >= 0.05 && cwv.clsElement && isElementInSubtree(element, cwv.clsElement)) {
     subtreeCls = cwv.cls;
   }
   if (subtreeCls >= 0.05) {
@@ -680,17 +911,18 @@ export function runPageAudit(
     );
   }
 
-  // 3. Single bounded DOM traversal for runtime-only MWG layout, component, and CWV checks.
+  // 3. Targeted, shadow-DOM-aware traversal for runtime-only MWG layout, component, and CWV checks.
   const cwv = readCwvSnapshot(win);
-  const allElements = Array.from(doc.querySelectorAll('body *')).slice(0, 600);
+  const candidates = doc.body
+    ? collectAuditCandidates(doc.body, { isExcluded, includeInteractive: true })
+    : [];
   const collector: InteractiveCollector = {
     smokeElements: [],
     interactiveCandidates: [],
     openModalCount: 0,
   };
 
-  for (const el of allElements) {
-    if (isExcluded(el)) continue;
+  for (const el of candidates) {
     auditSingleElement(el, win, cwv, push, collector);
   }
 
@@ -765,6 +997,7 @@ function readCwvSnapshot(win: Window): CwvSnapshot {
       lcpMs: typeof tracked.lcpMs === 'number' ? Math.round(tracked.lcpMs) : null,
       lcpElement: tracked.lcpElement ?? null,
       nodeCls: tracked.nodeCls,
+      clsElements: tracked.clsElements,
     };
   }
   return { cls: 0, clsElement: null, lcpMs: null, lcpElement: null };
@@ -772,7 +1005,7 @@ function readCwvSnapshot(win: Window): CwvSnapshot {
 
 function findStickyBreakingAncestor(stickyEl: Element, win: Window): Element | null {
   const doc = stickyEl.ownerDocument;
-  let cursor = stickyEl.parentElement;
+  let cursor = getParentElementCrossingShadow(stickyEl);
   while (cursor && cursor !== doc.body && cursor !== doc.documentElement) {
     const cs = safeStyle(cursor, win);
     if (cs) {
@@ -785,7 +1018,7 @@ function findStickyBreakingAncestor(stickyEl: Element, win: Window): Element | n
           cursor.scrollHeight <= cursor.clientHeight + 2);
       if (blocks) return cursor;
     }
-    cursor = cursor.parentElement;
+    cursor = getParentElementCrossingShadow(cursor);
   }
   return null;
 }
@@ -813,9 +1046,9 @@ function escapeCss(val: string): string {
   return val.replace(/([^a-zA-Z0-9_-])/g, '\\$1');
 }
 
-function isUnique(doc: Document, sel: string): boolean {
+function isUnique(root: Document | ShadowRoot, sel: string): boolean {
   try {
-    return doc.querySelectorAll(sel).length === 1;
+    return root.querySelectorAll(sel).length === 1;
   } catch {
     return false;
   }
