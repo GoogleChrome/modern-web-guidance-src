@@ -172,13 +172,15 @@ export function triagePullRequest(
   };
 
   const authorHasWriteAccess = meta.authorIsBot ? true : meta.isSameRepo || checkWriteAccess(meta.author);
+  const authorIsOrgMember = !authorHasWriteAccess && githubApi.isOrgMember(meta.author);
   const hasMaintainerEngagement =
-    !authorHasWriteAccess && meta.participantLogins.some(checkWriteAccess);
+    !authorHasWriteAccess && !authorIsOrgMember && meta.participantLogins.some(checkWriteAccess);
 
   let decision = evaluatePrIntake({
     prAuthor: meta.author,
     authorIsBot: meta.authorIsBot,
     authorHasWriteAccess,
+    authorIsOrgMember,
     hasMaintainerEngagement,
     prLabels: meta.labels,
     title: meta.title,

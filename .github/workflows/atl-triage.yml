@@ -49,6 +49,7 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
           permission-contents: read
+          permission-members: read
 
       - name: Run ATL triage
         env:

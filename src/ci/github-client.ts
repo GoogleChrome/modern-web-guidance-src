@@ -300,6 +300,31 @@ export const githubApi = {
     }
   },
 
+  isOrgMember(username: string): boolean {
+    const trimmed = username.trim();
+    if (!trimmed) return false;
+    try {
+      child_process.execFileSync(
+        'gh',
+        ['api', `orgs/{owner}/members/${encodeURIComponent(trimmed)}`],
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      return true;
+    } catch (err) {
+      const stderr = String((err as { stderr?: unknown }).stderr ?? '');
+      const stdout = String((err as { stdout?: unknown }).stdout ?? '');
+      // Unprivileged tokens get 302-redirected to /public_members/ (404 for private members);
+      // fail fast instead of misclassifying private org members as external.
+      const isRedirectedPublicCheck =
+        stderr.includes('is not a public member') ||
+        stdout.includes('check-public-organization-membership-for-a-user');
+      if ((isHttpStatus(err, [404]) && !isRedirectedPublicCheck) || stderr.includes('is not a user')) {
+        return false;
+      }
+      throw err;
+    }
+  },
+
   getPrIntakeMetadata(prNumber: number): PrIntakeMetadata {
     const raw = child_process.execFileSync(
       'gh',

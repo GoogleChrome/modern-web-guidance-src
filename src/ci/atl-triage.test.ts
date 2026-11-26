@@ -55,6 +55,7 @@ function setupPrMocks(
   overrides: {
     meta?: Partial<PrIntakeMetadata>;
     hasWriteAccess?: (login: string) => boolean;
+    isOrgMember?: (login: string) => boolean;
     issues?: Record<number, LinkedIssueInfo>;
     botRequested?: string[];
     removedReviewers?: string[];
@@ -71,6 +72,7 @@ function setupPrMocks(
 
   t.mock.method(githubApi, 'getPrIntakeMetadata', () => ({ ...BASE_PR_META, ...overrides.meta }));
   t.mock.method(githubApi, 'hasUserWriteAccess', overrides.hasWriteAccess ?? (() => false));
+  t.mock.method(githubApi, 'isOrgMember', overrides.isOrgMember ?? (() => false));
   t.mock.method(githubApi, 'getLinkedIssueInfo', (n: number) => overrides.issues?.[n] ?? null);
   t.mock.method(githubApi, 'getIssueTimelineSummary', () => ({
     unlabeledLower: new Set<string>(),
@@ -328,6 +330,45 @@ describe('triagePullRequest orchestration', () => {
     assert.equal(calls.prEdits.length, 2);
   });
 
+  it('lets read-only org members bypass the issue gate while still enforcing cla/google', async t => {
+    await t.test('allows and routes when cla/google passes', st => {
+      const calls = setupPrMocks(st, {
+        meta: {
+          author: 'googler-colleague',
+          body: 'No linked issue yet',
+          claState: 'success'
+        },
+        isOrgMember: login => login === 'googler-colleague'
+      });
+
+      const allowed = triagePullRequest(3719, sampleAtlConfig, { dryRun: false });
+      assert.deepEqual(allowed.decision, { kind: 'allow', via: 'org-member', approvedIssue: undefined });
+      assert.deepEqual(allowed.reviewers, ['LeaVerou']);
+      assert.deepEqual(calls.closed, []);
+    });
+
+    await t.test('holds with awaiting-cla when cla/google fails', st => {
+      const heldCalls = setupPrMocks(st, {
+        meta: {
+          author: 'googler-colleague',
+          body: 'No linked issue yet',
+          claState: 'failure'
+        },
+        isOrgMember: login => login === 'googler-colleague'
+      });
+
+      const held = triagePullRequest(3720, sampleAtlConfig, { dryRun: false });
+      assert.deepEqual(held.decision, {
+        kind: 'hold-cla',
+        claState: 'failure',
+        via: 'org-member',
+        approvedIssue: undefined
+      });
+      assert.deepEqual(heldCalls.prEdits, [{ addLabels: ['awaiting-cla'], removeReviewers: [] }]);
+      assert.deepEqual(heldCalls.closed, []);
+    });
+  });
+
   it('rejects unapproved prose-typo-fix PRs that modify guide.md YAML frontmatter', t => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-fm-tamper-'));
     try {
@@ -367,6 +408,23 @@ describe('githubApi wrappers & main() scheduled CLA sweep', () => {
       if (joined.includes('collaborators/flaky/permission')) {
         throw Object.assign(new Error('502'), { stderr: 'gh: HTTP 502 Bad Gateway' });
       }
+      if (joined.includes('orgs/{owner}/members/outsider')) {
+        throw Object.assign(new Error('404'), {
+          stderr: 'gh: User does not exist or is not a member of the organization (HTTP 404)'
+        });
+      }
+      if (joined.includes('orgs/{owner}/members/private-unauth')) {
+        throw Object.assign(new Error('404'), {
+          stderr: 'gh: User does not exist or is not a public member of the organization (HTTP 404)',
+          stdout: JSON.stringify({
+            message: 'User does not exist or is not a public member of the organization',
+            documentation_url: 'https://docs.github.com/rest/orgs/members#check-public-organization-membership-for-a-user'
+          })
+        });
+      }
+      if (joined.includes('orgs/{owner}/members/denied')) {
+        throw Object.assign(new Error('403'), { stderr: 'gh: HTTP 403 Forbidden' });
+      }
       if (joined.includes('issues/404')) {
         throw Object.assign(new Error('410'), { stderr: 'gh: HTTP 410 Gone' });
       }
@@ -395,6 +453,11 @@ describe('githubApi wrappers & main() scheduled CLA sweep', () => {
     assert.equal(githubApi.hasUserWriteAccess(''), false);
     assert.equal(githubApi.hasUserWriteAccess('ghost'), false);
     assert.throws(() => githubApi.hasUserWriteAccess('flaky'), /502/);
+    assert.equal(githubApi.isOrgMember(''), false);
+    assert.equal(githubApi.isOrgMember('danilsomsikov'), true);
+    assert.equal(githubApi.isOrgMember('outsider'), false);
+    assert.throws(() => githubApi.isOrgMember('private-unauth'), /404/);
+    assert.throws(() => githubApi.isOrgMember('denied'), /403/);
     assert.equal(githubApi.getLinkedIssueInfo(404), null);
     assert.equal(githubApi.getLinkedIssueInfo(999), null);
     assert.equal(githubApi.getCommitAuthorLogin('deadbeef'), null);
