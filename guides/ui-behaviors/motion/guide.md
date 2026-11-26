@@ -19,7 +19,7 @@ web-feature-ids:
 
 # Motion
 
-- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs. Both also clip the element's own focus outline, so when the clipped or masked element is focusable (for example, a scroll container with `tabindex="0"`), draw its focus indicator on a parent element that isn't clipped or masked.
+- Use `clip-path` and `mask-image` for custom geometric reveals and smooth fade-outs. Both also clip the element's own focus outline. When a masked element is focusable (for example, a scroll container with `tabindex="0"`), write the mask so that it leaves the outline visible: see {{ GUIDE_REF("overflow-safe-masking") }}. When a clipped element is focusable, draw its focus indicator on a parent element that isn't clipped.
 - Use **Scroll-Driven Animations** (`animation-timeline: scroll()`) for non-essential scroll-bound effects instead of JS listeners.
 - Use **View Transitions** to animate between complex layout states seamlessly.
 
