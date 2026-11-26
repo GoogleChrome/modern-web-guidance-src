@@ -101,10 +101,10 @@ If the `LanguageDetector` API is unsupported or availability checks return `'una
 
 ## Verifying the implementation
 
-If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
 
-1. **Browser launch flags under automation:** Default automation setups (Puppeteer, `chrome-devtools-mcp`, Chrome for Testing) can block on-device AI, so `LanguageDetector.availability()` may report `unavailable` regardless of your code. Launch Chrome with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`; with `chrome-devtools-mcp`, pass each flag via `--chrome-arg`.
-2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `LanguageDetector.availability()`. Confirm `downloadable` and `downloading` invoke `LanguageDetector.create()` only from a user gesture (preventing `NotAllowedError` on load) and show clear status UI, and confirm `unavailable` disables or falls back cleanly without unhandled exceptions.
-3. **Download progress (`downloadprogress`):** Confirm `LanguageDetector.create()` registers a `monitor(m)` listener for `downloadprogress`, updates visible progress UI (such as a `<progress>` indicator) from `e.loaded`, and announces completion politely when detection becomes ready.
-4. **Missing-API fallback path:** Simulate an unsupported browser via a pre-navigation initialization script (`delete self.LanguageDetector`), reload the page, and verify the `'LanguageDetector' in self` guard routes to the fallback or graceful degradation state with zero console errors.
-5. **Token and input budget handling:** Check `detector.inputQuota` and `detector.measureInputUsage()` on large inputs so `QuotaExceededError` is avoided or caught cleanly, and verify short or single-word inputs with low `confidence` scores do not mislabel content or apply an inaccurate `lang` attribute.
+{{ INCLUDE("../language-model/guide.md#built-in-ai-live-browser-checks") }}
+
+### Language Detector checks
+
+- **Input budget and confidence:** Check `detector.inputQuota` and `detector.measureInputUsage()` on large inputs so `QuotaExceededError` is avoided or caught. Confirm short or single-word inputs with low `confidence` don't mislabel content or set an inaccurate `lang` attribute.

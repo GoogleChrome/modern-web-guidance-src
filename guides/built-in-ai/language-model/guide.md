@@ -408,10 +408,22 @@ If the Prompt API is unsupported or availability checks return 'unavailable', yo
 
 ## 7. Verifying the implementation
 
-If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
 
-1. **Browser launch flags under automation:** Default automation setups (Puppeteer, `chrome-devtools-mcp`, Chrome for Testing) disable `OptimizationHints` and block on-device models, so `LanguageModel.availability()` reports `unavailable` regardless of your code. Launch Chrome with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`; with `chrome-devtools-mcp`, pass each flag via `--chrome-arg`. These flags can trigger a multi-GB model download.
-2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `LanguageModel.availability(options)`. Confirm that `downloadable` and `downloading` gate `LanguageModel.create()` behind a user gesture (preventing `NotAllowedError` on page load) and render clear status UI, and that `unavailable` disables or replaces the on-device prompt UI cleanly without unhandled console errors.
-3. **Download progress (`downloadprogress`):** Confirm `LanguageModel.create()` registers a `monitor(m)` listener for `downloadprogress`, updates visible progress UI (such as a `<progress>` indicator) from `e.loaded`, and politely announces completion to assistive technologies once the session is ready.
-4. **Missing-API fallback path:** Simulate an unsupported browser by running a pre-navigation initialization script that removes the global API (`delete self.LanguageModel`), reload the page, and verify the `'LanguageModel' in self` guard activates the fallback experience without throwing runtime exceptions.
-5. **Token and context budget handling:** Inspect `session.contextUsage`, `session.contextWindow`, and `session.measureContextUsage()` before and after prompts. Verify the UI handles `contextoverflow` or session pruning predictably, and confirm oversized inputs that reject with `QuotaExceededError` display an actionable user-facing message.
+### Built-in AI live-browser checks
+
+Only Chrome and Microsoft Edge implement the Built-in AI APIs. Default automation setups can block on-device AI, so `availability()` can report `unavailable` no matter what the page code does. Set up the browser before testing:
+
+- **Chrome (including Chrome for Testing):** Launch with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`. With `chrome-devtools-mcp`, pass each flag with `--chrome-arg`. Puppeteer-based tools pass `--disable-features=OptimizationHints` by default, and Chrome for Testing and non-Stable channels turn off on-device AI in new profiles.
+- **Microsoft Edge (version 158 or later):** Use a dedicated automation profile. In that profile, open `edge://flags`, enable the flag for each API you test (for example **Prompt API** or **Summarizer API**), and restart. In Canary, Dev, and Beta, enabling one of these flags also turns on the **On-device AI** setting. `Translator` and `LanguageDetector` need no flag. Launch Edge with that profile; with `chrome-devtools-mcp`, set `--executablePath` to the Edge binary and `--userDataDir` to the profile directory. `edge://on-device-internals` must report a device performance class of **Medium** or higher.
+- **Both browsers:** Keep a persistent user data directory (for example, don't use `chrome-devtools-mcp --isolated`). A fresh directory has no downloaded model, so every run downloads it again, and the language model is several GB. If `availability()` is unexpected, check `chrome://on-device-internals` or `edge://on-device-internals`.
+
+Then verify:
+
+1. **Availability and user-activation states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `availability()`, passing the same options you pass to `create()`. For `downloadable` and `downloading`, confirm `create()` runs only from a user gesture (otherwise it rejects with `NotAllowedError`) and the page shows clear status UI. For `unavailable`, confirm the page disables the feature or falls back without unhandled exceptions.
+2. **Download progress (`downloadprogress`):** Confirm `create()` registers a `monitor(m)` listener for `downloadprogress`, updates visible progress UI (such as a `<progress>` element) from `e.loaded`, and announces readiness in a polite live region.
+3. **Missing-API fallback:** Simulate an unsupported browser with a pre-navigation initialization script that deletes the global (for example `delete self.Summarizer`), reload, and confirm the `'Summarizer' in self` style guard activates the fallback with no console errors.
+
+### Prompt API checks
+
+- **Context budget:** Inspect `session.contextUsage`, `session.contextWindow`, and `session.measureContextUsage()` before and after prompts. Confirm the UI handles `contextoverflow` or session pruning predictably, and that oversized inputs rejected with `QuotaExceededError` show an actionable message.

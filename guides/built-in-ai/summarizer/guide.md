@@ -166,10 +166,10 @@ Recommended options:
 
 ## Verifying the implementation
 
-If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
 
-1. **Browser launch flags under automation:** Default automation setups (Puppeteer, `chrome-devtools-mcp`, Chrome for Testing) disable `OptimizationHints` and block on-device models, so `Summarizer.availability()` reports `unavailable` regardless of your code. Launch Chrome with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`; with `chrome-devtools-mcp`, pass each flag via `--chrome-arg`. These flags can trigger a multi-GB model download.
-2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `Summarizer.availability(options)` using the exact options passed to `Summarizer.create(options)`. Confirm that `downloadable` and `downloading` wait for a user gesture before calling `Summarizer.create()` (avoiding `NotAllowedError`) and surface clear status UI, and that `unavailable` triggers the fallback or disabled UI state cleanly.
-3. **Download progress (`downloadprogress`):** Confirm `Summarizer.create()` attaches a `monitor(m)` listener for `downloadprogress`, updates progress UI (such as a `<progress>` indicator) as `e.loaded` advances, and announces readiness in a polite live region when model setup completes.
-4. **Missing-API fallback path:** Simulate an unsupported browser by injecting a pre-navigation initialization script (`delete self.Summarizer`), reload the page, and verify the `'Summarizer' in self` feature check activates the fallback path with zero unhandled errors.
-5. **Token and context budget handling:** Check `summarizer.inputQuota` and `summarizer.measureInputUsage()` on long articles. Confirm inputs exceeding `inputQuota` are chunked, truncated, or rejected with a clear user-facing message when `QuotaExceededError` is thrown, and verify the summary container sets `lang` when `outputLanguage` differs from the page language.
+{{ INCLUDE("../language-model/guide.md#built-in-ai-live-browser-checks") }}
+
+### Summarizer checks
+
+- **Input budget and output language:** Check `summarizer.inputQuota` and `summarizer.measureInputUsage()` on long articles. Confirm inputs over `inputQuota` are chunked, truncated, or rejected with a clear message when `QuotaExceededError` is thrown, and that the summary container sets `lang` when `outputLanguage` differs from the page language.
