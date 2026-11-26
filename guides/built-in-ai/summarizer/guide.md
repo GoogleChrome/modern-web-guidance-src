@@ -163,3 +163,13 @@ Recommended options:
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services with models in the cloud or on-device inference with local models.
 
 > **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud). This completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will incur server-side API usage costs.
+
+## Verifying the implementation
+
+If you have access to browser automation or inspection tools, verify the following in a live browser (and inform the developer about these built-in behaviors so they know what changed):
+
+1. **Browser launch configuration (`--experimental-built-in-ai`):** When automating Chrome or Chrome for Testing with `chrome-devtools-mcp` (Chrome DevTools for Agents), launch the server with `--experimental-built-in-ai` so `OptimizationHints` stays enabled and on-device GPU models are not blocked by default automation flags.
+2. **Availability and user-activation UI states (`downloadable`, `downloading`, `unavailable`):** Exercise each state returned by `Summarizer.availability(options)` using the exact options passed to `Summarizer.create(options)`. Confirm that `downloadable` and `downloading` wait for a user gesture before calling `Summarizer.create()` (avoiding `NotAllowedError`) and surface clear status UI, and that `unavailable` triggers the fallback or disabled UI state cleanly.
+3. **Download progress (`downloadprogress`):** Confirm `Summarizer.create()` attaches a `monitor(m)` listener for `downloadprogress`, updates progress UI (such as a `<progress>` indicator) as `e.loaded` advances, and announces readiness in a polite live region when model setup completes.
+4. **Missing-API fallback path:** Simulate an unsupported browser by injecting a pre-navigation initialization script (`delete self.Summarizer`), reload the page, and verify the `'Summarizer' in self` feature check activates the fallback path with zero unhandled errors.
+5. **Token and context budget handling:** Check `summarizer.inputQuota` and `summarizer.measureInputUsage()` on long articles. Confirm inputs exceeding `inputQuota` are chunked, truncated, or rejected with a clear user-facing message when `QuotaExceededError` is thrown, and verify the summary container sets `lang` when `outputLanguage` differs from the page language.
