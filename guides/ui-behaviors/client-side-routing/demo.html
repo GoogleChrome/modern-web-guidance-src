@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home - Client-side routing demo</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        line-height: 1.5;
+        color: #111827;
+        background-color: #f9fafb;
+      }
+
+      body {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 24px;
+      }
+
+      nav a,
+      main a {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      nav a:hover,
+      main a:hover {
+        text-decoration: underline;
+      }
+
+      progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: block;
+        width: 100%;
+        height: 4px;
+        margin: 0;
+        z-index: 100;
+      }
+
+      progress[hidden] {
+        display: none;
+      }
+
+      main {
+        position: relative;
+        min-height: 200px;
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .scroll-spacer {
+        height: 1200px;
+        padding: 16px;
+        margin-top: 24px;
+        background: #f3f4f6;
+        border: 1px dashed #d1d5db;
+        border-radius: 6px;
+      }
+
+      .in-view-link {
+        margin-top: 420px;
+      }
+
+      .hash-section {
+        margin-top: 520px;
+        padding-top: 12px;
+        border-top: 1px solid #d1d5db;
+      }
+
+      @keyframes from-right {
+        from {
+          translate: 100% 0;
+        }
+      }
+
+      @keyframes from-left {
+        from {
+          translate: -100% 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        html:active-view-transition-type(forward)::view-transition-new(root) {
+          animation: 300ms both from-right;
+        }
+        html:active-view-transition-type(forward)::view-transition-old(root) {
+          animation: 300ms both reverse from-left;
+        }
+        html:active-view-transition-type(backward)::view-transition-new(root) {
+          animation: 300ms both from-left;
+        }
+        html:active-view-transition-type(backward)::view-transition-old(root) {
+          animation: 300ms both reverse from-right;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        ::view-transition-group(*) {
+          animation-name: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="?page=home">Home</a>
+      <a href="?page=about">About</a>
+      <a href="?page=about#team">Team (About)</a>
+      <a href="?page=contact">Contact</a>
+      <a href="#section-anchor">Hash anchor</a>
+      <a href="?file=demo.txt" download="demo.txt">Download link</a>
+    </nav>
+
+    <form action="" method="post" style="margin-bottom: 24px;">
+      <button type="submit">Submit (POST, reloads natively)</button>
+    </form>
+
+    <progress id="loading-indicator" aria-label="Loading" hidden></progress>
+
+    <main>
+      <h1>Home</h1>
+      <p>Welcome to our single-page application router demo.</p>
+      <div class="scroll-spacer" id="section-anchor">
+        <p>This is a long content section to test scroll reset on new navigations and scroll restoration on Back and Forward.</p>
+        <p class="in-view-link"><a href="?page=contact">Contact our team</a> (in-view link to test Back focus restoration).</p>
+      </div>
+    </main>
+
+    <script type="module">
+      const VIEWS = {
+        home: {
+          title: 'Home - Client-side routing demo',
+          heading: 'Home',
+          body: 'Welcome to our single-page application router demo.',
+          extra: '<p class="in-view-link"><a href="?page=contact">Contact our team</a> (in-view link to test Back focus restoration).</p>',
+        },
+        about: {
+          title: 'About Us - Client-side routing demo',
+          heading: 'About Us',
+          body: 'This page describes the purpose and architecture of the router.',
+          extra: '<section id="team" class="hash-section"><h2>Team</h2><p>Meet the maintainers behind the router demo. <a href="?page=contact">Get in touch</a>.</p></section>',
+        },
+        contact: {
+          title: 'Contact - Client-side routing demo',
+          heading: 'Contact Us',
+          body: 'Get in touch with support or find our documentation.',
+          extra: '<p class="in-view-link"><a href="?page=about#team">Meet the team on About</a>.</p>',
+        },
+      };
+
+      function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, (ch) => (
+          { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+        ));
+      }
+
+      function resolveKey(url) {
+        const queryPage = url.searchParams.get('page');
+        if (queryPage && VIEWS[queryPage]) return queryPage;
+        const path = url.pathname.replace(/^\/|\/$/g, '');
+        if (path && VIEWS[path]) return path;
+        return 'home';
+      }
+
+      async function loadData(url, signal) {
+        const response = await fetch(url, { signal });
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        return VIEWS[resolveKey(url)];
+      }
+
+      async function renderView(url, data) {
+        document.title = data.title;
+        const main = document.querySelector('main');
+        if (!main) return;
+        main.innerHTML = `
+          <h1>${escapeHtml(data.heading)}</h1>
+          <p>${escapeHtml(data.body)}</p>
+          <div class="scroll-spacer" id="section-anchor">
+            <p>This is a long content section to test scroll reset on new navigations and scroll restoration on Back and Forward.</p>
+            ${data.extra ?? ''}
+          </div>
+        `;
+      }
+
+      async function renderError(url, err) {
+        document.title = 'Error loading page - Client-side routing demo';
+        const main = document.querySelector('main');
+        if (!main) return;
+        main.innerHTML = `
+          <h1>Unable to load page</h1>
+          <p>Could not load <code style="overflow-wrap:anywhere">${escapeHtml(url.pathname + url.search)}</code> (${escapeHtml(err.message)}).</p>
+          <p><a href="?page=home">Return to Home</a></p>
+        `;
+      }
+
+      function focusView(navigationType, url, from) {
+        const focus = (el) => {
+          el?.focus({ preventScroll: true });
+          if (el && document.activeElement !== el) { // Not natively focusable
+            el.setAttribute('tabindex', '-1');
+            el.focus({ preventScroll: true });
+          }
+        };
+        const main = document.querySelector('main');
+        if (navigationType === 'traverse') {
+          const link = [...main.querySelectorAll('a[href]')].find((a) => a.href === from);
+          if (link) return focus(link);
+          // No link that led away (usually Forward): the restored scroll lands one frame later
+          return requestAnimationFrame(() => focus([...main.querySelectorAll('h1, h2, h3, a[href]')]
+            .find((el) => el.getBoundingClientRect().bottom > 0)));
+        }
+        let target = null;
+        if (url?.hash) {
+          try { target = document.getElementById(decodeURIComponent(url.hash.slice(1))); } catch {}
+        }
+        focus(target ?? main.querySelector('h1'));
+      }
+
+      function go(update, direction) {
+        if (!('startViewTransition' in document)) return update();
+        const transition = 'types' in ViewTransition.prototype
+          ? document.startViewTransition({ update, types: [direction] })
+          : document.startViewTransition(update);
+        transition.ready.catch(() => {});
+        transition.finished.catch(() => {}); // Prevent an unhandled rejection if update() throws
+        return transition.updateCallbackDone;
+      }
+
+      let latestNavigation;
+      window.navigation?.addEventListener('navigate', (event) => {
+        const { canIntercept, hashChange, downloadRequest, formData, destination } = event;
+        if (!canIntercept || hashChange || downloadRequest !== null || formData) return;
+        if (destination.sameDocument && event.navigationType !== 'traverse') return;
+        latestNavigation = event;
+        const url = new URL(destination.url);
+        const from = navigation.currentEntry.url; // Read before intercepting: still the view being left
+        const dir = event.navigationType === 'traverse' &&
+          destination.index < navigation.currentEntry.index ? 'backward' : 'forward';
+        event.intercept({
+          scroll: 'manual',
+          focusReset: 'manual',
+          async handler() {
+            const main = document.querySelector('main');
+            const progress = document.getElementById('loading-indicator');
+            main?.setAttribute('aria-busy', 'true');
+            if (progress) progress.hidden = false;
+            try {
+              const data = await loadData(url, event.signal);
+              await go(async () => {
+                await renderView(url, data);
+                event.scroll(); // Restores position on traverse; otherwise #hash or top
+                focusView(event.navigationType, url, from);
+              }, dir);
+            } catch (err) {
+              if (event.signal.aborted || err?.name === 'AbortError') return; // Canceled: no error view
+              await go(async () => {
+                await renderError(url, err);
+                window.scrollTo(0, 0);
+                focusView();
+              }, dir);
+            } finally {
+              if (latestNavigation === event) { // Unless superseded
+                main?.removeAttribute('aria-busy');
+                if (progress) progress.hidden = true;
+              }
+            }
+          },
+        });
+      });
+
+      // Initialize view on first load if URL has query parameters
+      const initialUrl = new URL(window.location.href);
+      const initialKey = resolveKey(initialUrl);
+      if (initialKey !== 'home') {
+        const view = VIEWS[initialKey];
+        if (view) {
+          await renderView(initialUrl, view);
+          if (initialUrl.hash) {
+            try {
+              document.getElementById(decodeURIComponent(initialUrl.hash.slice(1)))?.scrollIntoView();
+            } catch {}
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
