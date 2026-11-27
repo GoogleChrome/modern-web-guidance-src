@@ -223,7 +223,7 @@ When only the corners need a different shape, such as a beveled, scooped, or not
 * **Pseudo-element with `border-shape` and `clip-path`**: the line is a custom shape or needs a draw-on animation. Choose it only when `text-decoration-style` cannot produce the look, because it needs extra positioning. {# PENDING_GUIDE_REF: For vector path animations, see {{ GUIDE_REF("line-drawing-animation") }}. #}
 * **`background-clip: border-area`**: the text needs a gradient outline. Use plain `border-color` when a solid outline is enough. {# PENDING_GUIDE_REF: For complete gradient border styling, see {{ GUIDE_REF("gradient-borders") }}. #}
 * **`corner-shape`**: only the corners need a different shape, such as beveled, scooped, or notched. Pair it with `border-radius`, which sets the corner size.
-* **`border-shape`**: the outline needs a shape `border-radius` cannot draw, such as a tag or arrow. Use `border-radius` when rounded corners are enough. {# PENDING_GUIDE_REF: For shaped element styling, see {{ GUIDE_REF("element-shape") }}. #}
+* **`border-shape`**: the outline needs a shape `border-radius` cannot draw, such as a tag or arrow. Use `border-radius` when rounded corners are enough. For shaped element styling, see {{ GUIDE_REF("element-shape") }}.
 * **Inset hover reveal**: worth adding when a link needs a hover affordance beyond a color change. Skip it for text that is not interactive.
 
 ## Fallback Strategies
