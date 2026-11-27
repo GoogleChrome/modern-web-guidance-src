@@ -181,4 +181,204 @@ test.describe('swipe-to-reveal Target Grader', () => {
 
     expect(hasFocusinListener && hasFocusVisibleMatch && hasScrollIntoViewInlineStart).toBe(true);
   });
+
+  test.describe('Browser tests', () => {
+    test.beforeEach(async ({ page, TARGET_URL }) => {
+      await page.goto(TARGET_URL);
+    });
+
+    test('Each swipe to reveal interaction has an associated trigger <button> for revealing the content', async ({
+      page,
+    }) => {
+      const triggers = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll<HTMLElement>('.SwipeReveal, .grid > *')).filter((el) => {
+          const cs = window.getComputedStyle(el);
+          return (
+            el.classList.contains('SwipeReveal') ||
+            cs.overflowX === 'auto' ||
+            cs.overflowX === 'scroll' ||
+            cs.scrollSnapType.includes('mandatory')
+          );
+        });
+        return containers.map((c) => {
+          const content = c.querySelector('.SwipeReveal-content') ?? c.firstElementChild;
+          const btn = content?.querySelector('button') ?? null;
+          return Boolean(btn);
+        });
+      });
+
+      expect(triggers.length).toBeGreaterThan(0);
+      expect(triggers.every(Boolean)).toBe(true);
+    });
+
+    test('Activating the associated trigger button performs the same action as the swipe it stands in for', async ({
+      page,
+    }) => {
+      const setup = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll<HTMLElement>('.SwipeReveal, .grid > *')).filter((el) => {
+          const cs = window.getComputedStyle(el);
+          return (
+            el.classList.contains('SwipeReveal') ||
+            cs.overflowX === 'auto' ||
+            cs.overflowX === 'scroll' ||
+            cs.scrollSnapType.includes('mandatory')
+          );
+        });
+        const first = containers[0];
+        if (!first) return { count: 0, beforeScrollLeft: -1 };
+        first.setAttribute('data-grader-swipe-target', '0');
+        const content = first.querySelector('.SwipeReveal-content') ?? first.firstElementChild;
+        const btn = content?.querySelector('button');
+        if (btn) btn.setAttribute('data-grader-swipe-trigger', '0');
+        return { count: containers.length, beforeScrollLeft: first.scrollLeft };
+      });
+      expect(setup.count).toBeGreaterThan(0);
+
+      const firstTrigger = page.locator('[data-grader-swipe-trigger="0"]').first();
+      await expect(firstTrigger).toBeVisible();
+
+      await firstTrigger.click();
+
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const c = document.querySelector<HTMLElement>('[data-grader-swipe-target="0"]');
+            return c ? c.scrollLeft : 0;
+          }),
+        )
+        .not.toBe(setup.beforeScrollLeft);
+    });
+
+    test("Each trigger button has an accessible name that includes the associated content's text", async ({
+      page,
+    }) => {
+      const checks = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll<HTMLElement>('.SwipeReveal, .grid > *')).filter((el) => {
+          const cs = window.getComputedStyle(el);
+          return (
+            el.classList.contains('SwipeReveal') ||
+            cs.overflowX === 'auto' ||
+            cs.overflowX === 'scroll' ||
+            cs.scrollSnapType.includes('mandatory')
+          );
+        });
+
+        return containers.map((c) => {
+          const content = c.querySelector('.SwipeReveal-content') ?? c.firstElementChild;
+          const title = (content?.querySelector('h2, h3, h4, strong')?.textContent ?? '').trim();
+          const btn = content?.querySelector('button');
+          if (!btn || !title) return { hasMatch: false };
+          const ariaLabel = btn.getAttribute('aria-label')?.trim() ?? '';
+          const ariaLabelledBy = btn.getAttribute('aria-labelledby')?.trim() ?? '';
+          let name = ariaLabel || (btn.textContent ?? '').trim();
+          if (ariaLabelledBy) {
+            name = ariaLabelledBy
+              .split(/\s+/)
+              .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+              .join(' ');
+          }
+          return {
+            hasMatch: name.toLowerCase().includes(title.toLowerCase()),
+          };
+        });
+      });
+
+      expect(checks.length).toBeGreaterThan(0);
+      expect(checks.every((c) => c.hasMatch)).toBe(true);
+    });
+
+    test('Revealed panel controls start with tabindex="-1" when hidden and update to tabindex="0" when visible', async ({
+      page,
+    }) => {
+      const initialTabIndexes = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll<HTMLElement>('.SwipeReveal, .grid > *')).filter((el) => {
+          const cs = window.getComputedStyle(el);
+          return (
+            el.classList.contains('SwipeReveal') ||
+            cs.overflowX === 'auto' ||
+            cs.overflowX === 'scroll' ||
+            cs.scrollSnapType.includes('mandatory')
+          );
+        });
+        const first = containers[0];
+        if (!first) return [];
+        first.setAttribute('data-grader-swipe-target', '0');
+        const content = first.querySelector('.SwipeReveal-content') ?? first.firstElementChild;
+        const btn = content?.querySelector('button');
+        if (btn) btn.setAttribute('data-grader-swipe-trigger', '0');
+        const panel = first.querySelector('.SwipeReveal-panel') ?? first.lastElementChild;
+        if (!panel) return [];
+        return Array.from(panel.querySelectorAll('button, a[href]')).map((el) =>
+          el.getAttribute('tabindex'),
+        );
+      });
+      expect(initialTabIndexes.length).toBeGreaterThan(0);
+      expect(initialTabIndexes.every((t) => t === '-1')).toBe(true);
+
+      const trigger = page.locator('[data-grader-swipe-trigger="0"]').first();
+      await expect(trigger).toBeVisible();
+      await trigger.click();
+
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const c = document.querySelector<HTMLElement>('[data-grader-swipe-target="0"]');
+            const panel = c?.querySelector('.SwipeReveal-panel') ?? c?.lastElementChild;
+            if (!panel) return false;
+            const controls = Array.from(panel.querySelectorAll('button, a[href]'));
+            return controls.length > 0 && controls.every((el) => el.getAttribute('tabindex') === '0');
+          }),
+        )
+        .toBe(true);
+    });
+
+    test('Associated trigger button reports revealed state via aria-expanded="true" when visible and "false" when hidden', async ({
+      page,
+    }) => {
+      const hasTrigger = await page.evaluate(() => {
+        const containers = Array.from(document.querySelectorAll<HTMLElement>('.SwipeReveal, .grid > *')).filter((el) => {
+          const cs = window.getComputedStyle(el);
+          return (
+            el.classList.contains('SwipeReveal') ||
+            cs.overflowX === 'auto' ||
+            cs.overflowX === 'scroll' ||
+            cs.scrollSnapType.includes('mandatory')
+          );
+        });
+        const first = containers[0];
+        if (!first) return false;
+        first.setAttribute('data-grader-swipe-target', '0');
+        const content = first.querySelector('.SwipeReveal-content') ?? first.firstElementChild;
+        const btn = content?.querySelector('button');
+        if (!btn) return false;
+        btn.setAttribute('data-grader-swipe-trigger', '0');
+        return true;
+      });
+      expect(hasTrigger).toBe(true);
+
+      const trigger = page.locator('[data-grader-swipe-trigger="0"]').first();
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+      await trigger.click();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+      // Wait for smooth scroll / scroll-snap to advance and settle before toggling closed.
+      await page.waitForFunction(() => {
+        const c = document.querySelector<HTMLElement>('[data-grader-swipe-target="0"]');
+        if (!c || c.scrollLeft <= 0) return false;
+        const state = window as unknown as { __swipeLastLeft?: number; __swipeStableFrames?: number };
+        if (state.__swipeLastLeft === c.scrollLeft) {
+          state.__swipeStableFrames = (state.__swipeStableFrames ?? 0) + 1;
+        } else {
+          state.__swipeLastLeft = c.scrollLeft;
+          state.__swipeStableFrames = 0;
+        }
+        return (state.__swipeStableFrames ?? 0) >= 3;
+      });
+
+      await trigger.click();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
 });

@@ -237,10 +237,10 @@ index 0000000..9180c50
 +await Promise.all(['index.html', 'app-menu.js'].map(file => copyFile(file, `dist/${file}`)));
 +console.log('Built static application in dist/');
 diff --git a/index.html b/index.html
-index 66c9173..3e9f731 100644
+index 5db718e..aca64c8 100644
 --- a/index.html
 +++ b/index.html
-@@ -46,13 +46,21 @@
+@@ -48,13 +48,21 @@
        letter-spacing: 1px;
      }
  
@@ -266,8 +266,8 @@ index 66c9173..3e9f731 100644
      }
  
      nav a {
-@@ -66,6 +74,55 @@
-       color: var(--accent);
+@@ -68,6 +76,55 @@
+       color: var(--accent-on-dark);
      }
  
 +    [role="menubar"] > button:hover,
@@ -320,9 +320,9 @@ index 66c9173..3e9f731 100644
 +    }
 +
      .logout-link {
-       border: 1px solid var(--accent);
+       border: 1px solid var(--accent-on-dark);
        padding: 5px 12px;
-@@ -157,15 +214,39 @@
+@@ -159,15 +216,39 @@
  
  <body>
  
@@ -370,7 +370,7 @@ index 66c9173..3e9f731 100644
    </nav>
  
    <header class="hero">
-@@ -207,6 +288,7 @@
+@@ -209,6 +290,7 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  

@@ -1,46 +1,76 @@
 diff --git a/index.html b/index.html
-index 66c9173..7fe4878 100644
+index 66c9173..8e7a585 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,7 +152,203 @@
+@@ -152,6 +152,162 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
++    /* ---------- Drink hovercards ---------- */
++    .hovercard-trigger {
++      /* Polyfill reads these custom properties; native browsers read the real ones. */
++      --interest-delay-start: 0.4s;
++      interest-delay-start: var(--interest-delay-start);
++      --interest-delay-end: 0.3s;
++      interest-delay-end: var(--interest-delay-end);
++    }
 +
-+    /* Hovercards (drink previews) */
-+    #trigger-maple { anchor-name: --trigger-maple; }
-+    #trigger-espresso { anchor-name: --trigger-espresso; }
-+    #trigger-cold-brew { anchor-name: --trigger-cold-brew; }
-+    #preview-maple { position-anchor: --trigger-maple; }
-+    #preview-espresso { position-anchor: --trigger-espresso; }
++    /* Once one hovercard is open, open neighbouring ones immediately. */
++    .grid:has(> .card > .hovercard-trigger:is(:interest-source, .interest-source)) .hovercard-trigger {
++      --interest-delay-start: 0s;
++    }
++
++    .hovercard-trigger:is(:interest-source, .interest-source) {
++      background: #3e2723;
++    }
++
++    /* Explicit anchor names: the anchor positioning polyfill does not support
++       the implicit anchor created by interestfor. */
++    #details-maple-oat-latte { anchor-name: --trigger-maple-oat-latte; }
++    #details-dark-roast-espresso { anchor-name: --trigger-dark-roast-espresso; }
++    #details-cold-brew { anchor-name: --trigger-cold-brew; }
++    #preview-maple-oat-latte { position-anchor: --trigger-maple-oat-latte; }
++    #preview-dark-roast-espresso { position-anchor: --trigger-dark-roast-espresso; }
 +    #preview-cold-brew { position-anchor: --trigger-cold-brew; }
 +
++    /* Hide popovers until the popover polyfill has loaded. */
++    @supports not selector(:popover-open) {
++      [popover]:not(.\:popover-open) {
++        display: none;
++      }
++    }
++
 +    [popover].hovercard {
-+      /* Below the trigger, aligned with its inline-start edge, flipping if it overflows. */
-+      position-area: block-end span-inline-end;
-+      position-try-fallbacks: flip-block, flip-inline;
-+      margin: 8px 0;
-+      inline-size: min(320px, calc(100vw - 32px));
-+      padding: 0;
++      /* Anchor positioning via anchor() insets (polyfill-compatible). */
++      inset: auto;
++      top: anchor(bottom);
++      left: anchor(left);
++      margin: 0;
++      margin-block-start: 8px;
++      position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
++
++      width: min(300px, calc(100vw - 16px));
++      padding: 16px;
 +      border: 1px solid var(--secondary);
 +      border-radius: 10px;
 +      background: white;
 +      color: var(--text);
 +      box-shadow: 0 10px 30px rgba(62, 39, 35, 0.25);
-+      overflow: hidden;
 +      text-align: start;
++      font-size: 0.9rem;
 +
 +      opacity: 0;
 +      transform-origin: top;
 +    }
 +
-+    [popover].hovercard:popover-open {
++    [popover].hovercard:is(:popover-open, .\:popover-open) {
++      display: block;
 +      opacity: 1;
 +      transform: translateY(0) scale(1);
 +    }
 +
 +    @starting-style {
-+      [popover].hovercard:popover-open {
++      [popover].hovercard:is(:popover-open, .\:popover-open) {
 +        opacity: 0;
 +        transform: translateY(-10px) scale(0.95);
 +      }
@@ -53,39 +83,44 @@ index 66c9173..7fe4878 100644
 +          transform,
 +          display,
 +          overlay;
-+        transition-duration: 0.4s;
++        transition-duration: 0.3s;
++        /* Separate after transition so the shorthand doesn't reset it or fail in older browsers */
 +        transition-behavior: allow-discrete;
 +      }
 +    }
 +
-+    .hovercard img {
-+      display: block;
-+      inline-size: 100%;
-+      block-size: 140px;
-+      object-fit: cover;
-+      background: var(--secondary);
++    .hovercard-header {
++      display: flex;
++      justify-content: space-between;
++      align-items: baseline;
++      gap: 12px;
++      margin-bottom: 4px;
 +    }
 +
-+    .hovercard-body {
-+      padding: 14px 16px 16px;
-+    }
-+
-+    .hovercard-eyebrow {
-+      font-size: 0.7rem;
-+      font-weight: 600;
-+      letter-spacing: 0.08em;
-+      text-transform: uppercase;
-+      color: #8d6e63;
-+    }
-+
-+    .hovercard h2 {
-+      font-size: 1.15rem;
++    .hovercard h4 {
++      font-size: 1.1rem;
 +      color: var(--primary);
-+      margin: 2px 0 6px;
++    }
++
++    .hovercard-price {
++      font-weight: bold;
++      color: var(--primary);
++      white-space: nowrap;
++    }
++
++    .hovercard-category {
++      display: inline-block;
++      font-size: 0.7rem;
++      text-transform: uppercase;
++      letter-spacing: 1px;
++      background: var(--accent);
++      color: var(--text);
++      padding: 1px 8px;
++      border-radius: 999px;
++      margin-bottom: 8px;
 +    }
 +
 +    .hovercard-summary {
-+      font-size: 0.85rem;
 +      margin-bottom: 12px;
 +    }
 +
@@ -104,190 +139,265 @@ index 66c9173..7fe4878 100644
 +    }
 +
 +    .hovercard-facts dt {
-+      font-size: 0.65rem;
++      font-size: 0.7rem;
 +      text-transform: uppercase;
-+      letter-spacing: 0.05em;
-+      color: #8d6e63;
++      letter-spacing: 0.5px;
++      color: #6d4c41;
 +    }
 +
 +    .hovercard-facts dd {
-+      font-weight: 700;
-+      color: var(--primary);
++      font-weight: bold;
 +    }
 +
-+    .hovercard-tags {
++    .hovercard-notes {
 +      display: flex;
 +      flex-wrap: wrap;
 +      gap: 6px;
 +      list-style: none;
 +    }
 +
-+    .hovercard-tags li {
-+      font-size: 0.72rem;
-+      padding: 2px 10px;
++    .hovercard-notes li {
++      font-size: 0.75rem;
++      border: 1px solid var(--secondary);
 +      border-radius: 999px;
-+      background: #fff3e0;
-+      border: 1px solid var(--accent);
++      padding: 1px 8px;
 +    }
    </style>
-+  <script type="module">
-+    // Conditionally load polyfills only where the native features are missing.
-+    // Links remain plain navigations if any of this fails (progressive enhancement).
-+    const supportsPopover = ('popover' in HTMLElement.prototype);
-+    const supportsAnchor = CSS.supports('position-area', 'block-end');
-+    const supportsInterest = ('interestForElement' in HTMLAnchorElement.prototype);
-+
-+    if (!supportsPopover) {
-+      await import('https://cdn.jsdelivr.net/npm/@oddbird/popover-polyfill@0.5/dist/popover.min.js').catch(() => {});
-+    }
-+
-+    if (!supportsAnchor) {
-+      import('https://cdn.jsdelivr.net/npm/@oddbird/css-anchor-positioning@0.6/dist/css-anchor-positioning.js').catch(() => {});
-+    }
-+
-+    if (!supportsInterest && ('popover' in HTMLElement.prototype)) {
-+      // Minimal interest-invoker fallback: show on hover/focus, hide on loss of
-+      // interest. Hides explicitly because `popover="hint"` may fall back to
-+      // `manual` behaviour in browsers without `hint` support.
-+      const SHOW_DELAY = 500;
-+      const HIDE_DELAY = 250;
-+
-+      const setup = () => {
-+        document.querySelectorAll('a[interestfor]').forEach((trigger) => {
-+          const card = document.getElementById(trigger.getAttribute('interestfor') ?? '');
-+          if (!card) return;
-+
-+          let showTimer;
-+          let hideTimer;
-+
-+          const show = () => {
-+            clearTimeout(hideTimer);
-+            clearTimeout(showTimer);
-+            showTimer = setTimeout(() => {
-+              // Close any other open hovercard first.
-+              document.querySelectorAll('.hovercard:popover-open').forEach((other) => {
-+                if (other !== card) other.hidePopover();
-+              });
-+              if (!card.matches(':popover-open')) card.showPopover();
-+            }, SHOW_DELAY);
-+          };
-+
-+          const hide = () => {
-+            clearTimeout(showTimer);
-+            clearTimeout(hideTimer);
-+            hideTimer = setTimeout(() => {
-+              if (card.matches(':popover-open')) card.hidePopover();
-+            }, HIDE_DELAY);
-+          };
-+
-+          trigger.setAttribute('aria-describedby', card.id);
-+          for (const el of [trigger, card]) {
-+            el.addEventListener('mouseenter', show);
-+            el.addEventListener('mouseleave', hide);
-+            el.addEventListener('focusin', show);
-+            el.addEventListener('focusout', hide);
-+          }
-+          trigger.addEventListener('keydown', (event) => {
-+            if (event.key === 'Escape') {
-+              clearTimeout(showTimer);
-+              if (card.matches(':popover-open')) card.hidePopover();
-+            }
-+          });
-+        });
-+      };
-+
-+      if (document.readyState === 'loading') {
-+        document.addEventListener('DOMContentLoaded', setup);
-+      } else {
-+        setup();
-+      }
-+    }
-+  </script>
  </head>
  
- <body>
-@@ -181,17 +377,81 @@
+@@ -181,17 +337,101 @@
          <div class="card">
            <h3>Maple Oat Latte</h3>
            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+          <a href="/menu/seasonal" class="btn" id="trigger-maple" interestfor="preview-maple">View Details</a>
++          <a href="/menu/seasonal" class="btn hovercard-trigger" id="details-maple-oat-latte" interestfor="preview-maple-oat-latte">View Details</a>
++          <div id="preview-maple-oat-latte" popover="hint" class="hovercard">
++            <div class="hovercard-header">
++              <h4>Maple Oat Latte</h4>
++              <span class="hovercard-price">$5.75</span>
++            </div>
++            <span class="hovercard-category">Seasonal · Fall</span>
++            <p class="hovercard-summary">Double-shot espresso with steamed oat milk and pure Vermont maple syrup, finished with a dusting of cinnamon.</p>
++            <dl class="hovercard-facts">
++              <div>
++                <dt>Sizes</dt>
++                <dd>12 / 16 oz</dd>
++              </div>
++              <div>
++                <dt>Caffeine</dt>
++                <dd>150 mg</dd>
++              </div>
++              <div>
++                <dt>Calories</dt>
++                <dd>210</dd>
++              </div>
++            </dl>
++            <ul class="hovercard-notes" aria-label="Tasting notes">
++              <li>Maple</li>
++              <li>Toasted oat</li>
++              <li>Cinnamon</li>
++              <li>Hot or iced</li>
++            </ul>
++          </div>
          </div>
          <div class="card">
            <h3>Dark Roast Espresso</h3>
            <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+          <a href="/menu/espresso" class="btn" id="trigger-espresso" interestfor="preview-espresso">View Details</a>
++          <a href="/menu/espresso" class="btn hovercard-trigger" id="details-dark-roast-espresso" interestfor="preview-dark-roast-espresso">View Details</a>
++          <div id="preview-dark-roast-espresso" popover="hint" class="hovercard">
++            <div class="hovercard-header">
++              <h4>Dark Roast Espresso</h4>
++              <span class="hovercard-price">$3.25</span>
++            </div>
++            <span class="hovercard-category">Espresso Bar</span>
++            <p class="hovercard-summary">A bold double shot pulled from our house dark roast, with a thick crema and a lingering smoky finish.</p>
++            <dl class="hovercard-facts">
++              <div>
++                <dt>Size</dt>
++                <dd>2 oz</dd>
++              </div>
++              <div>
++                <dt>Caffeine</dt>
++                <dd>130 mg</dd>
++              </div>
++              <div>
++                <dt>Calories</dt>
++                <dd>5</dd>
++              </div>
++            </dl>
++            <ul class="hovercard-notes" aria-label="Tasting notes">
++              <li>Smoky</li>
++              <li>Dark chocolate</li>
++              <li>Molasses</li>
++              <li>Full body</li>
++            </ul>
++          </div>
          </div>
          <div class="card">
            <h3>Cold Brew</h3>
            <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+          <a href="/menu/cold-brew" class="btn" id="trigger-cold-brew" interestfor="preview-cold-brew">View Details</a>
-+        </div>
-+      </div>
-+
-+      <!-- Hovercards: structured previews of each drink page. -->
-+      <div id="preview-maple" popover="hint" class="hovercard">
-+        <img src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=640&q=70"
-+          alt="A latte in a ceramic cup with foam art" width="320" height="140" loading="lazy">
-+        <div class="hovercard-body">
-+          <p class="hovercard-eyebrow">Seasonal &middot; Limited time</p>
-+          <h2>Maple Oat Latte</h2>
-+          <p class="hovercard-summary">Double-shot espresso, steamed oat milk, and real Vermont maple syrup, finished
-+            with a dusting of cinnamon.</p>
-+          <dl class="hovercard-facts">
-+            <div><dt>Price</dt><dd>$5.75</dd></div>
-+            <div><dt>Caffeine</dt><dd>150 mg</dd></div>
-+            <div><dt>Calories</dt><dd>210</dd></div>
-+          </dl>
-+          <ul class="hovercard-tags" aria-label="Attributes">
-+            <li>Dairy-free</li>
-+            <li>Hot or iced</li>
-+            <li>Vegan</li>
-+          </ul>
-+        </div>
-+      </div>
-+
-+      <div id="preview-espresso" popover="hint" class="hovercard">
-+        <img src="https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=640&q=70"
-+          alt="A shot of dark espresso with rich crema" width="320" height="140" loading="lazy">
-+        <div class="hovercard-body">
-+          <p class="hovercard-eyebrow">Espresso Bar &middot; Year-round</p>
-+          <h2>Dark Roast Espresso</h2>
-+          <p class="hovercard-summary">Our house Sumatra blend, roasted dark for notes of cocoa, cedar, and a smokey
-+            finish.</p>
-+          <dl class="hovercard-facts">
-+            <div><dt>Price</dt><dd>$3.25</dd></div>
-+            <div><dt>Caffeine</dt><dd>130 mg</dd></div>
-+            <div><dt>Calories</dt><dd>5</dd></div>
-+          </dl>
-+          <ul class="hovercard-tags" aria-label="Attributes">
-+            <li>Single or double</li>
-+            <li>Bold</li>
-+            <li>Fair trade</li>
-+          </ul>
-+        </div>
-+      </div>
-+
-+      <div id="preview-cold-brew" popover="hint" class="hovercard">
-+        <img src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=640&q=70"
-+          alt="A glass of cold brew coffee over ice" width="320" height="140" loading="lazy">
-+        <div class="hovercard-body">
-+          <p class="hovercard-eyebrow">Cold Bar &middot; Year-round</p>
-+          <h2>Cold Brew</h2>
-+          <p class="hovercard-summary">Coarse-ground Colombian beans steeped in cold, filtered water for 18 hours for
-+            a naturally sweet, low-acid cup.</p>
-+          <dl class="hovercard-facts">
-+            <div><dt>Price</dt><dd>$4.50</dd></div>
-+            <div><dt>Caffeine</dt><dd>200 mg</dd></div>
-+            <div><dt>Calories</dt><dd>5</dd></div>
-+          </dl>
-+          <ul class="hovercard-tags" aria-label="Attributes">
-+            <li>Served over ice</li>
-+            <li>Low acid</li>
-+            <li>Add sweet cream</li>
-+          </ul>
++          <a href="/menu/cold-brew" class="btn hovercard-trigger" id="details-cold-brew" interestfor="preview-cold-brew">View Details</a>
++          <div id="preview-cold-brew" popover="hint" class="hovercard">
++            <div class="hovercard-header">
++              <h4>Cold Brew</h4>
++              <span class="hovercard-price">$4.50</span>
++            </div>
++            <span class="hovercard-category">Cold Coffee</span>
++            <p class="hovercard-summary">Coarse-ground beans steeped for 18 hours in cold filtered water for a naturally sweet, low-acid cup served over ice.</p>
++            <dl class="hovercard-facts">
++              <div>
++                <dt>Sizes</dt>
++                <dd>16 / 24 oz</dd>
++              </div>
++              <div>
++                <dt>Caffeine</dt>
++                <dd>200 mg</dd>
++              </div>
++              <div>
++                <dt>Calories</dt>
++                <dd>5</dd>
++              </div>
++            </dl>
++            <ul class="hovercard-notes" aria-label="Tasting notes">
++              <li>Smooth</li>
++              <li>Cocoa</li>
++              <li>Low acidity</li>
++              <li>Served iced</li>
++            </ul>
++          </div>
          </div>
        </div>
      </section>
+@@ -207,6 +447,130 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // ---- ARIA wiring for interest-triggered hints --------------------------
++    // Runs in every browser, after the DOM is parsed (module scripts are
++    // deferred) and BEFORE the interestfor polyfill is loaded.
++    const normalize = (text) => (text ?? "").replace(/\s+/g, " ").trim();
++
++    /** Text content of a node, including image alt text. */
++    const textWithAlt = (node) => {
++      if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
++      if (node.nodeType !== Node.ELEMENT_NODE) return "";
++      const el = /** @type {Element} */ (node);
++      if (el.localName === "img") return ` ${el.getAttribute("alt") ?? ""} `;
++      let out = "";
++      for (const child of el.childNodes) out += textWithAlt(child);
++      return out;
++    };
++
++    /** Approximate accessible name of a trigger. */
++    const accessibleName = (el) => {
++      const labelledBy = el.getAttribute("aria-labelledby");
++      if (labelledBy) {
++        const text = labelledBy
++          .split(/\s+/)
++          .map((id) => document.getElementById(id))
++          .filter(Boolean)
++          .map((ref) => textWithAlt(ref))
++          .join(" ");
++        if (normalize(text)) return normalize(text);
++      }
++      const label = normalize(el.getAttribute("aria-label"));
++      if (label) return label;
++      const content = normalize(textWithAlt(el));
++      if (content) return content;
++      return normalize(el.getAttribute("title"));
++    };
++
++    const isPopoverOpen = (popover) => {
++      if (popover.classList.contains(":popover-open")) return true;
++      try {
++        return popover.matches(":popover-open");
++      } catch {
++        return false;
++      }
++    };
++
++    /** Triggers whose aria-expanded state this script owns. */
++    const ownedTriggers = new WeakSet();
++
++    function wireInterestHints(root = document) {
++      for (const trigger of root.querySelectorAll("[interestfor]")) {
++        const hintId = trigger.getAttribute("interestfor");
++        if (!hintId) continue;
++        const hint = document.getElementById(hintId);
++        if (!hint || hint.getAttribute("popover") !== "hint") continue;
++
++        const name = accessibleName(trigger);
++        const hintText = normalize(textWithAlt(hint));
++        if (name === hintText) continue;
++
++        if (!hint.hasAttribute("role")) hint.setAttribute("role", "tooltip");
++
++        if (!name) {
++          if (!trigger.hasAttribute("aria-labelledby")) {
++            trigger.setAttribute("aria-labelledby", hintId);
++          }
++          continue;
++        }
++
++        const opensOnActivation =
++          trigger.getAttribute("popovertarget") === hintId ||
++          trigger.getAttribute("commandfor") === hintId;
++
++        if (opensOnActivation) {
++          if (!trigger.hasAttribute("aria-expanded")) {
++            trigger.setAttribute("aria-expanded", String(isPopoverOpen(hint)));
++            ownedTriggers.add(trigger);
++          }
++        } else if (!trigger.hasAttribute("aria-describedby")) {
++          trigger.setAttribute("aria-describedby", hintId);
++        }
++      }
++    }
++
++    // `toggle` does not bubble: listen in the capture phase.
++    document.addEventListener(
++      "toggle",
++      (event) => {
++        const popover = event.target;
++        if (!(popover instanceof Element) || !popover.id) return;
++        const open =
++          "newState" in event ? event.newState === "open" : isPopoverOpen(popover);
++        for (const trigger of document.querySelectorAll("[interestfor]")) {
++          if (
++            trigger.getAttribute("interestfor") === popover.id &&
++            ownedTriggers.has(trigger)
++          ) {
++            trigger.setAttribute("aria-expanded", String(open));
++          }
++        }
++      },
++      true,
++    );
++
++    wireInterestHints();
++    // Exposed so content inserted later can be wired too.
++    window.wireInterestHints = wireInterestHints;
++
++    // ---- Conditional polyfills ---------------------------------------------
++    // Popover API (needed before the interestfor polyfill can show hints).
++    if (!Object.hasOwn(HTMLElement.prototype, "popover")) {
++      await import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
++    }
++
++    // Interest invokers.
++    if (!("interestForElement" in HTMLButtonElement.prototype)) {
++      await import("https://unpkg.com/interestfor@latest");
++    }
++
++    // CSS anchor positioning.
++    if (!CSS.supports("anchor-name: --a")) {
++      import("https://unpkg.com/@oddbird/css-anchor-positioning");
++    }
++  </script>
++
+ </body>
+ 
+ </html>

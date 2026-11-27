@@ -1,8 +1,8 @@
 diff --git a/index.html b/index.html
-index 66c9173..1b72f29 100644
+index 66c9173..23ec693 100644
 --- a/index.html
 +++ b/index.html
-@@ -109,10 +109,84 @@
+@@ -109,7 +109,6 @@
  
      .card {
        background: white;
@@ -10,19 +10,22 @@ index 66c9173..1b72f29 100644
        border-radius: 8px;
        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
        text-align: center;
-+      overflow: hidden;
+@@ -118,6 +117,148 @@
+     .card h3 {
+       margin-bottom: 10px;
+       color: var(--primary);
++      padding-inline: 34px;
 +    }
 +
++    /* Swipe-to-reveal */
 +    .SwipeReveal {
-+      /* Column 1: full-width content. Column 2: auto-sized actions or side menu. */
++      position: relative;
 +      display: grid;
 +      grid-template-columns: 100% max-content;
 +      overflow-x: auto;
++      overflow-y: hidden;
 +      scroll-snap-type: x mandatory;
 +      scrollbar-width: none;
-+
-+      /* Prevent the swipe wrapper and revealed panel from bouncing locally while
-+         still chaining excess scroll into the parent scroller (the document). */
 +      overscroll-behavior: auto;
 +      overscroll-behavior: chain;
 +    }
@@ -34,10 +37,16 @@ index 66c9173..1b72f29 100644
 +    }
 +
 +    .SwipeReveal-content {
++      position: relative;
 +      scroll-snap-align: start;
 +      scroll-initial-target: nearest;
-+      background: Canvas;
++      background: white;
 +      padding: 20px;
++      display: flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: space-between;
++      transition: filter 0.15s ease;
 +    }
 +
 +    .SwipeReveal-content:focus-visible {
@@ -45,50 +54,112 @@ index 66c9173..1b72f29 100644
 +      outline-offset: -2px;
 +    }
 +
-+    .SwipeReveal-panel {
-+      /* Snapping a trailing panel to `end` (or a leading panel to `start`) brings
-+         all controls fully into view while keeping the adjacent edge of the content visible. */
-+      scroll-snap-align: end;
-+      display: flex;
-+
-+      &:first-child {
-+        scroll-snap-align: start;
-+      }
++    .SwipeReveal.is-pending .SwipeReveal-panel {
++      opacity: 0.92;
 +    }
 +
-+    .SwipeReveal-panel button {
-+      border: none;
-+      padding: 0 16px;
++    .SwipeReveal-trigger {
++      position: absolute;
++      top: 10px;
++      right: 10px;
++      min-width: 32px;
++      min-height: 32px;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      background: var(--light);
++      color: var(--primary);
++      font-size: 1rem;
++      font-weight: bold;
++      line-height: 1;
++      cursor: pointer;
++      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
++    }
++
++    .SwipeReveal-trigger:hover,
++    .SwipeReveal-trigger[aria-expanded="true"] {
++      background: var(--primary);
++      border-color: var(--primary);
++      color: white;
++    }
++
++    .SwipeReveal-trigger:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .SwipeReveal-panel {
++      scroll-snap-align: end;
++      display: flex;
++      align-items: stretch;
++      background: var(--secondary);
++    }
++
++    .SwipeReveal-panel:first-child {
++      scroll-snap-align: start;
++    }
++
++    .SwipeReveal-action {
++      min-width: 64px;
++      min-height: 44px;
++      padding: 12px 10px;
++      border: 0;
++      border-left: 1px solid rgba(255, 255, 255, 0.2);
++      color: white;
 +      font: inherit;
 +      font-size: 0.85rem;
 +      font-weight: 600;
-+      color: white;
-+      background: var(--primary);
 +      cursor: pointer;
-+      transition: background 0.2s, filter 0.2s;
-+      white-space: nowrap;
++      display: inline-flex;
++      flex-direction: column;
++      align-items: center;
++      justify-content: center;
++      gap: 4px;
++      transition: filter 0.2s, background-color 0.2s;
 +    }
 +
-+    .SwipeReveal-panel button:nth-child(2) {
++    .SwipeReveal-action:first-child {
++      border-left: 0;
++    }
++
++    .SwipeReveal-action:hover {
++      filter: brightness(1.08);
++    }
++
++    .SwipeReveal-action:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: -3px;
++    }
++
++    .SwipeReveal-action--favorite {
 +      background: #6d4c41;
 +    }
 +
-+    .SwipeReveal-panel button:nth-child(3) {
-+      background: var(--accent);
-+      color: var(--text);
++    .SwipeReveal-action--favorite[aria-pressed="true"] {
++      background: #b71c1c;
 +    }
 +
-+    .SwipeReveal-panel button:hover {
-+      filter: brightness(0.92);
++    .SwipeReveal-action--order {
++      background: var(--primary);
 +    }
 +
-+    .SwipeReveal-panel button:focus-visible {
-+      outline: 2px solid var(--accent);
-+      outline-offset: -2px;
++    .SwipeReveal-action--share {
++      background: #8d6e63;
++    }
++
++    .favorites-status {
++      min-height: 1.5em;
++      margin-top: 16px;
++      text-align: center;
++      font-size: 0.95rem;
++      font-weight: 500;
++      color: var(--primary);
      }
  
-     .card h3 {
-@@ -178,20 +252,41 @@
+     .btn {
+@@ -178,22 +319,53 @@
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
        <div class="grid">
@@ -96,69 +167,284 @@ index 66c9173..1b72f29 100644
 -          <h3>Maple Oat Latte</h3>
 -          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
 -          <a href="/menu/seasonal" class="btn">View Details</a>
-+        <div class="card SwipeReveal">
++        <div class="card SwipeReveal" data-drink="Maple Oat Latte">
 +          <div class="SwipeReveal-content">
-+            <h3>Maple Oat Latte</h3>
-+            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Maple Oat Latte actions" aria-expanded="false">&hellip;</button>
++            <div>
++              <h3>Maple Oat Latte</h3>
++              <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            </div>
 +            <a href="/menu/seasonal" class="btn">View Details</a>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Maple Oat Latte actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Customize</button>
-+            <button type="button">Quick Add</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Contextual controls for Maple Oat Latte">
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-label="Favorite Maple Oat Latte" aria-pressed="false" data-action="favorite">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Maple Oat Latte" data-action="order">Order</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" aria-label="Share Maple Oat Latte" data-action="share">Share</button>
 +          </div>
          </div>
 -        <div class="card">
 -          <h3>Dark Roast Espresso</h3>
 -          <p>Bold, smokey, and perfect for a morning boost.</p>
 -          <a href="/menu/espresso" class="btn">View Details</a>
-+        <div class="card SwipeReveal">
++        <div class="card SwipeReveal" data-drink="Dark Roast Espresso">
 +          <div class="SwipeReveal-content">
-+            <h3>Dark Roast Espresso</h3>
-+            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Dark Roast Espresso actions" aria-expanded="false">&hellip;</button>
++            <div>
++              <h3>Dark Roast Espresso</h3>
++              <p>Bold, smokey, and perfect for a morning boost.</p>
++            </div>
 +            <a href="/menu/espresso" class="btn">View Details</a>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Dark Roast Espresso actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Customize</button>
-+            <button type="button">Quick Add</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Contextual controls for Dark Roast Espresso">
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-label="Favorite Dark Roast Espresso" aria-pressed="false" data-action="favorite">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Dark Roast Espresso" data-action="order">Order</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" aria-label="Share Dark Roast Espresso" data-action="share">Share</button>
 +          </div>
          </div>
 -        <div class="card">
 -          <h3>Cold Brew</h3>
 -          <p>Steeped for 18 hours for maximum smoothness.</p>
 -          <a href="/menu/cold-brew" class="btn">View Details</a>
-+        <div class="card SwipeReveal">
++        <div class="card SwipeReveal" data-drink="Cold Brew">
 +          <div class="SwipeReveal-content">
-+            <h3>Cold Brew</h3>
-+            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <button type="button" class="SwipeReveal-trigger" aria-label="Cold Brew actions" aria-expanded="false">&hellip;</button>
++            <div>
++              <h3>Cold Brew</h3>
++              <p>Steeped for 18 hours for maximum smoothness.</p>
++            </div>
 +            <a href="/menu/cold-brew" class="btn">View Details</a>
 +          </div>
-+          <div class="SwipeReveal-panel" role="group" aria-label="Cold Brew actions">
-+            <button type="button">Favorite</button>
-+            <button type="button">Customize</button>
-+            <button type="button">Quick Add</button>
++          <div class="SwipeReveal-panel" role="group" aria-label="Contextual controls for Cold Brew">
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--favorite" tabindex="-1" aria-label="Favorite Cold Brew" aria-pressed="false" data-action="favorite">Favorite</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--order" tabindex="-1" aria-label="Order Cold Brew" data-action="order">Order</button>
++            <button type="button" class="SwipeReveal-action SwipeReveal-action--share" tabindex="-1" aria-label="Share Cold Brew" data-action="share">Share</button>
 +          </div>
          </div>
        </div>
++      <p id="favorites-status" class="favorites-status" aria-live="polite"></p>
      </section>
-@@ -207,6 +302,19 @@
+   </main>
+ 
+@@ -207,6 +379,222 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
 +  <script>
-+    for (const content of document.querySelectorAll('.SwipeReveal-content')) {
-+      content.addEventListener('focusin', (event) => {
-+        if (event.target.matches(':focus-visible')) {
-+          content.scrollIntoView({
-+            block: 'nearest',
-+            inline: 'start',
++    (() => {
++      const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
++      const getScrollBehavior = () => (reducedMotionQuery.matches ? 'auto' : 'smooth');
++
++      const setActionTabIndexes = (reveal, isRevealed) => {
++        const value = isRevealed ? '0' : '-1';
++        for (const control of reveal.querySelectorAll('.SwipeReveal-panel button, .SwipeReveal-panel a')) {
++          control.setAttribute('tabindex', value);
++        }
++      };
++
++      const setRevealState = (reveal, isRevealed, activeTrigger = null) => {
++        const triggers = reveal.querySelectorAll('.SwipeReveal-content [aria-label$="actions"]');
++        for (const actionButton of triggers) {
++          const expanded = isRevealed && (!activeTrigger || actionButton === activeTrigger);
++          actionButton.setAttribute('aria-expanded', expanded ? 'true' : 'false');
++        }
++        setActionTabIndexes(reveal, isRevealed);
++        reveal.classList.remove('is-pending');
++        reveal.classList.toggle('is-revealed', isRevealed);
++      };
++
++      const getSnapTargetOffset = (reveal, target) => {
++        if (target.classList.contains('SwipeReveal-content')) {
++          return target.offsetLeft;
++        }
++        if (target.matches('.SwipeReveal-panel:first-child')) {
++          return target.offsetLeft;
++        }
++        return Math.max(0, target.offsetLeft + target.offsetWidth - reveal.clientWidth);
++      };
++
++      const findClosestSnapTarget = (reveal) => {
++        const targets = Array.from(reveal.querySelectorAll('.SwipeReveal-content, .SwipeReveal-panel'));
++        if (targets.length === 0) return null;
++
++        let closestTarget = targets[0];
++        let minDistance = Infinity;
++
++        for (const target of targets) {
++          const distance = Math.abs(reveal.scrollLeft - getSnapTargetOffset(reveal, target));
++          if (distance < minDistance) {
++            minDistance = distance;
++            closestTarget = target;
++          }
++        }
++        return closestTarget;
++      };
++
++      const syncRevealFromScroll = (reveal) => {
++        const closest = findClosestSnapTarget(reveal);
++        if (!closest) return;
++        setRevealState(reveal, closest.classList.contains('SwipeReveal-panel'));
++      };
++
++      // Trigger button open/close control
++      for (const trigger of document.querySelectorAll('.SwipeReveal-content [aria-label$="actions"]')) {
++        trigger.addEventListener('click', () => {
++          const reveal = trigger.closest('.SwipeReveal');
++          if (!reveal) return;
++
++          const label = (trigger.getAttribute('aria-label') || '').toLowerCase();
++          const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
++
++          if (isExpanded) {
++            if (label.includes('leading') || label.includes('trailing')) {
++              const firstPanel = reveal.querySelector('.SwipeReveal-panel');
++              const leadingScrollPanelWidth = firstPanel ? firstPanel.offsetWidth : 0;
++              reveal.scrollTo({
++                left: leadingScrollPanelWidth,
++                behavior: getScrollBehavior(),
++              });
++            } else {
++              reveal.scrollTo({
++                left: 0,
++                behavior: getScrollBehavior(),
++              });
++            }
++
++            setRevealState(reveal, false);
++            return;
++          }
++
++          const panels = Array.from(reveal.querySelectorAll('.SwipeReveal-panel'));
++          if (panels.length === 0) return;
++
++          let targetScrollLeft = reveal.scrollWidth;
++
++          if (label.includes('leading')) {
++            targetScrollLeft = 0;
++          } else if (label.includes('trailing')) {
++            targetScrollLeft = reveal.scrollWidth;
++          } else if (panels.length === 1) {
++            targetScrollLeft = reveal.scrollWidth;
++          } else {
++            const content = reveal.querySelector('.SwipeReveal-content');
++            const firstTrigger = content ? content.querySelector('[aria-label$="actions"]') : null;
++            targetScrollLeft = trigger === firstTrigger ? 0 : reveal.scrollWidth;
++          }
++
++          reveal.scrollTo({
++            left: targetScrollLeft,
++            behavior: getScrollBehavior(),
++          });
++
++          setRevealState(reveal, true, trigger);
++        });
++      }
++
++      // Sync state on swipe (Scroll Snap Events + geometric fallback) and focus return
++      const reveals = Array.from(document.querySelectorAll('.SwipeReveal'));
++      const supportsSnapEvents = 'onscrollsnapchanging' in HTMLElement.prototype;
++
++      for (const reveal of reveals) {
++        const content = reveal.querySelector('.SwipeReveal-content');
++        if (content) {
++          content.addEventListener('focusin', (event) => {
++            if (event.target instanceof Element && event.target.matches(':focus-visible')) {
++              content.scrollIntoView({ block: 'nearest', inline: 'start' });
++            }
 +          });
 +        }
-+      });
-+    }
-+  </script>
 +
++        reveal.addEventListener('keydown', (event) => {
++          if (event.key !== 'Escape') return;
++          const trigger = reveal.querySelector('.SwipeReveal-content [aria-label$="actions"]');
++          if (!trigger || trigger.getAttribute('aria-expanded') !== 'true') return;
++          trigger.focus();
++          reveal.scrollTo({ left: 0, behavior: getScrollBehavior() });
++          setRevealState(reveal, false);
++        });
++
++        if (supportsSnapEvents) {
++          reveal.addEventListener('scrollsnapchanging', (event) => {
++            const pendingTarget = event.snapTargetInline;
++            if (!pendingTarget) return;
++            reveal.classList.toggle('is-pending', pendingTarget.classList.contains('SwipeReveal-panel'));
++          });
++
++          reveal.addEventListener('scrollsnapchange', (event) => {
++            const snappedTarget = event.snapTargetInline;
++            if (!snappedTarget) return;
++            setRevealState(reveal, snappedTarget.classList.contains('SwipeReveal-panel'));
++          });
++        } else {
++          let scrollTimeout;
++          let rafId = null;
++
++          const promotePendingToActive = () => {
++            syncRevealFromScroll(reveal);
++          };
++
++          reveal.addEventListener('scroll', () => {
++            if (!rafId) {
++              rafId = requestAnimationFrame(() => {
++                rafId = null;
++                const closest = findClosestSnapTarget(reveal);
++                if (!closest) return;
++                reveal.classList.toggle('is-pending', closest.classList.contains('SwipeReveal-panel'));
++              });
++            }
++
++            clearTimeout(scrollTimeout);
++            scrollTimeout = setTimeout(promotePendingToActive, 100);
++          }, { passive: true });
++
++          reveal.addEventListener('scrollend', () => {
++            clearTimeout(scrollTimeout);
++            promotePendingToActive();
++          });
++        }
++      }
++
++      const initAllReveals = () => {
++        for (const reveal of reveals) {
++          syncRevealFromScroll(reveal);
++        }
++      };
++
++      if (document.readyState === 'complete') {
++        initAllReveals();
++      } else {
++        window.addEventListener('load', initAllReveals, { once: true });
++      }
++
++      // Handle contextual drink action clicks (never auto-triggered on swipe)
++      const statusEl = document.getElementById('favorites-status');
++      for (const actionBtn of document.querySelectorAll('.SwipeReveal-action')) {
++        actionBtn.addEventListener('click', () => {
++          const reveal = actionBtn.closest('.SwipeReveal');
++          const drink = reveal ? reveal.dataset.drink : 'Drink';
++          const action = actionBtn.dataset.action;
++
++          if (action === 'favorite') {
++            const nextPressed = actionBtn.getAttribute('aria-pressed') !== 'true';
++            actionBtn.setAttribute('aria-pressed', nextPressed ? 'true' : 'false');
++            actionBtn.textContent = nextPressed ? 'Favorited' : 'Favorite';
++            if (statusEl) {
++              statusEl.textContent = nextPressed
++                ? `${drink} saved to your favorites.`
++                : `${drink} removed from your favorites.`;
++            }
++          } else if (action === 'order') {
++            if (statusEl) {
++              statusEl.textContent = `${drink} added to your order.`;
++            }
++          } else if (action === 'share') {
++            if (statusEl) {
++              statusEl.textContent = `Share link ready for ${drink}.`;
++            }
++          }
++        });
++      }
++    })();
++  </script>
  </body>
  
  </html>
