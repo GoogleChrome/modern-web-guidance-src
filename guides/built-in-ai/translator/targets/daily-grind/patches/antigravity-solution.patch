@@ -1,0 +1,542 @@
+diff --git a/index.html b/index.html
+index 66c9173..7cf1358 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,129 @@
+       background: #3e2723;
+     }
+ 
++    /* Language Selector Bar */
++    .translator-bar {
++      background: #efebe9;
++      border-bottom: 1px solid var(--secondary);
++      padding: 12px 5%;
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      justify-content: space-between;
++      gap: 12px;
++      font-size: 0.92rem;
++    }
++
++    .translator-controls {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 10px;
++    }
++
++    .translator-controls label {
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    .translator-select {
++      padding: 7px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: white;
++      color: var(--text);
++      font-size: 0.9rem;
++      font-family: inherit;
++    }
++
++    .translator-select:disabled {
++      background: #f5f5f5;
++      color: #8d6e63;
++      cursor: not-allowed;
++    }
++
++    .translator-btn {
++      background: var(--primary);
++      color: white;
++      border: none;
++      padding: 8px 16px;
++      border-radius: 5px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      cursor: pointer;
++      transition: background 0.2s, opacity 0.2s;
++    }
++
++    .translator-btn:hover:not(:disabled) {
++      background: #3e2723;
++    }
++
++    .translator-btn:disabled {
++      opacity: 0.5;
++      cursor: not-allowed;
++    }
++
++    .translator-btn-secondary {
++      background: transparent;
++      color: var(--primary);
++      border: 1px solid var(--primary);
++    }
++
++    .translator-btn-secondary:hover:not(:disabled) {
++      background: var(--secondary);
++    }
++
++    .translator-feedback {
++      display: flex;
++      flex-wrap: wrap;
++      align-items: center;
++      gap: 12px;
++      color: #5d4037;
++      font-size: 0.85rem;
++    }
++
++    .translator-progress-wrap {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++    }
++
++    .translator-progress-wrap[hidden],
++    .translator-btn[hidden] {
++      display: none;
++    }
++
++    .translator-progress-wrap progress {
++      width: 120px;
++      height: 10px;
++      accent-color: var(--primary);
++    }
++
++    /* Story Section */
++    .story-section {
++      margin-top: 50px;
++      background: white;
++      padding: 32px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .story-section h2 {
++      text-align: center;
++      color: var(--primary);
++      margin-bottom: 16px;
++    }
++
++    .story-section p {
++      max-width: 820px;
++      margin: 0 auto 14px;
++      color: var(--text);
++    }
++
++    .story-section p:last-child {
++      margin-bottom: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -168,34 +291,60 @@
+     </ul>
+   </nav>
+ 
+-  <header class="hero">
+-    <h1>Wake Up Your Senses</h1>
+-    <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
+-  </header>
+-
+-  <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
+-        </div>
++  <section class="translator-bar" aria-label="On-device language translation">
++    <div class="translator-controls">
++      <label for="language-select">Translate Page:</label>
++      <select id="language-select" class="translator-select">
++        <option value="en">English (Original)</option>
++      </select>
++      <button id="translate-btn" type="button" class="translator-btn" disabled>Translate</button>
++      <button id="reset-lang-btn" type="button" class="translator-btn translator-btn-secondary" hidden>Show Original</button>
++    </div>
++    <div class="translator-feedback">
++      <span id="translator-status" role="status" aria-live="polite">Checking on-device translation support...</span>
++      <div id="translator-progress-wrap" class="translator-progress-wrap" hidden>
++        <progress id="translator-progress" max="100" value="0"></progress>
++        <span id="translator-progress-text">0%</span>
+       </div>
+-    </section>
+-  </main>
++    </div>
++  </section>
++
++  <div id="translatable-content" lang="en">
++    <header class="hero">
++      <h1 data-translate>Wake Up Your Senses</h1>
++      <p data-translate>Ethically sourced, locally roasted, delivered to your cup.</p>
++      <a href="/order-online" class="btn" data-translate>Order Now</a>
++    </header>
++
++    <main class="container">
++      <section id="menu">
++        <h2 style="text-align: center;" data-translate>Seasonal Favorites</h2>
++        <div class="grid">
++          <div class="card">
++            <h3 data-translate>Maple Oat Latte</h3>
++            <p data-translate>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" data-translate>View Details</a>
++          </div>
++          <div class="card">
++            <h3 data-translate>Dark Roast Espresso</h3>
++            <p data-translate>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" data-translate>View Details</a>
++          </div>
++          <div class="card">
++            <h3 data-translate>Cold Brew</h3>
++            <p data-translate>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" data-translate>View Details</a>
++          </div>
++        </div>
++      </section>
++
++      <section id="story" class="story-section">
++        <h2 data-translate>Our Story</h2>
++        <p data-translate>Founded in 2018 by a small collective of neighborhood roasters, The Daily Grind began with a simple belief: great coffee should honor both the farmers who cultivate each bean and the community that gathers around every cup. We partner directly with family-owned cooperatives across Central America, East Africa, and Colombia, roasting in small batches each morning to bring out bright, nuanced flavors.</p>
++        <p data-translate>Whether you stop by our corner cafe for a slow pour-over or grab a chilled bottle of cold brew on your commute, every drink is crafted with care, transparency, and sustainable ingredients from farm to cup.</p>
++      </section>
++    </main>
++  </div>
+ 
+   <footer>
+     <div class="footer-links">
+@@ -207,6 +356,319 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    (() => {
++      const SOURCE_LANGUAGE = 'en';
++
++      // Supported BCP 47 language codes from Chrome's Translator API
++      const SUPPORTED_LANGUAGES = [
++        { code: 'ar', label: 'Arabic' },
++        { code: 'bg', label: 'Bulgarian' },
++        { code: 'bn', label: 'Bengali' },
++        { code: 'zh', label: 'Chinese (Simplified)' },
++        { code: 'zh-Hant', label: 'Chinese (Traditional)' },
++        { code: 'hr', label: 'Croatian' },
++        { code: 'cs', label: 'Czech' },
++        { code: 'da', label: 'Danish' },
++        { code: 'nl', label: 'Dutch' },
++        { code: 'fi', label: 'Finnish' },
++        { code: 'fr', label: 'French' },
++        { code: 'de', label: 'German' },
++        { code: 'el', label: 'Greek' },
++        { code: 'he', label: 'Hebrew' },
++        { code: 'hi', label: 'Hindi' },
++        { code: 'hu', label: 'Hungarian' },
++        { code: 'id', label: 'Indonesian' },
++        { code: 'it', label: 'Italian' },
++        { code: 'ja', label: 'Japanese' },
++        { code: 'kn', label: 'Kannada' },
++        { code: 'ko', label: 'Korean' },
++        { code: 'lt', label: 'Lithuanian' },
++        { code: 'mr', label: 'Marathi' },
++        { code: 'no', label: 'Norwegian' },
++        { code: 'pl', label: 'Polish' },
++        { code: 'pt', label: 'Portuguese' },
++        { code: 'ro', label: 'Romanian' },
++        { code: 'ru', label: 'Russian' },
++        { code: 'sk', label: 'Slovak' },
++        { code: 'sl', label: 'Slovenian' },
++        { code: 'es', label: 'Spanish' },
++        { code: 'sv', label: 'Swedish' },
++        { code: 'ta', label: 'Tamil' },
++        { code: 'te', label: 'Telugu' },
++        { code: 'th', label: 'Thai' },
++        { code: 'tr', label: 'Turkish' },
++        { code: 'uk', label: 'Ukrainian' },
++        { code: 'vi', label: 'Vietnamese' },
++      ];
++
++      const languageSelect = document.getElementById('language-select');
++      const translateBtn = document.getElementById('translate-btn');
++      const resetLangBtn = document.getElementById('reset-lang-btn');
++      const statusEl = document.getElementById('translator-status');
++      const progressWrap = document.getElementById('translator-progress-wrap');
++      const progressEl = document.getElementById('translator-progress');
++      const progressText = document.getElementById('translator-progress-text');
++      const translatableContainer = document.getElementById('translatable-content');
++      const translatableElements = Array.from(document.querySelectorAll('[data-translate]'));
++
++      // Preserve crisp original English text for every translatable node
++      const originalTexts = new Map(
++        translatableElements.map((el) => [el, el.textContent.trim()])
++      );
++
++      // Populate language dropdown
++      for (const { code, label } of SUPPORTED_LANGUAGES) {
++        const option = document.createElement('option');
++        option.value = code;
++        option.textContent = label;
++        languageSelect.appendChild(option);
++      }
++
++      const translatorCache = new Map();
++      const availabilityCache = new Map();
++      let activeRequestId = 0;
++
++      function getLanguageLabel(code) {
++        if (code === SOURCE_LANGUAGE) return 'English';
++        const match = SUPPORTED_LANGUAGES.find((lang) => lang.code === code);
++        return match ? match.label : code;
++      }
++
++      function setStatus(message) {
++        statusEl.textContent = message;
++      }
++
++      function showProgress(percent) {
++        const clamped = Math.min(100, Math.max(0, Math.round(percent)));
++        progressWrap.hidden = false;
++        progressEl.value = clamped;
++        progressText.textContent = `${clamped}%`;
++      }
++
++      function hideProgress() {
++        progressWrap.hidden = true;
++        progressEl.value = 0;
++        progressText.textContent = '0%';
++      }
++
++      function restoreOriginalContent(statusMessage = '') {
++        activeRequestId += 1;
++        hideProgress();
++        for (const [el, text] of originalTexts.entries()) {
++          el.textContent = text;
++        }
++        translatableContainer.setAttribute('lang', SOURCE_LANGUAGE);
++        resetLangBtn.hidden = true;
++        setStatus(statusMessage);
++      }
++
++      async function translateElements(translator, targetLanguage, requestId) {
++        setStatus(`Translating to ${getLanguageLabel(targetLanguage)}...`);
++
++        // Translate short items first in memory so we can switch container lang cleanly
++        const shortResults = [];
++        const longElements = [];
++
++        for (const el of translatableElements) {
++          if (requestId !== activeRequestId) return;
++          const sourceText = originalTexts.get(el) || '';
++          if (sourceText.length > 140 && typeof translator.translateStreaming === 'function') {
++            longElements.push({ el, sourceText });
++          } else {
++            const translated = await translator.translate(sourceText);
++            if (requestId !== activeRequestId) return;
++            shortResults.push({ el, translated });
++          }
++        }
++
++        if (requestId !== activeRequestId) return;
++
++        // Apply mandatory BCP 47 lang attribute to the translated content container
++        translatableContainer.setAttribute('lang', targetLanguage);
++
++        for (const { el, translated } of shortResults) {
++          el.textContent = translated;
++        }
++
++        for (const { el, sourceText } of longElements) {
++          if (requestId !== activeRequestId) return;
++          let accumulated = '';
++          const stream = translator.translateStreaming(sourceText);
++          for await (const chunk of stream) {
++            if (requestId !== activeRequestId) return;
++            accumulated += chunk;
++            el.textContent = accumulated;
++          }
++        }
++
++        if (requestId !== activeRequestId) return;
++        resetLangBtn.hidden = false;
++        setStatus(`Translated to ${getLanguageLabel(targetLanguage)} on device.`);
++      }
++
++      async function createAndTranslate(options, requestId, skipCreateIfCached = true) {
++        const cacheKey = `${options.sourceLanguage}->${options.targetLanguage}`;
++        let translator = skipCreateIfCached ? translatorCache.get(cacheKey) : undefined;
++
++        if (!translator) {
++          setStatus(`Preparing ${getLanguageLabel(options.targetLanguage)} model...`);
++          translator = await Translator.create({
++            ...options,
++            monitor(m) {
++              m.addEventListener('downloadprogress', (e) => {
++                if (requestId !== activeRequestId) return;
++                const percent = Math.round((e.loaded || 0) * 100);
++                setStatus(`Downloading ${getLanguageLabel(options.targetLanguage)} language pack...`);
++                showProgress(percent);
++              });
++            },
++          });
++
++          if (requestId !== activeRequestId) return;
++          translatorCache.set(cacheKey, translator);
++          availabilityCache.set(options.targetLanguage, 'available');
++          hideProgress();
++        }
++
++        await translateElements(translator, options.targetLanguage, requestId);
++      }
++
++      async function handleLanguageSelection() {
++        const targetLanguage = languageSelect.value;
++
++        if (targetLanguage === SOURCE_LANGUAGE) {
++          translateBtn.textContent = 'Translate';
++          translateBtn.disabled = true;
++          restoreOriginalContent('On-device translation ready.');
++          return;
++        }
++
++        const requestId = ++activeRequestId;
++        hideProgress();
++        translateBtn.disabled = true;
++        setStatus(`Checking ${getLanguageLabel(targetLanguage)} availability...`);
++
++        const options = {
++          sourceLanguage: SOURCE_LANGUAGE,
++          targetLanguage,
++        };
++
++        try {
++          const availability = await Translator.availability(options);
++          if (requestId !== activeRequestId) return;
++          availabilityCache.set(targetLanguage, availability);
++
++          if (availability === 'available') {
++            translateBtn.textContent = 'Translate';
++            translateBtn.disabled = false;
++            await createAndTranslate(options, requestId);
++          } else if (availability === 'downloadable' || availability === 'downloading') {
++            // User gesture is strictly required before Translator.create() starts or attaches to download
++            translateBtn.textContent = 'Download & Translate';
++            translateBtn.disabled = false;
++            const actionNote =
++              availability === 'downloading'
++                ? 'Language pack is downloading.'
++                : 'Language pack requires a one-time download.';
++            setStatus(`${actionNote} Click "Download & Translate" to continue.`);
++          } else {
++            translateBtn.textContent = 'Translate';
++            translateBtn.disabled = true;
++            setStatus(`On-device translation to ${getLanguageLabel(targetLanguage)} is unavailable on this device.`);
++          }
++        } catch (err) {
++          if (requestId !== activeRequestId) return;
++          hideProgress();
++          if (err && err.name === 'NotAllowedError') {
++            translateBtn.textContent = 'Download & Translate';
++            translateBtn.disabled = false;
++            setStatus('Click "Download & Translate" to start downloading the language pack.');
++            return;
++          }
++          translateBtn.textContent = 'Translate';
++          translateBtn.disabled = true;
++          console.warn('Translator availability check failed:', err);
++          setStatus('Unable to check language availability right now.');
++        }
++      }
++
++      async function handleTranslateButtonClick() {
++        const targetLanguage = languageSelect.value;
++        if (targetLanguage === SOURCE_LANGUAGE) {
++          restoreOriginalContent('Showing original English.');
++          return;
++        }
++
++        const requestId = ++activeRequestId;
++        const options = {
++          sourceLanguage: SOURCE_LANGUAGE,
++          targetLanguage,
++        };
++
++        const cachedAvailability = availabilityCache.get(targetLanguage);
++        translateBtn.disabled = true;
++
++        try {
++          if (cachedAvailability === 'downloadable' || cachedAvailability === 'downloading') {
++            // Invoke Translator.create() directly inside the click handler to preserve the user gesture
++            await createAndTranslate(options, requestId);
++          } else {
++            const availability = await Translator.availability(options);
++            if (requestId !== activeRequestId) return;
++            availabilityCache.set(targetLanguage, availability);
++
++            if (availability === 'unavailable') {
++              translateBtn.textContent = 'Translate';
++              translateBtn.disabled = true;
++              setStatus(`On-device translation to ${getLanguageLabel(targetLanguage)} is unavailable on this device.`);
++              return;
++            }
++
++            await createAndTranslate(options, requestId);
++          }
++
++          if (requestId === activeRequestId) {
++            translateBtn.textContent = 'Translate';
++            translateBtn.disabled = false;
++          }
++        } catch (err) {
++          if (requestId !== activeRequestId) return;
++          hideProgress();
++          translateBtn.disabled = false;
++
++          if (err && err.name === 'NotAllowedError') {
++            translateBtn.textContent = 'Download & Translate';
++            setStatus('Click "Download & Translate" to start downloading the language pack.');
++            return;
++          }
++
++          console.warn('Translation failed:', err);
++          restoreOriginalContent('Translation could not be completed. Showing original English.');
++          translateBtn.textContent = 'Translate';
++        }
++      }
++
++      // Feature detection via global Translator interface only
++      if (!('Translator' in self)) {
++        languageSelect.disabled = true;
++        translateBtn.disabled = true;
++        setStatus('Client-side translation is currently unsupported in this browser.');
++        return;
++      }
++
++      setStatus('On-device translation ready. Choose a language to translate.');
++      languageSelect.addEventListener('change', handleLanguageSelection);
++      translateBtn.addEventListener('click', handleTranslateButtonClick);
++      resetLangBtn.addEventListener('click', () => {
++        languageSelect.value = SOURCE_LANGUAGE;
++        translateBtn.textContent = 'Translate';
++        translateBtn.disabled = true;
++        restoreOriginalContent('Showing original English.');
++      });
++    })();
++  </script>
++
+ </body>
+ 
+ </html>

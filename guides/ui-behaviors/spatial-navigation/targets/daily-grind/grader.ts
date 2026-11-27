@@ -7,10 +7,7 @@ import {
 import { SyntaxKind } from 'ts-morph';
 
 // @ts-ignore
-const targetFiles: string[] = typeof process.env.PATCH_FILE === 'string'
-  // @ts-ignore
-  ? getTargetFiles(import.meta.url)
-  : [];
+const targetFiles: string[] = getTargetFiles(import.meta.url);
 
 test.describe('Spatial Navigation Target Grader', () => {
 
@@ -42,6 +39,43 @@ test.describe('Spatial Navigation Target Grader', () => {
         return interactive.filter(el => (el as HTMLElement).tabIndex >= 0).length;
       });
       expect(tabStopsCount).toBe(1);
+    });
+
+    test('Spatial navigation container uses an appropriate composite widget role and expected child roles', async ({ page }) => {
+      const result = await page.evaluate(() => {
+        const EXPECTED_CHILD_ROLES: Record<string, string[]> = {
+          grid: ['gridcell'],
+          tablist: ['tab'],
+          listbox: ['option'],
+          tree: ['treeitem'],
+          treegrid: ['gridcell', 'row'],
+          combobox: ['option'],
+        };
+
+        const roleSelector = Object.keys(EXPECTED_CHILD_ROLES)
+          .map((r) => `[role="${r}"]`)
+          .join(', ');
+        const grid = document.querySelector('[data-spatial-nav], [data-spatial-navigation], .grid');
+        const container =
+          (grid?.hasAttribute('role')
+            ? grid
+            : grid?.closest(roleSelector) ?? grid?.querySelector(roleSelector)) ??
+          document.querySelector(roleSelector);
+        if (!container) return { role: null, childCount: 0, valid: false };
+
+        const role = (container.getAttribute('role') ?? '').trim().toLowerCase();
+        const expectedChildren = EXPECTED_CHILD_ROLES[role];
+        if (!expectedChildren) {
+          return { role, childCount: 0, valid: false };
+        }
+
+        const childSelector = expectedChildren.map((r) => `[role="${r}"]`).join(', ');
+        const childCount = container.querySelectorAll(childSelector).length;
+        return { role, childCount, valid: childCount >= 2 };
+      });
+
+      expect(result.role).toBeTruthy();
+      expect(result.valid).toBe(true);
     });
 
     test('Pressing Right Arrow moves focus to the visually closest focusable element to the right', async ({ page }) => {

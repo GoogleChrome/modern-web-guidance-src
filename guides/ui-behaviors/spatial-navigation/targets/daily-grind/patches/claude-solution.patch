@@ -1,101 +1,216 @@
 diff --git a/index.html b/index.html
-index 66c9173..f08b6cd 100644
+index 66c9173..ec01dd3 100644
 --- a/index.html
 +++ b/index.html
-@@ -131,6 +131,11 @@
-       transition: background 0.3s;
-     }
- 
-+    .btn:focus-visible {
-+      outline: 3px solid var(--accent);
-+      outline-offset: 2px;
-+    }
-+
-     .btn:hover {
+@@ -135,6 +135,32 @@
        background: #3e2723;
      }
-@@ -177,7 +182,7 @@
+ 
++    /* The row wrapper exists only for grid semantics; cards stay laid out by .grid */
++    .grid-row {
++      display: contents;
++    }
++
++    .btn:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 3px;
++    }
++
++    .card:has(.btn:focus-visible) {
++      box-shadow: 0 0 0 3px var(--accent), 0 2px 5px rgba(0, 0, 0, 0.1);
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0 0 0 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -177,23 +203,27 @@
    <main class="container">
      <section>
        <h2 style="text-align: center;">Seasonal Favorites</h2>
 -      <div class="grid">
-+      <div class="grid" id="spatial-grid" role="group" aria-label="Seasonal favorites (use arrow keys to move between items)">
-         <div class="card">
-           <h3>Maple Oat Latte</h3>
-           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
-@@ -207,6 +212,75 @@
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
+-        </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++      <div class="grid" role="grid" aria-label="Seasonal favorites" aria-describedby="seasonal-grid-hint"
++        data-spatial-nav>
++        <div class="grid-row" role="row">
++          <div class="card" role="gridcell">
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <a href="/menu/seasonal" class="btn" tabindex="0">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <a href="/menu/espresso" class="btn" tabindex="-1">View Details</a>
++          </div>
++          <div class="card" role="gridcell">
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <a href="/menu/cold-brew" class="btn" tabindex="-1">View Details</a>
++          </div>
+         </div>
+       </div>
++      <p id="seasonal-grid-hint" class="visually-hidden">Use the arrow keys to move between items.</p>
+     </section>
+   </main>
+ 
+@@ -207,6 +237,135 @@
      <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
    </footer>
  
-+<script>
-+  (function () {
-+    var container = document.getElementById('spatial-grid');
-+    var SELECTOR = 'a[href], button:not([disabled])';
-+    var TOLERANCE = 2;
-+    var WEIGHT = 3;
++  <script>
++    (() => {
++      'use strict';
 +
-+    function candidates() {
-+      return Array.prototype.slice.call(container.querySelectorAll(SELECTOR))
-+        .filter(function (el) { return el.checkVisibility(); });
-+    }
++      // Sub-pixel rounding allowance for edge comparisons.
++      const TOLERANCE = 1;
++      // Weight for perpendicular misalignment in fallback scoring (>= 2; larger favours aligned items).
++      const PERPENDICULAR_WEIGHT = 3;
++      const ITEM_SELECTOR = 'a[href], button:not([disabled])';
++      const KEY_DIRECTIONS = {
++        ArrowUp: 'up',
++        ArrowDown: 'down',
++        ArrowLeft: 'left',
++        ArrowRight: 'right',
++      };
 +
-+    function initTabindex() {
-+      var items = candidates();
-+      items.forEach(function (el, i) { el.tabIndex = i === 0 ? 0 : -1; });
-+    }
++      /** Visible focusable items in the widget, in DOM order. */
++      function getCandidates(container) {
++        return Array.from(container.querySelectorAll(ITEM_SELECTOR)).filter((el) =>
++          el.checkVisibility({ visibilityProperty: true, opacityProperty: true })
++        );
++      }
 +
-+    function overlap(a0, a1, b0, b1) {
-+      return Math.min(a1, b1) - Math.max(a0, b0) > 0;
-+    }
-+
-+    function find(current, items, dir) {
-+      var c = current.getBoundingClientRect();
-+      var horiz = dir === 'ArrowLeft' || dir === 'ArrowRight';
-+      var aligned = null, fallback = null;
-+      items.forEach(function (el) {
-+        if (el === current) return;
-+        var r = el.getBoundingClientRect();
-+        var gap;
-+        if (dir === 'ArrowRight') { if (r.left < c.right - TOLERANCE) return; gap = r.left - c.right; }
-+        else if (dir === 'ArrowLeft') { if (r.right > c.left + TOLERANCE) return; gap = c.left - r.right; }
-+        else if (dir === 'ArrowDown') { if (r.top < c.bottom - TOLERANCE) return; gap = r.top - c.bottom; }
-+        else { if (r.bottom > c.top + TOLERANCE) return; gap = c.top - r.bottom; }
-+        gap = Math.max(gap, 0);
-+        var off = horiz
-+          ? Math.abs((r.top + r.bottom) / 2 - (c.top + c.bottom) / 2)
-+          : Math.abs((r.left + r.right) / 2 - (c.left + c.right) / 2);
-+        var ov = horiz
-+          ? overlap(c.top, c.bottom, r.top, r.bottom)
-+          : overlap(c.left, c.right, r.left, r.right);
-+        if (ov) {
-+          if (!aligned || gap < aligned.gap || (gap === aligned.gap && off < aligned.off)) aligned = { el: el, gap: gap, off: off };
-+        } else {
-+          var score = gap + WEIGHT * off;
-+          if (!fallback || score < fallback.score) fallback = { el: el, score: score };
++      /**
++       * Returns geometry along the navigation axis for `direction`:
++       * gap = distance from current's far edge to candidate's near edge (negative = behind).
++       */
++      function measure(current, candidate, direction) {
++        const horizontal = direction === 'left' || direction === 'right';
++        let gap;
++        switch (direction) {
++          case 'right': gap = candidate.left - current.right; break;
++          case 'left': gap = current.left - candidate.right; break;
++          case 'down': gap = candidate.top - current.bottom; break;
++          case 'up': gap = current.top - candidate.bottom; break;
 +        }
++        // Perpendicular extents and centres.
++        const [curStart, curEnd, candStart, candEnd] = horizontal
++          ? [current.top, current.bottom, candidate.top, candidate.bottom]
++          : [current.left, current.right, candidate.left, candidate.right];
++        const overlaps = candStart < curEnd - TOLERANCE && candEnd > curStart + TOLERANCE;
++        const offset = Math.abs((candStart + candEnd) / 2 - (curStart + curEnd) / 2);
++        return { gap, overlaps, offset };
++      }
++
++      /** Picks the best candidate in `direction` from live geometry, or null. */
++      function findTarget(container, current, direction) {
++        const currentRect = current.getBoundingClientRect();
++        let bestAligned = null;
++        let bestFallback = null;
++
++        for (const el of getCandidates(container)) {
++          if (el === current) continue;
++          const { gap, overlaps, offset } = measure(currentRect, el.getBoundingClientRect(), direction);
++          // Edge-based direction filter.
++          if (gap < -TOLERANCE) continue;
++          const g = Math.max(gap, 0);
++
++          if (overlaps) {
++            if (
++              !bestAligned ||
++              g < bestAligned.gap - TOLERANCE ||
++              (Math.abs(g - bestAligned.gap) <= TOLERANCE && offset < bestAligned.offset)
++            ) {
++              bestAligned = { el, gap: g, offset };
++            }
++          } else if (!bestAligned) {
++            const score = g + PERPENDICULAR_WEIGHT * offset;
++            if (!bestFallback || score < bestFallback.score) {
++              bestFallback = { el, score };
++            }
++          }
++        }
++
++        return bestAligned?.el ?? bestFallback?.el ?? null;
++      }
++
++      function setActive(container, item) {
++        for (const el of container.querySelectorAll(ITEM_SELECTOR)) {
++          el.tabIndex = el === item ? 0 : -1;
++        }
++      }
++
++      /** Ensure exactly one visible item is the tab stop. */
++      function ensureTabStop(container) {
++        const candidates = getCandidates(container);
++        if (candidates.length === 0) return;
++        const active = candidates.find((el) => el.tabIndex === 0) ?? candidates[0];
++        setActive(container, active);
++      }
++
++      function initSpatialNav(container) {
++        ensureTabStop(container);
++
++        // Keep the roving tab stop in sync when items are focused by mouse or other means.
++        container.addEventListener('focusin', (e) => {
++          const target = e.target;
++          if (target instanceof HTMLElement && target.matches(ITEM_SELECTOR) && container.contains(target)) {
++            setActive(container, target);
++          }
++        });
++
++        container.addEventListener('keydown', (e) => {
++          const direction = KEY_DIRECTIONS[e.key];
++          if (!direction) return;
++          if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
++
++          const target = e.composedPath()[0];
++          if (!(target instanceof HTMLElement)) return;
++          if (target.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
++          // Only act when the focused element is itself a candidate item of this widget.
++          if (!target.matches(ITEM_SELECTOR) || !getCandidates(container).includes(target)) return;
++
++          const next = findTarget(container, target, direction);
++          if (!next) return; // Let the browser scroll natively.
++
++          e.preventDefault();
++          setActive(container, next);
++          next.focus({ preventScroll: true });
++          next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
++        });
++      }
++
++      document.querySelectorAll('[data-spatial-nav]').forEach((el) => {
++        if (el instanceof HTMLElement) initSpatialNav(el);
 +      });
-+      return aligned ? aligned.el : fallback ? fallback.el : null;
-+    }
++    })();
++  </script>
 +
-+    container.addEventListener('keydown', function (e) {
-+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.key) === -1) return;
-+      var t = e.composedPath()[0];
-+      if (t instanceof Element && t.matches(':read-write, select, input[type="range"], [role="slider"]')) return;
-+      var items = candidates();
-+      var current = document.activeElement;
-+      if (items.indexOf(current) === -1) return;
-+      var next = find(current, items, e.key);
-+      if (!next) return;
-+      e.preventDefault();
-+      items.forEach(function (el) { el.tabIndex = el === next ? 0 : -1; });
-+      next.focus();
-+      next.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-+    });
-+
-+    initTabindex();
-+  })();
-+</script>
  </body>
  
  </html>

@@ -1,28 +1,32 @@
 diff --git a/index.html b/index.html
-index 66c9173..2d7fbf9 100644
+index 66c9173..2128dca 100644
 --- a/index.html
 +++ b/index.html
-@@ -49,6 +49,43 @@
+@@ -49,10 +49,46 @@
      nav ul {
        display: flex;
        list-style: none;
 +      position: relative;
+     }
+ 
+     nav ul li {
+-      margin-left: 20px;
++      margin-inline-start: 20px;
++    }
++
++    nav li.active {
++      anchor-name: --primary-nav-active;
 +    }
 +
 +    nav ul::before {
 +      content: '';
 +      position: absolute;
-+      position-anchor: --active-nav-item;
-+      inset-block-start: calc(anchor(bottom) + 0.1lh);
-+      inset-inline-start: anchor(left);
-+      inset-inline-end: anchor(right);
-+      /* Border-based underline preserves visibility in forced-colors mode */
++      position-anchor: --primary-nav-active;
++      inset-block-start: calc(anchor(self-end) + 0.1lh);
++      inset-inline-start: anchor(self-start);
++      inset-inline-end: anchor(self-end);
 +      border-block-end: 3px solid var(--accent);
 +      pointer-events: none;
-+    }
-+
-+    nav li.active {
-+      anchor-name: --active-nav-item;
 +    }
 +
 +    @media (prefers-reduced-motion: no-preference) {
@@ -31,22 +35,22 @@ index 66c9173..2d7fbf9 100644
 +      }
 +    }
 +
-+    @supports not (position-anchor: auto) {
++    @supports not ((position-anchor: --primary-nav-active) and (inset-inline-start: anchor(self-start))) {
 +      nav ul::before {
 +        content: none;
 +      }
 +
-+      nav li {
-+        border-bottom: 3px solid transparent;
++      nav li:not(.active) {
++        padding-block-end: 3px;
 +      }
 +
 +      nav li.active {
-+        border-bottom-color: var(--accent);
++        border-block-end: 3px solid var(--accent);
 +      }
      }
  
-     nav ul li {
-@@ -157,10 +194,10 @@
+     nav a {
+@@ -157,17 +193,45 @@
  
  <body>
  
@@ -55,42 +59,45 @@ index 66c9173..2d7fbf9 100644
      <div class="logo">THE DAILY GRIND</div>
      <ul>
 -      <li><a href="/menu">Menu</a></li>
-+      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
-       <li><a href="/locations">Locations</a></li>
-       <li><a href="/rewards">Rewards</a></li>
-       <li><a href="/account">My Account</a></li>
-@@ -207,6 +244,34 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
++      <li class="active"><a href="/menu" data-nav-item aria-current="page">Menu</a></li>
++      <li><a href="/locations" data-nav-item>Locations</a></li>
++      <li><a href="/rewards" data-nav-item>Rewards</a></li>
++      <li><a href="/account" data-nav-item>My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+   </nav>
  
 +  <script>
-+    const navigationLinks = document.querySelectorAll('nav a:not(.logout-link)');
++    const navItems = document.querySelector('nav')?.querySelectorAll('a') ?? [];
++    let activeNavItem = Array.from(navItems).find((link) => link.hasAttribute('aria-current'));
 +
-+    function selectNavigationLink(selectedLink) {
-+      navigationLinks.forEach((link) => {
-+        const isSelected = link === selectedLink;
-+        link.parentElement.classList.toggle('active', isSelected);
-+        if (isSelected) {
-+          link.setAttribute('aria-current', 'page');
-+        } else {
-+          link.removeAttribute('aria-current');
++    for (const navItem of navItems) {
++      if (!navItem.hasAttribute('data-nav-item')) {
++        continue;
++      }
++
++      navItem.addEventListener('click', (event) => {
++        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
++          return;
 +        }
++
++        event.preventDefault();
++        if (navItem === activeNavItem) {
++          return;
++        }
++
++        activeNavItem?.removeAttribute('aria-current');
++        activeNavItem?.parentElement?.classList.remove('active');
++        navItem.setAttribute('aria-current', 'page');
++        navItem.parentElement?.classList.add('active');
++        activeNavItem = navItem;
 +      });
 +    }
-+
-+    const currentLink = Array.from(navigationLinks).find(
-+      (link) => new URL(link.href).pathname === window.location.pathname
-+    );
-+    if (currentLink) selectNavigationLink(currentLink);
-+
-+    navigationLinks.forEach((link) => {
-+      link.addEventListener('click', (event) => {
-+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-+        event.preventDefault();
-+        selectNavigationLink(link);
-+      });
-+    });
 +  </script>
- </body>
- 
- </html>
++
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>

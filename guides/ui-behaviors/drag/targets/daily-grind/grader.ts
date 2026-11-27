@@ -52,8 +52,8 @@ interface PanelAndHandleMetrics {
   };
 }
 
-async function locatePanelAndHandle(page: Page): Promise<boolean> {
-  return page.evaluate(() => {
+async function locatePanelAndHandle(page: Page, allowNonFixed = false): Promise<boolean> {
+  return page.evaluate((allowStatic) => {
     const allElements = Array.from(document.body.querySelectorAll<HTMLElement>('*'));
 
     const fixedCandidates = allElements.filter((el) => {
@@ -91,18 +91,33 @@ async function locatePanelAndHandle(page: Page): Promise<boolean> {
       );
     };
 
-    const panel =
+    let panel: HTMLElement | undefined =
       topLevelFixed.find(
         (el) =>
           el.hasAttribute('data-draggable') ||
-          /quick-order|order-panel|draggable/i.test(`${el.id} ${el.className}`) ||
+          /quick-order|order-panel|cart-panel|draggable/i.test(`${el.id} ${el.className}`) ||
           Array.from(el.querySelectorAll<HTMLElement>('*')).some(hasDragHandleSignal)
       ) || topLevelFixed[0];
+
+    if (!panel && allowStatic) {
+      panel = allElements.find((el) => {
+        if (el.tagName === 'NAV' || el.closest('nav')) return false;
+        if (!el.hasAttribute('data-draggable') && !/quick-order|order-panel|cart-panel|draggable/i.test(`${el.id} ${el.className}`)) {
+          return false;
+        }
+        const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      });
+    }
+
     if (!panel) return false;
     panel.setAttribute('data-grader-panel', 'true');
 
     const descendants = Array.from(panel.querySelectorAll<HTMLElement>('*'));
-    let handle = descendants.find((el) => el.hasAttribute('data-drag-handle') || hasDragHandleSignal(el));
+    let handle =
+      descendants.find((el) => el.hasAttribute('data-drag-handle')) ??
+      descendants.find((el) => hasDragHandleSignal(el));
 
     if (!handle) {
       handle = descendants.find(
@@ -112,10 +127,10 @@ async function locatePanelAndHandle(page: Page): Promise<boolean> {
       );
     }
 
-    if (!handle) return false;
-    handle.setAttribute('data-grader-handle', 'true');
+    if (!handle && !allowStatic) return false;
+    if (handle) handle.setAttribute('data-grader-handle', 'true');
     return true;
-  });
+  }, allowNonFixed);
 }
 
 async function getPanelAndHandleRects(page: Page): Promise<PanelAndHandleMetrics | null> {
@@ -440,15 +455,16 @@ test.describe('drag Target Grader', () => {
       await page.mouse.down();
       await page.mouse.move(grabX - 10, grabY, { steps: 2 });
 
-      // Jump pointer well outside the handle's bounding box
-      const midX = 500;
+      // Move pointer well outside the handle's bounding box while keeping panel inside viewport
+      const offsetX = grabX - initial!.panel.left;
+      const midX = Math.round(offsetX + 350);
       const midY = grabY;
       await page.mouse.move(midX, midY);
       const mid = await getPanelAndHandleRects(page);
       expect(mid).not.toBeNull();
 
       // Move pointer again while outside initial handle bounds to verify drag stays active
-      const nextX = 250;
+      const nextX = Math.round(offsetX + 80);
       const roomAbove = mid!.panel.top;
       const roomBelow = mid!.viewport.height - mid!.panel.bottom;
       const dirY = roomAbove >= roomBelow ? -1 : 1;
@@ -495,7 +511,17 @@ test.describe('drag Target Grader', () => {
       const controlRect = await page.evaluate(() => {
         const panel = document.querySelector<HTMLElement>('[data-grader-panel="true"]');
         if (!panel) return null;
-        const ctrl = panel.querySelector<HTMLElement>('button, input, select, textarea');
+        const handle = document.querySelector<HTMLElement>('[data-grader-handle="true"]');
+        const controls = Array.from(
+          panel.querySelectorAll<HTMLElement>('input, select, textarea, button')
+        ).filter((el) => {
+          if (handle && (el === handle || handle.contains(el) || el.contains(handle))) return false;
+          if (el.closest('details:not([open])')) return false;
+          const style = window.getComputedStyle(el);
+          const rect = el.getBoundingClientRect();
+          return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+        });
+        const ctrl = controls[0];
         if (!ctrl) return null;
         const r = ctrl.getBoundingClientRect();
         return { left: r.left, top: r.top, width: r.width, height: r.height };
@@ -553,13 +579,29 @@ test.describe('drag Target Grader', () => {
       expect(didNotDragFromControl && controlInteractionWorked).toBe(true);
     });
 
-    test('The drag handle is keyboard-focusable without using role="application"', async ({
+    test('The drag handle does not contain other interface elements', async ({ page }) => {
+      const found = await locatePanelAndHandle(page);
+      expect(found).toBe(true);
+
+      const hasNestedInteractive = await page.evaluate(() => {
+        const handle = document.querySelector<HTMLElement>('[data-grader-handle="true"]');
+        if (!handle) return true;
+        return (
+          handle.querySelector(
+            'button, a[href], input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="menuitem"]',
+          ) !== null
+        );
+      });
+      expect(hasNestedInteractive).toBe(false);
+    });
+
+    test('The drag handle is keyboard-focusable with a button role', async ({
       page,
     }) => {
       const found = await locatePanelAndHandle(page);
       expect(found).toBe(true);
 
-      const focusableState = await page.evaluate(() => {
+      const handleState = await page.evaluate(() => {
         const panel = document.querySelector<HTMLElement>('[data-grader-panel="true"]');
         const handle = document.querySelector<HTMLElement>('[data-grader-handle="true"]');
         if (!panel || !handle) return null;
@@ -569,22 +611,25 @@ test.describe('drag Target Grader', () => {
           panel.getAttribute('role') === 'application' ||
           panel.querySelector('[role="application"]') !== null;
 
+        const isButtonRole =
+          handle.tagName === 'BUTTON' || handle.getAttribute('role') === 'button';
+
         handle.focus();
         const isFocused = document.activeElement === handle;
 
         return {
           hasApplicationRole,
+          isButtonRole,
           tabIndex: handle.tabIndex,
           isFocused,
         };
       });
 
-      expect(focusableState).not.toBeNull();
-      expect(
-        !focusableState!.hasApplicationRole &&
-          focusableState!.tabIndex >= 0 &&
-          focusableState!.isFocused
-      ).toBe(true);
+      expect(handleState).not.toBeNull();
+      expect(handleState!.hasApplicationRole).toBe(false);
+      expect(handleState!.isButtonRole).toBe(true);
+      expect(handleState!.tabIndex).toBeGreaterThanOrEqual(0);
+      expect(handleState!.isFocused).toBe(true);
     });
 
     test('The element is repositionable with keyboard arrow keys when the drag handle is focused, using the same viewport constraints as pointer movement', async ({
@@ -679,13 +724,16 @@ test.describe('drag Target Grader', () => {
         const noJsPage = await noJsContext.newPage();
         await noJsPage.goto(TARGET_URL);
 
-        const found = await locatePanelAndHandle(noJsPage);
+        const found = await locatePanelAndHandle(noJsPage, true);
         expect(found).toBe(true);
 
         const noJsState = await noJsPage.evaluate(() => {
           const panel = document.querySelector<HTMLElement>('[data-grader-panel="true"]');
           if (!panel) return null;
           const style = window.getComputedStyle(panel);
+          if (style.position !== 'fixed') {
+            panel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+          }
           const rect = panel.getBoundingClientRect();
           const controls = Array.from(
             panel.querySelectorAll<HTMLElement>('button, input, select, textarea, a')
@@ -787,14 +835,148 @@ test.describe('drag Target Grader', () => {
 
       await page.mouse.up();
 
-      const releasedCursor = await page.$eval(
-        '[data-grader-handle="true"]',
-        (el) => window.getComputedStyle(el).cursor
-      );
+      await expect
+        .poll(() =>
+          page.$eval('[data-grader-handle="true"]', (el) => window.getComputedStyle(el).cursor)
+        )
+        .toBe('grab');
 
-      expect(
-        idleCursor === 'grab' && draggingCursor === 'grabbing' && releasedCursor === 'grab'
-      ).toBe(true);
+      expect(idleCursor === 'grab' && draggingCursor === 'grabbing').toBe(true);
+    });
+
+    test('The draggable element can be operated using a single pointer without requiring dragging movements', async ({
+      page,
+    }) => {
+      const found = await locatePanelAndHandle(page);
+      expect(found).toBe(true);
+
+      const initial = await getPanelAndHandleRects(page);
+      expect(initial).not.toBeNull();
+
+      const tagMoveControls = async () =>
+        page.evaluate(() => {
+          document.querySelectorAll('[data-grader-move-idx]').forEach((el) => el.removeAttribute('data-grader-move-idx'));
+          const pattern = /\b(move|dock)\s+(left|right|up|down|top|bottom)\b/i;
+          const candidates = Array.from(
+            document.querySelectorAll<HTMLElement>(
+              'button, [role="menuitem"], [role="button"], [data-move], [data-move-action], [data-dock]',
+            ),
+          );
+          let idx = 0;
+          for (const el of candidates) {
+            const name = `${el.getAttribute('aria-label') || ''} ${el.textContent || ''}`;
+            if (pattern.test(name)) {
+              el.setAttribute('data-grader-move-idx', String(idx++));
+            }
+          }
+          return idx;
+        });
+
+      const hasVisibleMoveControl = async () =>
+        page.evaluate(() =>
+          Array.from(document.querySelectorAll<HTMLElement>('[data-grader-move-idx]')).some((el) => {
+            if (el.closest('details:not([open])')) return false;
+            const r = el.getBoundingClientRect();
+            const cs = window.getComputedStyle(el);
+            const checkVis =
+              typeof el.checkVisibility === 'function'
+                ? el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })
+                : true;
+            return checkVis && cs.display !== 'none' && cs.visibility !== 'hidden' && r.width > 0 && r.height > 0;
+          }),
+        );
+
+      let controlCount = await tagMoveControls();
+      let openedMenu = false;
+      let menuOpenerSelector: string | null = null;
+
+      if (controlCount === 0 || !(await hasVisibleMoveControl())) {
+        const discCount = await page.evaluate(() => {
+          document
+            .querySelectorAll('[data-grader-disc-idx]')
+            .forEach((el) => el.removeAttribute('data-grader-disc-idx'));
+          const els = Array.from(
+            document.querySelectorAll<HTMLElement>(
+              '[data-grader-panel="true"] details:not([open]) > summary, [data-grader-panel="true"] button[aria-expanded="false"], [data-grader-panel="true"] button[aria-haspopup]',
+            ),
+          );
+          els.forEach((el, idx) => el.setAttribute('data-grader-disc-idx', String(idx)));
+          return els.length;
+        });
+        for (let i = 0; i < discCount; i++) {
+          const d = page.locator(`[data-grader-disc-idx="${i}"]`);
+          if (await d.isVisible().catch(() => false)) {
+            await d.click();
+            openedMenu = true;
+            menuOpenerSelector = `[data-grader-disc-idx="${i}"]`;
+            controlCount = await tagMoveControls();
+            if (controlCount > 0 && (await hasVisibleMoveControl())) break;
+          }
+        }
+      }
+
+      if (controlCount === 0) {
+        await page.locator('[data-grader-handle="true"]').click();
+        openedMenu = true;
+        menuOpenerSelector = '[data-grader-handle="true"]';
+        controlCount = await tagMoveControls();
+      }
+
+      expect(controlCount).toBeGreaterThan(0);
+
+      let moved = false;
+      for (let i = 0; i < controlCount; i++) {
+        let ctrl = page.locator(`[data-grader-move-idx="${i}"]`);
+        if (openedMenu && menuOpenerSelector && !(await ctrl.isVisible().catch(() => false))) {
+          await page.locator(menuOpenerSelector).click();
+          await tagMoveControls();
+          ctrl = page.locator(`[data-grader-move-idx="${i}"]`);
+        }
+        if (!(await ctrl.isVisible().catch(() => false))) continue;
+        await ctrl.click();
+        const after = await getPanelAndHandleRects(page);
+        if (
+          after &&
+          (Math.abs(after.panel.left - initial!.panel.left) > 1 ||
+            Math.abs(after.panel.top - initial!.panel.top) > 1)
+        ) {
+          moved = true;
+          break;
+        }
+      }
+      expect(moved).toBe(true);
+    });
+
+    test('Uses a visually hidden live region to provide feedback for screen reader users', async ({
+      page,
+    }) => {
+      const found = await locatePanelAndHandle(page);
+      expect(found).toBe(true);
+
+      const hiddenLiveCount = await page.evaluate(() => {
+        const regions = Array.from(document.querySelectorAll<HTMLElement>('[aria-live], [role="status"]'));
+        return regions.filter((el) => {
+          const r = el.getBoundingClientRect();
+          const cs = window.getComputedStyle(el);
+          return cs.display !== 'none' && cs.visibility !== 'hidden' && (r.width <= 2 || r.height <= 2 || cs.clipPath.includes('inset'));
+        }).length;
+      });
+      expect(hiddenLiveCount).toBeGreaterThan(0);
+
+      await page.locator('[data-grader-handle="true"]').focus();
+      await page.keyboard.press('ArrowLeft');
+
+      await expect.poll(async () => {
+        return page.evaluate(() => {
+          const regions = Array.from(document.querySelectorAll<HTMLElement>('[aria-live], [role="status"]'));
+          return regions.some((el) => {
+            const r = el.getBoundingClientRect();
+            const cs = window.getComputedStyle(el);
+            const isVisuallyHidden = cs.display !== 'none' && cs.visibility !== 'hidden' && (r.width <= 2 || r.height <= 2 || cs.clipPath.includes('inset'));
+            return isVisuallyHidden && (el.textContent || '').trim().length > 0;
+          });
+        });
+      }).toBe(true);
     });
   });
 });

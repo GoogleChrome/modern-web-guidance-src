@@ -1,107 +1,273 @@
 diff --git a/index.html b/index.html
-index 66c9173..c539c94 100644
+index 66c9173..befffe7 100644
 --- a/index.html
 +++ b/index.html
-@@ -152,6 +152,268 @@
+@@ -152,6 +152,410 @@
        text-decoration: none;
        font-size: 0.85rem;
      }
 +
-+    /* Floating Quick-Order & Coffee Cart Panel */
++    [hidden] {
++      display: none !important;
++    }
++
++    .visually-hidden {
++      position: absolute;
++      width: 1px;
++      height: 1px;
++      padding: 0;
++      margin: -1px;
++      overflow: hidden;
++      clip: rect(0, 0, 0, 0);
++      white-space: nowrap;
++      border: 0;
++    }
++
++    /* Floating Quick-Order Panel */
 +    .quick-order-panel {
 +      position: fixed;
-+      top: 88px;
-+      right: 64px;
-+      margin: 0;
-+      width: 320px;
-+      max-width: calc(100vw - 24px);
++      bottom: 20px;
++      right: 20px;
++      width: min(330px, calc(100vw - 24px));
 +      max-height: calc(100vh - 24px);
-+      background: #ffffff;
-+      color: var(--text);
-+      border: 1px solid var(--secondary);
-+      border-radius: 10px;
-+      box-shadow: 0 10px 28px rgba(62, 39, 35, 0.22);
-+      z-index: 1100;
 +      display: flex;
 +      flex-direction: column;
-+      overflow: hidden;
++      background: #ffffff;
++      border: 1px solid var(--secondary);
++      border-radius: 12px;
++      box-shadow: 0 12px 32px rgba(62, 39, 35, 0.22);
++      z-index: 1100;
++      overflow: visible;
++      color: var(--text);
 +    }
 +
-+    .quick-order-header {
++    .panel-header {
 +      background: var(--primary);
 +      color: #ffffff;
-+      padding: 10px 14px;
++      padding: 10px 12px;
++      border-radius: 11px 11px 0 0;
 +      display: flex;
 +      align-items: center;
-+      justify-content: space-between;
 +      gap: 8px;
-+      border-bottom: 2px solid var(--accent);
 +    }
 +
-+    .quick-order-header:focus-visible {
-+      outline: 3px solid var(--accent);
-+      outline-offset: -3px;
++    .quick-order-panel.is-collapsed .panel-header {
++      border-radius: 11px;
 +    }
 +
 +    .drag-handle {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 32px;
++      height: 32px;
++      flex-shrink: 0;
++      background: rgba(255, 255, 255, 0.14);
++      color: #ffffff;
++      border: 1px solid rgba(255, 255, 255, 0.25);
++      border-radius: 6px;
 +      cursor: grab;
 +      touch-action: none;
 +      -webkit-user-select: none;
 +      user-select: none;
++      transition: background-color 0.2s, border-color 0.2s;
++    }
++
++    .drag-handle:hover {
++      background: rgba(255, 255, 255, 0.24);
 +    }
 +
 +    .drag-handle.dragging {
 +      cursor: grabbing;
++      background: var(--accent);
++      color: var(--text);
++      border-color: var(--accent);
 +    }
 +
-+    .quick-order-header-title {
++    .drag-handle:focus-visible,
++    .panel-icon-btn:focus-visible,
++    .panel-control:focus-visible,
++    .panel-menu-item:focus-visible {
++      outline: 2px solid var(--accent);
++      outline-offset: 2px;
++    }
++
++    .panel-title-wrap {
 +      display: flex;
 +      align-items: center;
 +      gap: 8px;
++      flex: 1;
++      min-width: 0;
 +    }
 +
-+    .drag-grip {
++    .panel-title {
 +      font-size: 1rem;
-+      line-height: 1;
-+      color: var(--accent);
-+      letter-spacing: -1px;
-+    }
-+
-+    .quick-order-header h2 {
-+      font-size: 1rem;
-+      font-weight: 700;
++      font-weight: 600;
 +      margin: 0;
-+      letter-spacing: 0.3px;
-+    }
-+
-+    .cart-badge {
-+      background: var(--accent);
-+      color: var(--text);
-+      font-size: 0.75rem;
-+      font-weight: 700;
-+      padding: 2px 8px;
-+      border-radius: 999px;
 +      white-space: nowrap;
 +    }
 +
-+    .quick-order-body {
-+      padding: 12px 14px 14px;
-+      overflow-y: auto;
-+      font-size: 0.875rem;
++    .cart-badge {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      min-width: 22px;
++      height: 22px;
++      padding: 0 6px;
++      border-radius: 999px;
++      background: var(--accent);
++      color: var(--text);
++      font-size: 0.78rem;
++      font-weight: 700;
 +    }
 +
-+    .quick-order-note {
-+      font-size: 0.8rem;
-+      color: #5d4037;
-+      margin-bottom: 10px;
++    .panel-header-actions {
++      position: relative;
++      display: flex;
++      align-items: center;
++      gap: 4px;
++    }
++
++    .panel-icon-btn {
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      width: 30px;
++      height: 30px;
++      border: 1px solid rgba(255, 255, 255, 0.22);
++      border-radius: 6px;
++      background: transparent;
++      color: #ffffff;
++      font-size: 0.85rem;
++      font-weight: 600;
++      cursor: pointer;
++      transition: background-color 0.2s;
++    }
++
++    .panel-icon-btn:hover {
++      background: rgba(255, 255, 255, 0.16);
++    }
++
++    .panel-move-menu {
++      position: absolute;
++      top: calc(100% + 6px);
++      right: 0;
++      min-width: 155px;
++      background: #ffffff;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      box-shadow: 0 8px 20px rgba(62, 39, 35, 0.22);
++      padding: 4px;
++      z-index: 1200;
++      display: flex;
++      flex-direction: column;
++    }
++
++    .panel-menu-item {
++      background: transparent;
++      border: 0;
++      border-radius: 5px;
++      padding: 7px 10px;
++      text-align: left;
++      font-size: 0.85rem;
++      color: var(--text);
++      cursor: pointer;
++    }
++
++    .panel-menu-item:hover {
++      background: #f5efe6;
++    }
++
++    .panel-menu-divider {
++      height: 1px;
++      background: var(--secondary);
++      margin: 4px 6px;
++    }
++
++    .panel-help-box {
++      background: #fdf8f3;
++      border-bottom: 1px solid var(--secondary);
++      padding: 10px 14px;
++      font-size: 0.82rem;
++      line-height: 1.45;
++      color: var(--text);
++    }
++
++    .panel-help-box kbd {
++      display: inline-block;
++      padding: 1px 5px;
++      font-size: 0.76rem;
++      font-family: inherit;
++      background: #ffffff;
++      border: 1px solid #bcaaa4;
++      border-radius: 4px;
++      box-shadow: 0 1px 0 #bcaaa4;
++    }
++
++    .panel-body {
++      padding: 14px;
++      overflow-y: auto;
++      display: flex;
++      flex-direction: column;
++      gap: 12px;
++    }
++
++    .quick-add-row {
++      display: grid;
++      grid-template-columns: 1fr auto;
++      gap: 8px;
++      align-items: end;
++    }
++
++    .quick-add-fields {
++      display: flex;
++      flex-direction: column;
++      gap: 6px;
++    }
++
++    .field-label {
++      display: block;
++      font-size: 0.78rem;
++      font-weight: 600;
++      color: var(--primary);
++      margin-bottom: 3px;
++    }
++
++    .panel-select,
++    .panel-input {
++      width: 100%;
++      padding: 7px 9px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      font-family: inherit;
++      font-size: 0.86rem;
++      color: var(--text);
++      background: #ffffff;
++    }
++
++    .panel-add-btn {
++      padding: 8px 12px;
++      background: var(--primary);
++      color: #ffffff;
++      border: 0;
++      border-radius: 6px;
++      font-size: 0.86rem;
++      font-weight: 600;
++      cursor: pointer;
++      white-space: nowrap;
++      height: 34px;
++    }
++
++    .panel-add-btn:hover {
++      background: #3e2723;
 +    }
 +
 +    .cart-items {
 +      list-style: none;
-+      border-top: 1px solid #efebe9;
-+      border-bottom: 1px solid #efebe9;
-+      margin-bottom: 10px;
-+      max-height: 130px;
++      display: flex;
++      flex-direction: column;
++      gap: 8px;
++      max-height: 170px;
 +      overflow-y: auto;
 +    }
 +
@@ -109,536 +275,716 @@ index 66c9173..c539c94 100644
 +      display: flex;
 +      align-items: center;
 +      justify-content: space-between;
-+      padding: 6px 0;
 +      gap: 8px;
-+      border-bottom: 1px dashed #efebe9;
-+    }
-+
-+    .cart-item:last-child {
-+      border-bottom: none;
++      padding: 8px 10px;
++      background: #faf6f3;
++      border: 1px solid #ece3dd;
++      border-radius: 8px;
 +    }
 +
 +    .cart-item-info {
-+      flex: 1;
 +      min-width: 0;
++      flex: 1;
 +    }
 +
 +    .cart-item-name {
++      font-size: 0.88rem;
 +      font-weight: 600;
 +      color: var(--primary);
-+      display: block;
-+      font-size: 0.82rem;
 +    }
 +
 +    .cart-item-meta {
-+      font-size: 0.75rem;
++      font-size: 0.78rem;
 +      color: #6d4c41;
 +    }
 +
-+    .cart-item-controls {
-+      display: flex;
++    .cart-item-qty {
++      display: inline-flex;
 +      align-items: center;
 +      gap: 5px;
++      flex-shrink: 0;
 +    }
 +
 +    .qty-btn {
 +      width: 24px;
 +      height: 24px;
-+      border: 1px solid var(--secondary);
-+      background: var(--light);
-+      color: var(--primary);
-+      border-radius: 4px;
-+      font-weight: bold;
++      border: 1px solid #bcaaa4;
++      border-radius: 5px;
++      background: #ffffff;
++      color: var(--text);
++      font-weight: 700;
 +      cursor: pointer;
-+      line-height: 1;
 +      display: inline-flex;
 +      align-items: center;
 +      justify-content: center;
 +    }
 +
 +    .qty-btn:hover {
-+      background: var(--secondary);
++      background: #f0e6e0;
 +    }
 +
-+    .cart-item-qty {
++    .qty-value {
 +      min-width: 18px;
 +      text-align: center;
++      font-size: 0.86rem;
 +      font-weight: 600;
-+      font-size: 0.8rem;
 +    }
 +
-+    .quick-order-form {
++    .cart-empty {
++      text-align: center;
++      padding: 12px;
++      font-size: 0.85rem;
++      color: #6d4c41;
++      background: #faf6f3;
++      border-radius: 8px;
++    }
++
++    .panel-footer {
++      border-top: 1px solid #ece3dd;
++      padding-top: 10px;
 +      display: flex;
 +      flex-direction: column;
 +      gap: 8px;
 +    }
 +
-+    .form-row {
-+      display: flex;
-+      gap: 8px;
-+    }
-+
-+    .form-field {
-+      display: flex;
-+      flex-direction: column;
-+      flex: 1;
-+      gap: 2px;
-+    }
-+
-+    .form-field label {
-+      font-size: 0.75rem;
-+      font-weight: 600;
-+      color: var(--primary);
-+    }
-+
-+    .form-field select,
-+    .form-field input {
-+      padding: 5px 7px;
-+      border: 1px solid var(--secondary);
-+      border-radius: 4px;
-+      font-size: 0.8rem;
-+      color: var(--text);
-+      background: #ffffff;
-+    }
-+
-+    .quick-order-actions {
-+      display: flex;
-+      gap: 8px;
-+      margin-top: 4px;
-+    }
-+
-+    .btn-add-cart {
-+      flex: 1;
-+      padding: 7px 10px;
-+      background: var(--secondary);
-+      color: var(--text);
-+      border: none;
-+      border-radius: 4px;
-+      font-weight: 600;
-+      font-size: 0.8rem;
-+      cursor: pointer;
-+      transition: background 0.2s;
-+    }
-+
-+    .btn-add-cart:hover {
-+      background: #bcaaa4;
-+    }
-+
-+    .btn-checkout {
-+      flex: 1.2;
-+      padding: 7px 10px;
-+      background: var(--primary);
-+      color: #ffffff;
-+      border: none;
-+      border-radius: 4px;
-+      font-weight: 600;
-+      font-size: 0.8rem;
-+      cursor: pointer;
-+      transition: background 0.2s;
-+    }
-+
-+    .btn-checkout:hover {
-+      background: #3e2723;
-+    }
-+
-+    .quick-order-footer {
++    .cart-subtotal-row {
 +      display: flex;
 +      justify-content: space-between;
 +      align-items: center;
-+      margin-top: 8px;
-+      padding-top: 6px;
-+      border-top: 1px solid #efebe9;
-+      font-size: 0.8rem;
-+    }
-+
-+    .cart-total {
 +      font-weight: 700;
++      font-size: 0.95rem;
 +      color: var(--primary);
 +    }
 +
-+    .quick-order-footer a {
-+      color: var(--primary);
-+      font-weight: 600;
-+      text-decoration: underline;
++    .panel-footer-actions {
++      display: flex;
++      gap: 8px;
++    }
++
++    .order-submit-btn {
++      flex: 1;
++      padding: 9px 12px;
++      border: 0;
++      border-radius: 6px;
++      background: var(--accent);
++      color: var(--text);
++      font-weight: 700;
++      font-size: 0.9rem;
++      cursor: pointer;
++      transition: filter 0.2s;
++    }
++
++    .order-submit-btn:hover:not(:disabled) {
++      filter: brightness(0.95);
++    }
++
++    .order-submit-btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
++    }
++
++    .order-clear-btn {
++      padding: 9px 12px;
++      border: 1px solid #bcaaa4;
++      border-radius: 6px;
++      background: #ffffff;
++      color: var(--text);
++      font-size: 0.86rem;
++      cursor: pointer;
++    }
++
++    .order-clear-btn:hover:not(:disabled) {
++      background: #f5efe6;
++    }
++
++    .order-clear-btn:disabled {
++      opacity: 0.55;
++      cursor: not-allowed;
 +    }
 +
 +    .order-status-msg {
-+      font-size: 0.75rem;
-+      color: #2e7d32;
-+      min-height: 1.1em;
-+      margin-top: 4px;
++      font-size: 0.82rem;
++      padding: 8px 10px;
++      border-radius: 6px;
++      background: #eef6ec;
++      color: #2e5a27;
++      border: 1px solid #c5dfc0;
 +    }
    </style>
  </head>
  
-@@ -207,6 +469,375 @@
-     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
-   </footer>
+@@ -197,6 +601,145 @@
+     </section>
+   </main>
  
-+  <aside id="quick-order-panel" class="quick-order-panel" aria-labelledby="quick-order-title">
-+    <header id="quick-order-handle" class="quick-order-header">
-+      <div class="quick-order-header-title">
-+        <span id="quick-order-grip" class="drag-grip" aria-hidden="true" hidden>&#8942;&#8942;</span>
-+        <h2 id="quick-order-title">Quick Order &amp; Cart</h2>
++  <aside class="quick-order-panel" data-draggable aria-labelledby="quick-order-title">
++    <div class="panel-header">
++      <button
++        type="button"
++        class="drag-handle"
++        data-drag-handle
++        aria-label="Quick Order panel handle. Use arrow keys to move."
++        hidden
++      >
++        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
++          <circle cx="5" cy="3.5" r="1.25" />
++          <circle cx="11" cy="3.5" r="1.25" />
++          <circle cx="5" cy="8" r="1.25" />
++          <circle cx="11" cy="8" r="1.25" />
++          <circle cx="5" cy="12.5" r="1.25" />
++          <circle cx="11" cy="12.5" r="1.25" />
++        </svg>
++      </button>
++
++      <div class="panel-title-wrap">
++        <h2 id="quick-order-title" class="panel-title">Quick Order</h2>
++        <span class="cart-badge" id="cart-count" aria-label="Items in cart">1</span>
 +      </div>
-+      <span id="cart-count-badge" class="cart-badge" aria-live="polite">2 items</span>
-+    </header>
 +
-+    <div class="quick-order-body">
-+      <p class="quick-order-note">Freshly brewed for pickup at Downtown Roastery (est. 5–8 mins).</p>
++      <div class="panel-header-actions">
++        <button
++          type="button"
++          class="panel-icon-btn"
++          id="panel-move-btn"
++          aria-haspopup="menu"
++          aria-expanded="false"
++          aria-controls="panel-move-menu"
++          aria-label="Reposition Quick Order panel"
++          title="Reposition panel"
++          hidden
++        >
++          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
++            <path d="M8 2v12M2 8h12M8 2L6 4M8 2l2 2M8 14l-2-2M8 14l2-2M2 8l2-2M2 8l2 2M14 8l-2-2M14 8l-2 2" />
++          </svg>
++        </button>
 +
-+      <ul id="cart-items" class="cart-items" aria-label="Coffee cart items">
-+        <li class="cart-item" data-id="maple-oat-latte-Medium" data-name="Maple Oat Latte" data-size="Medium" data-price="5.50" data-qty="1">
++        <div class="panel-move-menu" id="panel-move-menu" role="menu" aria-label="Reposition Quick Order panel" hidden>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="move-left">Move left</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="move-right">Move right</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="move-up">Move up</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="move-down">Move down</button>
++          <div class="panel-menu-divider" role="separator"></div>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="dock-left">Dock left</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="dock-right">Dock right</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="dock-top">Dock top</button>
++          <button type="button" class="panel-menu-item" role="menuitem" data-move-action="dock-bottom">Dock bottom</button>
++        </div>
++
++        <button
++          type="button"
++          class="panel-icon-btn"
++          id="panel-help-btn"
++          aria-expanded="false"
++          aria-controls="panel-help-box"
++          aria-label="Panel movement help"
++          title="Keyboard movement help"
++          hidden
++        >?</button>
++
++        <button
++          type="button"
++          class="panel-icon-btn"
++          id="panel-collapse-btn"
++          aria-expanded="true"
++          aria-controls="panel-body"
++          aria-label="Collapse Quick Order panel"
++          title="Minimize panel"
++          hidden
++        >−</button>
++      </div>
++    </div>
++
++    <div class="panel-help-box" id="panel-help-box" hidden>
++      <strong>Moving this panel:</strong> Focus the grip handle and press
++      <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> to move
++      (hold <kbd>Shift</kbd> for larger steps), or open the Reposition menu to move or dock with a click.
++    </div>
++
++    <div class="panel-body" id="panel-body">
++      <div class="quick-add-row">
++        <div class="quick-add-fields">
++          <div>
++            <label class="field-label" for="drink-select">Add a drink</label>
++            <select id="drink-select" class="panel-select panel-control">
++              <option value="maple-oat-latte" data-name="Maple Oat Latte" data-price="5.25">Maple Oat Latte — $5.25</option>
++              <option value="dark-roast-espresso" data-name="Dark Roast Espresso" data-price="3.75">Dark Roast Espresso — $3.75</option>
++              <option value="cold-brew" data-name="Cold Brew" data-price="4.50">Cold Brew — $4.50</option>
++              <option value="cinnamon-cortado" data-name="Cinnamon Cortado" data-price="4.25">Cinnamon Cortado — $4.25</option>
++            </select>
++          </div>
++        </div>
++        <button type="button" class="panel-add-btn panel-control" id="add-drink-btn">Add</button>
++      </div>
++
++      <ul class="cart-items" id="cart-items" aria-label="Order items">
++        <li class="cart-item" data-item-id="maple-oat-latte">
 +          <div class="cart-item-info">
-+            <span class="cart-item-name">Maple Oat Latte</span>
-+            <span class="cart-item-meta">Medium &bull; $5.50 each</span>
++            <div class="cart-item-name">Maple Oat Latte</div>
++            <div class="cart-item-meta">$5.25 each</div>
 +          </div>
-+          <div class="cart-item-controls">
-+            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease Maple Oat Latte quantity">&minus;</button>
-+            <span class="cart-item-qty">1</span>
-+            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase Maple Oat Latte quantity">+</button>
-+          </div>
-+        </li>
-+        <li class="cart-item" data-id="cold-brew-Medium" data-name="Cold Brew" data-size="Medium" data-price="4.75" data-qty="1">
-+          <div class="cart-item-info">
-+            <span class="cart-item-name">Cold Brew</span>
-+            <span class="cart-item-meta">Medium &bull; $4.75 each</span>
-+          </div>
-+          <div class="cart-item-controls">
-+            <button type="button" class="qty-btn" data-action="decrease" aria-label="Decrease Cold Brew quantity">&minus;</button>
-+            <span class="cart-item-qty">1</span>
-+            <button type="button" class="qty-btn" data-action="increase" aria-label="Increase Cold Brew quantity">+</button>
++          <div class="cart-item-qty">
++            <button type="button" class="qty-btn panel-control" data-qty-action="decrease" aria-label="Decrease quantity of Maple Oat Latte">−</button>
++            <span class="qty-value">1</span>
++            <button type="button" class="qty-btn panel-control" data-qty-action="increase" aria-label="Increase quantity of Maple Oat Latte">+</button>
 +          </div>
 +        </li>
 +      </ul>
 +
-+      <form id="quick-order-form" class="quick-order-form" action="/order-online" method="get">
-+        <div class="form-field">
-+          <label for="quick-drink-select">Drink</label>
-+          <select id="quick-drink-select" name="drink">
-+            <option value="maple-oat-latte" data-name="Maple Oat Latte" data-price="5.50">Maple Oat Latte ($5.50)</option>
-+            <option value="dark-roast-espresso" data-name="Dark Roast Espresso" data-price="3.75">Dark Roast Espresso ($3.75)</option>
-+            <option value="cold-brew" data-name="Cold Brew" data-price="4.75">Cold Brew ($4.75)</option>
-+            <option value="vanilla-cortado" data-name="Vanilla Cortado" data-price="4.50">Vanilla Cortado ($4.50)</option>
-+          </select>
++      <div>
++        <label class="field-label" for="order-note">Barista note</label>
++        <input
++          type="text"
++          id="order-note"
++          class="panel-input panel-control"
++          placeholder="e.g. Extra hot, light ice"
++        >
++      </div>
++
++      <div class="panel-footer">
++        <div class="cart-subtotal-row">
++          <span>Subtotal</span>
++          <span id="cart-subtotal">$5.25</span>
 +        </div>
-+
-+        <div class="form-row">
-+          <div class="form-field">
-+            <label for="quick-size-select">Size</label>
-+            <select id="quick-size-select" name="size">
-+              <option value="Small">Small</option>
-+              <option value="Medium" selected>Medium</option>
-+              <option value="Large">Large (+$0.75)</option>
-+            </select>
-+          </div>
-+          <div class="form-field" style="max-width: 72px;">
-+            <label for="quick-qty-input">Qty</label>
-+            <input type="number" id="quick-qty-input" name="qty" min="1" max="10" value="1">
-+          </div>
++        <div class="panel-footer-actions">
++          <button type="button" class="order-submit-btn panel-control" id="place-order-btn">Place Quick Order</button>
++          <button type="button" class="order-clear-btn panel-control" id="clear-cart-btn">Clear</button>
 +        </div>
-+
-+        <div class="form-field">
-+          <label for="quick-note-input">Custom Note</label>
-+          <input type="text" id="quick-note-input" name="note" placeholder="Extra shot, oat milk, etc.">
-+        </div>
-+
-+        <div class="quick-order-actions">
-+          <button type="button" id="add-to-cart-btn" class="btn-add-cart">Add to Cart</button>
-+          <button type="submit" id="checkout-btn" class="btn-checkout">Checkout ($10.25)</button>
-+        </div>
-+      </form>
-+
-+      <p id="order-status-msg" class="order-status-msg" role="status" aria-live="polite"></p>
-+
-+      <div class="quick-order-footer">
-+        <span id="cart-subtotal" class="cart-total">Subtotal: $10.25</span>
-+        <a href="/menu">Full Menu</a>
++        <div class="order-status-msg" id="order-status-msg" role="status" hidden></div>
 +      </div>
 +    </div>
 +  </aside>
 +
++  <div class="visually-hidden" aria-live="polite" id="drag-announcer"></div>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |
+@@ -207,6 +750,433 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
 +  <script>
 +    (() => {
-+      const draggable = document.getElementById('quick-order-panel');
-+      const handle = document.getElementById('quick-order-handle');
-+      const grip = document.getElementById('quick-order-grip');
++      const draggable = document.querySelector('[data-draggable]');
++      const handle = draggable?.querySelector('[data-drag-handle]');
++      if (!draggable || !handle) return;
 +
-+      if (draggable && handle) {
-+        handle.classList.add('drag-handle');
-+        handle.setAttribute('tabindex', '0');
-+        handle.setAttribute(
-+          'aria-label',
-+          'Quick Order & Cart header — drag or use arrow keys to move panel'
-+        );
-+        if (grip) {
-+          grip.hidden = false;
++      const announcer = document.getElementById('drag-announcer');
++      const moveBtn = document.getElementById('panel-move-btn');
++      const moveMenu = document.getElementById('panel-move-menu');
++      const helpBtn = document.getElementById('panel-help-btn');
++      const helpBox = document.getElementById('panel-help-box');
++      const collapseBtn = document.getElementById('panel-collapse-btn');
++      const panelBody = document.getElementById('panel-body');
++
++      // Reveal progressive-enhancement controls once JS initializes
++      handle.hidden = false;
++      if (moveBtn) moveBtn.hidden = false;
++      if (helpBtn) helpBtn.hidden = false;
++      if (collapseBtn) collapseBtn.hidden = false;
++
++      let offsetX = 0;
++      let offsetY = 0;
++      let startX = 0;
++      let startY = 0;
++      let isDragging = false;
++      let hasManualPosition = false;
++      let announceTimeoutId = null;
++
++      function announce(message) {
++        if (!announcer || !message) return;
++        if (announceTimeoutId !== null) {
++          clearTimeout(announceTimeoutId);
 +        }
++        announcer.textContent = '';
++        requestAnimationFrame(() => {
++          announcer.textContent = message;
++        });
++        announceTimeoutId = setTimeout(() => {
++          announcer.textContent = '';
++          announceTimeoutId = null;
++        }, 1000);
++      }
 +
-+        let offsetX = 0;
-+        let offsetY = 0;
-+        let isPointerDragging = false;
-+        let activePointerId = null;
++      function moveTo(left, top) {
++        const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
++        const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
 +
-+        function moveTo(left, top) {
-+          const maxLeft = Math.max(0, window.innerWidth - draggable.offsetWidth);
-+          const maxTop = Math.max(0, window.innerHeight - draggable.offsetHeight);
++        const clampedLeft = Math.max(0, Math.min(left, maxLeft));
++        const clampedTop = Math.max(0, Math.min(top, maxTop));
 +
-+          draggable.style.margin = '0';
-+          draggable.style.right = 'auto';
-+          draggable.style.bottom = 'auto';
-+          draggable.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
-+          draggable.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
-+        }
++        draggable.style.right = 'auto';
++        draggable.style.bottom = 'auto';
++        draggable.style.left = `${clampedLeft}px`;
++        draggable.style.top = `${clampedTop}px`;
++        hasManualPosition = true;
++      }
 +
-+        function clampCurrentPosition() {
-+          const rect = draggable.getBoundingClientRect();
++      function clampCurrentPosition() {
++        const rect = draggable.getBoundingClientRect();
++        if (
++          hasManualPosition ||
++          rect.left < 0 ||
++          rect.top < 0 ||
++          rect.right > window.innerWidth ||
++          rect.bottom > window.innerHeight
++        ) {
 +          moveTo(rect.left, rect.top);
 +        }
++      }
 +
-+        clampCurrentPosition();
++      // Pointer drag on dedicated handle
++      handle.addEventListener('pointerdown', (event) => {
++        const control = event.target.closest('button, input, select, textarea, a');
++        if (event.button !== 0 || (control && control !== handle)) return;
 +
-+        handle.addEventListener('pointerdown', (event) => {
-+          if (event.button !== 0 || event.target.closest('button, input, select, textarea, a')) return;
++        closeMoveMenu();
++        const rect = draggable.getBoundingClientRect();
++        offsetX = event.clientX - rect.left;
++        offsetY = event.clientY - rect.top;
++        startX = event.clientX;
++        startY = event.clientY;
++        isDragging = false;
++        handle.setPointerCapture(event.pointerId);
++      });
 +
-+          const rect = draggable.getBoundingClientRect();
-+          offsetX = event.clientX - rect.left;
-+          offsetY = event.clientY - rect.top;
-+          isPointerDragging = true;
-+          activePointerId = event.pointerId;
-+          try {
-+            handle.setPointerCapture(event.pointerId);
-+          } catch {
-+            // Fallback for synthetic pointer events without an active hardware pointer
-+          }
-+        });
++      handle.addEventListener('pointermove', (event) => {
++        if (!handle.hasPointerCapture(event.pointerId)) return;
 +
-+        handle.addEventListener('pointermove', (event) => {
-+          const hasCapture = handle.hasPointerCapture && handle.hasPointerCapture(event.pointerId);
-+          if (!hasCapture && (!isPointerDragging || event.pointerId !== activePointerId)) return;
++        if (!isDragging) {
++          const movedDistance = Math.hypot(event.clientX - startX, event.clientY - startY);
++          if (movedDistance < 4) return;
++          isDragging = true;
 +          handle.classList.add('dragging');
-+          moveTo(event.clientX - offsetX, event.clientY - offsetY);
-+        });
-+
-+        function stopPointerDrag(event) {
-+          if (event && activePointerId !== null && event.pointerId !== activePointerId) return;
-+          isPointerDragging = false;
-+          activePointerId = null;
-+          handle.classList.remove('dragging');
-+          if (event && handle.hasPointerCapture && handle.hasPointerCapture(event.pointerId)) {
-+            try {
-+              handle.releasePointerCapture(event.pointerId);
-+            } catch {
-+              // Ignore
-+            }
-+          }
 +        }
 +
-+        handle.addEventListener('pointerup', stopPointerDrag);
-+        handle.addEventListener('pointercancel', stopPointerDrag);
-+        handle.addEventListener('lostpointercapture', () => {
-+          isPointerDragging = false;
-+          activePointerId = null;
-+          handle.classList.remove('dragging');
++        moveTo(event.clientX - offsetX, event.clientY - offsetY);
++      });
++
++      handle.addEventListener('lostpointercapture', () => {
++        if (isDragging) {
++          announce('Quick Order panel moved');
++        }
++        isDragging = false;
++        handle.classList.remove('dragging');
++      });
++
++      // Keyboard arrow movement on handle
++      handle.addEventListener('keydown', (event) => {
++        const step = event.shiftKey ? 45 : 15;
++        let dx = 0;
++        let dy = 0;
++        let direction = '';
++
++        switch (event.key) {
++          case 'ArrowLeft':
++            dx = -step;
++            direction = 'moved left';
++            break;
++          case 'ArrowRight':
++            dx = step;
++            direction = 'moved right';
++            break;
++          case 'ArrowUp':
++            dy = -step;
++            direction = 'moved up';
++            break;
++          case 'ArrowDown':
++            dy = step;
++            direction = 'moved down';
++            break;
++          default:
++            return;
++        }
++
++        event.preventDefault();
++        const rect = draggable.getBoundingClientRect();
++        moveTo(rect.left + dx, rect.top + dy);
++        announce(`Quick Order panel ${direction}`);
++      });
++
++      // Single-pointer Reposition menu
++      function closeMoveMenu(returnFocus = false) {
++        if (!moveBtn || !moveMenu || moveMenu.hidden) return;
++        moveMenu.hidden = true;
++        moveBtn.setAttribute('aria-expanded', 'false');
++        if (returnFocus) moveBtn.focus();
++      }
++
++      if (moveBtn && moveMenu) {
++        const menuItems = Array.from(moveMenu.querySelectorAll('[role="menuitem"]'));
++
++        moveBtn.addEventListener('click', (event) => {
++          event.stopPropagation();
++          const willOpen = moveMenu.hidden;
++          moveMenu.hidden = !willOpen;
++          moveBtn.setAttribute('aria-expanded', String(willOpen));
++          if (willOpen) {
++            const btnRect = moveBtn.getBoundingClientRect();
++            const openUpwards = btnRect.bottom + 240 > window.innerHeight && btnRect.top > 240;
++            moveMenu.style.top = openUpwards ? 'auto' : 'calc(100% + 6px)';
++            moveMenu.style.bottom = openUpwards ? 'calc(100% + 6px)' : 'auto';
++            if (menuItems.length > 0) {
++              menuItems[0].focus();
++            }
++          }
 +        });
 +
-+        const KEYBOARD_STEP = 15;
++        moveMenu.addEventListener('click', (event) => {
++          const item = event.target.closest('[data-move-action]');
++          if (!item) return;
 +
-+        handle.addEventListener('keydown', (event) => {
++          const action = item.dataset.moveAction;
 +          const rect = draggable.getBoundingClientRect();
-+          let left = rect.left;
-+          let top = rect.top;
++          const step = 40;
++          let description = '';
 +
-+          switch (event.key) {
-+            case 'ArrowLeft':
-+              left -= KEYBOARD_STEP;
++          switch (action) {
++            case 'move-left':
++              moveTo(rect.left - step, rect.top);
++              description = 'moved left';
 +              break;
-+            case 'ArrowRight':
-+              left += KEYBOARD_STEP;
++            case 'move-right':
++              moveTo(rect.left + step, rect.top);
++              description = 'moved right';
 +              break;
-+            case 'ArrowUp':
-+              top -= KEYBOARD_STEP;
++            case 'move-up':
++              moveTo(rect.left, rect.top - step);
++              description = 'moved up';
 +              break;
-+            case 'ArrowDown':
-+              top += KEYBOARD_STEP;
++            case 'move-down':
++              moveTo(rect.left, rect.top + step);
++              description = 'moved down';
++              break;
++            case 'dock-left':
++              moveTo(0, rect.top);
++              description = 'docked left';
++              break;
++            case 'dock-right':
++              moveTo(window.innerWidth - draggable.offsetWidth, rect.top);
++              description = 'docked right';
++              break;
++            case 'dock-top':
++              moveTo(rect.left, 0);
++              description = 'docked top';
++              break;
++            case 'dock-bottom':
++              moveTo(rect.left, window.innerHeight - draggable.offsetHeight);
++              description = 'docked bottom';
 +              break;
 +            default:
 +              return;
 +          }
 +
-+          event.preventDefault();
-+          moveTo(left, top);
++          announce(`Quick Order panel ${description}`);
++          closeMoveMenu(true);
 +        });
 +
-+        window.addEventListener('resize', clampCurrentPosition);
-+        if (typeof ResizeObserver !== 'undefined') {
-+          const resizeObserver = new ResizeObserver(() => {
-+            clampCurrentPosition();
-+          });
-+          resizeObserver.observe(draggable);
-+        }
++        moveMenu.addEventListener('keydown', (event) => {
++          const currentIndex = menuItems.indexOf(document.activeElement);
++          if (event.key === 'Escape') {
++            event.preventDefault();
++            closeMoveMenu(true);
++          } else if (event.key === 'ArrowDown') {
++            event.preventDefault();
++            const next = menuItems[(currentIndex + 1) % menuItems.length];
++            next?.focus();
++          } else if (event.key === 'ArrowUp') {
++            event.preventDefault();
++            const prev = menuItems[(currentIndex - 1 + menuItems.length) % menuItems.length];
++            prev?.focus();
++          } else if (event.key === 'Tab') {
++            closeMoveMenu(false);
++          }
++        });
++
++        document.addEventListener('click', (event) => {
++          if (!moveMenu.hidden && !moveMenu.contains(event.target) && event.target !== moveBtn) {
++            closeMoveMenu(false);
++          }
++        });
 +      }
 +
-+      // Interactive Coffee Cart & Quick-Order Controls
-+      const cartList = document.getElementById('cart-items');
-+      const badge = document.getElementById('cart-count-badge');
-+      const subtotalEl = document.getElementById('cart-subtotal');
-+      const checkoutBtn = document.getElementById('checkout-btn');
-+      const addBtn = document.getElementById('add-to-cart-btn');
-+      const form = document.getElementById('quick-order-form');
-+      const drinkSelect = document.getElementById('quick-drink-select');
-+      const sizeSelect = document.getElementById('quick-size-select');
-+      const qtyInput = document.getElementById('quick-qty-input');
-+      const noteInput = document.getElementById('quick-note-input');
-+      const statusMsg = document.getElementById('order-status-msg');
++      // Help toggle
++      if (helpBtn && helpBox) {
++        helpBtn.addEventListener('click', () => {
++          const willShow = helpBox.hidden;
++          helpBox.hidden = !willShow;
++          helpBtn.setAttribute('aria-expanded', String(willShow));
++          clampCurrentPosition();
++        });
++      }
 +
-+      const cartState = [
-+        { id: 'maple-oat-latte-Medium', name: 'Maple Oat Latte', size: 'Medium', price: 5.50, qty: 1, note: '' },
-+        { id: 'cold-brew-Medium', name: 'Cold Brew', size: 'Medium', price: 4.75, qty: 1, note: '' }
-+      ];
++      // Collapse / expand toggle
++      if (collapseBtn && panelBody) {
++        collapseBtn.addEventListener('click', () => {
++          const willCollapse = !panelBody.hidden;
++          panelBody.hidden = willCollapse;
++          draggable.classList.toggle('is-collapsed', willCollapse);
++          collapseBtn.setAttribute('aria-expanded', String(!willCollapse));
++          collapseBtn.setAttribute(
++            'aria-label',
++            willCollapse ? 'Expand Quick Order panel' : 'Collapse Quick Order panel'
++          );
++          collapseBtn.title = willCollapse ? 'Expand panel' : 'Minimize panel';
++          collapseBtn.textContent = willCollapse ? '+' : '−';
++          clampCurrentPosition();
++        });
++      }
++
++      // Re-clamp on viewport or panel size changes
++      window.addEventListener('resize', clampCurrentPosition);
++      if (typeof ResizeObserver === 'function') {
++        const resizeObserver = new ResizeObserver(clampCurrentPosition);
++        resizeObserver.observe(draggable);
++      }
++
++      // Quick Order cart state & interactive controls
++      const cart = new Map([
++        ['maple-oat-latte', { id: 'maple-oat-latte', name: 'Maple Oat Latte', price: 5.25, qty: 1 }]
++      ]);
++
++      const drinkSelect = document.getElementById('drink-select');
++      const addDrinkBtn = document.getElementById('add-drink-btn');
++      const cartItemsList = document.getElementById('cart-items');
++      const cartCountEl = document.getElementById('cart-count');
++      const cartSubtotalEl = document.getElementById('cart-subtotal');
++      const orderNoteInput = document.getElementById('order-note');
++      const placeOrderBtn = document.getElementById('place-order-btn');
++      const clearCartBtn = document.getElementById('clear-cart-btn');
++      const orderStatusMsg = document.getElementById('order-status-msg');
 +
 +      function renderCart() {
-+        if (!cartList) return;
-+        cartList.innerHTML = '';
++        if (!cartItemsList || !cartCountEl || !cartSubtotalEl || !placeOrderBtn || !clearCartBtn) return;
 +
++        cartItemsList.innerHTML = '';
 +        let totalQty = 0;
 +        let subtotal = 0;
 +
-+        cartState.forEach((item) => {
-+          totalQty += item.qty;
-+          subtotal += item.price * item.qty;
-+
-+          const li = document.createElement('li');
-+          li.className = 'cart-item';
-+          li.dataset.id = item.id;
-+
-+          const info = document.createElement('div');
-+          info.className = 'cart-item-info';
-+
-+          const nameSpan = document.createElement('span');
-+          nameSpan.className = 'cart-item-name';
-+          nameSpan.textContent = item.name;
-+
-+          const metaSpan = document.createElement('span');
-+          metaSpan.className = 'cart-item-meta';
-+          const noteSuffix = item.note ? ` • ${item.note}` : '';
-+          metaSpan.textContent = `${item.size} • $${item.price.toFixed(2)} each${noteSuffix}`;
-+
-+          info.appendChild(nameSpan);
-+          info.appendChild(metaSpan);
-+
-+          const controls = document.createElement('div');
-+          controls.className = 'cart-item-controls';
-+
-+          const decBtn = document.createElement('button');
-+          decBtn.type = 'button';
-+          decBtn.className = 'qty-btn';
-+          decBtn.dataset.action = 'decrease';
-+          decBtn.dataset.id = item.id;
-+          decBtn.setAttribute('aria-label', `Decrease ${item.name} quantity`);
-+          decBtn.textContent = '−';
-+
-+          const qtySpan = document.createElement('span');
-+          qtySpan.className = 'cart-item-qty';
-+          qtySpan.textContent = String(item.qty);
-+
-+          const incBtn = document.createElement('button');
-+          incBtn.type = 'button';
-+          incBtn.className = 'qty-btn';
-+          incBtn.dataset.action = 'increase';
-+          incBtn.dataset.id = item.id;
-+          incBtn.setAttribute('aria-label', `Increase ${item.name} quantity`);
-+          incBtn.textContent = '+';
-+
-+          controls.appendChild(decBtn);
-+          controls.appendChild(qtySpan);
-+          controls.appendChild(incBtn);
-+
-+          li.appendChild(info);
-+          li.appendChild(controls);
-+          cartList.appendChild(li);
-+        });
-+
-+        if (cartState.length === 0) {
++        if (cart.size === 0) {
 +          const emptyLi = document.createElement('li');
-+          emptyLi.className = 'cart-item';
-+          emptyLi.textContent = 'Your coffee cart is empty.';
-+          cartList.appendChild(emptyLi);
++          emptyLi.className = 'cart-empty';
++          emptyLi.textContent = 'Your quick order cart is empty.';
++          cartItemsList.appendChild(emptyLi);
++        } else {
++          for (const item of cart.values()) {
++            totalQty += item.qty;
++            subtotal += item.price * item.qty;
++
++            const li = document.createElement('li');
++            li.className = 'cart-item';
++            li.dataset.itemId = item.id;
++
++            const infoDiv = document.createElement('div');
++            infoDiv.className = 'cart-item-info';
++
++            const nameDiv = document.createElement('div');
++            nameDiv.className = 'cart-item-name';
++            nameDiv.textContent = item.name;
++
++            const metaDiv = document.createElement('div');
++            metaDiv.className = 'cart-item-meta';
++            metaDiv.textContent = `$${item.price.toFixed(2)} each`;
++
++            infoDiv.append(nameDiv, metaDiv);
++
++            const qtyDiv = document.createElement('div');
++            qtyDiv.className = 'cart-item-qty';
++
++            const decBtn = document.createElement('button');
++            decBtn.type = 'button';
++            decBtn.className = 'qty-btn panel-control';
++            decBtn.dataset.qtyAction = 'decrease';
++            decBtn.setAttribute('aria-label', `Decrease quantity of ${item.name}`);
++            decBtn.textContent = '−';
++
++            const qtySpan = document.createElement('span');
++            qtySpan.className = 'qty-value';
++            qtySpan.textContent = String(item.qty);
++
++            const incBtn = document.createElement('button');
++            incBtn.type = 'button';
++            incBtn.className = 'qty-btn panel-control';
++            incBtn.dataset.qtyAction = 'increase';
++            incBtn.setAttribute('aria-label', `Increase quantity of ${item.name}`);
++            incBtn.textContent = '+';
++
++            qtyDiv.append(decBtn, qtySpan, incBtn);
++            li.append(infoDiv, qtyDiv);
++            cartItemsList.appendChild(li);
++          }
 +        }
 +
-+        if (badge) {
-+          badge.textContent = `${totalQty} ${totalQty === 1 ? 'item' : 'items'}`;
-+        }
-+        if (subtotalEl) {
-+          subtotalEl.textContent = `Subtotal: $${subtotal.toFixed(2)}`;
-+        }
-+        if (checkoutBtn) {
-+          checkoutBtn.textContent = `Checkout ($${subtotal.toFixed(2)})`;
-+        }
++        cartCountEl.textContent = String(totalQty);
++        cartSubtotalEl.textContent = `$${subtotal.toFixed(2)}`;
++        placeOrderBtn.disabled = totalQty === 0;
++        clearCartBtn.disabled = totalQty === 0;
 +      }
 +
-+      if (cartList) {
-+        cartList.addEventListener('click', (event) => {
-+          const btn = event.target.closest('button[data-action]');
-+          if (!btn) return;
-+          const itemEl = btn.closest('.cart-item');
-+          const id = btn.dataset.id || (itemEl && itemEl.dataset.id);
-+          const idx = cartState.findIndex((entry) => entry.id === id);
-+          if (idx === -1) return;
++      if (addDrinkBtn && drinkSelect) {
++        addDrinkBtn.addEventListener('click', () => {
++          const selected = drinkSelect.options[drinkSelect.selectedIndex];
++          if (!selected) return;
 +
-+          if (btn.dataset.action === 'increase') {
-+            cartState[idx].qty += 1;
-+          } else if (btn.dataset.action === 'decrease') {
-+            cartState[idx].qty -= 1;
-+            if (cartState[idx].qty <= 0) {
-+              cartState.splice(idx, 1);
-+            }
++          const id = selected.value;
++          const name = selected.dataset.name || selected.textContent;
++          const price = Number(selected.dataset.price || 0);
++
++          const existing = cart.get(id);
++          if (existing) {
++            existing.qty += 1;
++          } else {
++            cart.set(id, { id, name, price, qty: 1 });
 +          }
++          if (orderStatusMsg) orderStatusMsg.hidden = true;
 +          renderCart();
 +        });
 +      }
 +
-+      function addSelectedDrinkToCart() {
-+        if (!drinkSelect || !sizeSelect || !qtyInput) return;
-+        const selectedOption = drinkSelect.options[drinkSelect.selectedIndex];
-+        const name = selectedOption.dataset.name || selectedOption.textContent;
-+        const basePrice = parseFloat(selectedOption.dataset.price || '4.50');
-+        const size = sizeSelect.value || 'Medium';
-+        const upcharge = size === 'Large' ? 0.75 : 0;
-+        const price = basePrice + upcharge;
-+        const qty = Math.max(1, Math.min(10, parseInt(qtyInput.value, 10) || 1));
-+        const note = noteInput ? noteInput.value.trim() : '';
-+        const id = `${drinkSelect.value}-${size}-${note}`;
++      if (cartItemsList) {
++        cartItemsList.addEventListener('click', (event) => {
++          const btn = event.target.closest('[data-qty-action]');
++          if (!btn) return;
++          const itemEl = btn.closest('[data-item-id]');
++          const id = itemEl?.dataset.itemId;
++          if (!id || !cart.has(id)) return;
 +
-+        const existing = cartState.find((item) => item.id === id);
-+        if (existing) {
-+          existing.qty += qty;
-+        } else {
-+          cartState.push({ id, name, size, price, qty, note });
-+        }
-+
-+        if (noteInput) noteInput.value = '';
-+        qtyInput.value = '1';
-+        renderCart();
-+
-+        if (statusMsg) {
-+          statusMsg.textContent = `Added ${qty}x ${size} ${name} to cart.`;
-+        }
++          const item = cart.get(id);
++          if (btn.dataset.qtyAction === 'increase') {
++            item.qty += 1;
++          } else if (btn.dataset.qtyAction === 'decrease') {
++            item.qty -= 1;
++            if (item.qty <= 0) {
++              cart.delete(id);
++            }
++          }
++          if (orderStatusMsg) orderStatusMsg.hidden = true;
++          renderCart();
++        });
 +      }
 +
-+      if (addBtn) {
-+        addBtn.addEventListener('click', addSelectedDrinkToCart);
++      if (clearCartBtn) {
++        clearCartBtn.addEventListener('click', () => {
++          cart.clear();
++          if (orderNoteInput) orderNoteInput.value = '';
++          if (orderStatusMsg) orderStatusMsg.hidden = true;
++          renderCart();
++        });
 +      }
 +
-+      if (form) {
-+        form.addEventListener('submit', (event) => {
-+          event.preventDefault();
-+          if (cartState.length === 0) {
-+            addSelectedDrinkToCart();
++      if (placeOrderBtn) {
++        placeOrderBtn.addEventListener('click', () => {
++          if (cart.size === 0) return;
++          const totalItems = Array.from(cart.values()).reduce((sum, item) => sum + item.qty, 0);
++          const note = orderNoteInput?.value.trim();
++          const noteSuffix = note ? ` (Note: ${note})` : '';
++          if (orderStatusMsg) {
++            orderStatusMsg.textContent = `Order placed for ${totalItems} ${totalItems === 1 ? 'drink' : 'drinks'}${noteSuffix}. Ready in ~8 mins.`;
++            orderStatusMsg.hidden = false;
 +          }
-+          if (statusMsg) {
-+            statusMsg.textContent = 'Order submitted! Ready for pickup in 5–8 mins.';
-+          }
++          cart.clear();
++          if (orderNoteInput) orderNoteInput.value = '';
++          renderCart();
 +        });
 +      }
 +    })();
