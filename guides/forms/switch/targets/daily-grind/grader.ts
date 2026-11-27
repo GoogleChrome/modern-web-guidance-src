@@ -335,5 +335,92 @@ test.describe('switch Target Grader', () => {
 
       expect(toggledAndStyled).toBe(true);
     });
+
+    test("The switch's focus outline has a contrast ratio of at least 3:1 against the background next to it", async ({
+      page,
+    }) => {
+      const switchLocator = page.locator('input[type="checkbox"][switch]').first();
+      await expect(switchLocator).toBeVisible();
+
+      let reached = false;
+      for (let i = 0; i < 60; i++) {
+        await page.keyboard.press('Tab');
+        const isSwitchFocused = await switchLocator.evaluate(
+          (el) => document.activeElement === el && el.matches(':focus-visible'),
+        );
+        if (isSwitchFocused) {
+          reached = true;
+          break;
+        }
+      }
+      if (!reached) {
+        await switchLocator.focus();
+      }
+
+      const ratio = await switchLocator.evaluate((el) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        const parseRgba = (str: string): [number, number, number, number] | null => {
+          const trimmed = str.trim();
+          if (!trimmed || trimmed === 'none') return null;
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = trimmed;
+          ctx.fillRect(0, 0, 1, 1);
+          const d = ctx.getImageData(0, 0, 1, 1).data;
+          return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
+        };
+        const composite = (
+          fg: [number, number, number, number],
+          bg: [number, number, number, number],
+        ): [number, number, number, number] => {
+          const a = fg[3] + bg[3] * (1 - fg[3]);
+          if (a === 0) return [255, 255, 255, 1];
+          return [
+            (fg[0] * fg[3] + bg[0] * bg[3] * (1 - fg[3])) / a,
+            (fg[1] * fg[3] + bg[1] * bg[3] * (1 - fg[3])) / a,
+            (fg[2] * fg[3] + bg[2] * bg[3] * (1 - fg[3])) / a,
+            a,
+          ];
+        };
+        const luminance = ([r, g, b]: [number, number, number, number]): number => {
+          const chan = [r, g, b].map((v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          });
+          return 0.2126 * chan[0]! + 0.7152 * chan[1]! + 0.0722 * chan[2]!;
+        };
+        const contrast = (c1: [number, number, number, number], c2: [number, number, number, number]): number => {
+          const l1 = luminance(c1);
+          const l2 = luminance(c2);
+          return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        };
+
+        const cs = window.getComputedStyle(el);
+        const outlineWidth = parseFloat(cs.outlineWidth) || 0;
+        if (cs.outlineStyle === 'none' || outlineWidth <= 0) return 0;
+
+        const outlineColor = parseRgba(cs.outlineColor);
+        if (!outlineColor || outlineColor[3] <= 0) return 0;
+
+        const layers: Array<[number, number, number, number]> = [];
+        let curr: Element | null = el.parentElement;
+        while (curr) {
+          const bg = parseRgba(window.getComputedStyle(curr).backgroundColor);
+          if (bg && bg[3] > 0) layers.push(bg);
+          curr = curr.parentElement;
+        }
+        let bg: [number, number, number, number] = [255, 255, 255, 1];
+        for (let i = layers.length - 1; i >= 0; i--) {
+          bg = composite(layers[i]!, bg);
+        }
+
+        return contrast(composite(outlineColor, bg), bg);
+      });
+
+      expect(ratio).toBeGreaterThanOrEqual(3);
+    });
   });
 });

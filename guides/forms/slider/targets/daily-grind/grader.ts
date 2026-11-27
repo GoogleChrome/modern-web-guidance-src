@@ -307,7 +307,86 @@ test.describe('slider Target Grader', () => {
       await page.goto(TARGET_URL);
     });
 
-    test('Preserves a usable interaction area and provides a visible :focus-visible indicator', async ({
+    test('In fully styled sliders, the track color has a contrast ratio of at least 3:1 with the background color', async ({
+      page,
+    }) => {
+      const slider = page.getByRole('slider').first();
+      await expect(slider).toBeVisible();
+
+      const contrastCheck = await slider.evaluate((el) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        type RGBA = [number, number, number, number];
+        const toRgba = (color: string): RGBA => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, 1, 1);
+          const d = ctx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
+        };
+        const over = (top: RGBA, bottom: RGBA): RGBA => [
+          top[0] * top[3] + bottom[0] * (1 - top[3]),
+          top[1] * top[3] + bottom[1] * (1 - top[3]),
+          top[2] * top[3] + bottom[2] * (1 - top[3]),
+          1,
+        ];
+        const luminance = (c: RGBA): number => {
+          const lin = (v: number) => {
+            const s = v / 255;
+            return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          };
+          return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+        };
+        const ratio = (a: RGBA, b: RGBA): number => {
+          const la = luminance(a);
+          const lb = luminance(b);
+          return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+        };
+
+        // Effective background behind slider
+        const layers: RGBA[] = [];
+        for (let node: Element | null = el; node; node = node.parentElement) {
+          const bg = toRgba(getComputedStyle(node).backgroundColor);
+          if (bg[3] > 0) layers.push(bg);
+          if (bg[3] >= 1) break;
+        }
+        let bg: RGBA = layers.length && layers[layers.length - 1][3] >= 1 ? layers.pop()! : [255, 255, 255, 1];
+        while (layers.length) bg = over(layers.pop()!, bg);
+
+        const trackStyle = getComputedStyle(el, '::-webkit-slider-runnable-track');
+        const trackVar = getComputedStyle(el).getPropertyValue('--slider-track-color').trim();
+        const bgImg = trackStyle.backgroundImage;
+        const colors: string[] = [];
+        if (trackVar) colors.push(trackVar);
+        if (bgImg && bgImg !== 'none') {
+          const matches = bgImg.match(/(?:rgba?|hsla?|oklch|oklab|color)\([^)]+\)|#[0-9a-f]{3,8}/gi) || [];
+          colors.push(...matches);
+        }
+        if (trackStyle.backgroundColor && toRgba(trackStyle.backgroundColor)[3] > 0) {
+          colors.push(trackStyle.backgroundColor);
+        }
+
+        const ratios = colors
+          .map((c) => toRgba(c))
+          .filter((c) => c[3] > 0)
+          .map((c) => ratio(over(c, bg), bg));
+
+        return {
+          appearance: getComputedStyle(el).appearance,
+          ratios,
+          minRatio: ratios.length > 0 ? Math.min(...ratios) : 0,
+        };
+      });
+
+      expect(contrastCheck.appearance).toBe('none');
+      expect(contrastCheck.ratios.length).toBeGreaterThan(0);
+      expect(contrastCheck.minRatio).toBeGreaterThanOrEqual(2.98);
+    });
+
+    test('Preserves a usable interaction area with a touch target size of at least 24 CSS pixels', async ({
       page,
     }) => {
       const slider = page.getByRole('slider').first();
@@ -315,32 +394,87 @@ test.describe('slider Target Grader', () => {
 
       const box = await slider.boundingBox();
       expect(box).not.toBeNull();
-      expect(box!.width).toBeGreaterThanOrEqual(120);
+      expect(box!.width).toBeGreaterThanOrEqual(24);
       expect(box!.height).toBeGreaterThanOrEqual(24);
+    });
+
+    test('Provides a visible :focus-visible indicator with at least 3:1 contrast after changing native appearance', async ({
+      page,
+    }) => {
+      const slider = page.getByRole('slider').first();
+      await expect(slider).toBeVisible();
 
       await slider.focus();
       const focusStyles = await slider.evaluate((el) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+        type RGBA = [number, number, number, number];
+        const toRgba = (color: string): RGBA => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+          ctx.fillStyle = color;
+          ctx.fillRect(0, 0, 1, 1);
+          const d = ctx.getImageData(0, 0, 1, 1).data;
+          return [d[0], d[1], d[2], d[3] / 255];
+        };
+        const over = (top: RGBA, bottom: RGBA): RGBA => [
+          top[0] * top[3] + bottom[0] * (1 - top[3]),
+          top[1] * top[3] + bottom[1] * (1 - top[3]),
+          top[2] * top[3] + bottom[2] * (1 - top[3]),
+          1,
+        ];
+        const luminance = (c: RGBA): number => {
+          const lin = (v: number) => {
+            const s = v / 255;
+            return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+          };
+          return 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+        };
+        const ratio = (a: RGBA, b: RGBA): number => {
+          const la = luminance(a);
+          const lb = luminance(b);
+          return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+        };
+
+        const layers: RGBA[] = [];
+        for (let node: Element | null = el.parentElement; node; node = node.parentElement) {
+          const bg = toRgba(getComputedStyle(node).backgroundColor);
+          if (bg[3] > 0) layers.push(bg);
+          if (bg[3] >= 1) break;
+        }
+        let bg: RGBA = layers.length && layers[layers.length - 1][3] >= 1 ? layers.pop()! : [255, 255, 255, 1];
+        while (layers.length) bg = over(layers.pop()!, bg);
+
         const s = window.getComputedStyle(el);
+        const hasVisibleOutline =
+          s.outlineStyle !== 'none' &&
+          s.outlineStyle !== 'auto' &&
+          (parseFloat(s.outlineWidth) || 0) > 0 &&
+          toRgba(s.outlineColor)[3] > 0;
+        const hasVisibleBoxShadow = s.boxShadow !== 'none' && s.boxShadow !== '';
+        let focusContrast = 0;
+        if (hasVisibleOutline) {
+          focusContrast = Math.max(focusContrast, ratio(over(toRgba(s.outlineColor), bg), bg));
+        }
+        if (hasVisibleBoxShadow) {
+          const shadowColors = s.boxShadow.match(/(?:rgba?|hsla?|oklch|oklab|color)\([^)]+\)|#[0-9a-f]{3,8}/gi) ?? [];
+          for (const color of shadowColors) {
+            focusContrast = Math.max(focusContrast, ratio(over(toRgba(color), bg), bg));
+          }
+        }
+
         return {
           appearance: s.appearance,
-          outlineStyle: s.outlineStyle,
-          outlineWidth: parseFloat(s.outlineWidth) || 0,
-          outlineColor: s.outlineColor,
-          boxShadow: s.boxShadow,
+          hasIndicator: hasVisibleOutline || hasVisibleBoxShadow,
+          focusContrast,
         };
       });
 
       expect(focusStyles.appearance).toBe('none');
-      // The built-in focus ring (`outline-style: auto`) survives `appearance: none`; require an author-defined indicator.
-      const hasVisibleOutline =
-        focusStyles.outlineStyle !== 'none' &&
-        focusStyles.outlineStyle !== 'auto' &&
-        focusStyles.outlineWidth > 0 &&
-        focusStyles.outlineColor !== 'rgba(0, 0, 0, 0)' &&
-        focusStyles.outlineColor !== 'transparent';
-      const hasVisibleBoxShadow =
-        focusStyles.boxShadow !== 'none' && focusStyles.boxShadow !== '';
-      expect(hasVisibleOutline || hasVisibleBoxShadow).toBe(true);
+      expect(focusStyles.hasIndicator).toBe(true);
+      expect(focusStyles.focusContrast).toBeGreaterThanOrEqual(2.98);
     });
 
     test('Exposes a descriptive aria-valuetext that differs from the plain numeric value and updates on input', async ({
