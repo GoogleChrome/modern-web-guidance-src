@@ -1,0 +1,20 @@
+- Internal link clicks update the view and URL without reloading the document, preserving JavaScript state on `window`.
+- Following an internal link changes `document.title` to the new view's title.
+- Navigating Back and Forward renders the corresponding view for the target history entry.
+- After scrolling down, following an internal link without a fragment identifier sets the vertical scroll position to 0.
+- Navigating Back or Forward restores the previous view's vertical scroll position.
+- After following an internal link without a fragment identifier, keyboard focus is on an element inside the new view.
+- After scrolling down, following an internal link and then pressing Back, the focused element is inside the viewport.
+- After scrolling down, following an internal link, pressing Back, and then pressing Forward, the focused element is inside the viewport.
+- Following an internal link to a `#hash` URL on another view puts keyboard focus on the fragment's target element.
+- When view data loads over the network and responses are delayed by 2 seconds, an element that contains the view content has `aria-busy="true"` until the new view renders, and no element has `aria-busy="true"` afterward.
+- When responses are delayed by 2 seconds and the navigation is stopped with `window.stop()` before the new view renders, no element has `aria-busy="true"`.
+- When view data loads over the network and responses are delayed by 2 seconds, a visible element with the `progressbar` role (a `progress` element or an element with `role="progressbar"`) that has a non-empty accessible name is present while the new view loads.
+- When a view's data request fails, both with a network error and with an HTTP 500 response, the page shows an `h1` whose text differs from the previous view's `h1`.
+- When a view's data request fails, both with a network error and with an HTTP 500 response, `document.title` changes from the previous view's title.
+- When a view's data request fails, both with a network error and with an HTTP 500 response, keyboard focus is on the displayed `h1`.
+- Following a same-page link with a fragment identifier scrolls to the target element without re-rendering the view.
+- Following a same-origin link that has a `download` attribute downloads the file.
+- Submitting a form with `method="post"` loads the server's response as a new document.
+- When the Navigation API is unsupported, following an internal link shows the target view at the link's URL without uncaught errors (a full page load is fine).
+- When `document.startViewTransition` is unsupported, following an internal link still updates the view and URL without a page reload and without uncaught errors.
