@@ -212,8 +212,8 @@ description: Action-oriented guidelines for modern HTML architecture, semantics,
 
 ### Guidelines
 
-See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallback strategies for using the Popover API in a cross-browser way.
-- **DO** use `<dialog>` for modal overlays (requires JS `.showModal()`) to automatically trap focus, dim backgrounds, and support dismissing via `Esc`. Use the `closedby="any"` attribute to enable native "light-dismiss" (closing on backdrop click) without custom JavaScript.
+See {{ GUIDE_REF("dialog") }} for accessible dialog behavior, {{ GUIDE_REF("light-dismiss-a-dialog") }} for backdrop dismissal, and {{ GUIDE_REF("declarative-dialog-popover-control") }} for declarative controls and their fallback.
+- **DO** use `<dialog>` for modal overlays, opened with `command="show-modal"` or `.showModal()`, to contain focus, provide a backdrop, and support dismissing via `Esc`. For backdrop light-dismiss, use `closedby="any"`. If your Baseline target does not support `closedby` and light-dismiss is required, check `!('closedBy' in HTMLDialogElement.prototype)` and close only when both `pointerdown` and `pointerup` occur outside the dialog's bounding rectangle.
 - **DO** provide a visible control for closing modal overlays, so that people using voice control software can easily determine how to dismiss the modal dialog.
 - **DO** utilize the Popover API (`popover` attribute) for non-modal UI (menus, tooltips) that do not require focus traps.
 - **DO** use `::backdrop` to style modal backgrounds.
@@ -232,11 +232,11 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
 </div>
 
 <!-- Modal Dialog with Form-based closing -->
-<button id="show-dialog">Open dialog</button>
-<dialog id="fav-modal">
+<button type="button" id="show-dialog">Open dialog</button>
+<dialog id="fav-modal" aria-labelledby="fav-modal-title">
   <!-- method="dialog" closes the dialog natively and sets the returnValue -->
   <form method="dialog">
-    <p>Confirm action?</p>
+    <h2 id="fav-modal-title">Confirm action?</h2>
     <button value="cancel">Cancel</button>
     <button value="confirm">Confirm</button>
   </form>
@@ -249,9 +249,11 @@ See {{ GUIDE_REF("declarative-dialog-popover-control") }} for more info on fallb
   // Show modal dialog
   openModal.addEventListener('click', () => dialog.showModal());
   
-  // Listen for the 'close' event to retrieve the user's choice (returnValue)
+  // Read the choice, then clear it so a later Esc dismissal cannot reuse it.
   dialog.addEventListener('close', () => {
-    console.log(dialog.returnValue); // "confirm" or "cancel"
+    const choice = dialog.returnValue; // "confirm", "cancel", or "" for dismissal
+    dialog.returnValue = '';
+    console.log(choice);
   });
 </script>
 ```
