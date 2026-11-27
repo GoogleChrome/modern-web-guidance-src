@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -12,6 +12,29 @@ const filePath = path.resolve(targetFile);
 const targetDir = path.dirname(filePath);
 const demoName = path.basename(filePath);
 const demoUrl = `http://localhost/${demoName}`;
+
+async function loadWithoutClosedBy(page: Page) {
+  // Exercise the fallback selected by feature detection.
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(HTMLDialogElement.prototype, 'closedBy');
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => 'closedBy' in HTMLDialogElement.prototype)).toBe(false);
+}
+
+async function dispatchBackdropClick(page: Page) {
+  // Synthetic events invoke fallback listeners without native light dismissal.
+  // Keep closedby="any" intact for implementations that check the attribute.
+  await page.locator('dialog').evaluate(el => {
+    for (const type of ['pointerdown', 'pointerup', 'click']) {
+      el.dispatchEvent(new PointerEvent(type, {
+        bubbles: true, cancelable: true, clientX: 10, clientY: 10,
+        pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0,
+        buttons: type === 'pointerdown' ? 1 : 0,
+      }));
+    }
+  });
+}
 
 // Tests
 test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
@@ -113,15 +136,32 @@ test.describe(`Light Dismiss Dialog Expectations: ${demoName}`, () => {
   });
 
   test('The implementation should include a fallback mechanism for light-dismiss', async ({ page }) => {
-    // Check if there is an event listener for clicks on the dialog
-    // or if the script contains the logic for manual light-dismiss
-    const hasFallback = await page.evaluate(() => {
-      const scripts = Array.from(document.querySelectorAll('script'));
-      const scriptContent = scripts.map(s => s.textContent).join(' ');
-      return scriptContent.includes('getBoundingClientRect') &&
-             scriptContent.includes('.close()');
+    await loadWithoutClosedBy(page);
+    const dialog = page.locator('dialog');
+    await page.locator('.test-dialog-trigger').first().click();
+    await expect(dialog).toHaveAttribute('open', '');
+    await dispatchBackdropClick(page);
+    await expect(dialog).not.toHaveAttribute('open');
+  });
+
+  test('When closedby is unsupported, cancel handlers can prevent backdrop dismissal', async ({ page }) => {
+    await loadWithoutClosedBy(page);
+    const dialog = page.locator('dialog');
+    await page.locator('.test-dialog-trigger').first().click();
+    await expect(dialog).toHaveAttribute('open', '');
+    await dialog.evaluate(el => {
+      el.addEventListener('cancel', event => {
+        el.setAttribute('data-cancel-before-close', String((el as HTMLDialogElement).open));
+        event.preventDefault();
+      }, { once: true });
     });
-    expect(hasFallback).toBe(true);
+    await dispatchBackdropClick(page);
+    await expect(dialog).toHaveAttribute('data-cancel-before-close', 'true');
+    await expect(dialog).toHaveAttribute('open', '');
+
+    // The one-shot guard must not prevent a later, accepted dismissal.
+    await dispatchBackdropClick(page);
+    await expect(dialog).not.toHaveAttribute('open');
   });
 
 });
