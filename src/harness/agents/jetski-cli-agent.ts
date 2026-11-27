@@ -4,11 +4,9 @@ import { fileURLToPath } from 'url';
 import { DatabaseSync } from 'node:sqlite';
 import config, { Agents } from '../config.ts';
 import {
-  cleanupIsolatedHome,
-  parseAgentArgs,
-  runCliAgentCommand,
   copyFileIfExists,
-  setupIsolatedWorkDir,
+  linkMacKeychains,
+  runAgentCliEntrypoint,
   isEnoent,
   type GuideUsage
 } from '../lib/agent-shared.ts';
@@ -20,7 +18,6 @@ import {
   extractTimestamp,
   truncateMessage,
   finalizeTrajectorySummary,
-  generateNormalizedTrajectory,
   readTrajectorySummary,
   standardizeAction
 } from '../lib/trajectory-normalizer.ts';
@@ -79,17 +76,7 @@ export function setupJetskiCliCredentials(tempHome: string): string {
     copyFileIfExists(path.join(jetskiSource, file), path.join(jetskiDest, file));
   }
 
-  // On macOS the CLI keeps its OAuth token in the login Keychain, which is
-  // located via $HOME/Library/Keychains. Without this, the isolated HOME makes
-  // silent auth fail and the CLI falls back to an interactive login prompt.
-  if (process.platform === 'darwin') {
-    const keychainsSource = path.join(originalHome, 'Library', 'Keychains');
-    const keychainsDest = path.join(tempHome, 'Library', 'Keychains');
-    if (fs.existsSync(keychainsSource) && !fs.existsSync(keychainsDest)) {
-      fs.mkdirSync(path.dirname(keychainsDest), { recursive: true });
-      fs.symlinkSync(keychainsSource, keychainsDest);
-    }
-  }
+  linkMacKeychains(originalHome, tempHome);
 
   process.env.JETSKI_DIR = jetskiDest;
   createTrustedFolders(geminiDest, [tempHome]);
@@ -111,44 +98,6 @@ export function getJetskiCliCommandAndArgs(prompt: string): { command: string; c
 function exportJetskiTrajectories(workDir: string, targetDir: string): void {
   const conversationsDir = path.join(path.dirname(workDir), '.gemini', 'jetski', 'conversations');
   exportTrajectories(conversationsDir, '**/*.db', targetDir);
-}
-
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('jetski-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.JETSKI_CLI, templateDir, runType);
-
-  if (!workDir) {
-    throw new Error('Failed to initialize working directory');
-  }
-
-  try {
-    console.log(`Starting Jetski CLI agent in: ${workDir}`);
-
-    const { command, commandArgs } = getJetskiCliCommandAndArgs(userPrompt);
-
-    console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
-
-    try {
-      await runCliAgentCommand(
-        command,
-        commandArgs,
-        workDir,
-        targetDir,
-        'Jetski CLI',
-        runType
-      );
-    } finally {
-      exportJetskiTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.JETSKI_CLI, userPrompt);
-    }
-
-    console.log("Jetski CLI agent finished successfully.");
-  } catch (err) {
-    console.error("Error during Jetski CLI execution:", err);
-    process.exitCode = 1;
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
-  }
 }
 
 export function findJsonObjectsInString(str: string): any[] {
@@ -616,5 +565,10 @@ export function collectJetskiCliToolsFromTrajectory(dir: string): string[] {
 
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
-  run();
+  runAgentCliEntrypoint({
+    agent: Agents.JETSKI_CLI,
+    displayName: 'Jetski CLI',
+    scriptName: 'jetski-cli-agent.ts',
+    exportTrajectories: exportJetskiTrajectories,
+  });
 }
