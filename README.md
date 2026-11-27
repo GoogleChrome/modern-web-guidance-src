@@ -574,7 +574,7 @@ qoder plugin install modern-web-guidance@googlechrome
 </details>
 
 <details>
-<summary><b>Qwen Code CLI</b></summary>
+<summary><b>Qwen Code</b></summary>
 
 ```shell
 qwen plugin marketplace add GoogleChrome/modern-web-guidance
