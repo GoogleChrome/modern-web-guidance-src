@@ -24,6 +24,7 @@ function makeIntakeInput(
     prAuthor: 'external-dev',
     authorIsBot: false,
     authorHasWriteAccess: false,
+    authorIsOrgMember: false,
     hasMaintainerEngagement: false,
     prLabels: [],
     title: 'Add cool guide',
@@ -179,13 +180,29 @@ describe('evaluatePrIntake', () => {
       { kind: 'allow', via: 'maintainer-engaged', approvedIssue: undefined }
     );
 
+    const orgLookups: number[] = [];
+    assert.deepEqual(
+      evaluatePrIntake(
+        makeIntakeInput({
+          authorIsOrgMember: true,
+          body: 'Fixes #100',
+          resolveIssue: n => {
+            orgLookups.push(n);
+            return null;
+          }
+        })
+      ),
+      { kind: 'allow', via: 'org-member', approvedIssue: undefined }
+    );
+    assert.deepEqual(orgLookups, []);
+
     assert.deepEqual(
       evaluatePrIntake(makeIntakeInput({ body: '', additions: 1, deletions: 1 })),
       { kind: 'allow', via: 'prose-typo-fix', approvedIssue: undefined }
     );
   });
 
-  it('holds approved external PRs when cla/google is failure, pending, or missing', () => {
+  it('holds approved external and org-member PRs when cla/google is failure, pending, or missing', () => {
     for (const claState of ['failure', 'pending', 'missing'] as const) {
       assert.deepEqual(
         evaluatePrIntake(
@@ -195,6 +212,10 @@ describe('evaluatePrIntake', () => {
           })
         ),
         { kind: 'hold-cla', claState, via: 'approved-issue', approvedIssue: 100 }
+      );
+      assert.deepEqual(
+        evaluatePrIntake(makeIntakeInput({ authorIsOrgMember: true, claState, body: '' })),
+        { kind: 'hold-cla', claState, via: 'org-member', approvedIssue: undefined }
       );
     }
   });

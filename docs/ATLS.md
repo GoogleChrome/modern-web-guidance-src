@@ -25,7 +25,7 @@ Official ownership mapping is maintained in **[`.github/atls.json`](../.github/a
 3. **`web_features_groups`**: Cross-cutting guidance horizontals and feature groups (e.g., `animation`, `transitions`, `view-transitions`, `scrolling`, `webauthn`); broad vertical groups that already exist as a `default` category (e.g., `css`, `security`) do not override another directory's category ATL on guide PRs.
 4. **`default`**: Domain vertical defaults across guidance directories (`css`, `forms`, `performance`, `ui-behaviors`, `ui-components`, `built-in-ai`, `privacy`, `security`, `webmcp`, etc.), picking the candidate with the fewest open review requests when a tier lists multiple leads.
 
-The `.github/workflows/atl-triage.yml` workflow gates external contributor PRs on an approved (`pr-welcome` or author-assigned) issue and a passing `cla/google` check before requesting review.
+The `.github/workflows/atl-triage.yml` workflow gates external contributor PRs on an approved (`pr-welcome` or author-assigned) issue and a passing `cla/google` check before requesting review (`GoogleChrome` org members skip the issue gate, while still requiring `cla/google`).
 
 
 ## Review & Triage Workflows

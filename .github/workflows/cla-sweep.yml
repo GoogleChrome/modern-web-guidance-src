@@ -43,6 +43,7 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
           permission-contents: read
+          permission-members: read
 
       - name: Sweep awaiting-cla PRs
         env:

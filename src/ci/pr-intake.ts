@@ -20,6 +20,7 @@ export interface LinkedIssueInfo {
 export type AllowVia =
   | 'write-access'
   | 'bot'
+  | 'org-member'
   | 'maintainer-engaged'
   | 'pr-welcome-label'
   | 'approved-issue'
@@ -31,6 +32,7 @@ export interface PrIntakeInput {
   prAuthor: string;
   authorIsBot: boolean;
   authorHasWriteAccess: boolean;
+  authorIsOrgMember: boolean;
   hasMaintainerEngagement: boolean;
   prLabels: readonly string[];
   title: string;
@@ -135,6 +137,7 @@ export function evaluatePrIntake(input: PrIntakeInput): PrIntakeDecision {
       ? { kind: 'allow', via, approvedIssue }
       : { kind: 'hold-cla', claState: input.claState, via, approvedIssue };
 
+  if (input.authorIsOrgMember) return finalize('org-member');
   if (input.hasMaintainerEngagement) return finalize('maintainer-engaged');
   if (hasLabel(input.prLabels, PR_WELCOME_LABEL)) return finalize('pr-welcome-label');
 
