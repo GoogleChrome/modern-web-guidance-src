@@ -13,15 +13,10 @@ concurrency:
 permissions: {}
 
 jobs:
-  deploy:
-    name: Deploy to GitHub Pages
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
+    name: Build Pages artifact
     permissions:
       contents: read
-      pages: write
-      id-token: write
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -36,6 +31,18 @@ jobs:
         with:
           path: .
 
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
