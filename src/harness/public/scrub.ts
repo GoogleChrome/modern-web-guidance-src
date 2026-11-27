@@ -128,7 +128,8 @@ function isGenericUser(segment: string): boolean {
  * `REPO_CHECKOUT_NAMES` (e.g. `~/mwg/src/x`) and rewrites of non-home paths
  * that happened to look like one (`/Users/42/profile` → `~/profile`): after
  * rewriting, the only legitimate home-relative paths are dot-directories such
- * as `~/.npm` or `~/.cache`.
+ * as `~/.npm` or `~/.cache`, plus Emscripten's documented `~/emsdk` SDK install
+ * paths (`~/emsdk`, `~/emsdk/emsdk`, `~/emsdk/emsdk_env.sh`).
  *
  * `private key` requires a base64 body line after the PEM header (raw,
  * JSON-escaped, or `+`-prefixed in a diff) so PEM export/import code that
@@ -145,8 +146,9 @@ export const LEAK_PATTERNS: readonly { name: string; re: RegExp }[] = [
   { name: 'windows home path', re: WINDOWS_HOME_RE },
   { name: 'windows home path', re: BACKSLASH_HOME_RE },
   { name: 'escaped home path', re: /(?:\\\/|%2F)(?:home|Users)(?:\\\/|%2F)/gi },
-  // `[^~/]` and `/~/g` are regex syntax (JSON Pointer escaping in agent code), not paths.
-  { name: 'home-relative non-dotfile', re: new RegExp(String.raw`(?<![\w:^/])~/(?!\.)${SEGMENT}+`, 'g') },
+  // `[^~/]` and `/~/g` are regex syntax (JSON Pointer escaping in agent code), not paths;
+  // `~/emsdk` is Emscripten's documented SDK install path in cpp-on-the-web build scripts.
+  { name: 'home-relative non-dotfile', re: new RegExp(String.raw`(?<![\w:^/])~/(?!\.|emsdk(?:/emsdk(?:_env\.sh)?)?(?![/\w.-]))${SEGMENT}+`, 'g') },
   { name: 'citc path', re: CITC_PATH_RE },
   { name: 'googlers hostname', re: /\bgooglers\.com\b/gi },
   { name: 'corp hostname', re: /\bcorp\.google\.com\b/gi },

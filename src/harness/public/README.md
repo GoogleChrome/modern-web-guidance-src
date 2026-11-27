@@ -52,7 +52,7 @@ shape the private bucket's manifest has. Fields the landing page uses:
 |---|---|---|
 | `testId` | string | suite id; also the folder name |
 | `timestamp` | ISO string | when the job ran |
-| `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli` only |
+| `agent` | string | `claude_code`, `codex_cli`, `antigravity_cli`, `pi` only |
 | `model` | string | only values on the allowlist's `releasedModels` |
 | `reasoningEffort` | object | optional `{ level?: string, source: 'observed' \| 'configured' \| 'model-id' \| 'agent-default' }`; omitted on legacy suites without it |
 | `serving` | string | always `unknown` publicly; the field is not published in `evals.json` |
@@ -116,7 +116,7 @@ Both are values in the suite's `artifacts.json`, not files of their own.
   task's target file against the base app. Patches over 1 MB are replaced by a
   one-line `# diff omitted: ...` placeholder. Lockfiles, `node_modules/`, root
   `dist/`/`build/`/`.next/`, `.env*` files, `*.pem`/`*.key` files, and root
-  `.claude/`/`.codex/`/`.gemini/`/`.antigravity/` hunks are removed.
+  `.claude/`/`.codex/`/`.gemini/`/`.antigravity/`/`.pi/` hunks are removed.
 - `modern-web.log` is plain text; lines are the guides the MWG server returned
   to the agent. Unguided runs usually have none.
 

@@ -44,6 +44,12 @@ describe('rebuildEvals: gating', () => {
     assert.throws(() => build(raw), NotPublishableError);
   });
 
+  test('accepts the pi agent when its model is released', () => {
+    const raw = { ...loadFixture(), agent: 'pi' };
+    const out = build(raw);
+    assert.equal(out.agent, 'pi');
+  });
+
   test('rejects a model that is not on the released list', () => {
     assert.throws(() => build(loadFixture(), { releasedModels: ['some-other-model'] }), NotPublishableError);
   });
