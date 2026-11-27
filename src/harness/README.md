@@ -284,12 +284,16 @@ Each agent outputs trajectories in distinct formats:
 | Jetski CLI | Protocol Buffers / SQLite | `.gemini/jetski/conversations/*` | `parseJetskiCliSession` |
 | Antigravity CLI | SQLite | `.gemini/antigravity-cli/conversations/*.db` | `parseJetskiCliSession` |
 
-Each agent runner colocates a trajectory parser (`parse<Agent>Trajectory` and `load<Agent>Logs`) and calls `generateNormalizedTrajectory(targetDir, Agents.<AGENT>, userPrompt)` in its `finally` block to write a unified `trajectory_summary.json` in `targetDir`:
+Each agent runner colocates a trajectory parser (`parse<Agent>Trajectory`) and passes an `exportTrajectories` hook to `runAgentCliEntrypoint`, which exports the raw trajectory files and calls `generateNormalizedTrajectory(targetDir, Agents.<AGENT>, userPrompt)` in its `finally` block to write a unified `trajectory_summary.json` in `targetDir`:
 
 ```typescript
 // src/harness/agents/pi-agent.ts
-exportPiTrajectories(workDir, targetDir);
-await generateNormalizedTrajectory(targetDir, Agents.PI, userPrompt);
+runAgentCliEntrypoint({
+  agent: Agents.PI,
+  displayName: 'Pi',
+  scriptName: 'pi-agent.ts',
+  exportTrajectories: exportPiTrajectories,
+});
 ```
 
 `src/harness/lib/collection.ts` and `src/harness/lib/guide-usage.ts` read `trajectory_summary.json` via `ensureFreshTrajectorySummarySync(runDir)` to extract the model identifier, token usage (`total` and `cached`), tool calls, and retrieved/read guides uniformly across all agents.
@@ -362,17 +366,14 @@ Copy an existing harness (e.g., `src/harness/agents/pi-agent.ts`) and create `sr
 
 ```typescript
 // src/harness/agents/my-agent.ts
+import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
 import {
-  cleanupIsolatedHome,
   copyFileIfExists,
-  parseAgentArgs,
-  runCliAgentCommand,
-  setupIsolatedWorkDir,
+  runAgentCliEntrypoint,
 } from '../lib/agent-shared.ts';
 import {
   type TrajectorySummary,
-  generateNormalizedTrajectory,
 } from '../lib/trajectory-normalizer.ts';
 
 export function setupMyAgentCredentials(tempHome: string): void {
@@ -390,29 +391,18 @@ export function getMyAgentCommandAndArgs(prompt: string): { command: string; com
   return { command, commandArgs: ['-p', prompt] };
 }
 
-async function run() {
-  const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('my-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.MY_AGENT, templateDir, runType);
-
-  try {
-    const { command, commandArgs } = getMyAgentCommandAndArgs(userPrompt);
-    try {
-      await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'My Agent', runType);
-    } finally {
-      exportMyAgentTrajectories(workDir, targetDir);
-      await generateNormalizedTrajectory(targetDir, Agents.MY_AGENT, userPrompt);
-    }
-  } finally {
-    cleanupIsolatedHome(path.dirname(workDir));
-  }
-}
-
-export function loadMyAgentLogs(dir: string) {
-  // Load raw session logs from dir
-}
-
 export function parseMyAgentTrajectory(logData: any[]): TrajectorySummary {
   // Normalize steps, model, tokenUsage, toolsUsed, retrievedGuides, and fileReadGuides
+}
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  runAgentCliEntrypoint({
+    agent: Agents.MY_AGENT,
+    displayName: 'My Agent',
+    scriptName: 'my-agent.ts',
+    exportTrajectories: exportMyAgentTrajectories,
+  });
 }
 ```
 
@@ -439,7 +429,7 @@ export interface EnvironmentConfig {
 ### Step 3: Wire Up Integrations
 
 1. **`src/harness/lib/agent-shared.ts`** - Register `setupMyAgentCredentials` in `setupAgentCredentials()` and `getMyAgentCommandAndArgs` in `getAgentCommandAndArgs()`.
-2. **`src/harness/lib/trajectory-normalizer.ts`** - Register `loadMyAgentLogs` and `parseMyAgentTrajectory` in `detectAgentForRun()` and `generateNormalizedTrajectorySync()`. (`lib/collection.ts` and `lib/guide-usage.ts` automatically read the resulting `trajectory_summary.json`).
+2. **`src/harness/lib/trajectory-normalizer.ts`** - Register `parseMyAgentTrajectory` in `detectAgentForRun()` and `generateNormalizedTrajectorySync()`. (`lib/collection.ts` and `lib/guide-usage.ts` automatically read the resulting `trajectory_summary.json`).
 3. **`src/harness/run-suite.ts`** - Map the agent enum to its script in `AGENT_SCRIPTS`:
    ```typescript
    const AGENT_SCRIPTS: Record<string, string> = {

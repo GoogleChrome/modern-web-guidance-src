@@ -13,52 +13,10 @@ import {
 export type { ReasoningEffort, ReasoningEffortSource };
 
 // Colocated agent parsers
-import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
-import { parseCodexTrajectory, loadCodexLogs } from '../agents/codex-cli-agent.ts';
-import { parseJetskiTrajectory, parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
-import { parsePiTrajectory, loadPiLogs } from '../agents/pi-agent.ts';
-
-// Re-export for test compatibility and legacy callers
-export {
-  parseClaudeTrajectory,
-  collectClaudeGuidesFromTrajectory,
-  collectClaudeToolsFromTrajectory,
-  extractClaudeCodeModel,
-  extractClaudeCodeTokenUsage,
-  loadClaudeLogs,
-  extractClaudeMetadata
-} from '../agents/claude-code-agent.ts';
-
-export {
-  parseCodexTrajectory,
-  collectCodexGuidesFromTrajectory,
-  collectCodexToolsFromTrajectory,
-  extractCodexCliModel,
-  extractCodexCliTokenUsage,
-  loadCodexLogs,
-  extractCodexMetadata
-} from '../agents/codex-cli-agent.ts';
-
-export {
-  parseJetskiTrajectory,
-  parseJetskiCliSession,
-  findProtoTimestamp,
-  collectJetskiCliGuidesFromTrajectory,
-  collectJetskiCliToolsFromTrajectory,
-  extractJetskiCliModel,
-  extractJetskiCliTokenUsage
-} from '../agents/jetski-cli-agent.ts';
-
-export {
-  parsePiTrajectory,
-  collectPiGuidesFromTrajectory,
-  collectPiToolsFromTrajectory,
-  extractPiModel,
-  extractPiTokenUsage,
-  loadPiLogs,
-  extractPiMetadata
-} from '../agents/pi-agent.ts';
-
+import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
+import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
+import { parseJetskiCliSession } from '../agents/jetski-cli-agent.ts';
+import { parsePiTrajectory } from '../agents/pi-agent.ts';
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
 export const NORMALIZER_VERSION = 5;
@@ -75,6 +33,26 @@ export function extractSubagentIdFromFilename(file: string): string {
   return base
     .replace(/^(?:subagent-.*subagents-agent-|subagent-(?:subagents-)?(?:agent-)?)/, '')
     .replace(/\.(?:json|jsonl)$/, '');
+}
+
+export function loadSessionLogs(dir: string): { logData: any[]; subagentsMap: Record<string, any[]> } {
+  const logData: any[] = [];
+  const subagentsMap: Record<string, any[]> = {};
+  const files = getSessionFiles(dir);
+
+  const mainFiles = files.filter((f) => !f.startsWith('subagent-')).sort();
+  const subFiles = files.filter((f) => f.startsWith('subagent-')).sort();
+
+  for (const file of mainFiles) {
+    logData.push(...parseJsonlFile(path.join(dir, file)));
+  }
+
+  for (const file of subFiles) {
+    const subId = extractSubagentIdFromFilename(file);
+    subagentsMap[subId] = parseJsonlFile(path.join(dir, file));
+  }
+
+  return { logData, subagentsMap };
 }
 
 export function hasRawSessionLogs(dir: string): boolean {
@@ -508,20 +486,20 @@ export function generateNormalizedTrajectorySync(
       summary = parseJetskiCliSession(targetDir);
     } else if (normalizedAgent === Agents.ANTIGRAVITY_CLI) {
       summary = { ...parseJetskiCliSession(targetDir), agent: Agents.ANTIGRAVITY_CLI };
-    } else if (normalizedAgent === Agents.CLAUDE_CODE) {
-      const { logData, subagentsMap } = loadClaudeLogs(targetDir);
+    } else if (
+      normalizedAgent === Agents.CLAUDE_CODE ||
+      normalizedAgent === Agents.CODEX_CLI ||
+      normalizedAgent === Agents.PI
+    ) {
+      const { logData, subagentsMap } = loadSessionLogs(targetDir);
       if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
-        summary = parseClaudeTrajectory(logData, subagentsMap);
-      }
-    } else if (normalizedAgent === Agents.CODEX_CLI) {
-      const { logData, subagentsMap } = loadCodexLogs(targetDir);
-      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
-        summary = parseCodexTrajectory(logData, subagentsMap);
-      }
-    } else if (normalizedAgent === Agents.PI) {
-      const { logData, subagentsMap } = loadPiLogs(targetDir);
-      if (logData.length > 0 || Object.keys(subagentsMap).length > 0) {
-        summary = parsePiTrajectory(logData, subagentsMap);
+        if (normalizedAgent === Agents.CLAUDE_CODE) {
+          summary = parseClaudeTrajectory(logData, subagentsMap);
+        } else if (normalizedAgent === Agents.CODEX_CLI) {
+          summary = parseCodexTrajectory(logData, subagentsMap);
+        } else {
+          summary = parsePiTrajectory(logData, subagentsMap);
+        }
       }
     }
 

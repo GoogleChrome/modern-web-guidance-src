@@ -14,11 +14,11 @@ import {
   type StandardizedAction,
   type TrajectorySummary,
   TRAJECTORY_SUMMARY_FILE,
-  extractSubagentIdFromFilename,
-  extractClaudeMetadata,
-  extractCodexMetadata,
-  extractPiMetadata
+  extractSubagentIdFromFilename
 } from './trajectory-normalizer.ts';
+import { parseClaudeTrajectory } from '../agents/claude-code-agent.ts';
+import { parseCodexTrajectory } from '../agents/codex-cli-agent.ts';
+import { parsePiTrajectory } from '../agents/pi-agent.ts';
 import { collectGuidesUsed, collectGuidanceToolsUsed, hasTrajectoryGuideLeak } from './guide-usage.ts';
 import { extractModelFromResults, extractTokenUsageFromResults } from './collection.ts';
 import { Agents } from '../config.ts';
@@ -753,7 +753,7 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   const genericCmd = 'curl https://example.com/retrieve/docs && git retrieve-branch';
 
   // 1. Claude
-  const claudeMeta = extractClaudeMetadata([
+  const claudeMeta = parseClaudeTrajectory([
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: validCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: chainedCmd } }] } },
     { message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: spaceCmd } }] } },
@@ -767,7 +767,7 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   assert.deepStrictEqual(claudeMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 2. Codex
-  const codexMeta = extractCodexMetadata([
+  const codexMeta = parseCodexTrajectory([
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: validCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: chainedCmd }) } },
     { type: 'response_item', payload: { type: 'function_call', name: 'exec_command', arguments: JSON.stringify({ cmd: spaceCmd }) } },
@@ -781,7 +781,7 @@ test('agent trajectory parsers strictly enforce modern-web-guidance retrieve fil
   assert.deepStrictEqual(codexMeta.retrievedGuides, ['dialog-closedby', 'light-dismiss', 'cpp-on-the-web', 'identify-inp-causes', 'support-global-calendar-systems', 'accessible-generated-content', '2d-panning', 'color', 'shadow-dom']);
 
   // 3. Pi
-  const piMeta = extractPiMetadata([
+  const piMeta = parsePiTrajectory([
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: validCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: chainedCmd } }] } },
     { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', name: 'bash', arguments: { command: spaceCmd } }] } },

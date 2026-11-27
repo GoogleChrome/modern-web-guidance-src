@@ -5,13 +5,9 @@ import path from 'path';
 import os from 'os';
 import {
   generateNormalizedTrajectory,
-  parsePiTrajectory,
-  collectPiGuidesFromTrajectory,
-  collectPiToolsFromTrajectory,
-  extractPiModel,
-  extractPiTokenUsage
+  loadSessionLogs
 } from '../lib/trajectory-normalizer.ts';
-import { getPiCommandAndArgs, exportPiTrajectories } from './pi-agent.ts';
+import { getPiCommandAndArgs, exportPiTrajectories, parsePiTrajectory } from './pi-agent.ts';
 import { Agents } from '../config.ts';
 
 function createTempDir(): string {
@@ -22,7 +18,12 @@ function removeTempDir(dir: string) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-test('collectPiToolsFromTrajectory parses tool calls correctly', async () => {
+function parsePiSessionDir(dir: string) {
+  const { logData, subagentsMap } = loadSessionLogs(dir);
+  return parsePiTrajectory(logData, subagentsMap);
+}
+
+test('parsePiTrajectory parses tool calls correctly', async () => {
   const tempDir = createTempDir();
   try {
     // Create a mock Pi session file with tool calls
@@ -59,7 +60,7 @@ test('collectPiToolsFromTrajectory parses tool calls correctly', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-123.jsonl'), sessionLines.join('\n'));
 
-    const tools = collectPiToolsFromTrajectory(tempDir);
+    const tools = parsePiSessionDir(tempDir).toolsUsed ?? [];
     
     // Should not include built-in tools (read, write, bash)
     assert.strictEqual(tools.length, 0, 'Should not include built-in Pi tools');
@@ -69,7 +70,7 @@ test('collectPiToolsFromTrajectory parses tool calls correctly', async () => {
   }
 });
 
-test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
+test('parsePiTrajectory extracts guide reads', async () => {
   const tempDir = createTempDir();
   try {
     const sessionLines = [
@@ -103,21 +104,21 @@ test('collectPiGuidesFromTrajectory extracts guide reads', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-456.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir);
+    const guides = parsePiSessionDir(tempDir);
     
     assert.deepStrictEqual(
-      guides.fileReadGuides.sort(),
+      (guides.fileReadGuides ?? []).sort(),
       ['container-queries', 'dialog-focus-management'].sort(),
       'Should extract guide names from file paths'
     );
-    assert.strictEqual(guides.retrievedGuides.length, 0, 'Should have no retrieved guides');
+    assert.strictEqual((guides.retrievedGuides ?? []).length, 0, 'Should have no retrieved guides');
     
   } finally {
     removeTempDir(tempDir);
   }
 });
 
-test('collectPiGuidesFromTrajectory extracts retrieve commands', async () => {
+test('parsePiTrajectory extracts retrieve commands', async () => {
   const tempDir = createTempDir();
   try {
     const sessionLines = [
@@ -138,21 +139,21 @@ test('collectPiGuidesFromTrajectory extracts retrieve commands', async () => {
 
     fs.writeFileSync(path.join(tempDir, 'session-789.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir);
+    const guides = parsePiSessionDir(tempDir);
     
     assert.deepStrictEqual(
-      guides.retrievedGuides.sort(),
+      (guides.retrievedGuides ?? []).sort(),
       ['dialog-closedby', 'light-dismiss'].sort(),
       'Should extract guide IDs from retrieve command'
     );
-    assert.strictEqual(guides.fileReadGuides.length, 0, 'Should have no file read guides');
+    assert.strictEqual((guides.fileReadGuides ?? []).length, 0, 'Should have no file read guides');
     
   } finally {
     removeTempDir(tempDir);
   }
 });
 
-test('collectPiToolsFromTrajectory detects modern-web-guidance usage', async () => {
+test('parsePiTrajectory detects modern-web-guidance usage', async () => {
   const tempDir = createTempDir();
   try {
     const sessionLines = [
@@ -173,14 +174,14 @@ test('collectPiToolsFromTrajectory detects modern-web-guidance usage', async () 
 
     fs.writeFileSync(path.join(tempDir, 'session-abc.jsonl'), sessionLines.join('\n'));
 
-    const tools = collectPiToolsFromTrajectory(tempDir);
+    const tools = parsePiSessionDir(tempDir).toolsUsed ?? [];
     assert.strictEqual(tools.length, 0, 'Reading a guide.md directly should not count as skill activation');
   } finally {
     removeTempDir(tempDir);
   }
 });
 
-test('collectPiToolsFromTrajectory detects SKILL.md read as skill activation', async () => {
+test('parsePiTrajectory detects SKILL.md read as skill activation', async () => {
   const tempDir = createTempDir();
   try {
     const sessionLines = [
@@ -201,16 +202,15 @@ test('collectPiToolsFromTrajectory detects SKILL.md read as skill activation', a
 
     fs.writeFileSync(path.join(tempDir, 'session-skill.jsonl'), sessionLines.join('\n'));
 
-    const tools = collectPiToolsFromTrajectory(tempDir);
-    const guides = await collectPiGuidesFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web-guidance']);
-    assert.deepStrictEqual(guides.fileReadGuides, [], 'SKILL.md should not be recorded as a file-read guide');
+    const summary = parsePiSessionDir(tempDir);
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
+    assert.deepStrictEqual(summary.fileReadGuides, [], 'SKILL.md should not be recorded as a file-read guide');
   } finally {
     removeTempDir(tempDir);
   }
 });
 
-test('collectPiGuidesFromTrajectory handles mixed session with multiple entries', async () => {
+test('parsePiTrajectory handles mixed session with multiple entries', async () => {
   const tempDir = createTempDir();
   try {
     const sessionLines = [
@@ -254,7 +254,7 @@ test('collectPiGuidesFromTrajectory handles mixed session with multiple entries'
 
     fs.writeFileSync(path.join(tempDir, 'session-mixed.jsonl'), sessionLines.join('\n'));
 
-    const guides = await collectPiGuidesFromTrajectory(tempDir);
+    const guides = parsePiSessionDir(tempDir);
     
     assert.deepStrictEqual(
       guides.fileReadGuides,
@@ -272,21 +272,16 @@ test('collectPiGuidesFromTrajectory handles mixed session with multiple entries'
   }
 });
 
-test('collectPiToolsFromTrajectory handles empty or missing sessions', () => {
+test('parsePiTrajectory handles empty or missing sessions', () => {
   const tempDir = createTempDir();
   try {
-    const tools = collectPiToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, [], 'Should return empty array for no sessions');
-  } finally {
-    removeTempDir(tempDir);
-  }
-});
-
-test('collectPiGuidesFromTrajectory handles empty or missing sessions', async () => {
-  const tempDir = createTempDir();
-  try {
-    const guides = await collectPiGuidesFromTrajectory(tempDir);
-    assert.deepStrictEqual(guides, { retrievedGuides: [], fileReadGuides: [] }, 'Should return empty for no sessions');
+    const summary = parsePiSessionDir(tempDir);
+    assert.deepStrictEqual(summary.toolsUsed, [], 'Should return empty array for no sessions');
+    assert.deepStrictEqual(
+      { retrievedGuides: summary.retrievedGuides ?? [], fileReadGuides: summary.fileReadGuides ?? [] },
+      { retrievedGuides: [], fileReadGuides: [] },
+      'Should return empty for no sessions'
+    );
   } finally {
     removeTempDir(tempDir);
   }
@@ -385,14 +380,10 @@ test('collectPi metrics and token extraction from trajectory files', async () =>
 
     fs.writeFileSync(path.join(tempDir, 'session-pi-meta.jsonl'), lines.join('\n'));
 
-    const model = extractPiModel(tempDir);
-    assert.strictEqual(model, 'claude-3-5-sonnet');
-
-    const tokens = extractPiTokenUsage(tempDir);
-    assert.deepStrictEqual(tokens, { total: 200, cached: 30 });
-
-    const tools = collectPiToolsFromTrajectory(tempDir);
-    assert.deepStrictEqual(tools, ['modern-web-guidance']);
+    const summary = parsePiSessionDir(tempDir);
+    assert.strictEqual(summary.model, 'claude-3-5-sonnet');
+    assert.deepStrictEqual(summary.tokenUsage, { total: 200, cached: 30 });
+    assert.deepStrictEqual(summary.toolsUsed, ['modern-web-guidance']);
   } finally {
     removeTempDir(tempDir);
   }
