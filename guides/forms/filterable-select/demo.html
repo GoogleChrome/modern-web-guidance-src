@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filterable select</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --surface: #fff;
+    --text: #1b1f24;
+    --muted: #5f6672;
+    --border: #d0d5dd;
+    --accent: #2563eb;
+    --accent-soft: #e8efff;
+    --radius: 0.625rem;
+    --shadow: 0 10px 30px -10px rgb(0 0 0 / 0.25), 0 1px 3px rgb(0 0 0 / 0.08);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --surface: #171b21; --text: #e6e9ee; --muted: #98a2b3;
+      --border: #2d333d; --accent: #60a5fa; --accent-soft: #1e2a44;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-block-size: 100dvh; display: grid; place-items: start center;
+    padding: clamp(1.5rem, 6vw, 4rem) 1rem; font-family: system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  .card {
+    inline-size: min(100%, 26rem); background: var(--surface);
+    border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.5);
+    padding: 2rem; box-shadow: var(--shadow);
+  }
+  h1 { margin: 0 0 0.25rem; font-size: 1.375rem; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 1.5rem; color: var(--muted); font-size: 0.9375rem; }
+  label { display: block; font-weight: 600; font-size: 0.9375rem; margin-block-end: 0.375rem; }
+  .field { margin-block-end: 1.25rem; }
+  .hint { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.8125rem; min-block-size: 1.25rem; }
+
+  .filterable-select, .filter, .multi-trigger {
+    inline-size: 100%; padding: 0.625rem 0.75rem; font: inherit; color: inherit;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .filterable-select:focus-visible, .filter:focus-visible, .multi-trigger:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
+  }
+
+  :root {
+    --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");
+    --icon-chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  }
+  .multi-trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    text-align: start; cursor: pointer; anchor-name: --toppings;
+  }
+  .multi-trigger:hover { border-color: var(--accent); }
+  .multi-trigger::after {
+    content: ""; inline-size: 1em; aspect-ratio: 1; flex: none; color: var(--muted);
+    background-color: currentColor; mask: var(--icon-chevron) no-repeat center / contain;
+    @media (prefers-reduced-motion: no-preference) { transition: rotate 0.2s ease; }
+  }
+  .multi-trigger:has(+ .multi-panel:popover-open)::after { rotate: 180deg; }
+  .multi-panel {
+    margin: 0; padding: 0.5rem; inline-size: anchor-size(--toppings width);
+    position-anchor: --toppings; position-area: block-end; margin-block: 0.375rem;
+    position-try-fallbacks: flip-block;
+    max-block-size: 18rem; overflow: auto; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .multi-panel fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+  .multi-panel legend { position: absolute; clip-path: inset(50%); inline-size: 1px; block-size: 1px; overflow: hidden; }
+  .multi-panel label {
+    display: flex; align-items: center; gap: 0.625rem; margin: 0; font-weight: 400;
+    min-block-size: 2.75rem; padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
+  }
+  .multi-panel label:hover { background: var(--accent-soft); }
+  .multi-panel label[hidden], .multi-empty[hidden] { display: none; }
+  .multi-panel input[type="checkbox"] {
+    appearance: none; display: inline-grid; place-content: center; flex: none;
+    inline-size: 1.25em; aspect-ratio: 1; margin: 0; cursor: pointer;
+    border: 2px solid currentColor; border-radius: 0.25em;
+
+    &::before {
+      content: ""; inline-size: 0.8em; aspect-ratio: 1; scale: 0;
+      background-color: var(--accent); mask: var(--icon-check) no-repeat center / contain;
+      @media (prefers-reduced-motion: no-preference) { transition: scale 0.15s ease; }
+      @media (forced-colors: active) { background-color: CanvasText; }
+    }
+    &:checked::before { scale: 1; }
+    &:checked { border-color: var(--accent); }
+    &:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  }
+  .multi-empty { padding: 0.5rem 0.75rem; color: var(--muted); }
+
+  @supports (appearance: base-select) {
+    .filterable-select, .filterable-select::picker(select) { appearance: base-select; }
+    .filterable-select {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+      text-align: start; cursor: pointer; transition: border-color 0.15s;
+    }
+    .filterable-select:hover { border-color: var(--accent); }
+    .filterable-select:has(option[value=""]:checked) { color: var(--muted); }
+    .filterable-select::picker-icon { transition: rotate 0.2s ease; color: var(--muted); }
+    .filterable-select:open::picker-icon { rotate: 180deg; }
+
+    .filterable-select::picker(select) {
+      margin-block: 0.375rem;
+      inline-size: anchor-size(width); max-block-size: 18rem; min-block-size: min(18rem, 50dvh); overflow-y: auto;
+      padding: 0.5rem; background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+      opacity: 0; translate: 0 -0.25rem;
+      transition: opacity 0.15s, translate 0.15s, display 0.15s allow-discrete, overlay 0.15s allow-discrete;
+    }
+    .filterable-select:open::picker(select) { opacity: 1; translate: 0 0; }
+    @starting-style { .filterable-select:open::picker(select) { opacity: 0; translate: 0 -0.25rem; } }
+    @media (prefers-reduced-motion: reduce) {
+      .filterable-select::picker(select) { transition-duration: 0.01ms; translate: none; }
+    }
+
+    .filter { padding: 0.5rem 0.75rem; margin-block-end: 0.5rem; border-radius: calc(var(--radius) - 0.25rem); }
+    .filterable-select option {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem; border-radius: calc(var(--radius) - 0.25rem); cursor: pointer;
+    }
+    .filterable-select option:hover, .filterable-select option:focus-visible { background: var(--accent-soft); }
+    .filterable-select option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .filterable-select option:checked { font-weight: 600; }
+    .filterable-select option::checkmark { order: 1; margin-inline-start: auto; color: var(--accent); }
+    .filterable-select option[hidden] { display: none; }
+    .empty[hidden] { display: none; }
+    .empty { padding: 0.5rem 0.75rem; color: var(--muted); }
+  }
+
+</style>
+</head>
+<body>
+<main class="card">
+<h1>Pick a fruit</h1>
+<p class="lede">Type to filter the list, then choose one option.</p>
+
+<form>
+  <div class="field">
+    <label for="fruit-select">Fruit</label>
+    <select id="fruit-select" name="fruit" class="filterable-select">
+      <button type="button"><selectedcontent></selectedcontent></button>
+      <option value="" hidden>Select a fruit</option>
+      <option value="Apple">Apple</option>
+      <option value="Apricot">Apricot</option>
+      <option value="Banana">Banana</option>
+      <option value="Blueberry">Blueberry</option>
+      <option value="Cherry">Cherry</option>
+      <option value="Grape">Grape</option>
+      <option value="Mango">Mango</option>
+      <option value="Orange">Orange</option>
+      <option value="Peach">Peach</option>
+    </select>
+    <p id="status" class="hint" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="field">
+    <label id="toppings-label">Toppings (choose any)</label>
+    <button type="button" id="toppings-trigger" class="multi-trigger" popovertarget="toppings-panel"
+            aria-labelledby="toppings-label" aria-describedby="toppings-selected">Select toppings</button>
+    <p id="toppings-selected" class="hint">None selected</p>
+    <div id="toppings-panel" class="multi-panel" popover>
+      <input type="text" class="filter" autocomplete="off" placeholder="Type to filter…" aria-label="Filter toppings" autofocus>
+      <fieldset>
+        <legend>Toppings</legend>
+        <label><input type="checkbox" name="toppings" value="Basil"> Basil</label>
+        <label><input type="checkbox" name="toppings" value="Mushrooms"> Mushrooms</label>
+        <label><input type="checkbox" name="toppings" value="Olives"> Olives</label>
+        <label><input type="checkbox" name="toppings" value="Onions"> Onions</label>
+        <label><input type="checkbox" name="toppings" value="Peppers"> Peppers</label>
+        <label><input type="checkbox" name="toppings" value="Pineapple"> Pineapple</label>
+      </fieldset>
+      <div class="multi-empty" hidden>No matches</div>
+    </div>
+    <p id="toppings-status" class="hint" role="status" aria-live="polite"></p>
+  </div>
+</form>
+</main>
+
+<script>
+  // Shared filtering: hides non-matching options and reports the count
+  function createFilter({ select, filter, status, empty }) {
+    const options = () => [...select.querySelectorAll('option:not([value=""])')];
+
+    const apply = () => {
+      const q = filter.value.trim().toLowerCase();
+      let count = 0;
+      for (const o of options()) {
+        const match = o.textContent.toLowerCase().includes(q);
+        o.hidden = !match;
+        if (match) count++;
+      }
+      if (empty) empty.hidden = count > 0;
+      status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
+    };
+    filter.addEventListener('input', apply);
+    return { options, update: apply };
+  }
+
+  if (CSS.supports('appearance', 'base-select')) {
+    const select = document.getElementById('fruit-select');
+    // The HTML parser closes <select> on <input>, so build these via DOM
+    const filter = Object.assign(document.createElement('input'), {
+      type: 'text', className: 'filter', placeholder: 'Type to filter…', autocomplete: 'off'
+    });
+    filter.setAttribute('aria-label', 'Filter fruit');
+    const empty = Object.assign(document.createElement('div'), { className: 'empty', hidden: true, textContent: 'No matches' });
+    select.querySelector('option').before(filter);
+    select.append(empty);
+
+    const status = document.getElementById('status');
+    const { options, update } = createFilter({ select, filter, status, empty });
+
+    // The select's own handling can move focus away from the input after pointerdown,
+    // so refocus once the browser's default handling has finished
+    const focusFilter = () => requestAnimationFrame(() => {
+      if (select.matches(':open') && document.activeElement !== filter) filter.focus();
+    });
+    filter.addEventListener('pointerdown', focusFilter);
+    filter.addEventListener('click', focusFilter);
+    // Opening via mouse or keyboard should land in the filter so the user can type immediately
+    select.addEventListener('click', focusFilter);
+    select.addEventListener('keydown', e => {
+      if (e.target === select && [' ', 'Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        focusFilter();
+      } else if (e.key === 'ArrowUp' && e.target === options().find(o => !o.hidden)) {
+        // Native arrow handling only moves between options, so route back to the filter
+        e.preventDefault();
+        filter.focus();
+      }
+    });
+    // Keep typing characters (including space) out of <select> type-ahead; let the platform handle Escape/Tab
+    filter.addEventListener('keydown', e => {
+      const first = options().find(o => !o.hidden);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        first?.focus();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        first?.focus();
+      } else if (e.key === 'Escape' && filter.value) {
+        e.preventDefault();
+        filter.value = ''; update();
+      } else if (e.key !== 'Escape' && e.key !== 'Tab') {
+        e.stopPropagation();
+      }
+    });
+
+    // <select> has no toggle event, so reset on the events that fire on every close path
+    const reset = () => {
+      filter.value = '';
+      for (const o of options()) o.hidden = false;
+      empty.hidden = true;
+      status.textContent = '';
+    };
+    select.addEventListener('focusout', () => requestAnimationFrame(() => {
+      if (!select.matches(':open')) reset();
+    }));
+  }
+
+  // Multiple selection: checkboxes in a popover, filtered by a text input
+  {
+    const panel = document.getElementById('toppings-panel');
+    const selected = document.getElementById('toppings-selected');
+    const status = document.getElementById('toppings-status');
+    const filter = panel.querySelector('input[type="text"]');
+    const empty = panel.querySelector('.multi-empty');
+    const items = [...panel.querySelectorAll('label')];
+
+    const updateSelected = () => {
+      const names = [...panel.querySelectorAll('input:checked')].map(b => b.parentElement.textContent.trim());
+      selected.textContent = names.join(', ') || 'None selected';
+    };
+    filter.addEventListener('input', () => {
+      const q = filter.value.trim().toLowerCase();
+      let count = 0;
+      for (const l of items) {
+        l.hidden = !l.textContent.toLowerCase().includes(q);
+        if (!l.hidden) count++;
+      }
+      empty.hidden = count > 0;
+      status.textContent = `${count} option${count === 1 ? '' : 's'} available`;
+    });
+    filter.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    const visible = () => items.filter(l => !l.hidden).map(l => l.querySelector('input'));
+    filter.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); visible()[0]?.focus(); }
+    });
+    // Arrow keys move through the visible checkboxes; Tab and Space keep working natively
+    panel.addEventListener('keydown', e => {
+      if (!['ArrowDown', 'ArrowUp'].includes(e.key) || e.target.type !== 'checkbox') return;
+      e.preventDefault();
+      const list = visible();
+      const i = list.indexOf(e.target) + (e.key === 'ArrowDown' ? 1 : -1);
+      (list[i] ?? (i < 0 ? filter : list.at(-1))).focus();
+    });
+    panel.addEventListener('change', updateSelected);
+    panel.addEventListener('toggle', e => {
+      if (e.newState === 'closed') {
+        filter.value = '';
+        items.forEach(l => l.hidden = false);
+        empty.hidden = true;
+        status.textContent = '';
+      }
+    });
+  }
+</script>
+</body>
+</html>
