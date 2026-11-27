@@ -89,15 +89,23 @@ If the primary implementation uses features that are not Baseline Widely Availab
 
 * **Framing:** Frame fallback necessity in terms of Baseline target (e.g., "If your Baseline target does not support X, use...").
 * **Assessment:** Start with a broad assessment of the fallback's robustness. Recommend the modern approach if the fallback is robust; highlight complexity/caveats and suggest alternatives (like userland solutions) if it is not.
-* **Experience:** **MANDATORY:** Explicitly describe the fallback experience (progressive enhancement vs. feature detection/graceful degradation).
+* **Fidelity:** **MANDATORY:** How much degradation is acceptable varies by developer and by use case (a switch falling back to a checkbox, an exclusive accordion to a non-exclusive one, or a transition to an abrupt change is fine for some and a dealbreaker for others; even balanced text wrapping is essential in slides or print layouts). **DO NOT** make that call for the reader. Cover both ends of the spectrum, briefly if that is all it takes:
+    1.  **Progressive enhancement:** Explicitly describe what users get when the feature is unsupported and nothing else is done, and what is lost compared to the native experience.
+    2.  **Outcome-preserving fallback:** How to preserve the outcome (to the extent possible) when the loss is not acceptable, picked from the fallback options below.
+
+    Skip an end that is moot:
+    * Progressive enhancement, when the feature breaks rather than degrades without support, or when a fallback is cheap and indistinguishable from native.
+    * Outcome-preserving fallback, when nothing users would notice is lost, or when the feature is only a hint that supporting browsers may ignore too (e.g. `fetchpriority`), so there is no guaranteed outcome to preserve.
+
+    When both apply, say how to choose between the two. The larger the audience without support, the closer the fallback must be to the native experience: a fallback for a Newly available feature just needs to work, while one for a Limited availability feature typically needs to be comparable.
 * **Feature Detection:** Use the `in` operator rather than `Object.hasOwn()` or `hasOwnProperty()` so checks work across the prototype chain. Check the target instance when you already have one (e.g. `'moveBefore' in container`, `'startViewTransition' in document`), or the specific Web IDL interface prototype when checking without an instance (e.g. `'onbeforematch' in HTMLElement.prototype` over `'onbeforematch' in window`).
-* **Fallback Options (in order of preference):**
+* **Outcome-Preserving Fallback Options (in order of preference):**
     1.  **Custom Code:** Short, reliable reimplementation (**<50 lines**) using widely available features.
     2.  **Polyfill:** A robust, performant polyfill (see guidelines below).
     3.  **Abstraction:** A well-tested userland library.
     4.  **Graceful Degradation:** Baseline Newly Available features that degrade gracefully.
-    5.  **Progressive Enhancement:** Frame as progressive enhancement only if no robust fallback exists.
-* **Faithfulness:** Fallbacks MUST be faithful to the use case. If the primary recommendation gracefully degrades but ultimately doesn't accomplish the core use case, suggest a different fallback if one is available. Graceful degradation **IS** acceptable for features that enhance, but are otherwise not core to the use case.
+    5.  **Avoidance:** Implement the use case without the feature. If nothing preserves the outcome, say so explicitly.
+* **Cost-Benefit:** Using a feature with a fallback means maintaining two implementations instead of one. That is only worth it when the native feature gets users something the fallback alone does not, and the more it gets them, the more complexity it justifies. Otherwise jump straight to avoidance, and instruct agents to use the feature only if the Baseline target fully supports it (e.g. `if()` or `@function`, whose benefits are authoring convenience and reacting to values dynamically, both of which a fallback that duplicates the logic cancels). This applies per end: a feature can be worth using as a progressive enhancement but not with an outcome-preserving fallback (e.g. a customizable select is fine where a regular select is an acceptable fallback, but where it is not, its benefit does not outweigh duplicate markup, so a custom dropdown wins).
 
 #### Baseline Status Macros
 * **MANDATORY:** Include `{{ FEATURE_FALLBACKS("feature-id") }}` or `{{ BASELINE_STATUS("feature-id") }}` as a standalone line for *every* non-widely available feature used.
