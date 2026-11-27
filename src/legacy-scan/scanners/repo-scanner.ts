@@ -12,22 +12,16 @@ import {
 } from './file-filter.ts';
 import { isPackageJsonPath } from './format-registry.ts';
 import {
-  classifyFile,
+  classifyAndTallyFile,
   createScanSession,
+  createStatsAccumulator,
   scanLoadedFile,
   type ScanOptions,
   type ScanSession,
-} from './index.ts';
+} from './scan-session.ts';
 
 export const DEFAULT_MAX_FILES = 5000;
 const FILE_READ_CONCURRENCY = 64;
-
-export interface RepoScanStats {
-  skippedDocsAndTestsCount?: number;
-  scannedFileCount?: number;
-  eligibleFileCount?: number;
-  truncatedByMaxFiles?: boolean;
-}
 
 export interface RepoScanOptions extends ScanOptions {
   readonly maxFiles?: number;
@@ -72,8 +66,8 @@ async function tryReadFileContent(
         return undefined;
       }
       const content = await handle.readFile('utf8');
-      const disposition = classifyFile(relPath, content, session);
-      if (disposition === 'source' || disposition === 'vendored') {
+      const disposition = classifyAndTallyFile(relPath, content, session);
+      if (disposition !== 'skip') {
         return { kind: disposition, content };
       }
       return undefined;
@@ -159,14 +153,10 @@ export async function scanRepoFiles(
 ): Promise<ScanFinding[]> {
   const maxFiles = resolveMaxFiles(options?.maxFiles);
   const session = createScanSession(rules, options);
+  const acc = createStatsAccumulator();
 
   if (session.activeEngines.size === 0) {
-    if (options?.stats) {
-      options.stats.skippedDocsAndTestsCount = 0;
-      options.stats.scannedFileCount = 0;
-      options.stats.eligibleFileCount = 0;
-      options.stats.truncatedByMaxFiles = false;
-    }
+    acc.finalize(options?.stats);
     return [];
   }
 
@@ -177,15 +167,12 @@ export async function scanRepoFiles(
 
   const pkgCandidates: string[] = [];
   const otherCandidates: string[] = [];
-  let skippedDocsAndTestsCount = 0;
 
   for (const rawPath of rawPaths) {
     if (!rawPath) continue;
     const relPath = rawPath.replace(/\\/g, '/');
-    const disposition = classifyFile(relPath, undefined, session);
-    if (disposition === 'skipped-docs-tests') {
-      skippedDocsAndTestsCount++;
-    } else if (disposition !== 'skip') {
+    const disposition = classifyAndTallyFile(relPath, undefined, session, acc);
+    if (disposition !== 'skip') {
       if (isPackageJsonPath(relPath)) {
         pkgCandidates.push(relPath);
       } else {
@@ -214,18 +201,12 @@ export async function scanRepoFiles(
       const read = reads[i];
       if (relPath !== undefined && read !== undefined) {
         scannedFileCount++;
-        findings.push(...scanLoadedFile(session, relPath, read.content, read.kind));
+        const hadParseError = scanLoadedFile(session, relPath, read.content, read.kind, findings);
+        acc.recordScannedFile(hadParseError);
       }
     }
   }
 
-  const remainingCandidateCount = candidates.length - idx;
-  if (options?.stats) {
-    options.stats.skippedDocsAndTestsCount = skippedDocsAndTestsCount;
-    options.stats.scannedFileCount = scannedFileCount;
-    options.stats.eligibleFileCount = scannedFileCount + remainingCandidateCount;
-    options.stats.truncatedByMaxFiles = remainingCandidateCount > 0;
-  }
-
+  acc.finalize(options?.stats, candidates.length - idx);
   return findings;
 }

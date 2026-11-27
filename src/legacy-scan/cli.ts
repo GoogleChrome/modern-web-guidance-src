@@ -50,6 +50,8 @@ export interface ScanJsonOutput {
   readonly truncatedByMaxFiles?: boolean;
   readonly error?: string;
   readonly skippedDocsAndTestsCount?: number;
+  readonly skippedUnsupportedFiles?: Readonly<Record<string, number>>;
+  readonly parseErrorCount?: number;
   readonly note?: string;
 }
 
@@ -76,6 +78,7 @@ export interface FormatHumanReadableOptions {
   readonly activeGuideCount?: number;
   readonly isDefaultQualifiedMode?: boolean;
   readonly color?: boolean;
+  readonly stats?: RepoScanStats;
   readonly skippedDocsAndTestsCount?: number;
   readonly truncation?: TruncationInfo;
 }
@@ -83,7 +86,7 @@ export interface FormatHumanReadableOptions {
 export type TextStyle = Parameters<typeof styleText>[0];
 
 function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
-  return `${count} ${count === 1 ? singular : pluralForm}`;
+  return `${formatCount(count)} ${count === 1 ? singular : pluralForm}`;
 }
 
 function formatCount(count: number): string {
@@ -95,6 +98,62 @@ function formatTruncationNotice(scannedFileCount: number, eligibleFileCount: num
     `Scanned ${formatCount(scannedFileCount)} of ${formatCount(eligibleFileCount)} eligible files (--max-files cap). ` +
     'Re-run with --max-files 0 or target a subdirectory for full coverage.'
   );
+}
+
+function formatUnsupportedFilesNotice(
+  skippedUnsupportedFiles?: Readonly<Record<string, number>>,
+): string | undefined {
+  if (!skippedUnsupportedFiles) {
+    return undefined;
+  }
+  const entries = Object.entries(skippedUnsupportedFiles).sort(
+    ([extA, countA], [extB, countB]) => countB - countA || extA.localeCompare(extB),
+  );
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  const breakdown = entries.map(([ext, count]) => `${ext}: ${formatCount(count)}`).join(', ');
+  return `Skipped ${plural(total, 'unsupported file')} (${breakdown}).`;
+}
+
+interface DiagnosticNotices {
+  readonly truncationNotice?: string;
+  readonly unsupportedNotice?: string;
+  readonly parseErrorNotice?: string;
+  readonly all: readonly string[];
+  readonly isIncomplete: boolean;
+}
+
+function buildDiagnosticNotices(
+  stats?: RepoScanStats,
+  truncationOverride?: TruncationInfo,
+): DiagnosticNotices {
+  const truncation = stats?.truncatedByMaxFiles
+    ? {
+        scannedFileCount: stats.scannedFileCount ?? 0,
+        eligibleFileCount: stats.eligibleFileCount ?? stats.scannedFileCount ?? 0,
+      }
+    : truncationOverride;
+  const truncationNotice = truncation
+    ? formatTruncationNotice(truncation.scannedFileCount, truncation.eligibleFileCount)
+    : undefined;
+  const unsupportedNotice = formatUnsupportedFilesNotice(stats?.skippedUnsupportedFiles);
+  const parseErrorCount = stats?.parseErrorCount ?? 0;
+  const parseErrorNotice =
+    parseErrorCount > 0
+      ? `Encountered parse errors in ${plural(parseErrorCount, 'file')} (affected blocks skipped).`
+      : undefined;
+  const all = [truncationNotice, unsupportedNotice, parseErrorNotice].filter(
+    (n): n is string => n !== undefined,
+  );
+  return {
+    truncationNotice,
+    unsupportedNotice,
+    parseErrorNotice,
+    all,
+    isIncomplete: all.length > 0,
+  };
 }
 
 const MAX_FILES_CLI_RE = /^(?:0|[1-9]\d*)$/;
@@ -219,17 +278,18 @@ export function formatHumanReadable(
 ): string {
   const isDefaultMode = formatOptions?.isDefaultQualifiedMode ?? false;
   const activeGuideCount = formatOptions?.activeGuideCount ?? 0;
-  const skippedDocsAndTestsCount = formatOptions?.skippedDocsAndTestsCount ?? 0;
-  const truncation = formatOptions?.truncation;
+  const stats = formatOptions?.stats;
+  const scannedFileCount = stats?.scannedFileCount;
+  const skippedDocsAndTestsCount =
+    stats?.skippedDocsAndTestsCount ?? formatOptions?.skippedDocsAndTestsCount ?? 0;
   const colorEnabled = shouldEnableColor(formatOptions?.color);
 
   const fmt = (style: TextStyle, text: string): string =>
     colorEnabled ? styleText(style, text, { validateStream: false }) : text;
 
-  const truncationNotice = truncation
-    ? fmt('yellow', formatTruncationNotice(truncation.scannedFileCount, truncation.eligibleFileCount))
-    : undefined;
-
+  const notices = buildDiagnosticNotices(stats, formatOptions?.truncation);
+  const diagnosticNotices = notices.all.map((text) => fmt('yellow', text));
+  const isPartialOrIncomplete = notices.isIncomplete;
   const skippedNotice =
     skippedDocsAndTestsCount > 0
       ? fmt(
@@ -239,26 +299,36 @@ export function formatHumanReadable(
       : undefined;
 
   if (totalFindings === 0) {
-    const lines = isDefaultMode
-      ? [
-          `${fmt('bold', 'Modern Web Guidance legacy-scan')} — ${targetDir}`,
-          truncation
-            ? `0 findings in scanned subset across ${plural(activeGuideCount, 'qualified guide')}.`
-            : `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
-          ...(truncationNotice ? [truncationNotice] : []),
-          fmt(
-            'dim',
-            `Note: legacy-scan covers legacy patterns for ${plural(activeGuideCount, 'guide')} (~20% of the guidance corpus). Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
-          ),
-          ...(skippedNotice ? [skippedNotice] : []),
-        ]
-      : [
-          ...(truncationNotice ? [truncationNotice] : []),
-          ...(skippedNotice ? [skippedNotice] : []),
-          truncation
-            ? `No modernization opportunities found in scanned files under ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`
-            : `No modernization opportunities found in ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`,
-        ];
+    const noScannableFiles = scannedFileCount === 0 && !notices.truncationNotice;
+    if (isDefaultMode) {
+      const headline = noScannableFiles
+        ? `0 scannable files found in ${targetDir}.`
+        : isPartialOrIncomplete
+          ? `0 findings in scanned subset across ${plural(activeGuideCount, 'qualified guide')}.`
+          : `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`;
+      const lines = [
+        `${fmt('bold', 'Modern Web Guidance legacy-scan')} — ${targetDir}`,
+        headline,
+        ...diagnosticNotices,
+        fmt(
+          'dim',
+          `Note: legacy-scan covers legacy patterns for ${plural(activeGuideCount, 'guide')} (~20% of the guidance corpus). Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
+        ),
+        ...(skippedNotice ? [skippedNotice] : []),
+      ];
+      return `${lines.join('\n')}\n`;
+    }
+
+    const message = noScannableFiles
+      ? `0 scannable files found in ${targetDir}.`
+      : isPartialOrIncomplete
+        ? `No modernization opportunities found in scanned files under ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`
+        : `No modernization opportunities found in ${targetDir}${guideFilter ? ` for guide "${guideFilter}"` : ''}.`;
+    const lines = [
+      ...diagnosticNotices,
+      ...(skippedNotice ? [skippedNotice] : []),
+      message,
+    ];
     return `${lines.join('\n')}\n`;
   }
 
@@ -266,7 +336,7 @@ export function formatHumanReadable(
     `${fmt('bold', 'Modern Web Guidance legacy-scan')} — ${targetDir}`,
     `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}${isDefaultMode ? ` (scanned ${plural(activeGuideCount, 'guide')} with deterministic rules; ~20% of the guidance corpus)` : ''}:`,
     fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
-    ...(truncationNotice ? [truncationNotice] : []),
+    ...diagnosticNotices,
     ...(skippedNotice ? [skippedNotice] : []),
     '',
   ];
@@ -450,6 +520,8 @@ export async function runLegacyScanCli(
   }
 
   const skippedDocsAndTestsCount = scanStats.skippedDocsAndTestsCount ?? 0;
+  const skippedUnsupportedFiles = scanStats.skippedUnsupportedFiles;
+  const parseErrorCount = scanStats.parseErrorCount ?? 0;
   const scannedFileCount = scanStats.scannedFileCount ?? 0;
   const eligibleFileCount = scanStats.eligibleFileCount ?? scannedFileCount;
   const truncatedByMaxFiles = Boolean(scanStats.truncatedByMaxFiles);
@@ -457,22 +529,34 @@ export async function runLegacyScanCli(
   const guides = groupFindingsByGuide(findings, activeRules);
   const totalFindings = findings.length;
 
-  const truncationHint = truncatedByMaxFiles
-    ? `Partial scan only: ${formatTruncationNotice(scannedFileCount, eligibleFileCount).replace(/^Scanned/, 'scanned')}`
+  const notices = buildDiagnosticNotices(scanStats);
+  const noteTruncation = notices.truncationNotice
+    ? `Partial scan only: ${notices.truncationNotice.replace(/^Scanned/, 'scanned')}`
     : undefined;
+
   let corpusHint: string | undefined;
   if (isDefaultQualifiedMode) {
+    const guidesLabel = plural(activeGuideCount, 'guide');
     if (totalFindings === 0) {
-      corpusHint = truncatedByMaxFiles
-        ? `Found 0 legacy patterns in the scanned subset across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`
-        : `No legacy patterns found across ${plural(activeGuideCount, 'guide')} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+      if (scannedFileCount === 0 && !truncatedByMaxFiles) {
+        corpusHint = `0 scannable files found; checked 0 of ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+      } else if (notices.isIncomplete) {
+        corpusHint = `Found 0 legacy patterns in the scanned subset across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus); use 'search <topic>' for feature-specific guidance.`;
+      } else {
+        corpusHint = `No legacy patterns found across ${guidesLabel} (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`;
+      }
     } else {
-      corpusHint = truncatedByMaxFiles
-        ? `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
-        : `Checked ${plural(activeGuideCount, 'guide')} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
+      corpusHint = notices.isIncomplete
+        ? `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus); finding ${plural(totalFindings, 'item')} reflects only the scanned subset, and use 'search <topic>' for the rest of the catalog.`
+        : `Checked ${guidesLabel} (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${plural(totalFindings, 'item')} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`;
     }
+  } else if (scannedFileCount === 0 && !truncatedByMaxFiles) {
+    corpusHint = '0 scannable files found.';
   }
-  const note = [truncationHint, corpusHint].filter(Boolean).join(' ') || undefined;
+  const note =
+    [noteTruncation, notices.unsupportedNotice, notices.parseErrorNotice, corpusHint]
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   const data: ScanJsonOutput = {
     targetDir,
@@ -489,6 +573,8 @@ export async function runLegacyScanCli(
       : {}),
     ...(note ? { note } : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),
+    ...(notices.unsupportedNotice ? { skippedUnsupportedFiles } : {}),
+    ...(parseErrorCount > 0 ? { parseErrorCount } : {}),
   };
 
   if (isJson) {
@@ -499,10 +585,7 @@ export async function runLegacyScanCli(
   const output = formatHumanReadable(targetDir, totalFindings, guides, guideFilter, {
     activeGuideCount,
     isDefaultQualifiedMode,
-    skippedDocsAndTestsCount,
-    ...(truncatedByMaxFiles
-      ? { truncation: { scannedFileCount, eligibleFileCount } }
-      : {}),
+    stats: scanStats,
   });
   return { exitCode: 0, output, stdout: output, stderr: '', data };
 }

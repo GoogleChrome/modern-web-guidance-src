@@ -333,4 +333,102 @@ void test('scanRepoFiles: batched streaming, Project rotation, maxFiles, package
       assert.equal(repoStats.eligibleFileCount, 1);
     });
   });
+
+  await t.test('counts unsupported web format files by sorted extension in scanRepoFiles and scanFiles while respecting directory/path filters and maxFiles', async () => {
+    const domRule = makeTestRule('unsupported/dom', 'dom-guide', {
+      kind: 'dom',
+      selector: 'legacy-el',
+      fastTokens: ['legacy-el'],
+      matchElement: () => ({ message: 'dom' }),
+    });
+
+    const inMemoryStats: RepoScanStats = {};
+    scanFiles(
+      new Map([
+        ['views/card.phtml', '<p>hi</p>'],
+        ['views/nav.twig', '<nav></nav>'],
+        ['views/modal.hbs', '<div></div>'],
+        ['views/page.sass', 'body\n  color: red'],
+        ['views/slide.pug', 'p hi'],
+        ['views/dup.phtml', '<p>dup</p>'],
+        ['node_modules/pkg/ignored.twig', '<p></p>'],
+        ['vendor/lib/ignored.hbs', '<p></p>'],
+        ['.hidden/ignored.phtml', '<p></p>'],
+        ['docs/sample.twig', '<p></p>'],
+        ['tests/spec.phtml', '<p></p>'],
+        ['src/button.test.hbs', '<p></p>'],
+        ['README.md', '# readme'],
+        ['logo.png', 'png'],
+        ['data.json', '{}'],
+        ['config.yaml', 'a: 1'],
+        ['package.lock', '{}'],
+      ]),
+      [domRule],
+      { stats: inMemoryStats },
+    );
+    assert.deepEqual(inMemoryStats.skippedUnsupportedFiles, {
+      '.hbs': 1,
+      '.phtml': 2,
+      '.pug': 1,
+      '.sass': 1,
+      '.twig': 1,
+    });
+    assert.deepEqual(Object.keys(inMemoryStats.skippedUnsupportedFiles ?? {}), [
+      '.hbs',
+      '.phtml',
+      '.pug',
+      '.sass',
+      '.twig',
+    ]);
+    assert.equal(inMemoryStats.scannedFileCount, 0);
+
+    await withTempRepo('unsupported-repo-', async (tempDir) => {
+      for (const dir of ['views', 'node_modules/pkg', 'vendor/lib', '.git/hooks', 'dist', 'docs', 'tests']) {
+        await mkdir(join(tempDir, dir), { recursive: true });
+      }
+      await writeFile(join(tempDir, 'views', 'a.html'), '<legacy-el></legacy-el>');
+      await writeFile(join(tempDir, 'views', 'b.html'), '<legacy-el></legacy-el>');
+      await writeFile(join(tempDir, 'views', 'c.html'), '<legacy-el></legacy-el>');
+      await writeFile(join(tempDir, 'views', 'one.phtml'), '<p>1</p>');
+      await writeFile(join(tempDir, 'views', 'two.PHTML'), '<p>2</p>');
+      await writeFile(join(tempDir, 'views', 'three.twig'), '<p>3</p>');
+      await writeFile(join(tempDir, 'views', 'four.hbs'), '<p>4</p>');
+      await writeFile(join(tempDir, 'views', 'five.sass'), 'body\n  color: red');
+      await writeFile(join(tempDir, 'views', 'six.pug'), 'p hi');
+      await writeFile(join(tempDir, 'node_modules', 'pkg', 'ignored.twig'), '<p></p>');
+      await writeFile(join(tempDir, 'vendor', 'lib', 'ignored.hbs'), '<p></p>');
+      await writeFile(join(tempDir, '.git', 'hooks', 'ignored.phtml'), '<p></p>');
+      await writeFile(join(tempDir, 'dist', 'ignored.pug'), 'p hi');
+      await writeFile(join(tempDir, 'docs', 'guide.twig'), '<p></p>');
+      await writeFile(join(tempDir, 'tests', 'view.phtml'), '<p></p>');
+      await writeFile(join(tempDir, 'views', 'card.test.hbs'), '<p></p>');
+      await writeFile(join(tempDir, 'README.md'), '# ignore');
+      await writeFile(join(tempDir, 'logo.png'), 'png');
+      await writeFile(join(tempDir, 'data.json'), '{}');
+      await writeFile(join(tempDir, 'config.yaml'), 'a: 1');
+      await writeFile(join(tempDir, 'bun.lock'), '{}');
+
+      const cappedStats: RepoScanStats = {};
+      const cappedFindings = await scanRepoFiles(tempDir, [domRule], { maxFiles: 1, stats: cappedStats });
+      assert.equal(cappedFindings.length, 1);
+      assert.equal(cappedStats.truncatedByMaxFiles, true);
+      assert.deepEqual(cappedStats.skippedUnsupportedFiles, {
+        '.hbs': 1,
+        '.phtml': 2,
+        '.pug': 1,
+        '.sass': 1,
+        '.twig': 1,
+      });
+
+      const includedDocsStats: RepoScanStats = {};
+      await scanRepoFiles(tempDir, [domRule], { includeDocsAndTests: true, stats: includedDocsStats });
+      assert.deepEqual(includedDocsStats.skippedUnsupportedFiles, {
+        '.hbs': 2,
+        '.phtml': 3,
+        '.pug': 1,
+        '.sass': 1,
+        '.twig': 2,
+      });
+    });
+  });
 });

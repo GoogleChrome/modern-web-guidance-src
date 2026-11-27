@@ -67,13 +67,8 @@ function prepareCssContext(
   filePath: string,
   cssContent: string,
   rawFileText?: string,
-): PreparedCssContext | null {
-  let sheet;
-  try {
-    sheet = parseCss(cssContent);
-  } catch {
-    return null;
-  }
+): PreparedCssContext {
+  const sheet = parseCss(cssContent);
 
   let rawAndConditionProperties: Set<string> | null = null;
   const propertyResultCache = new Map<string, boolean>();
@@ -177,12 +172,7 @@ export function scanCssRules<T extends { readonly matcher: CssRuleMatcher }>(
     return [];
   }
 
-  const prepared = prepareCssContext(filePath, cssContent, rawFileText);
-  if (!prepared) {
-    return [];
-  }
-
-  const { styleRules, ctx } = prepared;
+  const { styleRules, ctx } = prepareCssContext(filePath, cssContent, rawFileText);
   const results: { rule: T; match: ScanMatch }[] = [];
 
   for (const view of styleRules) {

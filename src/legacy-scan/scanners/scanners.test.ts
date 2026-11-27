@@ -1659,5 +1659,3 @@ void test('scanFiles: lazy SourceFile proxy skips AST creation on early ctx.file
   assert.equal(sawPrototype, true);
 });
 
-
-

@@ -410,12 +410,7 @@ export function scanPackageJsonRules<T extends { readonly matcher: DependencyRul
     return [];
   }
 
-  let pkgData: unknown;
-  try {
-    pkgData = JSON.parse(packageJsonContent);
-  } catch {
-    return [];
-  }
+  const pkgData: unknown = JSON.parse(packageJsonContent);
 
   if (!isRecord(pkgData) || isPureNodeBackendOrCliPackage(pkgData)) {
     return [];

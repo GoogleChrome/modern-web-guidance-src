@@ -399,20 +399,14 @@ export function isGerberContent(content: string): boolean {
 }
 
 /**
- * Master predicate determining whether a file should be scanned by legacy-scan rules.
+ * Checks whether a relative path and optional content match a supported source extension
+ * and pass size, minification, license-header, and Gerber-collision filters.
  */
-export function shouldScanFile(
+export function isEligibleSourceFile(
   relPath: string,
   content?: string,
   options?: FileFilterOptions,
 ): boolean {
-  if (
-    isVendoredOrGeneratedPath(relPath, options) ||
-    (!options?.includeDocsAndTests && isDocsOrTestsPath(relPath))
-  ) {
-    return false;
-  }
-
   const normalized = normalizePath(relPath);
   if (!isPackageJsonPath(normalized)) {
     if (!SUPPORTED_SOURCE_EXTENSIONS.has(posix.extname(normalized))) {
@@ -432,6 +426,24 @@ export function shouldScanFile(
   }
 
   return true;
+}
+
+/**
+ * Master predicate determining whether a file should be scanned by legacy-scan rules.
+ */
+export function shouldScanFile(
+  relPath: string,
+  content?: string,
+  options?: FileFilterOptions,
+): boolean {
+  if (
+    isVendoredOrGeneratedPath(relPath, options) ||
+    (!options?.includeDocsAndTests && isDocsOrTestsPath(relPath))
+  ) {
+    return false;
+  }
+
+  return isEligibleSourceFile(relPath, content, options);
 }
 
 /**

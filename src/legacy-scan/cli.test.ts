@@ -117,8 +117,9 @@ describe('runLegacyScanCli', () => {
   });
 
   it('reports zero findings cleanly in default qualified mode', async () => {
-    await withTempDir(async (emptyDir) => {
-      const resDefault = await runLegacyScanCli([emptyDir]);
+    await withTempDir(async (cleanDir) => {
+      await writeFile(join(cleanDir, 'index.html'), '<main><p>Clean page</p></main>\n', 'utf8');
+      const resDefault = await runLegacyScanCli([cleanDir]);
       assert.equal(resDefault.exitCode, 0);
       assert.match(
         resDefault.output,
@@ -131,12 +132,13 @@ describe('runLegacyScanCli', () => {
         ),
       );
 
-      const resDefaultJson = await runLegacyScanCli([emptyDir, '--json']);
+      const resDefaultJson = await runLegacyScanCli([cleanDir, '--json']);
       assert.equal(resDefaultJson.exitCode, 0);
       const parsedDefault = JSON.parse(resDefaultJson.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
+      assert.equal(parsedDefault.scannedFileCount, 1);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.targetDir, emptyDir);
+      assert.equal(parsedDefault.targetDir, cleanDir);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
       assert.equal(
@@ -170,9 +172,11 @@ describe('runLegacyScanCli', () => {
       assert.equal(resJson.exitCode, 0);
       assert.ok(resJson.data);
       assert.equal(resJson.data.totalFindings, 0);
-      assert.equal(
-        resJson.data.note,
-        `No legacy patterns found across ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+      assert.match(
+        resJson.data.note ?? '',
+        new RegExp(
+          `^0 scannable files found; checked 0 of ${QUALIFIED_GUIDE_IDS.length} guides \\(${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus\\)\\.`,
+        ),
       );
     });
   });
