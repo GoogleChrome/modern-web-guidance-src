@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
-import type { Dirent } from 'node:fs';
-import { open, readdir } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { constants as fsConstants, type Dirent } from 'node:fs';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { ScanFinding, ScanRule } from '../schema.ts';
 import {
@@ -54,23 +54,66 @@ export function resolveMaxFiles(maxFiles?: number): number {
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Returns `true` when normalized `candidatePath` sits at or inside normalized `rootPath`.
+ */
+export function isPathWithinRoot(candidatePath: string, rootPath: string): boolean {
+  const prefix = rootPath.endsWith(sep) ? rootPath : `${rootPath}${sep}`;
+  return candidatePath === rootPath || candidatePath.startsWith(prefix);
+}
+
+function setEmptyScanStats(stats: RepoScanStats | undefined): void {
+  if (!stats) return;
+  stats.skippedDocsAndTestsCount = 0;
+  stats.scannedFileCount = 0;
+  stats.eligibleFileCount = 0;
+  stats.truncatedByMaxFiles = false;
+}
+
 interface ReadCandidateResult {
   readonly kind: 'source' | 'vendored';
   readonly content: string;
 }
 
+function isParentWithinRoot(
+  parentDir: string,
+  realRepoRoot: string,
+  parentCache: Map<string, Promise<boolean>>,
+): Promise<boolean> {
+  if (parentDir === realRepoRoot) {
+    return Promise.resolve(true);
+  }
+  const cached = parentCache.get(parentDir);
+  if (cached) {
+    return cached;
+  }
+  const pending = realpath(parentDir)
+    .then((realParent) => isPathWithinRoot(realParent, realRepoRoot))
+    .catch(() => false);
+  parentCache.set(parentDir, pending);
+  return pending;
+}
+
 async function tryReadFileContent(
-  fullPath: string,
+  realRepoRoot: string,
   relPath: string,
   session: ScanSession,
+  parentCache: Map<string, Promise<boolean>>,
 ): Promise<ReadCandidateResult | undefined> {
+  const fullPath = resolve(realRepoRoot, relPath);
+  if (!isPathWithinRoot(fullPath, realRepoRoot)) {
+    return undefined;
+  }
   try {
-    const handle = await open(fullPath, 'r');
+    if (!(await isParentWithinRoot(dirname(fullPath), realRepoRoot, parentCache))) {
+      return undefined;
+    }
+    const entryStat = await lstat(fullPath);
+    if (!entryStat.isFile() || entryStat.size > MAX_SOURCE_FILE_BYTES) {
+      return undefined;
+    }
+    const handle = await open(fullPath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
     try {
-      const fileStat = await handle.stat();
-      if (!fileStat.isFile() || fileStat.size > MAX_SOURCE_FILE_BYTES) {
-        return undefined;
-      }
       const content = await handle.readFile('utf8');
       const disposition = classifyFile(relPath, content, session);
       if (disposition === 'source' || disposition === 'vendored') {
@@ -81,15 +124,15 @@ async function tryReadFileContent(
       await handle.close();
     }
   } catch {
-    // Missing/deleted file (ENOENT), unreadable, or binary file
+    // Missing/deleted file (ENOENT), symlink (ELOOP), unreadable, or binary file
     return undefined;
   }
 }
 
 async function collectDirectoryPaths(
-  resolvedRoot: string,
+  realRoot: string,
   filterOpts: FileFilterOptions | undefined,
-  currentDir = resolvedRoot,
+  currentDir = realRoot,
   outPaths: string[] = [],
 ): Promise<string[]> {
   let entries: Dirent[];
@@ -102,8 +145,12 @@ async function collectDirectoryPaths(
   entries.sort((entryA, entryB) => entryA.name.localeCompare(entryB.name));
 
   for (const entry of entries) {
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
+
     const fullPath = join(currentDir, entry.name);
-    const relPath = relative(resolvedRoot, fullPath).replace(/\\/g, '/');
+    const relPath = relative(realRoot, fullPath).replace(/\\/g, '/');
 
     if (entry.isDirectory()) {
       const dirLower = entry.name.toLowerCase();
@@ -116,7 +163,7 @@ async function collectDirectoryPaths(
       ) {
         continue;
       }
-      await collectDirectoryPaths(resolvedRoot, filterOpts, fullPath, outPaths);
+      await collectDirectoryPaths(realRoot, filterOpts, fullPath, outPaths);
       continue;
     }
 
@@ -128,14 +175,14 @@ async function collectDirectoryPaths(
   return outPaths;
 }
 
-async function tryEnumerateGitFiles(resolvedRepoDir: string): Promise<string[] | null> {
+async function tryEnumerateGitFiles(realRepoRoot: string): Promise<string[] | null> {
   let stdout: string;
   try {
     const res = await execFileAsync(
       'git',
-      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      ['ls-files', '-z', '-t', '-s', '--cached', '--others', '--exclude-standard'],
       {
-        cwd: resolvedRepoDir,
+        cwd: realRepoRoot,
         maxBuffer: 50 * 1024 * 1024,
         timeout: 10_000,
       },
@@ -145,8 +192,27 @@ async function tryEnumerateGitFiles(resolvedRepoDir: string): Promise<string[] |
     return null;
   }
 
-  const rawPaths = stdout.split('\0').filter(Boolean);
-  return rawPaths.length > 0 ? rawPaths : null;
+  if (!stdout) {
+    return null;
+  }
+
+  const paths = new Set<string>();
+  for (const record of stdout.split('\0')) {
+    if (!record) continue;
+    if (record.startsWith('? ')) {
+      const filePath = record.slice(2);
+      if (filePath) paths.add(filePath);
+      continue;
+    }
+    const tabIdx = record.indexOf('\t');
+    if (tabIdx === -1) continue;
+    const mode = record.slice(2, 8);
+    if (mode === '100644' || mode === '100755') {
+      const filePath = record.slice(tabIdx + 1);
+      if (filePath) paths.add(filePath);
+    }
+  }
+  return Array.from(paths);
 }
 
 /**
@@ -161,19 +227,22 @@ export async function scanRepoFiles(
   const session = createScanSession(rules, options);
 
   if (session.activeEngines.size === 0) {
-    if (options?.stats) {
-      options.stats.skippedDocsAndTestsCount = 0;
-      options.stats.scannedFileCount = 0;
-      options.stats.eligibleFileCount = 0;
-      options.stats.truncatedByMaxFiles = false;
-    }
+    setEmptyScanStats(options?.stats);
     return [];
   }
 
   const resolvedRepoDir = resolve(repoDirPath);
+  let realRepoRoot: string;
+  try {
+    realRepoRoot = await realpath(resolvedRepoDir);
+  } catch {
+    setEmptyScanStats(options?.stats);
+    return [];
+  }
+
   const rawPaths =
-    (await tryEnumerateGitFiles(resolvedRepoDir)) ??
-    (await collectDirectoryPaths(resolvedRepoDir, session.filterOpts));
+    (await tryEnumerateGitFiles(realRepoRoot)) ??
+    (await collectDirectoryPaths(realRepoRoot, session.filterOpts));
 
   const pkgCandidates: string[] = [];
   const otherCandidates: string[] = [];
@@ -195,6 +264,7 @@ export async function scanRepoFiles(
   }
 
   const candidates = [...pkgCandidates, ...otherCandidates];
+  const parentCache = new Map<string, Promise<boolean>>();
   const findings: ScanFinding[] = [];
   let scannedFileCount = 0;
   let idx = 0;
@@ -205,9 +275,7 @@ export async function scanRepoFiles(
     idx += batch.length;
 
     const reads = await Promise.all(
-      batch.map((relPath) =>
-        tryReadFileContent(join(resolvedRepoDir, relPath), relPath, session),
-      ),
+      batch.map((relPath) => tryReadFileContent(realRepoRoot, relPath, session, parentCache)),
     );
     for (let i = 0; i < batch.length; i++) {
       const relPath = batch[i];

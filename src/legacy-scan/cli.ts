@@ -1,10 +1,11 @@
-import { readFile, stat } from 'node:fs/promises';
-import { basename, relative, resolve } from 'node:path';
+import { lstat, readFile, realpath, stat } from 'node:fs/promises';
+import { basename, dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, styleText } from 'node:util';
 import { QUALIFIED_RULES } from './rules/index.ts';
 import {
   DEFAULT_MAX_FILES,
+  isPathWithinRoot,
   MAX_SOURCE_FILE_BYTES,
   resolveMaxFiles,
   scanFiles,
@@ -392,7 +393,8 @@ export async function runLegacyScanCli(
   const includeDocsAndTests = Boolean(parsed.values['include-docs-and-tests']);
   const targetDir = parsed.positionals[0] || '.';
   const baseCwd = options?.cwd ?? process.cwd();
-  const resolvedDir = resolve(baseCwd, targetDir);
+  const resolvedBaseCwd = resolve(baseCwd);
+  const resolvedDir = resolve(resolvedBaseCwd, targetDir);
 
   const rawMaxFiles = parsed.values['max-files'];
   let effectiveMaxFiles: number;
@@ -419,30 +421,48 @@ export async function runLegacyScanCli(
   const activeRuleCount = activeRules.length;
   const activeGuideCount = new Set(activeRules.map((r) => r.guideId)).size;
 
-  const dirStat = await stat(resolvedDir).catch(() => null);
-  if (!dirStat) {
+  const targetLstat = await lstat(resolvedDir).catch(() => null);
+  const realTarget = targetLstat ? await realpath(resolvedDir).catch(() => null) : null;
+  if (!targetLstat || !realTarget) {
     return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
   }
-  if (!dirStat.isFile() && !dirStat.isDirectory()) {
+
+  const insideBaseCwd = isPathWithinRoot(resolvedDir, resolvedBaseCwd);
+  const boundaryRoot = insideBaseCwd
+    ? await realpath(resolvedBaseCwd).catch(() => null)
+    : targetLstat.isSymbolicLink()
+      ? await realpath(dirname(resolvedDir)).catch(() => null)
+      : realTarget;
+  if (!boundaryRoot || !isPathWithinRoot(realTarget, boundaryRoot)) {
+    const msg = targetLstat.isSymbolicLink()
+      ? `Target symlink escapes scan root: ${targetDir}`
+      : `Target path escapes scan root via symlink: ${targetDir}`;
+    return errorCliResult(msg, isJson, targetDir);
+  }
+
+  const targetStat = await stat(realTarget).catch(() => null);
+  if (!targetStat) {
+    return errorCliResult(`Target path not found: ${targetDir}`, isJson, targetDir);
+  }
+  if (!targetStat.isFile() && !targetStat.isDirectory()) {
     return errorCliResult(`Target path is not a file or directory: ${targetDir}`, isJson, targetDir);
   }
 
   const scanStats: RepoScanStats = {};
   let findings: ScanFinding[];
 
-  if (dirStat.isFile()) {
-    if (dirStat.size > MAX_SOURCE_FILE_BYTES) {
+  if (targetStat.isFile()) {
+    if (targetStat.size > MAX_SOURCE_FILE_BYTES) {
       return errorCliResult(`Target file exceeds maximum size (${MAX_SOURCE_FILE_BYTES} bytes): ${targetDir}`, isJson, targetDir);
     }
-    const content = await readFile(resolvedDir, 'utf8');
-    const rel = relative(baseCwd, resolvedDir).replace(/\\/g, '/');
-    const fileKey = rel && !rel.startsWith('..') ? rel : basename(resolvedDir);
-    findings = scanFiles(new Map([[fileKey, content]]), activeRules, {
+    const content = await readFile(realTarget, 'utf8');
+    const rel = insideBaseCwd ? relative(resolvedBaseCwd, resolvedDir).replace(/\\/g, '/') : '';
+    findings = scanFiles(new Map([[rel || basename(resolvedDir), content]]), activeRules, {
       includeDocsAndTests: true,
       stats: scanStats,
     });
   } else {
-    findings = await scanRepoFiles(resolvedDir, activeRules, {
+    findings = await scanRepoFiles(realTarget, activeRules, {
       maxFiles: effectiveMaxFiles,
       includeDocsAndTests,
       stats: scanStats,
