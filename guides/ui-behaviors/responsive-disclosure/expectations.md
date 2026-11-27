@@ -1,0 +1,14 @@
+- The responsive disclosure container sets `container-type: inline-size` (or `size`) and uses `@container` queries to switch between static inline presentation and collapsed disclosure.
+- Content is rendered in a single DOM subtree without duplicating separate static and disclosure copies of the same content.
+- The disclosure trigger button is visible below the container query threshold and hidden (`display: none`) when the content is displayed statically.
+- For inline secondary disclosure using `<details>`, each `<details>` element places `<summary>` as its first child without interactive controls or headings inside `<summary>`, expands (`open` is `true`) above the threshold, and preserves its narrow open or closed state when returning below the threshold.
+- For transient disclosure using `[popover]`, the panel uses the `popover` attribute, is invoked by a trigger button with `popovertarget`, and overrides positioning via `@container` to render statically inline above the threshold.
+- The `[popover]` trigger button updates `aria-expanded` to reflect open or closed state via the `toggle` event.
+- An open popover closes (`hidePopover()`) when the container widens past the threshold.
+- For modal drawer disclosure using `<dialog>`, the trigger button opens `<dialog>` via `.showModal()` below the threshold, updates `aria-expanded` on open and close, and closes via a native `<form method="dialog">` (or `formmethod="dialog"`), `Escape`, or backdrop dismissal.
+- When a `<dialog>` drawer widens past the threshold, an open modal closes (`.close()`) and focus on an active descendant control is preserved across the transition.
+- Keyboard focus on disclosure controls uses `:focus-visible` outlines.
+- Popover and drawer boundaries that rely on `box-shadow` get explicit borders inside `@media (forced-colors: active)`.
+- Popover and drawer entry/exit animations are gated behind `@media (prefers-reduced-motion: no-preference)`.
+- When `popover` is unsupported, `@oddbird/popover-polyfill` is conditionally loaded via dynamic `import()` using feature detection on `HTMLElement.prototype`.
+- When `popover` is unsupported, open popover CSS selectors match both with `:is(:popover-open, .\:popover-open)`.
