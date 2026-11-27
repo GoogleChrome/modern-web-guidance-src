@@ -412,7 +412,7 @@ If you have browser automation or inspection tools, check the integration in a l
 
 ### Built-in AI live-browser checks
 
-Only Chrome and Microsoft Edge implement the Built-in AI APIs. Default automation setups can block on-device AI, so `availability()` can report `unavailable` no matter what the page code does. Set up the browser before testing:
+Pick a test browser from the Baseline status in the Fallback section above, which lists the browsers that ship this API. Default automation setups can block on-device AI, so `availability()` can report `unavailable` no matter what the page code does. Set up the browser before testing:
 
 - **Chrome (including Chrome for Testing):** Launch with `--enable-features=OptimizationHints,OnDeviceAiDefaultEnabled` and `--optimization-guide-performance-class=5`. With `chrome-devtools-mcp`, pass each flag with `--chrome-arg`. Puppeteer-based tools pass `--disable-features=OptimizationHints` by default, and Chrome for Testing and non-Stable channels turn off on-device AI in new profiles.
 - **Microsoft Edge (version 158 or later):** Use a dedicated automation profile. In that profile, open `edge://flags`, enable the flag for each API you test (for example **Prompt API** or **Summarizer API**), and restart. In Canary, Dev, and Beta, enabling one of these flags also turns on the **On-device AI** setting. `Translator` and `LanguageDetector` need no flag. Launch Edge with that profile; with `chrome-devtools-mcp`, set `--executablePath` to the Edge binary and `--userDataDir` to the profile directory. `edge://on-device-internals` must report a device performance class of **Medium** or higher.
