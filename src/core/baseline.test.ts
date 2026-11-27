@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, validateFeature, getFeatureGroups, getOwnedFeatureToGroups, pendingFeatures, getBaselineTargetsForGrader } from './baseline.ts';
+import { resolveFeatureId, getStatus, getBaselineStatus, checkBaseline, getStatusMessage, formatSupportMap, validateFeature, getFeatureGroups, getOwnedFeatureToGroups, pendingFeatures, getBaselineTargetsForGrader } from './baseline.ts';
 describe('baseline data', () => {
   describe('getBaselineStatus', () => {
     it('returns Baseline since YYYY-MM-DD for known widely available features', () => {
@@ -37,6 +37,23 @@ describe('baseline data', () => {
       );
     });
 
+    it('reports Firefox autofill partial support and prefixes from BCD', () => {
+      const message = getStatusMessage('autofill', 'css.selectors.autofill')!;
+      assert.match(message, /^Browser support for the css\.selectors\.autofill capability: Limited availability\./);
+      assert.match(message, /Partial in Firefox 86 \(Feb 2021\):/);
+      assert.match(message, /matches autofilled username and password fields, but not other autocompleted fields/);
+      assert.match(message, /Partial with -webkit- prefix in Firefox 86 \(Feb 2021\):/);
+      assert.match(message, /With -webkit- prefix: Chrome 1/);
+      assert.doesNotMatch(message, /Unsupported in:.*Firefox/);
+    });
+
+    it('describes prefixed-only support without claiming there is no native implementation', () => {
+      const message = getStatusMessage('line-clamp', 'css.properties.line-clamp')!;
+      assert.match(message, /^Browser support for the css\.properties\.line-clamp capability: Limited availability\./);
+      assert.match(message, /With -webkit- prefix: Chrome 6/);
+      assert.doesNotMatch(message, /not natively supported|Supported by:|Unsupported in:/);
+    });
+
     it('returns status message explicitly isolating mobile target when mobile support diverges', () => {
       assert.strictEqual(
         getStatusMessage('popover'),
@@ -61,6 +78,85 @@ describe('baseline data', () => {
     it('returns undefined for unknown features or keys', () => {
       assert.strictEqual(getStatusMessage('non-existent'), undefined);
       assert.strictEqual(getStatusMessage('grid', 'unknown.key'), undefined);
+    });
+  });
+
+  describe('formatSupportMap with BCD caveats', () => {
+    const fullSupport = { chrome: '110', edge: '110', safari: '15', safari_ios: '15' };
+
+    it('groups current prefixed implementations without calling them full support', () => {
+      const message = formatSupportMap({}, {
+        chrome: { version_added: '1', prefix: '-webkit-' },
+        edge: { version_added: '79', prefix: '-webkit-' },
+        firefox: { version_added: false },
+        safari: { version_added: false },
+      });
+      assert.match(message, /With -webkit- prefix: Chrome 1 \(Dec 2008\) and Edge 79 \(Jan 2020\)\./);
+      assert.match(message, /Unsupported in: Firefox and Safari\./);
+      assert.doesNotMatch(message, /Supported by:|Not natively supported/);
+    });
+
+    it('includes partial implementation notes supplied as an array', () => {
+      const message = formatSupportMap(fullSupport, {
+        firefox: {
+          version_added: '86', partial_implementation: true,
+          notes: ['Only selected fields are supported.', 'Other fields are not supported.'],
+        },
+      });
+      assert.match(message, /Partial in Firefox 86 \(Feb 2021\): Only selected fields are supported\. Other fields are not supported\./);
+      assert.doesNotMatch(message, /Unsupported in:/);
+    });
+
+    it('keeps the prefix attached to a partial implementation', () => {
+      const message = formatSupportMap(fullSupport, {
+        firefox: { version_added: '86', prefix: '-webkit-', partial_implementation: true, notes: 'Only selected fields.' },
+      });
+      assert.match(message, /Partial with -webkit- prefix in Firefox 86 \(Feb 2021\): Only selected fields\./);
+      assert.doesNotMatch(message, /\nPartial in Firefox|\nWith -webkit- prefix|Unsupported in:/);
+    });
+
+    it('does not advertise removed, disabled, renamed or unsupported implementations as available', () => {
+      const message = formatSupportMap(fullSupport, {
+        firefox: [
+          { version_added: '86', version_removed: '90', prefix: '-moz-' },
+          { version_added: '86', partial_implementation: true, flags: [{ type: 'preference', name: 'test.enabled', value_to_set: 'true' }] },
+          { version_added: false, prefix: '-webkit-' },
+          { version_added: '86', partial_implementation: true, alternative_name: 'otherFeature' },
+        ],
+      });
+      assert.match(message, /Unsupported in: Firefox\./);
+      assert.doesNotMatch(message, /Partial|prefix|otherFeature/);
+    });
+
+    it('reports partial support even when there is no full-support map or note', () => {
+      const message = formatSupportMap(undefined, {
+        firefox: { version_added: '86', partial_implementation: true },
+      });
+      assert.match(message, /Partial in Firefox 86 \(Feb 2021\)\./);
+      assert.match(message, /Unsupported in: Chrome, Edge, and Safari\./);
+      assert.doesNotMatch(message, /Supported by:|Not natively supported/);
+    });
+
+    it('separates Safari iOS when prefixed support differs despite matching full support', () => {
+      const message = formatSupportMap(fullSupport, {
+        safari: { version_added: '3', prefix: '-webkit-' },
+        safari_ios: { version_added: '4', prefix: '-webkit-' },
+      });
+      assert.match(message, /With -webkit- prefix: Safari 3 \(Oct 2007\) and Safari iOS 4/);
+    });
+
+    it('consolidates matching Safari caveats and preserves version ranges', () => {
+      const message = formatSupportMap(fullSupport, {
+        safari: { version_added: '≤3', prefix: '-webkit-' },
+        safari_ios: { version_added: '≤3', prefix: '-webkit-' },
+      });
+      assert.match(message, /With -webkit- prefix: Safari ≤3\./);
+      assert.doesNotMatch(message, /Safari iOS/);
+    });
+
+    it('preserves the original no-support and missing-data messages', () => {
+      assert.strictEqual(formatSupportMap(undefined), '');
+      assert.strictEqual(formatSupportMap({}, { firefox: { version_added: false } }), '\nNot natively supported by any major browser yet.');
     });
   });
 

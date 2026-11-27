@@ -107,6 +107,13 @@ describe('replaceMacros (Functional with real data)', () => {
       assert.ok(result.includes('grid') && result.includes('Widely'));
     });
 
+    it('includes prefixed and partial implementations for an explicit capability', () => {
+      const result = replaceMacros('{{ BASELINE_STATUS("autofill", "css.selectors.autofill") }}', 'test.md');
+      assert.match(result, /Partial in Firefox 86/);
+      assert.match(result, /With -webkit- prefix: Chrome 1/);
+      assert.doesNotMatch(result, /Unsupported in:.*Firefox/);
+    });
+
     it('throws error for non-existent BCD key', () => {
       const content = '{{ BASELINE_STATUS("grid", "css.properties.non-existent-xyz") }}';
       assert.throws(() => replaceMacros(content, 'test.md'), /BCD key/);
