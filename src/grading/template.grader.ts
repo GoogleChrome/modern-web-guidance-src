@@ -1,6 +1,7 @@
 import {
   test,
   expect,
+  expectNever,
   getTargetFiles,
   getCssStyleSheet,
   getJsProject,
@@ -82,6 +83,8 @@ test.describe('<guide-name> Target Grader', () => {
   // --- BROWSER ASSERTIONS (RUNTIME BEHAVIOR) ---
   // Check runtime behavior (interaction, state changes, computed style, layout) in the browser with Playwright.
   // Locate elements through base-app markup, hooks that task.md names, or platform semantics (element types, ARIA roles, standard attributes); never invented routes, custom REST endpoints/payloads, or IDs/classes that exist only in the golden patches.
+  // Poll to end state (`expect(locator)`, `expect.poll()`, `waitForFunction()`, or `expectNever`); never use fixed `waitForTimeout` waits.
+  // Pair any `MUST NOT` check with a positive presence check so an unimplemented baseline fails; mock browser APIs faithfully (e.g. `toJSON()`).
   // If no expectations require runtime browser checks, this entire `test.describe('Browser tests', ...)` section should be omitted.
   
   test.describe('Browser tests', () => {
@@ -110,6 +113,13 @@ test.describe('<guide-name> Target Grader', () => {
     // test('Example browser test containing interaction and state check', async ({ page }) => {
     //   await page.getByRole('button', { name: 'Open' }).click();
     //   await expect(page.locator('#item-details')).toBeVisible();
+    // });
+
+    // EXAMPLE 4: Observation window for "never happens" / "remains in state" claims (never use waitForTimeout)
+    // test('Example browser test observing a state remains unchanged', async ({ page }) => {
+    //   await page.getByRole('button', { name: 'Open' }).click();
+    //   await expect(page.locator('#item-details')).toBeVisible();
+    //   await expectNever(page, () => document.getElementById('item-details')?.hidden === true, { forMs: 300 });
     // });
   });
 });

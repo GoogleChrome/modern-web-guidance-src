@@ -581,3 +581,280 @@ test('prepareTargetGuide expands build-time macros into workDir so agents see tr
   );
 });
 
+test('calibrateTargetWithRetries retries once on shared golden failures and classifies persistent shared failure as guide_gap', async () => {
+  const { calibrateTargetWithRetries } = await import('./dev.ts');
+  const { Agents } = await import('../harness/config.ts');
+
+  const sharedFailRes = {
+    success: false,
+    errorDetails: 'Shared failure details',
+    solutions: {
+      [Agents.JETSKI_CLI]: { passed: 1, failed: 1, failingTests: ['Test A'] },
+      [Agents.CLAUDE_CODE]: { passed: 1, failed: 1, failingTests: ['Test A'] },
+      [Agents.CODEX_CLI]: { passed: 1, failed: 1, failingTests: ['Test A'] },
+    },
+    zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+    sharedFailingTests: ['Test A'],
+  };
+
+  // Case 1: 1-shot retry succeeds on attempt 2
+  let testCalls1 = 0;
+  let rewriteCalls1 = 0;
+  let graderContent1 = 'v1';
+  const passOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 4 },
+    {
+      testGrader: async () => {
+        testCalls1++;
+        if (testCalls1 === 1) return sharedFailRes;
+        return {
+          success: true,
+          solutions: { [Agents.CLAUDE_CODE]: { passed: 2, failed: 0, failingTests: [] } },
+          zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+        };
+      },
+      rewriteGrader: async () => { rewriteCalls1++; graderContent1 = 'v2'; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => graderContent1,
+      writeGrader: (c) => { graderContent1 = c; },
+    }
+  );
+  assert.strictEqual(passOutcome.success, true);
+  assert.strictEqual(rewriteCalls1, 1);
+
+  // Case 2: All 3 goldens still fail the same check after 1-shot retry -> abort with [guide_gap]
+  let rewriteCalls2 = 0;
+  let graderContent2 = 'v1';
+  const gapOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 4 },
+    {
+      testGrader: async () => sharedFailRes,
+      rewriteGrader: async () => { rewriteCalls2++; graderContent2 = 'v2'; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => graderContent2,
+      writeGrader: (c) => { graderContent2 = c; },
+    }
+  );
+  assert.strictEqual(gapOutcome.success, false);
+  assert.strictEqual(rewriteCalls2, 1);
+  assert.ok(gapOutcome.errorDetails?.startsWith('[guide_gap]'));
+});
+
+test('calibrateTargetWithRetries blocks loosening on baseline and does not false-trigger LOOSENING_BLOCKED when baseline errored with 0 tests', async () => {
+  const { calibrateTargetWithRetries } = await import('./dev.ts');
+  const { Agents } = await import('../harness/config.ts');
+
+  let graderSource = '// strict grader v1';
+  let call = 0;
+  const blockedOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 3 },
+    {
+      testGrader: async () => {
+        call++;
+        if (call === 1) {
+          return {
+            success: false,
+            errorDetails: 'Claude failed Test B',
+            solutions: {
+              [Agents.JETSKI_CLI]: { passed: 2, failed: 0, failingTests: [] },
+              [Agents.CLAUDE_CODE]: { passed: 1, failed: 1, failingTests: ['Test B'] },
+            },
+            zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+          };
+        }
+        // After rewrite, Test B now passes on baseline (loosened!)
+        return {
+          success: false,
+          errorDetails: 'Baseline passed Test B',
+          solutions: {
+            [Agents.JETSKI_CLI]: { passed: 2, failed: 0, failingTests: [] },
+            [Agents.CLAUDE_CODE]: { passed: 2, failed: 0, failingTests: [] },
+          },
+          zeroPassrate: { passed: 1, failed: 1, passingTests: ['Test B'], failingTests: ['Test A'] },
+        };
+      },
+      rewriteGrader: async () => { graderSource = '// loosened grader v2'; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => graderSource,
+      writeGrader: (c) => { graderSource = c; },
+    }
+  );
+
+  assert.strictEqual(blockedOutcome.success, false);
+  assert.ok(blockedOutcome.errorDetails?.includes('LOOSENING_BLOCKED'));
+  assert.ok(blockedOutcome.errorDetails?.includes('Test B'));
+  assert.strictEqual(graderSource, '// strict grader v1', 'Loosened grader must be reverted');
+
+  // Compile/load error on baseline (passed: 0, failed: 0) must NOT falsely trigger LOOSENING_BLOCKED
+  let errCall = 0;
+  let errGrader = 'v1';
+  const compileRecoverOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 3 },
+    {
+      testGrader: async () => {
+        errCall++;
+        if (errCall === 1) {
+          return {
+            success: false,
+            errorDetails: 'Claude failed Test B',
+            solutions: { [Agents.CLAUDE_CODE]: { passed: 0, failed: 1, failingTests: ['Test B'] } },
+            zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+          };
+        }
+        if (errCall === 2) {
+          return {
+            success: false,
+            errorDetails: 'Playwright syntax error',
+            solutions: { [Agents.CLAUDE_CODE]: { passed: 0, failed: 0, failingTests: [] } },
+            zeroPassrate: { passed: 0, failed: 0, passingTests: [], failingTests: [] },
+          };
+        }
+        return {
+          success: true,
+          solutions: { [Agents.CLAUDE_CODE]: { passed: 2, failed: 0, failingTests: [] } },
+          zeroPassrate: { passed: 0, failed: 2, passingTests: [], failingTests: ['Test A', 'Test B'] },
+        };
+      },
+      rewriteGrader: async () => { errGrader = `v${errCall + 1}`; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => errGrader,
+      writeGrader: (c) => { errGrader = c; },
+    }
+  );
+  assert.strictEqual(compileRecoverOutcome.success, true);
+});
+
+test('calibrateTargetWithRetries regenerates broken-pageLoad golden once and gates on persistent broken pageLoad', async () => {
+  const { calibrateTargetWithRetries } = await import('./dev.ts');
+  const { Agents } = await import('../harness/config.ts');
+
+  const brokenRes = {
+    success: false,
+    errorDetails: 'claude pageLoad failed',
+    solutions: {
+      [Agents.CLAUDE_CODE]: {
+        passed: 1,
+        failed: 0,
+        failingTests: [],
+        pageLoad: { ok: false, errors: ['[pageerror] Boom'] },
+      },
+    },
+    zeroPassrate: { passed: 0, failed: 1, passingTests: [], failingTests: ['Test A'] },
+  };
+
+  let calls = 0;
+  const regenerated: string[] = [];
+  const fixedOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 2 },
+    {
+      testGrader: async () => {
+        calls++;
+        if (calls === 1) return brokenRes;
+        return {
+          success: true,
+          solutions: { [Agents.CLAUDE_CODE]: { passed: 1, failed: 0, failingTests: [], pageLoad: { ok: true, errors: [] } } },
+          zeroPassrate: { passed: 0, failed: 1, passingTests: [], failingTests: ['Test A'] },
+        };
+      },
+      rewriteGrader: async () => { throw new Error('Should not rewrite grader for broken golden pageLoad'); },
+      regenerateGolden: async (agent) => { regenerated.push(agent); },
+      checkSelectorCoupling: () => null,
+      readGrader: () => '// grader',
+      writeGrader: () => {},
+    }
+  );
+  assert.strictEqual(fixedOutcome.success, true);
+  assert.deepStrictEqual(regenerated, [Agents.CLAUDE_CODE]);
+
+  // Persistent broken pageLoad -> [golden_missed_requirement]
+  const failOutcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 2 },
+    {
+      testGrader: async () => brokenRes,
+      rewriteGrader: async () => {},
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => null,
+      readGrader: () => '// grader',
+      writeGrader: () => {},
+    }
+  );
+  assert.strictEqual(failOutcome.success, false);
+  assert.ok(failOutcome.errorDetails?.startsWith('[golden_missed_requirement]'));
+});
+
+test('calibrateTargetWithRetries retries grader when selector-coupling check fails', async () => {
+  const { calibrateTargetWithRetries } = await import('./dev.ts');
+  const { Agents } = await import('../harness/config.ts');
+
+  let probeCalls = 0;
+  let rewroteWith = '';
+  let graderSource = 'v1';
+  const outcome = await calibrateTargetWithRetries(
+    { baseApp: 'daily-grind', maxRetries: 2 },
+    {
+      testGrader: async () => ({
+        success: true,
+        solutions: { [Agents.CLAUDE_CODE]: { passed: 1, failed: 0, failingTests: [] } },
+        zeroPassrate: { passed: 0, failed: 1, passingTests: [], failingTests: ['Test A'] },
+      }),
+      rewriteGrader: async (ctx) => { rewroteWith = ctx; graderSource = 'v2'; },
+      regenerateGolden: async () => {},
+      checkSelectorCoupling: () => {
+        probeCalls++;
+        if (probeCalls === 1) {
+          return 'Grader appears coupled to non-contract class/id names from golden patches: .custom-card (L3)';
+        }
+        return null;
+      },
+      readGrader: () => graderSource,
+      writeGrader: (c) => { graderSource = c; },
+    }
+  );
+
+  assert.strictEqual(outcome.success, true);
+  assert.ok(rewroteWith.includes('Grader appears coupled to non-contract class/id names'));
+});
+
+test('classifyCalibrationFailure distinguishes grader_bug, golden_missed_requirement, and guide_gap', async () => {
+  const { classifyCalibrationFailure } = await import('./dev.ts');
+  const { Agents } = await import('../harness/config.ts');
+
+  assert.strictEqual(
+    classifyCalibrationFailure({
+      success: false,
+      solutions: {
+        [Agents.CLAUDE_CODE]: { passed: 0, failed: 1, failingTests: ['T1'] },
+        [Agents.CODEX_CLI]: { passed: 0, failed: 1, failingTests: ['T1'] },
+      },
+      zeroPassrate: { passed: 0, failed: 1, passingTests: [] },
+      sharedFailingTests: ['T1'],
+    }, true).category,
+    'guide_gap'
+  );
+
+  assert.strictEqual(
+    classifyCalibrationFailure({
+      success: false,
+      solutions: {
+        [Agents.CLAUDE_CODE]: { passed: 1, failed: 0, failingTests: [] },
+        [Agents.CODEX_CLI]: { passed: 0, failed: 1, failingTests: ['T1'] },
+      },
+      zeroPassrate: { passed: 0, failed: 1, passingTests: [] },
+    }, false).category,
+    'golden_missed_requirement'
+  );
+
+  assert.strictEqual(
+    classifyCalibrationFailure({
+      success: false,
+      solutions: { [Agents.CLAUDE_CODE]: { passed: 1, failed: 0, failingTests: [] } },
+      zeroPassrate: { passed: 1, failed: 0, passingTests: ['T1'] },
+    }, false).category,
+    'grader_bug'
+  );
+});
+

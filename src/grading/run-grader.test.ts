@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stageGradingWorkspace, PatchApplyError, runPlaywright } from './run-grader.ts';
+import { stageGradingWorkspace, PatchApplyError, runPlaywright, isGoldenPageLoadBroken } from './run-grader.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +40,54 @@ describe('stageGradingWorkspace', () => {
     } finally {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  it('stages untouched starting app when patchFile is omitted or empty', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'run-grader-empty-patch-'));
+    const emptyPatch = path.join(tmpDir, 'zero-passrate.patch');
+    fs.writeFileSync(emptyPatch, '   \n');
+
+    const { workDir: noPatchDir, cleanup: cleanup1 } = await stageGradingWorkspace('daily-grind');
+    try {
+      assert.ok(fs.existsSync(path.join(noPatchDir, 'index.html')));
+    } finally {
+      cleanup1();
+    }
+
+    const { workDir: emptyPatchDir, cleanup: cleanup2 } = await stageGradingWorkspace('daily-grind', emptyPatch);
+    try {
+      assert.ok(fs.existsSync(path.join(emptyPatchDir, 'index.html')));
+    } finally {
+      cleanup2();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('isGoldenPageLoadBroken', () => {
+  it('treats missing, noPage, ok, and external missing-tool build warnings as non-broken', () => {
+    assert.strictEqual(isGoldenPageLoadBroken(undefined), false);
+    assert.strictEqual(isGoldenPageLoadBroken({ ok: true, errors: [] }), false);
+    assert.strictEqual(isGoldenPageLoadBroken({ ok: false, noPage: true, errors: ['[pageerror] ignored'] }), false);
+    assert.strictEqual(
+      isGoldenPageLoadBroken({ ok: false, errors: ['[server] sh: 1: em++: not found'] }),
+      false
+    );
+  });
+
+  it('flags runtime page errors, 4xx/5xx responses, and JS build failures as broken', () => {
+    assert.strictEqual(
+      isGoldenPageLoadBroken({ ok: false, errors: ['[pageerror] ReferenceError: x is not defined'] }),
+      true
+    );
+    assert.strictEqual(
+      isGoldenPageLoadBroken({ ok: false, errors: ['[response 404] http://127.0.0.1/missing.js'] }),
+      true
+    );
+    assert.strictEqual(
+      isGoldenPageLoadBroken({ ok: false, errors: ['[server] tsc: not found'] }),
+      true
+    );
   });
 });
 
