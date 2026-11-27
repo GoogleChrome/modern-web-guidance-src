@@ -200,3 +200,15 @@ Recommended options:
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services.
 
 > **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud), though local processing is an option, too. Remote processing completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will often incur server-side API usage costs.
+
+## Verifying the implementation
+
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
+
+{{ INCLUDE("../language-model/guide.md#built-in-ai-live-browser-checks") }}
+
+### Translator checks
+
+- **Language pairs:** Call `Translator.availability({ sourceLanguage, targetLanguage })` with the same pair you pass to `Translator.create()`, and confirm unsupported pairs that return `unavailable` switch to the fallback UI. In Chrome, language packs come through the component updater rather than `OptimizationHints`, so supported pairs can report `downloadable` even without the Chrome launch flags.
+- **No legacy API:** Confirm the fallback path doesn't reference the deprecated `window.ai.translator`.
+- **Input budget and output language:** Check large passages against `translator.inputQuota` with `translator.measureInputUsage()` (chunk long text or use `translateStreaming()` when needed), handle `QuotaExceededError` rejections, and confirm the translated output container carries the target BCP 47 `lang` attribute.

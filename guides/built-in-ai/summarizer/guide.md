@@ -163,3 +163,13 @@ Recommended options:
 3. **Polyfill Fallback**: You can use community-maintained polyfills like `built-in-ai-task-apis-polyfills` or `prompt-api-polyfill` to emulate the API surface using remote services with models in the cloud or on-device inference with local models.
 
 > **Privacy and Cost Implications:** These polyfills possibly proxy requests to remote servers (such as Gemini API over the cloud). This completely nullifies the on-device privacy guarantees of the native Built-in AI APIs and will incur server-side API usage costs.
+
+## Verifying the implementation
+
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
+
+{{ INCLUDE("../language-model/guide.md#built-in-ai-live-browser-checks") }}
+
+### Summarizer checks
+
+- **Input budget and output language:** Check `summarizer.inputQuota` and `summarizer.measureInputUsage()` on long articles. Confirm inputs over `inputQuota` are chunked, truncated, or rejected with a clear message when `QuotaExceededError` is thrown, and that the summary container sets `lang` when `outputLanguage` differs from the page language.

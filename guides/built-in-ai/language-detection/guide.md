@@ -98,3 +98,13 @@ If the `LanguageDetector` API is unsupported or availability checks return `'una
 
 1. **Remote API Fallback**: Redirect the detection request to a server endpoint or a cloud API (such as the Vertex AI Gemini API) to identify the language.
 2. **Graceful Degradation**: Disable language detection elements/buttons and inform the user that client-side detection is currently unsupported in this browser, preventing any unhandled exceptions or crashes.
+
+## Verifying the implementation
+
+If you have browser automation or inspection tools, check the integration in a live browser. Tell the developer what you checked and which browser setup you used.
+
+{{ INCLUDE("../language-model/guide.md#built-in-ai-live-browser-checks") }}
+
+### Language Detector checks
+
+- **Input budget and confidence:** Check `detector.inputQuota` and `detector.measureInputUsage()` on large inputs so `QuotaExceededError` is avoided or caught. Confirm short or single-word inputs with low `confidence` don't mislabel content or set an inaccurate `lang` attribute.
