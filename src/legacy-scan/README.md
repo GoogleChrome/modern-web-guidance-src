@@ -16,21 +16,21 @@ See [format-support.md](./format-support.md) for which file formats and embedded
 
 ```bash
 # In the modern-web-guidance repository:
-node bin/gd.ts legacy-scan [path/to/project] [options]
+node bin/gd.ts legacy-scan [paths...] [options]
 
 # In any brownfield project via npx:
-npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
+npx -y modern-web-guidance@latest legacy-scan [paths...] [options]
 ```
 
 ### CLI Options
 
 | Flag | Type | Description |
 | :--- | :--- | :--- |
-| `[path]` | Positional | Directory or file to analyze (defaults to current working directory). |
+| `[paths...]` | Positional | Directories or files to analyze (defaults to current working directory). |
 | `--json` | Flag | Output machine-readable JSON format for AI coding agents. |
 | `--guide <guideId>` | String | Restrict analysis to a single guide ID (e.g. `--guide autofill-sign-in-form`). |
 | `--include-docs-and-tests` | Flag | Include documentation, example, demo, and test files (skipped by default). |
-| `--max-files <count>` | String | Maximum eligible files to scan (default: `5000`; `0` for unlimited). |
+| `--max-files <count>` | String | Maximum eligible files to scan (default: `5000`; `0` for unlimited). Applies to each directory path separately. |
 | `--skill-version <version>` | String | Passed by the bundled agent skill to report its version for update checks. Not meant for manual use. |
 | `-h, --help` | Flag | Display CLI usage information and exit. |
 
@@ -74,7 +74,7 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 ```json
 {
-  "targetDir": "/workspace/etherpad-lite",
+  "targets": ["/workspace/etherpad-lite"],
   "totalFindings": 1,
   "activeRuleCount": 41,
   "activeGuideCount": 37,
@@ -118,6 +118,8 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 When the scan hits the `--max-files` cap with remaining unread candidates, the JSON payload also includes `"truncatedByMaxFiles": true` and `"eligibleFileCount": <total>`, and `note` explicitly warns about partial coverage with the `--max-files 0` / subdirectory hint.
 
+`"targets"` lists every path that was passed (`["."]` when none is), with exact repeats listed once. When several paths are passed, every one is scanned. Finding `file` paths are then relative to the current working directory (absolute for paths outside it) instead of relative to the scanned directory, and the file counts are summed across paths.
+
 ---
 
 ## 2. Modernize Workflow
@@ -126,16 +128,16 @@ For autonomous AI coding agents (such as Claude Code or Codex), modernizing exis
 
 ```mermaid
 flowchart TD
-    Scan["1. Detect Legacy Patterns<br/><code>legacy-scan [path] --json</code>"] --> Report["2. Report & Plan<br/>Summarize verified findings"]
+    Scan["1. Detect Legacy Patterns<br/><code>legacy-scan [paths...] --json</code>"] --> Report["2. Report & Plan<br/>Summarize verified findings"]
     Report --> Retrieve["3. Retrieve Guidance<br/><code>retrieve &lt;guideId&gt;</code>"]
     Retrieve --> Modernize["4. Modernize & Verify<br/>Apply modern platform standard<br/>Re-run <code>legacy-scan</code> to verify"]
     Modernize --> Disclose["5. Disclose & Summarize<br/>Report modernizations & Baseline targets"]
 ```
 
-1. **Detect Legacy Patterns (`legacy-scan`)**: Execute `npx modern-web-guidance legacy-scan <path> --json` to detect candidate modernization targets across a directory or file. `legacy-scan` finds legacy patterns and stops there.
+1. **Detect Legacy Patterns (`legacy-scan`)**: Execute `npx modern-web-guidance legacy-scan [paths...] --json` to detect candidate modernization targets across one or more directories or files. `legacy-scan` finds legacy patterns and stops there.
 2. **Verify & Report**: Inspect detected findings against each rule's verification rubric (`keepWhen`/`dropWhen`), drop false positives, and report verified findings (alongside the modernization plan, if editing) to the user.
 3. **Retrieve Guidance**: When modernizing rather than only reporting, run `npx modern-web-guidance retrieve "<guideId>"` to fetch the complete canonical guidance, including edge cases, accessibility invariants, and fallback strategies.
-4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `legacy-scan <path> --json` on modified files to confirm that findings are eliminated without regressions.
+4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `legacy-scan [paths...] --json` on modified files to confirm that findings are eliminated without regressions.
 5. **Disclose & Summarize**: End the turn with a concise summary describing the modernized APIs and any browser Baseline implications.
 
 ---

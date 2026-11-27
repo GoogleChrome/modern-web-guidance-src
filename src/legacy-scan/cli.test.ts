@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   CLI_HELP,
@@ -136,7 +136,7 @@ describe('runLegacyScanCli', () => {
       const parsedDefault = JSON.parse(resDefaultJson.output) as ScanJsonOutput;
       assert.equal(parsedDefault.totalFindings, 0);
       assert.deepEqual(parsedDefault.guides, []);
-      assert.equal(parsedDefault.targetDir, emptyDir);
+      assert.deepEqual(parsedDefault.targets, [emptyDir]);
       assert.equal(parsedDefault.activeRuleCount, QUALIFIED_RULES.length);
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
       assert.equal(
@@ -248,7 +248,7 @@ describe('runLegacyScanCli', () => {
       assert.equal(res.exitCode, 0);
 
       const parsed = JSON.parse(res.output) as ScanJsonOutput;
-      assert.equal(parsed.targetDir, testDir);
+      assert.deepEqual(parsed.targets, [testDir]);
       assert.ok(parsed.totalFindings >= 1);
       assert.equal(
         parsed.note,
@@ -364,7 +364,7 @@ describe('runLegacyScanCli', () => {
     });
   });
 
-  it('skips string option values when resolving targetDir on parse error', async () => {
+  it('skips string option values when resolving targets on parse error', async () => {
     const resSkillVer = await runLegacyScanCli([
       '--skill-version',
       '2026_01_01',
@@ -375,8 +375,12 @@ describe('runLegacyScanCli', () => {
     assert.equal(resSkillVer.exitCode, 1);
     assert.ok(resSkillVer.data);
     const parsedSkillVer = JSON.parse(resSkillVer.output) as ScanJsonOutput;
-    assert.equal(parsedSkillVer.targetDir, 'some/dir');
+    assert.deepEqual(parsedSkillVer.targets, ['some/dir']);
     assert.match(parsedSkillVer.error ?? '', /Unknown option '--unknown-flag'/);
+
+    const resTwoPaths = await runLegacyScanCli(['a/dir', '--unknown-flag', 'b/file.html', '--json']);
+    assert.equal(resTwoPaths.exitCode, 1);
+    assert.deepEqual(resTwoPaths.data?.targets, ['a/dir', 'b/file.html']);
 
     const resGuide = await runLegacyScanCli([
       '--guide',
@@ -388,7 +392,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resGuide.exitCode, 1);
     assert.ok(resGuide.data);
     const parsedGuide = JSON.parse(resGuide.output) as ScanJsonOutput;
-    assert.equal(parsedGuide.targetDir, 'other/dir');
+    assert.deepEqual(parsedGuide.targets, ['other/dir']);
     assert.match(parsedGuide.error ?? '', /Unknown option '--unknown-flag'/);
 
     const resNoDir = await runLegacyScanCli([
@@ -400,7 +404,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resNoDir.exitCode, 1);
     assert.ok(resNoDir.data);
     const parsedNoDir = JSON.parse(resNoDir.output) as ScanJsonOutput;
-    assert.equal(parsedNoDir.targetDir, '.');
+    assert.deepEqual(parsedNoDir.targets, ['.']);
 
     const resMaxFiles = await runLegacyScanCli([
       '--max-files',
@@ -412,7 +416,7 @@ describe('runLegacyScanCli', () => {
     assert.equal(resMaxFiles.exitCode, 1);
     assert.ok(resMaxFiles.data);
     const parsedMaxFiles = JSON.parse(resMaxFiles.output) as ScanJsonOutput;
-    assert.equal(parsedMaxFiles.targetDir, 'capped/dir');
+    assert.deepEqual(parsedMaxFiles.targets, ['capped/dir']);
     assert.match(parsedMaxFiles.error ?? '', /Unknown option '--unknown-flag'/);
   });
 
@@ -726,7 +730,7 @@ describe('runLegacyScanCli', () => {
       assert.ok(resFindings.data, 'Expected JSON data in result');
       const parsedFindings = JSON.parse(resFindings.output) as ScanJsonOutput;
       assert.equal(parsedFindings.totalFindings, 1);
-      assert.equal(parsedFindings.targetDir, filePath);
+      assert.deepEqual(parsedFindings.targets, [filePath]);
       assert.equal(parsedFindings.guides.length, 1);
       assert.equal(parsedFindings.guides[0]?.guideId, 'autofill-sign-in-form');
       assert.equal(parsedFindings.guides[0]?.rules[0]?.findings[0]?.file, 'SignInForm.html');
@@ -798,7 +802,7 @@ describe('runLegacyScanCli', () => {
         const resJsonEq = await runLegacyScanCli([nonExistentDir, `--max-files=${bad}`, '--json']);
         assert.equal(resJsonEq.exitCode, 1);
         assert.ok(resJsonEq.data);
-        assert.equal(resJsonEq.data.targetDir, nonExistentDir);
+        assert.deepEqual(resJsonEq.data.targets, [nonExistentDir]);
         assert.equal(resJsonEq.data.totalFindings, 0);
         assert.match(resJsonEq.data.error ?? '', /Invalid --max-files value/);
 
@@ -809,7 +813,7 @@ describe('runLegacyScanCli', () => {
 
         const resJsonSpace = await runLegacyScanCli([nonExistentDir, '--max-files', bad, '--json']);
         assert.equal(resJsonSpace.exitCode, 1);
-        assert.equal(resJsonSpace.data?.targetDir, nonExistentDir);
+        assert.deepEqual(resJsonSpace.data?.targets, [nonExistentDir]);
         assert.doesNotMatch(resJsonSpace.data?.error ?? '', /Target path not found/);
       }
 
@@ -985,6 +989,213 @@ describe('runLegacyScanCli', () => {
         const resDirEmptyRules = await runLegacyScanCli([edgeDir, '--json'], { rules: [] });
         assert.equal(resDirEmptyRules.exitCode, 0);
         assert.equal(resDirEmptyRules.data?.scannedFileCount, 0);
+      });
+    });
+  });
+
+  describe('multiple target paths', () => {
+    const LEGACY_FORM = '<form action="/login"><input type="password" name="password"></form>';
+    const JSON_ARGS = ['--guide', 'autofill-sign-in-form', '--json'];
+
+    async function writeLegacyFiles(dir: string, relPaths: readonly string[]): Promise<void> {
+      for (const relPath of relPaths) {
+        const filePath = join(dir, relPath);
+        await mkdir(dirname(filePath), { recursive: true });
+        await writeFile(filePath, LEGACY_FORM, 'utf8');
+      }
+    }
+
+    function findingFiles(data: ScanJsonOutput | undefined): string[] {
+      assert.ok(data, 'Expected JSON data in result');
+      return data.guides
+        .flatMap((guide) => guide.rules.flatMap((rule) => rule.findings.map((f) => f.file)))
+        .sort();
+    }
+
+    it('documents [paths...] in CLI_HELP', () => {
+      assert.match(CLI_HELP, /legacy-scan \[paths\.\.\.\] \[options\]/);
+      assert.match(CLI_HELP, /--max-files <count>.*applies per directory/);
+    });
+
+    it('scans every explicit file and lists them in targets', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['a/SignIn.html', 'b/SignIn.html']);
+        const fileA = join(dir, 'a/SignIn.html');
+        const fileB = join(dir, 'b/SignIn.html');
+
+        const res = await runLegacyScanCli([fileA, fileB, ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.equal(res.data?.totalFindings, 2);
+        assert.equal(res.data?.scannedFileCount, 2);
+        assert.deepEqual(res.data?.targets, [fileA, fileB]);
+        assert.deepEqual(findingFiles(res.data), ['a/SignIn.html', 'b/SignIn.html']);
+
+        const single = await runLegacyScanCli([fileA, ...JSON_ARGS], { cwd: dir });
+        assert.equal(single.data?.totalFindings, 1);
+        assert.deepEqual(single.data?.targets, [fileA]);
+      });
+    });
+
+    it('keeps same-named files from different directory targets distinct', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['a/SignIn.html', 'b/SignIn.html']);
+
+        const res = await runLegacyScanCli(['a', 'b', ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.deepEqual(res.data?.targets, ['a', 'b']);
+        assert.deepEqual(findingFiles(res.data), ['a/SignIn.html', 'b/SignIn.html']);
+      });
+    });
+
+    it('scans a directory together with a separate file', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['app/SignIn.html', 'extra.html']);
+
+        const resJson = await runLegacyScanCli(['app', 'extra.html', ...JSON_ARGS], { cwd: dir });
+        assert.equal(resJson.exitCode, 0);
+        assert.deepEqual(findingFiles(resJson.data), ['app/SignIn.html', 'extra.html']);
+
+        const resHuman = await runLegacyScanCli(['app', 'extra.html'], { cwd: dir });
+        assert.equal(resHuman.exitCode, 0);
+        assert.match(resHuman.output, /legacy-scan — app, extra\.html/);
+        assert.match(resHuman.output, /app\/SignIn\.html:1/);
+        assert.match(resHuman.output, /extra\.html:1/);
+      });
+    });
+
+    it('scans an explicit test file that its parent directory scan skips', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['app/SignIn.html', 'app/SignIn.test.html']);
+
+        const dirOnly = await runLegacyScanCli([dir, ...JSON_ARGS], { cwd: dir });
+        assert.deepEqual(findingFiles(dirOnly.data), ['app/SignIn.html']);
+
+        const res = await runLegacyScanCli([dir, join(dir, 'app/SignIn.test.html'), ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.deepEqual(findingFiles(res.data), ['app/SignIn.html', 'app/SignIn.test.html']);
+      });
+    });
+
+    it('reports each finding once when targets overlap', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['app/SignIn.html', 'extra.html']);
+
+        const res = await runLegacyScanCli([dir, join(dir, 'app'), ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.equal(res.data?.totalFindings, 2);
+        assert.deepEqual(findingFiles(res.data), ['app/SignIn.html', 'extra.html']);
+      });
+    });
+
+    it('keeps findings that overlapping targets report differently for the same file', async () => {
+      await withTempDir(async (dir) => {
+        // Scanned from the root, libs/aos.js is a vendored library; scanned from libs/, it is source.
+        await mkdir(join(dir, 'libs'), { recursive: true });
+        await writeFile(join(dir, 'libs/aos.js'), "import AOS from 'aos';\n\n\nAOS.init();\n", 'utf8');
+        const findingLines = (data: ScanJsonOutput | undefined): string[] => {
+          assert.ok(data, 'Expected JSON data in result');
+          return data.guides
+            .flatMap((guide) => guide.rules.flatMap((rule) => rule.findings.map((f) => `${f.file}:${f.line}`)))
+            .sort();
+        };
+
+        const rootFirst = await runLegacyScanCli(['.', 'libs', '--json'], { cwd: dir });
+        const libsFirst = await runLegacyScanCli(['libs', '.', '--json'], { cwd: dir });
+        assert.deepEqual(findingLines(rootFirst.data), ['libs/aos.js:1', 'libs/aos.js:4']);
+        assert.deepEqual(findingLines(libsFirst.data), ['libs/aos.js:1', 'libs/aos.js:4']);
+      });
+    });
+
+    it('reports cwd-relative paths for a directory whose name starts with two dots', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['..foo/SignIn.html', 'app/SignIn.html']);
+
+        const res = await runLegacyScanCli(['..foo', 'app', ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.deepEqual(findingFiles(res.data), ['..foo/SignIn.html', 'app/SignIn.html']);
+      });
+    });
+
+    it('treats an exact repeat as a single target', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['app/SignIn.html']);
+        const cwd = join(dir, 'app');
+
+        const once = await runLegacyScanCli([dir, ...JSON_ARGS], { cwd });
+        const twice = await runLegacyScanCli([dir, dir, ...JSON_ARGS], { cwd });
+        assert.equal(once.data?.totalFindings, 1);
+        assert.deepEqual(twice.data, once.data);
+      });
+    });
+
+    it('fails without scanning when a later target is missing', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['SignIn.html']);
+        const file = join(dir, 'SignIn.html');
+        const missing = join(dir, 'missing.html');
+
+        const resJson = await runLegacyScanCli([file, missing, ...JSON_ARGS]);
+        assert.equal(resJson.exitCode, 1);
+        assert.equal(resJson.data?.error, `Target path not found: ${missing}`);
+        assert.deepEqual(resJson.data?.targets, [file, missing]);
+        assert.deepEqual(resJson.data?.guides, []);
+
+        const resHuman = await runLegacyScanCli([file, missing]);
+        assert.equal(resHuman.exitCode, 1);
+        assert.equal(resHuman.stdout, '');
+        assert.equal(resHuman.stderr, `Error: Target path not found: ${missing}\n`);
+      });
+    });
+
+    it('fails without scanning when a later target file is oversized', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['SignIn.html']);
+        const largeFile = join(dir, 'large.html');
+        await writeFile(largeFile, Buffer.alloc(MAX_SOURCE_FILE_BYTES + 10));
+
+        const res = await runLegacyScanCli([join(dir, 'SignIn.html'), largeFile, ...JSON_ARGS]);
+        assert.equal(res.exitCode, 1);
+        assert.match(res.data?.error ?? '', /Target file exceeds maximum size/);
+        assert.ok(res.data?.error?.endsWith(largeFile));
+        assert.equal(res.data?.totalFindings, 0);
+      });
+    });
+
+    it('applies --max-files to each directory and sums the counts', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['a/one.html', 'a/two.html', 'b/one.html', 'b/two.html']);
+
+        const res = await runLegacyScanCli(['a', 'b', '--max-files', '1', ...JSON_ARGS], { cwd: dir });
+        assert.equal(res.exitCode, 0);
+        assert.equal(res.data?.scannedFileCount, 2);
+        assert.equal(res.data?.eligibleFileCount, 4);
+        assert.equal(res.data?.truncatedByMaxFiles, true);
+        assert.deepEqual(findingFiles(res.data), ['a/one.html', 'b/one.html']);
+
+        await writeLegacyFiles(dir, ['c.html']);
+        const mixed = await runLegacyScanCli(['a', 'c.html', '--max-files', '1', ...JSON_ARGS], { cwd: dir });
+        assert.equal(mixed.exitCode, 0);
+        assert.equal(mixed.data?.scannedFileCount, 2);
+        assert.equal(mixed.data?.eligibleFileCount, 3);
+        assert.equal(mixed.data?.truncatedByMaxFiles, true);
+        assert.deepEqual(findingFiles(mixed.data), ['a/one.html', 'c.html']);
+      });
+    });
+
+    it('reports absolute finding paths for targets outside cwd', async () => {
+      await withTempDir(async (dir) => {
+        await writeLegacyFiles(dir, ['work/inside.html', 'other/outside.html', 'lib/SignIn.html']);
+        const outsideFile = join(dir, 'other/outside.html');
+        const outsideDir = join(dir, 'lib');
+
+        const res = await runLegacyScanCli(['inside.html', outsideFile, outsideDir, ...JSON_ARGS], {
+          cwd: join(dir, 'work'),
+        });
+        assert.equal(res.exitCode, 0);
+        assert.deepEqual(
+          findingFiles(res.data),
+          [`${outsideDir}/SignIn.html`, outsideFile, 'inside.html'].map((p) => p.replace(/\\/g, '/')).sort(),
+        );
       });
     });
   });
