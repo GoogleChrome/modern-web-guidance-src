@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { outDir } from '../../../../src/core/paths.ts';
@@ -13,7 +13,7 @@ function getSlug(taskName: string): string {
 function getOrCreateLabel(labelName: string, color: string, description: string) {
   try {
     console.log(`Checking/Creating label: "${labelName}"...`);
-    execSync(`gh label create "${labelName}" --color "${color}" --description "${description}" || true`, { stdio: 'ignore' });
+    execFileSync('gh', ['label', 'create', labelName, '--color', color, '--description', description], { stdio: 'ignore' });
   } catch (e) {
     // Ignore error if it already exists or if we lack permissions but want to try anyway
   }
@@ -51,7 +51,7 @@ async function main() {
   const tempReportPath = reportPath + '.parent.tmp';
   try {
     fs.writeFileSync(tempReportPath, parentBody, 'utf-8');
-    const parentOutput = execSync(`gh issue create --title "${parentTitle}" --body-file "${tempReportPath}" --label "nightly-investigation"`, { encoding: 'utf-8' });
+    const parentOutput = execFileSync('gh', ['issue', 'create', '--title', parentTitle, '--body-file', tempReportPath, '--label', 'nightly-investigation'], { encoding: 'utf-8' });
     parentUrl = parentOutput.trim();
     console.log(`✅ Parent issue created at: ${parentUrl}`);
     createdIssues.push({ title: parentTitle, url: parentUrl, type: 'parent' });
@@ -150,11 +150,11 @@ ${graderRec.detail}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Grader subissue: "${graderTitle}"...`);
-      const tempGraderPath = path.join(outputDir, `grader_subissue_${taskName}.tmp`);
+      const tempGraderPath = path.join(outputDir, `grader_subissue_${getSlug(taskName)}.tmp`);
       try {
         fs.writeFileSync(tempGraderPath, graderBody, 'utf-8');
-        const graderIssueUrl = execSync(
-          `gh issue create --title "${graderTitle}" --body-file "${tempGraderPath}" --label "nightly-investigation-eng-${dateStr}"`,
+        const graderIssueUrl = execFileSync(
+          'gh', ['issue', 'create', '--title', graderTitle, '--body-file', tempGraderPath, '--label', `nightly-investigation-eng-${dateStr}`],
           { encoding: 'utf-8' }
         ).trim();
         console.log(`✅ Grader subissue created: ${graderIssueUrl}`);
@@ -185,11 +185,11 @@ ${guideRec ? `#### Recommended Guide Changes:\n${guideRec.detail}\n` : ''}
 ${Object.entries(runDetails).map(([agent, details]) => `- **${agent}**: Guided Pass Rate: ${details.guided}, Unguided Pass Rate: ${details.unguided}, Guides Consumed: ${details.guides}`).join('\n')}`;
 
       console.log(`Creating Devrel subissue: "${devrelTitle}"...`);
-      const tempDevrelPath = path.join(outputDir, `devrel_subissue_${taskName}.tmp`);
+      const tempDevrelPath = path.join(outputDir, `devrel_subissue_${getSlug(taskName)}.tmp`);
       try {
         fs.writeFileSync(tempDevrelPath, devrelBody, 'utf-8');
-        const devrelIssueUrl = execSync(
-          `gh issue create --title "${devrelTitle}" --body-file "${tempDevrelPath}" --label "nightly-investigation-devrel-${dateStr}"`,
+        const devrelIssueUrl = execFileSync(
+          'gh', ['issue', 'create', '--title', devrelTitle, '--body-file', tempDevrelPath, '--label', `nightly-investigation-devrel-${dateStr}`],
           { encoding: 'utf-8' }
         ).trim();
         console.log(`✅ Devrel subissue created: ${devrelIssueUrl}`);
