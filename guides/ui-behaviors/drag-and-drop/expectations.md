@@ -10,6 +10,7 @@
 - Moving the first item toward the start or the last item toward the end with the keyboard mechanism leaves the DOM order unchanged.
 - Reordering is animated: displaced siblings travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
 - During a pointer drag, the real dragged item (not a clone) follows the pointer via a CSS translation, stays a child of the list, and animates to its resting place when the drag ends.
+- The draggable element MUST be able to be operated using a single pointer without requiring dragging movements.
 - Reordering actions are announced in a live region with the item's new position.
 - Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.
 - The collection renders its items in a readable and usable default DOM order before any reordering interaction occurs.
