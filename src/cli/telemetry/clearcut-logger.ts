@@ -15,6 +15,7 @@ import {
 } from './types.ts';
 import { getVersion } from '../version.ts';
 import { determineAgent } from './detect-agent.ts';
+import { isTelemetryDisabledByMwgrc } from '../../core/mwgrc.ts';
 
 function isTelemetryEnabled(): boolean {
   const optOutSetting = process.env.DISABLE_TELEMETRY?.toLowerCase();
@@ -22,6 +23,9 @@ function isTelemetryEnabled(): boolean {
     return false;
   }
   if (process.env.NODE_TEST_CONTEXT !== undefined) {
+    return false;
+  }
+  if (isTelemetryDisabledByMwgrc()) {
     return false;
   }
   return true; // Enabled by default!
@@ -123,7 +127,8 @@ export class ClearcutLogger {
     if (commandType == CommandType.INSTALL || commandType == CommandType.INSTALL_CHOOSE) {
       console.warn(
         "Google collects anonymous usage information to improve the reliability, relevance, and performance of the Modern Web Guidance tool. " +
-        "You can opt-out completely at any time by setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
+        "You can opt-out completely at any time by passing --telemetry=false, adding \"telemetry\": false to .mwgrc, " +
+        "or setting the DISABLE_TELEMETRY=1 environment variable in your shell profile. " +
         "See https://github.com/GoogleChrome/modern-web-guidance#-telemetry--privacy for more details."
       );
     }
