@@ -564,6 +564,24 @@ codex plugin add modern-web-guidance@googlechrome
 ```
 </details>
 
+<details>
+<summary><b>Qoder CLI</b></summary>
+
+```shell
+qoder plugin marketplace add GoogleChrome/modern-web-guidance
+qoder plugin install modern-web-guidance@googlechrome
+```
+</details>
+
+<details>
+<summary><b>Qwen Code</b></summary>
+
+```shell
+qwen plugin marketplace add GoogleChrome/modern-web-guidance
+qwen plugin install modern-web-guidance@googlechrome
+```
+</details>
+
 ## <img src="https://github.com/GoogleChrome/modern-web-guidance/raw/main/.github/img/refresh-cw.svg" width="24" height="24" style="vertical-align: middle; margin-right: 4px;"> Updating
 
 If you installed the skill using `npx modern-web-guidance@latest install`, you can update with: `npx modern-web-guidance@latest update`.
