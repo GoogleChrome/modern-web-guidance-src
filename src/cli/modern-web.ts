@@ -44,16 +44,19 @@ if (telemetryFlags.includes("--telemetry=false") || isTelemetryDisabledByMwgrc()
   process.env.DISABLE_TELEMETRY = "1";
 }
 
-const { values, positionals } = parseArgs({
+const CLI_OPTIONS = {
+  help: { type: "boolean", short: "h" },
+  version: { type: "boolean", short: "v" },
+  choose: { type: "boolean" },
+  "skill-version": { type: "string" },
+} as const;
+
+const { values, positionals, tokens } = parseArgs({
   args: cliArgs,
-  options: {
-    help: { type: "boolean", short: "h" },
-    version: { type: "boolean", short: "v" },
-    choose: { type: "boolean" },
-    "skill-version": { type: "string" },
-  },
+  options: CLI_OPTIONS,
   allowPositionals: true,
   strict: false,
+  tokens: true,
 });
 
 function isStdoutRedirectedToFile(): boolean {
@@ -137,6 +140,16 @@ async function main() {
   if (values.help || positionals.length === 0) {
     printUsage();
     process.exit(values.help ? 0 : 1);
+  }
+
+  // `install` is exempt because it forwards its extra flags to the skills CLI.
+  const unknownOption = command === "install"
+    ? undefined
+    : tokens.find(t => t.kind === "option" && !(t.name in CLI_OPTIONS));
+  if (unknownOption?.kind === "option") {
+    console.error(`Unknown option: ${unknownOption.rawName}`);
+    printUsage();
+    process.exit(1);
   }
 
   maybeEmitUpdateMessage(skillVersion);
