@@ -8,5 +8,7 @@
 * In a right-to-left tab list, the underline stays visible and aligned with both inline edges of the active tab item as selection changes.
 * When `prefers-reduced-motion: reduce` is enabled, there is no animation.
 * When `prefers-reduced-motion: no-preference` is enabled, the underline animates.
+* When the tab items are links in a navigation menu, exactly one of them has `aria-current="page"`.
+* When the tab items are links in a navigation menu, changing the active page moves `aria-current="page"` to the link in the new active tab item.
 * When CSS Anchor Positioning is unsupported, a static border marks the active tab item.
 * When anchor positioning animations are unsupported but CSS Anchor Positioning is supported, the underline moves immediately to the new active tab item.

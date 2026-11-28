@@ -53,12 +53,18 @@ ul::before {
 }
 ```
 
-Draw the underline with a border. DO NOT use a background or `box-shadow`: forced colors mode removes both, leaving no indicator.
+Add a height and other visual styles. Forced colors mode replaces background colors, so in `@media (forced-colors: active)`, give the indicator a system color background, or the indicator disappears.
 
 ```css
 ul::before {
   /* Apply your project's styles for the indicator */
-  border-block-end: .25lh solid red;
+  block-size: .25lh;
+  background: red;
+
+  @media (forced-colors: active) {
+    /* A system color, which forced colors mode keeps, so the indicator stays visible */
+    background: CanvasText;
+  }
 }
 ```
 

@@ -18,16 +18,21 @@
         content: '';
         position: absolute;
         position-anchor: --active;
-        inset-block-start: calc(anchor(self-end) + .1lh);
+         inset-block-start: calc(anchor(self-end) + .1lh);
         inset-inline-start: anchor(self-start);
         inset-inline-end: anchor(self-end);
-        border-block-end: .25lh solid red;
+        height: 0.25lh;
+        background: red;
+        @media (forced-colors: active) {
+          /* A system color, which forced colors mode keeps, so the indicator stays visible */
+          background: CanvasText;
+        }
         @media (prefers-reduced-motion: no-preference){
           transition: inset ease-in-out .2s;
         }
       }
 
-      ul li.active {
+      ul li:has([aria-current="page"]) {
         anchor-name: --active;
         color: red;
       }
@@ -49,6 +54,10 @@
         line-height: 1.5;
         padding-inline: 0.2em;
         display: block;
+      }
+
+      ul li a:hover {
+        color: red;
       }
 
       body {
@@ -76,7 +85,7 @@
     <p class="instructions">Select a tab to move the red underline. The underline slides when the browser supports anchor transitions and reduced motion is off.</p>
     <nav>
       <ul>
-        <li class="active"><a href="#">Home</a></li>
+        <li><a href="#" aria-current="page">Home</a></li>
         <li><a href="#">About</a></li>
         <li><a href="#">Projects</a></li>
         <li><a href="#">Blog</a></li>
@@ -88,8 +97,9 @@
       listItems.forEach(li => {
         li.addEventListener('click', (e) => {
           e.preventDefault();
-          document.querySelector('li.active')?.classList.remove('active');
-          li.classList.add('active');
+          // The underline follows aria-current, which screen readers announce
+          document.querySelector('nav [aria-current="page"]')?.removeAttribute('aria-current');
+          li.querySelector('a').setAttribute('aria-current', 'page');
         });
       });
     </script>
