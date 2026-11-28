@@ -313,10 +313,10 @@
         buttonTrigger.addEventListener("click", (event) => {
           const menu = menuFor(buttonTrigger);
           if (!menu) return;
-          if ((!"source") in ToggleEvent.prototype) {
-            menu.style.setAttribute(
+          if (!("source" in ToggleEvent.prototype)) {
+            menu.style.setProperty(
               "position-area",
-              "block-end span-inline-start;",
+              "block-end span-inline-start",
             );
           }
           // Position the dropdown when anchor positioning is not supported.
@@ -377,6 +377,9 @@
           if (CSS.supports("anchor-name: --a")) {
             anchor.style.left = `${x}px`;
             anchor.style.top = `${y}px`;
+            if(!('source' in ToggleEvent.prototype)){
+              popover.style.setProperty('position-area', 'block-end span-inline-end')
+            }
           } else {
             popover.style.removeProperty("right");
             popover.style.left = `${x}px`;
